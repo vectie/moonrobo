@@ -18,12 +18,12 @@ pub(all) struct MoonroboLiveReadinessResponse {
   calibration : RuntimeCalibrationPlanRecord?
   calibration_resolution : RuntimeCalibrationResolutionRecord?
   loop_proof : PlatformLoopProofResponse
-  proof_session_count : Int
+  proof_session_count : Int32
   latest_proof_session_path : String
-  proof_session_feedback_binding_required_count : Int
-  proof_session_feedback_binding_success_count : Int
+  proof_session_feedback_binding_required_count : Int32
+  proof_session_feedback_binding_success_count : Int32
   proof_session_feedback_closed : Bool
-  proof_session_latest_feedback_status : Int
+  proof_session_latest_feedback_status : Int32
   proof_session_latest_feedback_message : String
   latest_proof_session : PlatformProofSessionResponse?
   next_method : String
@@ -68,7 +68,7 @@ fn latest_runtime_calibration_plan(
 ///|
 fn latest_proof_session(
   root : String,
-) -> Result[(PlatformProofSessionResponse?, Int), HostApiResponse] {
+) -> Result[(PlatformProofSessionResponse?, Int32), HostApiResponse] {
   let paths = match list_proof_session_paths(root) {
     Ok(paths) => paths
     Err(response) => return Err(response)
@@ -86,7 +86,7 @@ fn latest_proof_session(
 ///|
 fn live_readiness_proof_feedback_attempted_count(
   session : PlatformProofSessionResponse?,
-) -> Int {
+) -> Int32 {
   match session {
     Some(session) => session.feedback_binding_required_count
     None => 0
@@ -96,7 +96,7 @@ fn live_readiness_proof_feedback_attempted_count(
 ///|
 fn live_readiness_proof_feedback_success_count(
   session : PlatformProofSessionResponse?,
-) -> Int {
+) -> Int32 {
   match session {
     Some(session) => session.feedback_binding_success_count
     None => 0
@@ -106,7 +106,7 @@ fn live_readiness_proof_feedback_success_count(
 ///|
 fn live_readiness_proof_feedback_status(
   session : PlatformProofSessionResponse?,
-) -> Int {
+) -> Int32 {
   match session {
     Some(session) => session.latest_feedback_binding_status
     None => 0

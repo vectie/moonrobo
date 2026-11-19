@@ -1,0 +1,10 @@
+import {
+  "vectie/moonrobo/src/policy_skills" @skills,
+  "moonbitlang/core/json",
+  "moonbitlang/async/http",
+  "moonbitlang/async",
+}
+
+import {
+  "moonbitlang/async/socket",
+} for "test"

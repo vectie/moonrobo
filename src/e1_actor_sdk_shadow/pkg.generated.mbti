@@ -1,0 +1,23 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/e1_actor_sdk_shadow"
+
+import {
+  "vectie/moonrobo/src/e1_actor",
+  "vectie/moonrobo/src/policy_host",
+  "vectie/moonrobo/src/sdk_e1_low",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Plan {
+  // private fields
+}
+pub fn Plan::host(Self, @sdk_e1_low.Controller, clock~ : () -> Int64, record~ : (Json) -> Unit raise, stopped~ : () -> Unit) -> @policy_host.Host raise
+pub async fn Plan::read(@e1_actor.Actor, String) -> Self
+
+// Type aliases
+
+// Traits

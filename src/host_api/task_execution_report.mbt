@@ -12,8 +12,8 @@ pub(all) struct TaskExecutionProofRecord {
 
 ///|
 pub(all) struct TaskExecutionProofReport {
-  execution_count : Int
-  verified_count : Int
+  execution_count : Int32
+  verified_count : Int32
   latest_snapshot_id : String
   latest : TaskExecutionProofRecord?
   executions : Array[TaskExecutionProofRecord]

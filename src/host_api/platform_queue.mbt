@@ -33,8 +33,8 @@ pub(all) struct RuntimeCalibrationPlanRecord {
   robot_id : String
   bridge_id : String
   status : String
-  action_count : Int
-  blocking_action_count : Int
+  action_count : Int32
+  blocking_action_count : Int32
   actions : Array[RuntimeCalibrationActionRecord]
 } derive(Debug, Eq, ToJson, FromJson)
 

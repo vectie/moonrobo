@@ -18,7 +18,7 @@ pub(all) struct MoonroboGatewayCommandRecord {
   now_ms : Int64
   status : String
   accepted : Bool
-  downstream_status : Int
+  downstream_status : Int32
   next_route : String
   message_path : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -197,7 +197,7 @@ fn gateway_command_record(
   command_id : String,
   command_path : String,
   accepted : Bool,
-  downstream_status : Int,
+  downstream_status : Int32,
   next_route : String,
   message_path : String,
 ) -> MoonroboGatewayCommandRecord {

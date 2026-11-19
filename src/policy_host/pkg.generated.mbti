@@ -1,0 +1,23 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/policy_host"
+
+import {
+  "moonbitlang/async/http",
+  "vectie/moonrobo/src/policy_runner",
+  "vectie/moonrobo/src/policy_skills",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Host {
+  // private fields
+}
+pub fn Host::new(@policy_skills.Supervisor, clock~ : () -> Int64, prepare~ : (@policy_skills.Supervisor, () -> Int64) -> @policy_runner.Runner raise, period_ms? : Int) -> Self raise
+pub async fn Host::serve(Self, @http.Server) -> Unit
+
+// Type aliases
+
+// Traits

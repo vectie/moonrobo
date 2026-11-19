@@ -1,0 +1,14 @@
+{
+  "catalog_id": "software-fixture-v1",
+  "context_version": "0",
+  "last_sequence": "-1",
+  "skills": [
+    {
+      "id": "fixture",
+      "description": "Software fixture only; replace with an evaluated E1 reference before robot use",
+      "reference_id": "probe-frames",
+      "maximum_duration_ms": 1000,
+      "parameters": []
+    }
+  ]
+}

@@ -1,5 +1,11 @@
 import {
   "vectie/moonrobo/src/sdk_e1_low" @low,
+  "vectie/moonrobo/src/sdk_e1_policy" @policy,
+  "vectie/moonrobo/src/e1_actor" @actor,
+  "vectie/moonrobo/src/e1_actor_control" @control,
+  "vectie/moonrobo/src/e1_actor_reference" @reference,
+  "vectie/moonrobo/src/policy_skills" @skills,
+  "vectie/lunakine/actor" @portable,
   "moonbitlang/core/env",
 }
 

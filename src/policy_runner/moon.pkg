@@ -1,0 +1,3 @@
+import {
+  "vectie/moonrobo/src/policy_skills" @skills,
+}

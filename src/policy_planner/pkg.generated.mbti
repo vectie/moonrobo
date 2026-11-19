@@ -1,0 +1,36 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/policy_planner"
+
+import {
+  "moonbitlang/core/debug",
+  "vectie/moonrobo/src/policy_skills",
+  "vectie/moonrobo/src/policy_task",
+}
+
+// Values
+pub async fn plan_and_submit(String, String, String, String, request_id~ : String, ttl_ms~ : Int, headers? : Map[String, String], images? : ReadOnlyArray[ImageObservation], timeout_ms? : Int) -> @policy_skills.Execution
+
+pub async fn propose(String, String, @policy_task.Advertisement, String, headers? : Map[String, String], timeout_ms? : Int, images? : ReadOnlyArray[ImageObservation]) -> @policy_skills.Proposal
+
+// Errors
+
+// Types and methods
+pub(all) enum ImageEncoding {
+  Png
+  Jpeg
+} derive(Eq, @debug.Debug)
+pub fn ImageEncoding::equal(Self, Self) -> Bool
+pub fn ImageEncoding::not_equal(Self, Self) -> Bool
+pub fn ImageEncoding::to_repr(Self) -> @debug.Repr
+
+pub struct ImageObservation {
+  // private fields
+}
+pub fn ImageObservation::byte_count(Self) -> Int
+pub fn ImageObservation::encoding(Self) -> ImageEncoding
+pub fn ImageObservation::from_encoded(Bytes, source~ : String) -> Self raise
+pub fn ImageObservation::source(Self) -> String
+
+// Type aliases
+
+// Traits

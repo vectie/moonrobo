@@ -26,7 +26,7 @@ pub(all) struct MoonBookTaskMessageRecord {
 
 ///|
 pub(all) struct MoonBookTaskMessageListResponse {
-  message_count : Int
+  message_count : Int32
   messages : Array[MoonBookTaskMessageRecord]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -261,8 +261,8 @@ fn read_task_message_record(
   root : String,
   path : String,
   text : String,
-  runtime_status? : String = "unknown",
-  runtime_bridge_base_url? : String = "",
+  runtime_status~ : String = "unknown",
+  runtime_bridge_base_url~ : String = "",
 ) -> Result[MoonBookTaskMessageRecord, HostApiResponse] {
   match decode_task_message_plan_text(path, text) {
     Ok(plan) => {
@@ -504,8 +504,8 @@ fn task_message_execution_evidence(
 pub fn moonbook_task_message_status_response(
   root : String,
   path : String,
-  runtime_status? : String = "unknown",
-  runtime_bridge_base_url? : String = "",
+  runtime_status~ : String = "unknown",
+  runtime_bridge_base_url~ : String = "",
 ) -> HostApiResponse {
   let task_id = match task_id_from_moonbook_task_message_status_path(path) {
     Some(value) => value

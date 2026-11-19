@@ -56,8 +56,9 @@ test "sdk e1 runtime spec supervises collector before bridge sidecar" {
     profile,
     "examples/noetix-e1",
     sidecar_path="moonrobo-sdk-e1-bridge",
-    collector_path="bridges/sdk_e1/sdk_e1_readonly_bridge.py",
-    writer_path="bridges/sdk_e1/sdk_e1_high_control_writer.py",
+    collector_path="moonrobo-sdk-e1-native",
+    writer_path="moonrobo-sdk-e1-native",
+    backend=Native,
     snapshot_path=@bridge_sidecar.default_snapshot_path(),
     command_path=@bridge_sidecar.default_command_path(),
   )
@@ -70,8 +71,8 @@ test "sdk e1 runtime spec supervises collector before bridge sidecar" {
   let writer = runtime.processes[1]
   let bridge = runtime.processes[2]
   assert_true(collector.role == SnapshotCollector)
-  assert_eq(collector.command[0], "python3")
-  assert_eq(collector.command[1], "bridges/sdk_e1/sdk_e1_readonly_bridge.py")
+  assert_eq(collector.command[0], "moonrobo-sdk-e1-native")
+  assert_eq(collector.command[1], "read")
   assert_true(collector.command.contains("--live"))
   assert_true(collector.command.contains("--output"))
   assert_true(
@@ -80,8 +81,8 @@ test "sdk e1 runtime spec supervises collector before bridge sidecar" {
   assert_eq(collector.output_path, @bridge_sidecar.default_snapshot_path())
   assert_eq(collector.depends_on.length(), 0)
   assert_true(writer.role == HighControlWriter)
-  assert_eq(writer.command[0], "python3")
-  assert_eq(writer.command[1], "bridges/sdk_e1/sdk_e1_high_control_writer.py")
+  assert_eq(writer.command[0], "moonrobo-sdk-e1-native")
+  assert_eq(writer.command[1], "write")
   assert_true(writer.command.contains("--watch"))
   assert_true(writer.command.contains("--input"))
   assert_true(writer.command.contains(@bridge_sidecar.default_command_path()))
@@ -95,6 +96,55 @@ test "sdk e1 runtime spec supervises collector before bridge sidecar" {
   assert_eq(bridge.depends_on.length(), 2)
   assert_eq(bridge.depends_on[0], "noetix-e1-lab-01:sdk-e1:collector")
   assert_eq(bridge.depends_on[1], "noetix-e1-lab-01:sdk-e1:writer")
+}
+
+///|
+test "E1 native mode keeps Python exclusively in explicit reference mode" {
+  assert_eq(@bridge_sidecar.sdk_e1_backend("native"), Some(Native))
+  assert_eq(
+    @bridge_sidecar.sdk_e1_backend("python-reference"),
+    Some(PythonReference),
+  )
+  assert_eq(@bridge_sidecar.sdk_e1_backend("python"), None)
+  let native = @bridge_sidecar.sdk_e1_collector_command(
+    backend=Native,
+    collector_path="/opt/moonrobo-sdk-e1-native",
+    python_path="reference-only-python",
+    library_path="/opt/libmoonrobo_e1.so",
+    sdk_root="/sdk",
+    snapshot_path="/tmp/snapshot.json",
+  )
+  assert_eq(native[0], "/opt/moonrobo-sdk-e1-native")
+  assert_eq(native[1], "read")
+  assert_false(native.contains("reference-only-python"))
+  assert_true(native.contains("--library"))
+  assert_true(native.contains("/opt/libmoonrobo_e1.so"))
+  assert_true(native.contains("--live"))
+  let reference = @bridge_sidecar.sdk_e1_collector_command(
+    backend=PythonReference,
+    python_path="reference-python",
+  )
+  assert_eq(reference[0], "reference-python")
+  assert_eq(reference[1], "bridges/sdk_e1/sdk_e1_readonly_bridge.py")
+  assert_false(reference.contains("--library"))
+  let writer = @bridge_sidecar.sdk_e1_writer_command(
+    backend=Native,
+    writer_path="native-writer",
+    dry_run=true,
+  )
+  assert_eq(writer[0], "native-writer")
+  assert_eq(writer[1], "write")
+  assert_true(writer.contains("--watch"))
+  assert_true(writer.contains("--dry-run"))
+  let reference_writer = @bridge_sidecar.sdk_e1_writer_command(
+    backend=PythonReference,
+    python_path="reference-python",
+    dry_run=true,
+  )
+  assert_eq(reference_writer[0], "reference-python")
+  assert_eq(reference_writer[1], "bridges/sdk_e1/sdk_e1_high_control_writer.py")
+  assert_false(reference_writer.contains("--library"))
+  assert_true(reference_writer.contains("--dry-run"))
 }
 
 ///|

@@ -118,6 +118,30 @@ pub fn release_sdk_bridge_path(bundle_root : String) -> String {
 }
 
 ///|
+pub fn release_sdk_native_path(bundle_root : String) -> String {
+  absolute_bundle_path(
+    join_path(release_bin_dir(bundle_root), "moonrobo-sdk-e1-native"),
+  )
+}
+
+///|
+fn absolute_bundle_path(path : String) -> String {
+  if @pathx.is_absolute(path) {
+    path
+  } else {
+    match @env.current_dir() {
+      Some(cwd) => @pathx.normalize(@pathx.join(cwd, path))
+      None => ""
+    }
+  }
+}
+
+///|
+fn built_sdk_native_path() -> String {
+  "_build/native/debug/build/cmd/sdk_e1_native/sdk_e1_native.exe"
+}
+
+///|
 fn built_desktop_host_path() -> String {
   "_build/native/debug/build/cmd/main/main.exe"
 }
@@ -160,7 +184,7 @@ fn bundle_host_config(
 ///|
 pub fn desktop_host_command(
   config : @desktop_host.DesktopHostConfig,
-  bundle_root? : String = "",
+  bundle_root~ : String = "",
 ) -> Array[String] {
   let host_config = bundle_host_config(config, bundle_root)
   [
@@ -194,7 +218,7 @@ fn robobook_check(root : String) -> BundleCheck {
 }
 
 ///|
-fn ui_check(ui_root : String, bundle_root? : String = "") -> BundleCheck {
+fn ui_check(ui_root : String, bundle_root~ : String = "") -> BundleCheck {
   let path = if bundle_root == "" {
     @desktop_host.fallback_index_path(ui_root)
   } else {
@@ -221,7 +245,7 @@ fn sidecar_check(sidecar_path : String) -> BundleCheck {
 ///|
 pub fn validate(
   config : @desktop_host.DesktopHostConfig,
-  bundle_root? : String = "",
+  bundle_root~ : String = "",
 ) -> Array[BundleCheck] {
   [
     robobook_check(config.robobook_root),
@@ -271,6 +295,9 @@ fn bridge_sidecar_json(
           book.profile,
           config.robobook_root,
           sidecar_path=release_sdk_bridge_path(bundle_root),
+          collector_path=release_sdk_native_path(bundle_root),
+          writer_path=release_sdk_native_path(bundle_root),
+          backend=Native,
           host=config.bridge_host,
           port=config.bridge_port,
         ).to_json(),
@@ -300,6 +327,9 @@ fn runtime_supervisor_plan(
             book.profile,
             config.robobook_root,
             sidecar_path=release_sdk_bridge_path(bundle_root),
+            collector_path=release_sdk_native_path(bundle_root),
+            writer_path=release_sdk_native_path(bundle_root),
+            backend=Native,
             host=config.bridge_host,
             port=config.bridge_port,
           ),
@@ -358,6 +388,7 @@ fn release_artifacts_json(
     "build_commands": [
       ["moon", "build", "cmd/main", "--target", "native"],
       ["moon", "build", "cmd/sdk_e1_bridge", "--target", "native"],
+      ["moon", "build", "cmd/sdk_e1_native", "--target", "native"],
       ["npm", "--prefix", rabbita_source_root(), "run", "build"],
     ],
     "artifacts": [
@@ -377,6 +408,16 @@ fn release_artifacts_json(
           host=config.bridge_host,
           port=config.bridge_port,
         ),
+      },
+      {
+        "name": "moonrobo-sdk-e1-native",
+        "source": built_sdk_native_path(),
+        "path": release_sdk_native_path(bundle_root),
+        "commands": [
+          [release_sdk_native_path(bundle_root), "read"],
+          [release_sdk_native_path(bundle_root), "write"],
+        ],
+        "sdk_adapter": "external native E1 shared library; configure MOONROBO_SDK_E1_LIBRARY",
       },
       {
         "name": "moonrobo-rabbita-cockpit",
@@ -469,6 +510,11 @@ fn lepusa_project_json(
       {
         "source": "bin/moonrobo-sdk-e1-bridge",
         "path": "moonrobo-sdk-e1-bridge",
+        "executable": true,
+      },
+      {
+        "source": "bin/moonrobo-sdk-e1-native",
+        "path": "moonrobo-sdk-e1-native",
         "executable": true,
       },
       {
@@ -634,9 +680,11 @@ fn release_build_script(bundle_root : String) -> String {
     "cp examples/noetix-e1/robot.json \{shell_quote(join_path(robobook_seed_dir(bundle_root), "robot.json"))}",
     "moon build cmd/main --target native",
     "moon build cmd/sdk_e1_bridge --target native",
+    "moon build cmd/sdk_e1_native --target native",
     "npm --prefix \{shell_quote(rabbita_source_root())} run build",
     "cp \{shell_quote(built_desktop_host_path())} \{shell_quote(release_desktop_host_path(bundle_root))}",
     "cp \{shell_quote(built_sdk_bridge_path())} \{shell_quote(release_sdk_bridge_path(bundle_root))}",
+    "cp \{shell_quote(built_sdk_native_path())} \{shell_quote(release_sdk_native_path(bundle_root))}",
     "rm -rf \{shell_quote(release_ui_dir(bundle_root))}",
     "mkdir -p \{shell_quote(release_ui_dir(bundle_root))}",
     "cp -R \{shell_quote(built_rabbita_dist_path() + "/.")} \{shell_quote(release_ui_dir(bundle_root))}",
@@ -652,7 +700,7 @@ fn write_release_build(bundle_root : String) -> Result[String, BundleIssue] {
 
 ///|
 fn shell_quote(value : String) -> String {
-  "'" + value.replace(old="'", new="'\"'\"'") + "'"
+  "'" + value.replace_all(old="'", new="'\"'\"'") + "'"
 }
 
 ///|
@@ -670,13 +718,18 @@ fn desktop_launch_script(
     "UI_ROOT=\{shell_quote(release_ui_dir(bundle_root))}",
     "RUNTIME_RUNNER=\{shell_quote(supervisor_runner_path(bundle_root))}",
     "DESKTOP_HOST=\{shell_quote(release_desktop_host_path(bundle_root))}",
+    "MOONROBO_SDK_E1_BACKEND=native; export MOONROBO_SDK_E1_BACKEND",
+    "MOONROBO_SDK_E1_NATIVE=\{shell_quote(release_sdk_native_path(bundle_root))}; export MOONROBO_SDK_E1_NATIVE",
+    "MOONROBO_SDK_E1_BRIDGE=\{shell_quote(absolute_bundle_path(release_sdk_bridge_path(bundle_root)))}; export MOONROBO_SDK_E1_BRIDGE",
     "",
     "if [ -n \"${LEPUSA_RESOURCE_DIR:-}\" ]; then",
     "  : \"${LEPUSA_APP_DATA_DIR:?Lepusa app data directory is required}\"",
     "  ROBOBOOK_ROOT=\"$LEPUSA_APP_DATA_DIR/robobook\"",
     "  UI_ROOT=\"$LEPUSA_RESOURCE_DIR/ui\"",
-    "  RUNTIME_RUNNER=\"moonrobo-runtime-supervisor\"",
-    "  DESKTOP_HOST=\"moonrobo-desktop-host\"",
+    "  RUNTIME_RUNNER=\"$LEPUSA_APP_DATA_DIR/moonrobo.runtime-supervisor.sh\"",
+    "  DESKTOP_HOST=\"$LEPUSA_RESOURCE_DIR/moonrobo-desktop-host\"",
+    "  MOONROBO_SDK_E1_NATIVE=\"$LEPUSA_RESOURCE_DIR/moonrobo-sdk-e1-native\"; export MOONROBO_SDK_E1_NATIVE",
+    "  MOONROBO_SDK_E1_BRIDGE=\"$LEPUSA_RESOURCE_DIR/moonrobo-sdk-e1-bridge\"; export MOONROBO_SDK_E1_BRIDGE",
     "  if [ ! -f \"$ROBOBOOK_ROOT/robot.json\" ]; then",
     "    mkdir -p \"$ROBOBOOK_ROOT\"",
     "    cp -R \"$LEPUSA_RESOURCE_DIR/robobook-seed/.\" \"$ROBOBOOK_ROOT\"",
@@ -689,9 +742,15 @@ fn desktop_launch_script(
     "}",
     "trap cleanup INT TERM EXIT",
     "",
-    "if [ -d \"$ROBOBOOK_ROOT/../sdk\" ]; then",
+    "SDK_ROOT=\"${MOONROBO_SDK_E1_ROOT:-$ROBOBOOK_ROOT/../sdk}\"",
+    "MOONROBO_SDK_E1_ROOT=\"$SDK_ROOT\"; export MOONROBO_SDK_E1_ROOT",
+    "if [ -d \"$SDK_ROOT\" ]; then",
     "  echo 'MoonRobo desktop launch: starting physical runtime supervisor'",
-    "  \"$RUNTIME_RUNNER\" &",
+    // This CLI only constructs the current spec and dependency preflight. It
+    // does not initialize the SDK, self-check, publish, or start a subprocess.
+    "  \"$DESKTOP_HOST\" runtime-supervisor-script \"$ROBOBOOK_ROOT\" \{shell_quote(config.bridge_host)} \{shell_quote(config.bridge_port.to_string())} > \"$RUNTIME_RUNNER.tmp\"",
+    "  mv \"$RUNTIME_RUNNER.tmp\" \"$RUNTIME_RUNNER\"",
+    "  sh \"$RUNTIME_RUNNER\" &",
     "  RUNTIME_PID=$!",
     "else",
     "  echo 'MoonRobo desktop launch: SDK not installed; starting in safe cockpit-only mode'",

@@ -1,0 +1,108 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/policy_skills"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+
+// Errors
+pub suberror SkillError {
+  InvalidSkill(String)
+  Rejected(String)
+} derive(@debug.Debug)
+pub fn SkillError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub(all) struct Catalog {
+  catalog_id : String
+  context_version : Int64
+  last_sequence : Int64
+  skills : Array[Skill]
+} derive(ToJson, @json.FromJson)
+pub fn Catalog::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Catalog::to_json(Self) -> Json
+
+pub(all) struct Execution {
+  request_id : String
+  sequence : Int64
+  skill_id : String
+  reference_id : String
+  parameters : Map[String, Double]
+  state : State
+  accepted_at_ms : Int64
+  deadline_ms : Int64
+  detail : String
+} derive(ToJson, @json.FromJson)
+pub fn Execution::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Execution::to_json(Self) -> Json
+
+pub(all) struct Parameter {
+  name : String
+  minimum : Double
+  maximum : Double
+  default_value : Double
+} derive(ToJson, @json.FromJson)
+pub fn Parameter::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Parameter::to_json(Self) -> Json
+
+pub(all) struct Proposal {
+  skill_id : String
+  parameters : Map[String, Double]
+} derive(Eq, ToJson, @json.FromJson)
+pub fn Proposal::equal(Self, Self) -> Bool
+pub fn Proposal::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Proposal::not_equal(Self, Self) -> Bool
+pub fn Proposal::to_json(Self) -> Json
+
+pub(all) struct Request {
+  request_id : String
+  sequence : Int64
+  catalog_id : String
+  context_version : Int64
+  expires_at_ms : Int64
+  proposal : Proposal
+} derive(Eq, ToJson, @json.FromJson)
+pub fn Request::equal(Self, Self) -> Bool
+pub fn Request::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Request::not_equal(Self, Self) -> Bool
+pub fn Request::to_json(Self) -> Json
+
+pub(all) struct Skill {
+  id : String
+  description : String
+  reference_id : String
+  maximum_duration_ms : Int
+  parameters : Array[Parameter]
+} derive(ToJson, @json.FromJson)
+pub fn Skill::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Skill::to_json(Self) -> Json
+
+pub(all) enum State {
+  Accepted
+  Running
+  Completed
+  Failed
+  Interrupted
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn State::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn State::to_json(Self) -> Json
+pub fn State::to_repr(Self) -> @debug.Repr
+
+pub struct Supervisor {
+  // private fields
+}
+pub fn Supervisor::accept(Self, Request, Int64) -> Execution raise SkillError
+pub fn Supervisor::cancel(Self, String, detail~ : String) -> Execution raise SkillError
+pub fn Supervisor::catalog(Self) -> Catalog
+pub fn Supervisor::finish(Self, String, success~ : Bool, detail~ : String) -> Execution raise SkillError
+pub fn Supervisor::new(String, Array[Skill]) -> Self raise SkillError
+pub fn Supervisor::snapshot(Self, Int64) -> Execution?
+pub fn Supervisor::start(Self, String, Int64) -> Execution raise SkillError
+pub fn Supervisor::version(Self) -> Int64
+
+// Type aliases
+
+// Traits

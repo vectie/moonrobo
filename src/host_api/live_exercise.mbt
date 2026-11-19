@@ -18,14 +18,14 @@ pub(all) struct MoonroboLiveExerciseResponse {
 pub(all) struct MoonroboLiveExerciseClosureSummary {
   closed : Bool
   status : String
-  requested_validation_sample_count : Int
+  requested_validation_sample_count : Int32
   command_accepted : Bool
-  command_blocked_count : Int
+  command_blocked_count : Int32
   proof_ready : Bool
-  proof_attempted_count : Int
+  proof_attempted_count : Int32
   feedback_closed : Bool
   memory_persisted : Bool
-  missing_count : Int
+  missing_count : Int32
   missing : Array[String]
   next_route : String
   message : String
@@ -33,13 +33,13 @@ pub(all) struct MoonroboLiveExerciseClosureSummary {
 
 ///|
 pub(all) struct MoonroboLiveExerciseListResponse {
-  exercise_count : Int
+  exercise_count : Int32
   exercises : Array[MoonroboLiveExerciseResponse]
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
 pub(all) struct MoonroboLiveExerciseClosureResponse {
-  exercise_count : Int
+  exercise_count : Int32
   has_exercise : Bool
   exercise_id : String
   exercise_path : String

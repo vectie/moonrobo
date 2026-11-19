@@ -1,0 +1,37 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/e1_actor_control"
+
+import {
+  "vectie/moonrobo/src/e1_actor",
+  "vectie/moonrobo/src/policy_runner",
+  "vectie/moonrobo/src/policy_skills",
+  "vectie/moonrobo/src/sdk_e1_low",
+  "vectie/moonrobo/src/sdk_e1_policy",
+}
+
+// Values
+pub fn new_runner(@policy_skills.Supervisor, @e1_actor.Actor, @sdk_e1_policy.Mapping, Sensor, reference~ : (@policy_skills.Execution, Int, Int64) -> Reference raise, publish~ : (ArrayView[@sdk_e1_low.MotorCommand]) -> Unit raise, stop~ : () -> Unit, maximum_sensor_age_ms? : Int64) -> @policy_runner.Runner raise
+
+// Errors
+
+// Types and methods
+pub(all) struct Capture {
+  observation : Array[Double]
+  receipt_age_ms : Int64
+}
+
+pub(all) struct Reference {
+  goals : Array[Double]
+  body_to_world : Array[Double]
+  complete : Bool
+}
+
+pub struct Sensor {
+  // private fields
+}
+pub fn Sensor::from_sdk(@sdk_e1_low.Controller, @sdk_e1_policy.Observer, clock~ : () -> Int64) -> Self raise
+pub fn Sensor::new(profile_id~ : String, clock~ : () -> Int64, capture~ : (ArrayView[Double], ArrayView[Double]) -> Capture raise) -> Self raise
+
+// Type aliases
+
+// Traits

@@ -10,10 +10,10 @@ pub(all) struct DesktopHostConfig {
   robobook_root : String
   ui_root : String
   host : String
-  port : Int
+  port : Int32
   sidecar_path : String
   bridge_host : String
-  bridge_port : Int
+  bridge_port : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -22,7 +22,7 @@ pub fn default_host() -> String {
 }
 
 ///|
-pub fn default_port() -> Int {
+pub fn default_port() -> Int32 {
   5290
 }
 
@@ -42,7 +42,7 @@ pub fn default_bridge_host() -> String {
 }
 
 ///|
-pub fn default_bridge_port() -> Int {
+pub fn default_bridge_port() -> Int32 {
   5391
 }
 
@@ -67,12 +67,12 @@ pub fn default_config(robobook_root : String) -> DesktopHostConfig {
 ///|
 pub fn config(
   robobook_root : String,
-  ui_root? : String = default_ui_root(),
-  host? : String = default_host(),
-  port? : Int = default_port(),
-  sidecar_path? : String = default_sidecar_path(),
-  bridge_host? : String = default_bridge_host(),
-  bridge_port? : Int = default_bridge_port(),
+  ui_root~ : String = default_ui_root(),
+  host~ : String = default_host(),
+  port~ : Int32 = default_port(),
+  sidecar_path~ : String = default_sidecar_path(),
+  bridge_host~ : String = default_bridge_host(),
+  bridge_port~ : Int32 = default_bridge_port(),
 ) -> DesktopHostConfig {
   {
     robobook_root,
@@ -227,6 +227,34 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       http_method: "GET",
       path: @host_api.moondata_status_path(),
       body: "bounded MoonData status and canonical artifact inventory projection",
+    },
+    {
+      http_method: "GET",
+      path: @host_api.learning_experiments_path(),
+      body: "registered learning experiments, simulator outcomes and checkpoint references",
+    },
+    {
+      http_method: "GET",
+      path: @host_api.learning_experiments_path() + "/{experiment}/replay",
+      body: "sealed full-body 3D recording with reference tracks and complete world poses",
+    },
+    {
+      http_method: "GET",
+      path: @host_api.learning_experiments_path() +
+      "/{experiment}/replay-assets/{sha256}",
+      body: "experiment-bound immutable OBJ mesh bytes, checked against their SHA-256 digest",
+    },
+    {
+      http_method: "GET",
+      path: @host_api.learning_experiments_path() +
+      "/{experiment}/physics/{seed}",
+      body: "registered baseline and candidate physics replay evidence",
+    },
+    {
+      http_method: "GET",
+      path: @host_api.learning_experiments_path() +
+      "/{experiment}/physics/{seed}/{mode}",
+      body: "registered repeat, fresh and extended candidate evaluations",
     },
     {
       http_method: "GET",

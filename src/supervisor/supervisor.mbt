@@ -1,6 +1,7 @@
 ///|
 pub(all) enum SupervisorProcessState {
   MissingCommand
+  MissingRuntimeDependency
   ReadyToStart
   WaitingForDependency
   WaitingForSnapshot
@@ -51,7 +52,7 @@ pub(all) struct SupervisorProcessStatus {
 
 ///|
 pub(all) struct SupervisorStep {
-  index : Int
+  index : Int32
   action : SupervisorStepAction
   state : SupervisorStepState
   process_id : String
@@ -102,14 +103,86 @@ fn command_resolution(command : Array[String]) -> String {
 }
 
 ///|
-fn command_is_available(command : Array[String]) -> Bool {
-  let path = command_path(command)
-  if path == "" {
-    false
-  } else if path.contains("/") {
-    @fsx.path_exists(path)
-  } else {
-    true
+pub fn resolve_executable(
+  command : String,
+  cwd~ : String = ".",
+  search_path~ : String = @env.get_env_var("PATH").unwrap_or(""),
+) -> String? {
+  if command == "" || command.contains("\u{0}") || cwd.contains("\u{0}") {
+    return None
+  }
+  if command.contains("/") {
+    let path = if command.has_prefix("/") {
+      command
+    } else {
+      cwd + "/" + command
+    }
+    return if executable_file(path) { Some(path) } else { None }
+  }
+  for directory in search_path.split(":") {
+    // An empty PATH entry denotes the child's working directory, not an
+    // unconditional claim that every bare command is installed.
+    let root = if directory == "" {
+      cwd
+    } else if directory.has_prefix("/") {
+      directory.to_string()
+    } else {
+      cwd + "/" + directory.to_string()
+    }
+    let path = root + "/" + command
+    if executable_file(path) {
+      return Some(path)
+    }
+  }
+  None
+}
+
+///|
+fn command_is_available(process : @bridge_sidecar.RuntimeProcessSpec) -> Bool {
+  resolve_executable(
+    command_path(process.command),
+    cwd=process.cwd,
+    search_path=process.env
+      .get("PATH")
+      .unwrap_or(@env.get_env_var("PATH").unwrap_or("")),
+  )
+  is Some(_)
+}
+
+///|
+fn library_argument(
+  role : @bridge_sidecar.RuntimeProcessRole,
+  command : Array[String],
+) -> String? {
+  if role is BridgeSidecar {
+    return None
+  }
+  for i in 0..<(command.length() - 1) {
+    if command[i] == "--library" {
+      return Some(command[i + 1])
+    }
+  }
+  None
+}
+
+///|
+fn native_library_path(process : @bridge_sidecar.RuntimeProcessSpec) -> String? {
+  library_argument(process.role, process.command).map(path => {
+    if path.has_prefix("/") {
+      path
+    } else {
+      process.cwd + "/" + path
+    }
+  })
+}
+
+///|
+fn runtime_dependencies_available(
+  process : @bridge_sidecar.RuntimeProcessSpec,
+) -> Bool {
+  match native_library_path(process) {
+    Some(path) => readable_file(path)
+    None => true
   }
 }
 
@@ -122,7 +195,7 @@ fn output_is_ready(path : String) -> Bool {
 fn process_index(
   runtime : @bridge_sidecar.PhysicalRuntimeSpec,
   process_id : String,
-) -> Int? {
+) -> Int32? {
   for index in 0..<runtime.processes.length() {
     if runtime.processes[index].process_id == process_id {
       return Some(index)
@@ -134,7 +207,7 @@ fn process_index(
 ///|
 fn dependency_declared_before(
   runtime : @bridge_sidecar.PhysicalRuntimeSpec,
-  current_index : Int,
+  current_index : Int32,
   dependency_id : String,
 ) -> Bool {
   match process_index(runtime, dependency_id) {
@@ -146,7 +219,7 @@ fn dependency_declared_before(
 ///|
 fn has_missing_dependency(
   runtime : @bridge_sidecar.PhysicalRuntimeSpec,
-  process_index : Int,
+  process_index : Int32,
   process : @bridge_sidecar.RuntimeProcessSpec,
 ) -> Bool {
   for dependency in process.depends_on {
@@ -172,12 +245,14 @@ fn process_health_url(
 ///|
 fn process_state(
   runtime : @bridge_sidecar.PhysicalRuntimeSpec,
-  index : Int,
+  index : Int32,
   process : @bridge_sidecar.RuntimeProcessSpec,
   snapshot_ready : Bool,
 ) -> SupervisorProcessState {
-  if !command_is_available(process.command) {
+  if !command_is_available(process) {
     MissingCommand
+  } else if !runtime_dependencies_available(process) {
+    MissingRuntimeDependency
   } else if has_missing_dependency(runtime, index, process) {
     WaitingForDependency
   } else if process.role is BridgeSidecar && !snapshot_ready {
@@ -195,7 +270,9 @@ fn process_detail(
   process_id : String,
 ) -> String {
   match state {
-    MissingCommand => "command is missing for \{process_id}"
+    MissingCommand => "command is missing or not executable for \{process_id}"
+    MissingRuntimeDependency =>
+      "configured native SDK adapter is missing or unreadable for \{process_id}"
     ReadyToStart => "process is ready to start"
     WaitingForDependency => "process waits for an earlier dependency"
     WaitingForSnapshot => "bridge waits for collector snapshot output"
@@ -206,7 +283,7 @@ fn process_detail(
 ///|
 fn process_status(
   runtime : @bridge_sidecar.PhysicalRuntimeSpec,
-  index : Int,
+  index : Int32,
   process : @bridge_sidecar.RuntimeProcessSpec,
   snapshot_ready : Bool,
 ) -> SupervisorProcessStatus {
@@ -220,12 +297,19 @@ fn process_status(
     cwd: process.cwd,
     command_path: command_path(process.command),
     command_resolution: command_resolution(process.command),
-    command_available: command_is_available(process.command),
+    command_available: command_is_available(process),
     output_path: process.output_path,
     output_ready: output_is_ready(process.output_path),
     health_url: process_health_url(runtime, process),
     depends_on: process.depends_on,
-    detail: process_detail(state, process.process_id),
+    detail: process_detail(state, process.process_id) +
+    (match native_library_path(process) {
+      Some(path) =>
+        "; --library=" +
+        path +
+        "; file metadata only, SDK C ABI and live readiness have not been probed"
+      None => ""
+    }),
   }
 }
 
@@ -233,7 +317,7 @@ fn process_status(
 fn duplicate_process_id(
   runtime : @bridge_sidecar.PhysicalRuntimeSpec,
   process_id : String,
-  before_index : Int,
+  before_index : Int32,
 ) -> Bool {
   for index in 0..<before_index {
     if runtime.processes[index].process_id == process_id {
@@ -294,7 +378,9 @@ fn structural_issues(
 
 ///|
 fn blocked_by_process(status : SupervisorProcessStatus) -> Bool {
-  status.state == MissingCommand || status.state == WaitingForDependency
+  status.state == MissingCommand ||
+  status.state == MissingRuntimeDependency ||
+  status.state == WaitingForDependency
 }
 
 ///|
@@ -326,7 +412,7 @@ fn process_statuses(
 
 ///|
 fn step(
-  index : Int,
+  index : Int32,
   action : SupervisorStepAction,
   state : SupervisorStepState,
   process_id : String,
@@ -353,7 +439,7 @@ fn process_by_role(
 ///|
 fn launch_step_state(status : SupervisorProcessStatus) -> SupervisorStepState {
   match status.state {
-    MissingCommand | WaitingForDependency => Blocked
+    MissingCommand | MissingRuntimeDependency | WaitingForDependency => Blocked
     WaitingForSnapshot => Pending
     ReadyToStart | ReadyForHealthProbe => Ready
   }
@@ -536,7 +622,7 @@ fn lifecycle_steps(
 ///|
 pub fn plan(
   runtime : @bridge_sidecar.PhysicalRuntimeSpec,
-  snapshot_ready? : Bool = output_is_ready(runtime.snapshot_path),
+  snapshot_ready~ : Bool = output_is_ready(runtime.snapshot_path),
 ) -> SupervisorPlan {
   let issues = structural_issues(runtime)
   let processes = process_statuses(runtime, snapshot_ready)
@@ -557,13 +643,13 @@ pub fn plan(
 }
 
 ///|
-pub fn plan_json(plan : SupervisorPlan, indent? : Int = 2) -> String {
+pub fn plan_json(plan : SupervisorPlan, indent~ : Int32 = 2) -> String {
   plan.to_json().stringify(indent~)
 }
 
 ///|
 fn shell_quote(value : String) -> String {
-  "'" + value.replace(old="'", new="'\"'\"'") + "'"
+  "'" + value.replace_all(old="'", new="'\"'\"'") + "'"
 }
 
 ///|
@@ -608,13 +694,54 @@ fn start_process_line(
 ///|
 pub fn shell_script(
   plan : SupervisorPlan,
-  wait_attempts? : Int = 100,
-  sleep_seconds? : String = "0.10",
-  log_path? : String = "",
+  wait_attempts~ : Int32 = 100,
+  sleep_seconds~ : String = "0.10",
+  log_path~ : String = "",
 ) -> String {
+  if !plan.issues.is_empty() ||
+    plan.processes.any(p => p.state is WaitingForDependency) {
+    // Structural errors cannot be repaired by installing a missing executable.
+    let reasons = plan.processes
+      .filter(p => blocked_by_process(p))
+      .map(p => p.detail)
+    return "#!/usr/bin/env sh\nset -eu\necho " +
+      shell_quote("MoonRobo runtime supervisor blocked: " + reasons.join("; ")) +
+      " >&2\nexit 1\n"
+  }
   let lines : Array[String] = [
-    "#!/usr/bin/env sh",
-    "set -eu",
+    "#!/usr/bin/env sh", "set -eu", "", "preflight_process() {", "  (", "    cd \"$1\" || exit 1",
+    "    PATH=$3; export PATH", "    case \"$2\" in", "      */*) candidate=$2 ;;",
+    "      *) candidate=$(command -v -- \"$2\") || exit 1 ;;", "    esac", "    [ -f \"$candidate\" ] && [ -x \"$candidate\" ] || exit 1",
+    "    if [ -n \"$4\" ]; then", "      [ -f \"$4\" ] && [ -r \"$4\" ] || exit 1",
+    "    fi", "  )", "}", "",
+  ]
+  // Recheck at launch: release descriptors are often generated before binaries
+  // are built. This occurs before any process start or outbox/snapshot cleanup.
+  for process in plan.processes {
+    let search_path = process.env
+      .get("PATH")
+      .map(shell_quote)
+      .unwrap_or("\"${PATH:-}\"")
+    let library = library_argument(process.role, process.command).unwrap_or("")
+    lines.push(
+      "preflight_process " +
+      shell_quote(process.cwd) +
+      " " +
+      shell_quote(command_path(process.command)) +
+      " " +
+      search_path +
+      " " +
+      shell_quote(library) +
+      " || { echo " +
+      shell_quote(
+        "MoonRobo dependency check failed for " +
+        process.process_id +
+        " (executable or configured SDK adapter); no processes started",
+      ) +
+      " >&2; exit 1; }",
+    )
+  }
+  lines.append([
     "",
     "COLLECTOR_PID=\"\"",
     "WRITER_PID=\"\"",
@@ -660,7 +787,7 @@ pub fn shell_script(
     "echo \{shell_quote("MoonRobo runtime supervisor: \{plan.runtime_id}")}",
     "ensure_parent_dir \{shell_quote(plan.snapshot_path)}",
     "rm -f \{shell_quote(plan.snapshot_path)}",
-  ]
+  ])
   if log_path != "" {
     lines.insert(3, "exec >> \{shell_quote(log_path)} 2>&1")
   }

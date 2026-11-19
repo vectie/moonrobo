@@ -4,4 +4,5 @@ import {
   "vectie/moonlib/moonsuite",
   "vectie/moonlib/pathx",
   "moonbitlang/core/json",
+  "moonbitlang/core/env",
 }

@@ -1,0 +1,32 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/e1_actor_reference"
+
+import {
+  "vectie/moonrobo/src/e1_actor",
+  "vectie/moonrobo/src/policy_skills",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Clip {
+  // private fields
+}
+pub fn Clip::duration_ms(Self) -> Int64
+pub fn Clip::frame(Self, @policy_skills.Execution, Int) -> Frame raise
+pub fn Clip::frame_count(Self) -> Int
+pub fn Clip::parse(@e1_actor.Bundle, Json) -> Self raise
+pub async fn Clip::read(@e1_actor.Bundle, String) -> Self
+pub fn Clip::reference_id(Self) -> String
+
+pub(all) struct Frame {
+  goals : Array[Double]
+  body_to_world : Array[Double]
+  complete : Bool
+}
+
+// Type aliases
+
+// Traits

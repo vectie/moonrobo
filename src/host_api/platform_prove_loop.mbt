@@ -1,7 +1,7 @@
 ///|
 pub(all) struct PlatformProveLoopRequest {
   task_message : @task.RobotTaskMessageRequest
-  max_steps : Int
+  max_steps : Int32
   bootstrap : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -15,7 +15,7 @@ pub(all) struct PlatformProveLoopResponse {
   advanced : Bool
   bootstrap_applied : Bool
   feedback_binding_required : Bool
-  feedback_binding_status : Int
+  feedback_binding_status : Int32
   feedback_binding_work : Json
   feedback_binding_message : String
   before : PlatformLoopProofResponse
@@ -33,10 +33,10 @@ pub(all) struct PlatformProveLoopRecord {
   status : String
   ready : Bool
   advanced : Bool
-  completed_before : Int
-  completed_after : Int
-  total_count : Int
-  percent_after : Int
+  completed_before : Int32
+  completed_after : Int32
+  total_count : Int32
+  percent_after : Int32
   next_route : String
   recorded_at_ms : Int64
   message : String
@@ -293,7 +293,7 @@ fn feedback_bind_item(
 fn feedback_bind_projection(
   root : String,
   now_ms : Int64,
-) -> Result[(Bool, Int, Json, String), HostApiResponse] {
+) -> Result[(Bool, Int32, Json, String), HostApiResponse] {
   let item = match feedback_bind_item(root, now_ms) {
     Ok(Some(item)) => item
     Ok(None) =>

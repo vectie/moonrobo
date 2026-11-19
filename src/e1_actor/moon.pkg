@@ -1,0 +1,13 @@
+import {
+  "vectie/lunakine/actor" @portable,
+  "vectie/lunakine/ascend",
+  "moonbitlang/core/json",
+  "moonbitlang/async/fs",
+}
+
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/async",
+} for "test"
+
+supported_targets = "native"

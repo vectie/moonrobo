@@ -1,6 +1,6 @@
 ///|
 pub(all) struct HostApiResponse {
-  status : Int
+  status : Int32
   content_type : String
   body : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -23,8 +23,8 @@ pub(all) struct HostApiHealth {
 
 ///|
 pub(all) struct ReviewQueueResponse {
-  review_count : Int
-  needs_human_count : Int
+  review_count : Int32
+  needs_human_count : Int32
   reviews : Array[@review.ProcessReview]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -55,7 +55,7 @@ pub(all) struct IntentSubmissionRequest {
   approval_id : String
   dry_run_receipt_id : String
   developer_gate : Bool
-  telemetry_age_ms : Int
+  telemetry_age_ms : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -219,18 +219,18 @@ pub fn intent_execute_path() -> String {
 }
 
 ///|
-fn json_response(status : Int, body : Json) -> HostApiResponse {
+fn json_response(status : Int32, body : Json) -> HostApiResponse {
   { status, content_type: "application/json", body: body.stringify(indent=2), }
 }
 
 ///|
-fn text_response(status : Int, body : String) -> HostApiResponse {
+fn text_response(status : Int32, body : String) -> HostApiResponse {
   { status, content_type: "text/plain", body, }
 }
 
 ///|
 fn error_response(
-  status : Int,
+  status : Int32,
   code : String,
   path : String,
   message : String,
@@ -265,7 +265,7 @@ fn review_needs_human(review : @review.ProcessReview) -> Bool {
 }
 
 ///|
-fn needs_human_count(reviews : Array[@review.ProcessReview]) -> Int {
+fn needs_human_count(reviews : Array[@review.ProcessReview]) -> Int32 {
   let mut count = 0
   for review in reviews {
     if review_needs_human(review) {
@@ -285,7 +285,7 @@ fn sidecar_spec(
 
 ///|
 fn command_available(command : Array[String]) -> Bool {
-  !command.is_empty() && @fsx.path_exists(command[0])
+  !command.is_empty() && @supervisor.resolve_executable(command[0]) is Some(_)
 }
 
 ///|
@@ -1358,6 +1358,17 @@ pub fn route_with_body(
     )
   }
   let digital_prefix = "/api/moonrobo/digital-trials/"
+  if http_method == "GET" && path.has_prefix(learning_experiments_path() + "/") {
+    if learning_replay_parts(path) is Some([_, "replay", ..]) {
+      return learning_replay_response(root, path)
+    }
+    if is_learning_replay_asset_path(path) {
+      return error_response(
+        400, "binary-transport-required", path, "Replay meshes are served by the desktop HTTP byte transport",
+      )
+    }
+    return learning_physics_response(root, path)
+  }
   if http_method == "GET" && path == "/api/moonrobo/digital-trials" {
     return json_response(200, @runtime.digital_trial_catalogue(root))
   }
@@ -1407,6 +1418,8 @@ pub fn route_with_body(
       "/api/moonrobo/executions" => task_executions_response(root)
       "/api/moonrobo/platform-queue" => robot_platform_queue_response(root)
       "/api/moondata/status" => moondata_status_response(root)
+      "/api/moondata/learning-experiments" =>
+        learning_experiments_response(root)
       "/api/moonclaw/runtime-calibration/latest" =>
         runtime_calibration_response(root)
       "/api/robobook/urdf/document" => robobook_urdf_document_response(root)

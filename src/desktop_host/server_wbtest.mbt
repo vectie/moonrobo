@@ -54,7 +54,7 @@ async fn desktop_task_message_status_response_sync(
 ///|
 async fn desktop_runtime_emergency_stop_response_sync(
   cfg : DesktopHostConfig,
-  body? : String = "",
+  body~ : String = "",
 ) -> @host_api.HostApiResponse {
   desktop_runtime_emergency_stop_response(cfg, body)
 }
@@ -69,8 +69,8 @@ async fn desktop_runtime_execution_preflight_sync(
 ///|
 fn desktop_runtime_health_snapshot_for_test(
   status : String,
-  robot_id? : String = "noetix-e1-lab-01",
-  bridge_id? : String = "sdk-e1",
+  robot_id~ : String = "noetix-e1-lab-01",
+  bridge_id~ : String = "sdk-e1",
 ) -> @runtime_process.RuntimeHealthSnapshot {
   {
     active: true,
@@ -340,6 +340,12 @@ test "desktop runtime log route returns bounded active run tail" {
     @bridge_sidecar.runtime_spec_for_profile(
       @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01"),
       root,
+      // Metadata-only executable fixture; this test never launches it.
+      sidecar_path="/bin/sh",
+      collector_path="/bin/sh",
+      writer_path="/bin/sh",
+      backend=@bridge_sidecar.Native,
+      library_path="/bin/sh",
     ),
   )
   let log_path = root +
@@ -434,6 +440,12 @@ test "desktop sidecar execution blocks failed runtime validation" {
     @bridge_sidecar.runtime_spec_for_profile(
       @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01"),
       "/tmp/moonrobo-desktop-validation-block-test",
+      // Metadata-only executable fixture; SDK readiness is not asserted.
+      sidecar_path="/bin/sh",
+      collector_path="/bin/sh",
+      writer_path="/bin/sh",
+      backend=@bridge_sidecar.Native,
+      library_path="/bin/sh",
     ),
   )
   let report = @runtime_validation.validation_report(

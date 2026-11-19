@@ -8,6 +8,7 @@ fn is_command(value : String) -> Bool {
   value == "cockpit-sdk-file" ||
   value == "resident" ||
   value == "runtime-supervisor" ||
+  value == "runtime-sdk-spec" ||
   value == "runtime-supervisor-script" ||
   value == "runtime-supervisor-launch" ||
   value == "runtime-supervisor-status" ||
@@ -82,7 +83,7 @@ fn is_command(value : String) -> Bool {
 }
 
 ///|
-fn cli_arg(args : Array[String], index : Int) -> String? {
+fn cli_arg(args : Array[String], index : Int32) -> String? {
   if index < args.length() {
     Some(args[index])
   } else {
@@ -91,7 +92,7 @@ fn cli_arg(args : Array[String], index : Int) -> String? {
 }
 
 ///|
-fn command_index(args : Array[String]) -> Int {
+fn command_index(args : Array[String]) -> Int32 {
   match cli_arg(args, 0) {
     Some(value) if is_command(value) => 0
     _ => 1
@@ -144,7 +145,12 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- cockpit [robobook-root]")
   println("moon run cmd/main -- resident [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor [robobook-root]")
-  println("moon run cmd/main -- runtime-supervisor-script [robobook-root]")
+  println(
+    "moon run cmd/main -- runtime-sdk-spec [robobook-root] [native|python-reference] [executable] [sdk-root] [native-adapter]",
+  )
+  println(
+    "moon run cmd/main -- runtime-supervisor-script [robobook-root] [bridge-host] [bridge-port]",
+  )
   println("moon run cmd/main -- runtime-supervisor-launch [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-status [robobook-root]")
   println(
@@ -813,7 +819,7 @@ fn prove_loop(root : String, message : String, now_ms : Int64) -> Unit {
 fn proof_session_body(
   message : String,
   now_ms : Int64,
-  iterations : Int,
+  iterations : Int32,
 ) -> String {
   let request : @host_api.PlatformProofSessionRequest = {
     session_id: "cli-proof-session-\{now_ms}",
@@ -837,7 +843,7 @@ fn proof_session(
   root : String,
   message : String,
   now_ms : Int64,
-  iterations : Int,
+  iterations : Int32,
 ) -> Unit {
   println(
     @host_api.route_with_body(
@@ -946,7 +952,7 @@ async fn message_sidecar(
   root : String,
   message : String,
   host : String,
-  port : Int,
+  port : Int32,
 ) -> Unit {
   match
     @bridge_execution.run_reviewed_message_with_sidecar(
@@ -963,7 +969,7 @@ async fn message_sidecar(
 }
 
 ///|
-fn observe_run(root : String, task_id : String, frame_count : Int) -> Unit {
+fn observe_run(root : String, task_id : String, frame_count : Int32) -> Unit {
   let now_ms = @env.now().reinterpret_as_int64()
   let request : @pipeline.ObservationRunRequest = {
     task_id,
@@ -1001,7 +1007,7 @@ async fn sidecar_telemetry_frame(
 async fn collect_sidecar_frames(
   client : @bridge_client.BridgeClientConfig,
   task_id : String,
-  frame_count : Int,
+  frame_count : Int32,
 ) -> Array[@core.TelemetryFrame]? {
   let count = if frame_count < 1 { 1 } else { frame_count }
   let frames : Array[@core.TelemetryFrame] = []
@@ -1021,9 +1027,9 @@ async fn collect_sidecar_frames(
 async fn observe_run_sidecar(
   root : String,
   task_id : String,
-  frame_count : Int,
+  frame_count : Int32,
   host : String,
-  port : Int,
+  port : Int32,
 ) -> Unit {
   let request : @pipeline.ObservationRunRequest = {
     task_id,
@@ -1060,7 +1066,7 @@ async fn bridge_execute(
   root : String,
   intent_id : String,
   host : String,
-  port : Int,
+  port : Int32,
 ) -> Unit {
   let client = @bridge_client.config(host~, port~)
   match
@@ -1107,7 +1113,7 @@ async fn execute_message_sidecar(
   root : String,
   task_id : String,
   host : String,
-  port : Int,
+  port : Int32,
 ) -> Unit {
   let client = @bridge_client.config(host~, port~)
   let runtime_log_path = match
@@ -1240,7 +1246,7 @@ fn api_route(
 }
 
 ///|
-fn parse_port(value : String, fallback : Int) -> Int {
+fn parse_port(value : String, fallback : Int32) -> Int32 {
   @string.parse_int(value) catch {
     _ => fallback
   }
@@ -1317,10 +1323,72 @@ fn runtime_supervisor(root : String) -> Unit {
 }
 
 ///|
-fn runtime_supervisor_script(root : String) -> Unit {
-  println(
-    @host_api.route(root, "GET", @host_api.runtime_supervisor_script_path()).body,
-  )
+/// Read-only command construction; selecting a backend never launches it.
+fn runtime_sdk_spec(
+  root : String,
+  backend_name : String,
+  executable : String?,
+  sdk_root : String?,
+  library_path : String?,
+) -> Unit {
+  guard @bridge_sidecar.sdk_e1_backend(backend_name) is Some(backend) else {
+    println(
+      (
+        {
+          "code": "invalid-sdk-e1-backend",
+          "message": "expected native or python-reference",
+        } : Json).stringify(),
+    )
+    return
+  }
+  match load_or_print(root) {
+    None => ()
+    Some(book) => {
+      let native_path = if backend == Native { executable } else { None }
+      println(
+        @bridge_sidecar.runtime_spec_json(
+          @bridge_sidecar.runtime_spec_for_profile(
+            book.profile,
+            root,
+            backend~,
+            collector_path?=native_path,
+            writer_path?=native_path,
+            python_path=if backend == PythonReference {
+              executable.unwrap_or(@bridge_sidecar.default_python_path())
+            } else {
+              @bridge_sidecar.default_python_path()
+            },
+            sdk_root=sdk_root.unwrap_or(@bridge_sidecar.default_sdk_root()),
+            library_path?,
+          ),
+        ),
+      )
+    }
+  }
+}
+
+///|
+fn runtime_supervisor_script(
+  root : String,
+  bridge_host : String,
+  bridge_port : Int32,
+) -> Unit {
+  match load_or_print(root) {
+    None => ()
+    Some(book) =>
+      println(
+        @supervisor.shell_script(
+          @supervisor.plan(
+            @bridge_sidecar.runtime_spec_for_profile(
+              book.profile,
+              root,
+              host=bridge_host,
+              port=bridge_port,
+            ),
+          ),
+        ),
+      )
+  }
 }
 
 ///|
@@ -1358,7 +1426,7 @@ fn runtime_validation_log_probe(root : String) -> (String, Bool) {
 async fn runtime_validation_health_snapshot(
   root : String,
   bridge_host : String,
-  bridge_port : Int,
+  bridge_port : Int32,
 ) -> @runtime_process.RuntimeHealthSnapshot? {
   let probe = match @runtime_process.read_active_run(root) {
     Ok(Some(run)) if run.running => {
@@ -1393,9 +1461,9 @@ async fn runtime_validation_health_snapshot(
 async fn runtime_validation_report_for_cli(
   root : String,
   bridge_host : String,
-  bridge_port : Int,
-  generated_at_ms? : Int64 = @env.now().reinterpret_as_int64(),
-  report_id? : String? = None,
+  bridge_port : Int32,
+  generated_at_ms~ : Int64 = @env.now().reinterpret_as_int64(),
+  report_id~ : String? = None,
 ) -> (@runtime_validation.RuntimeValidationReport, String)? {
   match load_or_print(root) {
     None => None
@@ -1437,7 +1505,7 @@ async fn runtime_validation_report_for_cli(
 }
 
 ///|
-fn validation_sample_count(value : Int) -> Int {
+fn validation_sample_count(value : Int32) -> Int32 {
   if value < 1 {
     1
   } else if value > 20 {
@@ -1464,7 +1532,7 @@ fn runtime_validation_blocked_json(
 async fn runtime_validation_ready_for_cli(
   root : String,
   bridge_host : String,
-  bridge_port : Int,
+  bridge_port : Int32,
 ) -> Bool {
   match runtime_validation_report_for_cli(root, bridge_host, bridge_port) {
     None => false
@@ -1496,7 +1564,7 @@ fn runtime_supervisor_status(root : String) -> Unit {
 async fn runtime_health(
   root : String,
   bridge_host : String,
-  bridge_port : Int,
+  bridge_port : Int32,
 ) -> Unit {
   match runtime_health_from_bridge_json(root, bridge_host, bridge_port) {
     Some(response) => println(response.stringify(indent=2))
@@ -1514,7 +1582,7 @@ async fn runtime_health(
 async fn runtime_health_from_bridge_json(
   root : String,
   bridge_host : String,
-  bridge_port : Int,
+  bridge_port : Int32,
 ) -> Json? {
   let probe = match @runtime_process.read_active_run(root) {
     Ok(Some(run)) if run.running => {
@@ -1566,7 +1634,7 @@ async fn runtime_health_from_bridge_json(
 async fn runtime_validation(
   root : String,
   bridge_host : String,
-  bridge_port : Int,
+  bridge_port : Int32,
 ) -> Unit {
   match runtime_validation_report_for_cli(root, bridge_host, bridge_port) {
     None => ()
@@ -1586,8 +1654,8 @@ async fn runtime_validation(
 async fn runtime_validation_session(
   root : String,
   bridge_host : String,
-  bridge_port : Int,
-  sample_count : Int,
+  bridge_port : Int32,
+  sample_count : Int32,
 ) -> Unit {
   let count = validation_sample_count(sample_count)
   let started_at_ms = @env.now().reinterpret_as_int64()
@@ -2087,7 +2155,27 @@ async fn main {
     "cockpit-sdk-file" => cockpit_sdk_file(root, snapshot_path)
     "resident" => resident(root)
     "runtime-supervisor" => runtime_supervisor(root)
-    "runtime-supervisor-script" => runtime_supervisor_script(root)
+    "runtime-sdk-spec" =>
+      runtime_sdk_spec(
+        root,
+        cli_arg(args, index + 2).unwrap_or("native"),
+        cli_arg(args, index + 3),
+        cli_arg(args, index + 4),
+        cli_arg(args, index + 5),
+      )
+    "runtime-supervisor-script" =>
+      runtime_supervisor_script(
+        root,
+        cli_arg(args, index + 2).unwrap_or(
+          @bridge_sidecar.default_bridge_host(),
+        ),
+        parse_port(
+          cli_arg(args, index + 3).unwrap_or(
+            @bridge_sidecar.default_bridge_port().to_string(),
+          ),
+          @bridge_sidecar.default_bridge_port(),
+        ),
+      )
     "runtime-supervisor-launch" => runtime_supervisor_launch(root)
     "runtime-supervisor-status" => runtime_supervisor_status(root)
     "runtime-health" =>

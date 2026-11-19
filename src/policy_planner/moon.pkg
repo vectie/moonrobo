@@ -1,0 +1,15 @@
+import {
+  "vectie/moonrobo/src/policy_skills" @skills,
+  "vectie/moonrobo/src/policy_task" @task,
+  "moonbitlang/async",
+  "moonbitlang/async/http",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/encoding/base64",
+  "moonbitlang/core/debug",
+}
+
+import {
+  "moonbitlang/async/socket",
+  "moonbitlang/core/json",
+  "moonbitlang/async/fs",
+} for "test"

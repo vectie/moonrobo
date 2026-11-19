@@ -92,6 +92,7 @@ fn main raise {
   ignore(controller.joint_index("fixture_resume_publish"))
   controller.publish(commands)
   assert_eq(controller.joint_index("fixture_publish_count"), 2)
+  run_policy_fixture(controller)
   println(
     "SDK3.1 low MoonBit ABI: reusable coherent capture, raw fields, joint lookup, full motor frames, rejection and SDK failure/reuse passed; fake SDK only",
   )

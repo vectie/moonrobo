@@ -51,6 +51,7 @@ async fn main {
       "moon",
       [
         "-C", repo, "test", "--target", "native", "--deny-warn", "src/sdk_e1_low",
+        "src/sdk_e1_policy", "src/e1_actor_control", "src/e1_actor_reference",
       ],
       extra_env={ "MOONROBO_E1_LOW_FIXTURE": plain },
     ) ==
@@ -114,7 +115,7 @@ async fn main {
   ])
   @fs.write_file(
     output + "/report.json",
-    "{\"passed\":true,\"sdk_api\":\"3.1.0\",\"actual_sdk_headers\":true,\"fake_sdk_only\":true,\"moonbit_tests_passed\":true,\"cpp_and_moonbit_asan_ubsan\":true,\"prebuilt_moon_runtime_retained\":true,\"moon_leak_detection\":false,\"hardware_access\":false}",
+    "{\"passed\":true,\"sdk_api\":\"3.1.0\",\"actual_sdk_headers\":true,\"fake_sdk_only\":true,\"synthetic_policy_mapping\":true,\"sensor_observation\":true,\"composed_control\":true,\"moonbit_tests_passed\":true,\"cpp_and_moonbit_asan_ubsan\":true,\"prebuilt_moon_runtime_retained\":true,\"moon_leak_detection\":false,\"hardware_access\":false}",
     create_mode=CreateNew,
   )
 }

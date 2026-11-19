@@ -1941,9 +1941,9 @@ test "host api accepts physical action task message for review only" {
 fn write_healthy_runtime(
   root : String,
   recorded_at_ms : Int64,
-  command_intent_id? : String = "",
-  command_bridge_request_id? : String = "",
-  command_receipt_id? : String = "",
+  command_intent_id~ : String = "",
+  command_bridge_request_id~ : String = "",
+  command_receipt_id~ : String = "",
 ) -> Unit {
   let bridge_request_id = if command_bridge_request_id == "" {
     "request-execute-\{command_intent_id}-\{recorded_at_ms}"
@@ -5551,7 +5551,7 @@ fn task_message_json(message_id : String, message : String) -> String {
 }
 
 ///|
-fn observe_run_json(task_id : String, frame_count : Int) -> String {
+fn observe_run_json(task_id : String, frame_count : Int32) -> String {
   let request : @pipeline.ObservationRunRequest = {
     task_id,
     robot_id: "",

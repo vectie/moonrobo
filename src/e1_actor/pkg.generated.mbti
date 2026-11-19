@@ -1,0 +1,39 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/e1_actor"
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Actor {
+  // private fields
+}
+pub fn Actor::bundle(Self) -> Bundle
+pub fn Actor::close(Self) -> Unit raise
+pub fn Actor::forward(Self, Array[Array[Double]], Array[Double]) -> Array[Double] raise
+pub fn Actor::forward_embedded(Self, Array[Array[Double]], Array[Double]) -> Array[Double] raise
+pub fn Actor::open_ascend(Bundle, String, String, device? : Int) -> Self raise
+pub fn Actor::reference(Bundle, BytesView) -> Self raise
+
+pub struct Bundle {
+  // private fields
+}
+pub fn Bundle::goal_width(Self) -> Int
+pub fn Bundle::history_frames(Self) -> Int
+pub fn Bundle::joints(Self) -> ReadOnlyArray[String]
+pub fn Bundle::nominal_setpoints(Self, ArrayView[Double]) -> Array[Double] raise
+pub fn Bundle::observation_width(Self) -> Int
+pub fn Bundle::parse(Json, Json) -> Self raise
+pub fn Bundle::profile_id(Self) -> String
+pub async fn Bundle::read(String) -> Self
+pub fn Bundle::smc_observation(Self) -> SmcObservation raise
+
+pub struct SmcObservation {
+  // private fields
+}
+pub fn SmcObservation::encode(Self, ArrayView[Double], ArrayView[Double], ArrayView[Double], ArrayView[Double], ArrayView[Double], ArrayView[Double]) -> Array[Double] raise
+
+// Type aliases
+
+// Traits

@@ -36,6 +36,8 @@ pub fn release_desktop_host_path(String) -> String
 
 pub fn release_sdk_bridge_path(String) -> String
 
+pub fn release_sdk_native_path(String) -> String
+
 pub fn release_ui_dir(String) -> String
 
 pub fn release_ui_index_path(String) -> String

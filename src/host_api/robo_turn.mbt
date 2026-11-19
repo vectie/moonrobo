@@ -20,7 +20,7 @@ pub(all) struct RoboTurnResponse {
 
 ///|
 pub(all) struct RoboTurnListResponse {
-  turn_count : Int
+  turn_count : Int32
   turns : Array[RoboTurnResponse]
 } derive(Debug, Eq, ToJson, FromJson)
 

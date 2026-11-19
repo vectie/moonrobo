@@ -1,11 +1,11 @@
 ///|
 struct Server {
   server : @http.Server
-  port : Int
+  port : Int32
 }
 
 ///|
-fn cli_arg(args : Array[String], index : Int) -> String? {
+fn cli_arg(args : Array[String], index : Int32) -> String? {
   if index < args.length() {
     Some(args[index])
   } else {
@@ -14,7 +14,7 @@ fn cli_arg(args : Array[String], index : Int) -> String? {
 }
 
 ///|
-fn parse_port(text : String, fallback : Int) -> Int {
+fn parse_port(text : String, fallback : Int32) -> Int32 {
   @string.parse_int(text) catch {
     _ => fallback
   }
@@ -26,7 +26,7 @@ fn default_host() -> String {
 }
 
 ///|
-fn default_port() -> Int {
+fn default_port() -> Int32 {
   5391
 }
 
@@ -53,7 +53,7 @@ fn method_text(method_ : @http.RequestMethod) -> String {
 }
 
 ///|
-fn reason_text(status : Int) -> String {
+fn reason_text(status : Int32) -> String {
   match status {
     200 => "OK"
     400 => "Bad Request"
@@ -65,7 +65,7 @@ fn reason_text(status : Int) -> String {
 }
 
 ///|
-async fn read_request_body(reader : &@io.Reader, limit : Int) -> String {
+async fn read_request_body(reader : &@io.Reader, limit : Int32) -> String {
   let bytes : Array[Byte] = []
   let buf = FixedArray::make(1024, b'\x00')
   for ;; {
@@ -90,7 +90,7 @@ async fn read_request_body(reader : &@io.Reader, limit : Int) -> String {
 }
 
 ///|
-async fn Server::new(host : String, port : Int) -> Server {
+async fn Server::new(host : String, port : Int32) -> Server {
   let host = if host == "localhost" { "127.0.0.1" } else { host }
   let server = @http.Server::new(@socket.Addr::parse("\{host}:\{port}"))
   { server, port, }
@@ -150,7 +150,7 @@ async fn serve_loop(
 async fn serve(
   root : String,
   host : String,
-  port : Int,
+  port : Int32,
   snapshot_path : String,
   read_only : Bool,
   command_path : String,

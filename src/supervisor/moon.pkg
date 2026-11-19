@@ -1,8 +1,18 @@
 import {
   "vectie/moonrobo/src/bridge_sidecar",
   "moonbitlang/core/json",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/x/fs" @fsx,
 }
+
+options(
+  "native-stub": [ "executable.c" ],
+  targets: {
+    "executable_native.mbt": [ "native" ],
+    "executable_portable.mbt": [ "js", "wasm", "wasm-gc", "llvm" ],
+  },
+)
 
 import {
   "vectie/moonrobo/src/core",

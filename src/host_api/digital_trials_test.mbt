@@ -65,7 +65,7 @@ fn q12_view(
 ///|
 fn q12_event(
   trial_id : String,
-  revision : Int,
+  revision : Int32,
   kind : String,
   proof : String,
 ) -> @moonmoon_adapter.DigitalTrialEvent {

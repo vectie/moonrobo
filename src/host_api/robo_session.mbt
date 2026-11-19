@@ -9,9 +9,9 @@ pub(all) struct RoboSessionResponse {
   execution_proof : RoboExecutionProof
   handoff : RoboHandoffResponse
   latest_loop : RoboLoopSummaryResponse?
-  loop_count : Int
+  loop_count : Int32
   latest_turn : RoboTurnResponse?
-  turn_count : Int
+  turn_count : Int32
   memory : @moonbook.MoonBookMemoryPack
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -24,7 +24,7 @@ pub fn robo_session_path() -> String {
 ///|
 fn latest_robo_turn(
   root : String,
-) -> Result[(RoboTurnResponse?, Int), HostApiResponse] {
+) -> Result[(RoboTurnResponse?, Int32), HostApiResponse] {
   let paths = match @runtime.list_robo_turn_paths(root) {
     Ok(paths) => paths
     Err(issue) =>
@@ -43,7 +43,7 @@ fn latest_robo_turn(
 ///|
 fn latest_robo_loop(
   root : String,
-) -> Result[(RoboLoopSummaryResponse?, Int), HostApiResponse] {
+) -> Result[(RoboLoopSummaryResponse?, Int32), HostApiResponse] {
   let paths = match @runtime.list_robo_loop_paths(root) {
     Ok(paths) => paths
     Err(issue) =>

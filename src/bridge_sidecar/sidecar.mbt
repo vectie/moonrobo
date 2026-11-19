@@ -16,7 +16,7 @@ pub(all) struct BridgeSidecarSpec {
   bridge_id : @core.BridgeId
   robot_id : @core.RobotId
   kind : @core.BridgeKind
-  protocol_version : Int
+  protocol_version : Int32
   transport : SidecarTransport
   command : Array[String]
   env : Map[String, String]
@@ -42,7 +42,7 @@ pub(all) struct BridgeSidecarStatus {
   state : SidecarState
   command_path : String
   command_available : Bool
-  protocol_version : Int
+  protocol_version : Int32
   contract_path : String
   health_path : String
   execute_path : String
@@ -83,27 +83,86 @@ pub(all) struct PhysicalRuntimeSpec {
 
 ///|
 pub fn default_sdk_e1_sidecar_path() -> String {
-  "moonrobo-sdk-e1-bridge"
+  @env.get_env_var("MOONROBO_SDK_E1_BRIDGE").unwrap_or("moonrobo-sdk-e1-bridge")
+}
+
+///|
+pub(all) enum SdkE1Backend {
+  Native
+  PythonReference
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub fn sdk_e1_backend(name : String) -> SdkE1Backend? {
+  match name {
+    "native" => Some(Native)
+    "python-reference" => Some(PythonReference)
+    _ => None
+  }
+}
+
+///|
+/// Reference execution is opt-in. Unknown settings retain the native default.
+pub fn default_sdk_e1_backend() -> SdkE1Backend {
+  sdk_e1_backend(
+    @env.get_env_var("MOONROBO_SDK_E1_BACKEND").unwrap_or("native"),
+  ).unwrap_or(Native)
+}
+
+///|
+pub fn default_sdk_e1_native_path() -> String {
+  @env.get_env_var("MOONROBO_SDK_E1_NATIVE").unwrap_or("moonrobo-sdk-e1-native")
 }
 
 ///|
 pub fn default_sdk_e1_collector_path() -> String {
-  "bridges/sdk_e1/sdk_e1_readonly_bridge.py"
+  default_sdk_e1_native_path()
 }
 
 ///|
 pub fn default_sdk_e1_writer_path() -> String {
+  default_sdk_e1_native_path()
+}
+
+///|
+pub fn reference_sdk_e1_collector_path() -> String {
+  "bridges/sdk_e1/sdk_e1_readonly_bridge.py"
+}
+
+///|
+pub fn reference_sdk_e1_writer_path() -> String {
   "bridges/sdk_e1/sdk_e1_high_control_writer.py"
 }
 
 ///|
 pub fn default_python_path() -> String {
-  "python3"
+  @env.get_env_var("MOONROBO_SDK_E1_REFERENCE_PYTHON").unwrap_or("python3")
 }
 
 ///|
 pub fn default_sdk_root() -> String {
-  "../sdk"
+  @env.get_env_var("MOONROBO_SDK_E1_ROOT").unwrap_or("../sdk")
+}
+
+///|
+pub fn default_sdk_e1_library_path(sdk_root : String) -> String {
+  @env.get_env_var("MOONROBO_SDK_E1_LIBRARY").unwrap_or(
+    sdk_root + "/build/libmoonrobo_e1.so",
+  )
+}
+
+///|
+fn sdk_environment(sdk_root : String) -> Map[String, String] {
+  let absolute = if @pathx.is_absolute(sdk_root) {
+    sdk_root
+  } else {
+    @pathx.join(@env.current_dir().unwrap_or("."), sdk_root)
+  }
+  {
+    "CYCLONEDDS_URI": @env.get_env_var("CYCLONEDDS_URI").unwrap_or(
+      "file://" + @pathx.normalize(@pathx.join(absolute, "config/dds.xml")),
+    ),
+  }
 }
 
 ///|
@@ -143,7 +202,7 @@ pub fn default_bridge_host() -> String {
 }
 
 ///|
-pub fn default_bridge_port() -> Int {
+pub fn default_bridge_port() -> Int32 {
   5391
 }
 
@@ -155,12 +214,12 @@ pub fn sidecar_id(profile : @core.RobotProfile) -> String {
 ///|
 pub fn sdk_e1_command(
   robobook_root : String,
-  sidecar_path? : String = default_sdk_e1_sidecar_path(),
-  host? : String = default_bridge_host(),
-  port? : Int = default_bridge_port(),
-  snapshot_path? : String = default_snapshot_path(),
-  command_path? : String = default_command_path(),
-  mode? : String = "control-gated",
+  sidecar_path~ : String = default_sdk_e1_sidecar_path(),
+  host~ : String = default_bridge_host(),
+  port~ : Int32 = default_bridge_port(),
+  snapshot_path~ : String = default_snapshot_path(),
+  command_path~ : String = default_command_path(),
+  mode~ : String = "control-gated",
 ) -> Array[String] {
   [
     sidecar_path,
@@ -176,15 +235,21 @@ pub fn sdk_e1_command(
 
 ///|
 pub fn sdk_e1_collector_command(
-  collector_path? : String = default_sdk_e1_collector_path(),
-  python_path? : String = default_python_path(),
-  sdk_root? : String = default_sdk_root(),
-  snapshot_path? : String = default_snapshot_path(),
-  interval_ms? : Int = 100,
+  collector_path? : String,
+  python_path~ : String = default_python_path(),
+  backend~ : SdkE1Backend = default_sdk_e1_backend(),
+  library_path? : String,
+  sdk_root~ : String = default_sdk_root(),
+  snapshot_path~ : String = default_snapshot_path(),
+  interval_ms~ : Int32 = 100,
 ) -> Array[String] {
-  [
-    python_path,
-    collector_path,
+  let command = match backend {
+    Native =>
+      [collector_path.unwrap_or(default_sdk_e1_collector_path()), "read"]
+    PythonReference =>
+      [python_path, collector_path.unwrap_or(reference_sdk_e1_collector_path())]
+  }
+  command.append([
     "--live",
     "--sdk-root",
     sdk_root,
@@ -192,21 +257,33 @@ pub fn sdk_e1_collector_command(
     snapshot_path,
     "--interval-ms",
     interval_ms.to_string(),
-  ]
+  ])
+  if backend == Native {
+    command.append([
+      "--library",
+      library_path.unwrap_or(default_sdk_e1_library_path(sdk_root)),
+    ])
+  }
+  command
 }
 
 ///|
 pub fn sdk_e1_writer_command(
-  writer_path? : String = default_sdk_e1_writer_path(),
-  python_path? : String = default_python_path(),
-  sdk_root? : String = default_sdk_root(),
-  command_path? : String = default_command_path(),
-  poll_ms? : Int = 50,
-  dry_run? : Bool = false,
+  writer_path? : String,
+  python_path~ : String = default_python_path(),
+  backend~ : SdkE1Backend = default_sdk_e1_backend(),
+  library_path? : String,
+  sdk_root~ : String = default_sdk_root(),
+  command_path~ : String = default_command_path(),
+  poll_ms~ : Int32 = 50,
+  dry_run~ : Bool = false,
 ) -> Array[String] {
-  let command = [
-    python_path,
-    writer_path,
+  let command = match backend {
+    Native => [writer_path.unwrap_or(default_sdk_e1_writer_path()), "write"]
+    PythonReference =>
+      [python_path, writer_path.unwrap_or(reference_sdk_e1_writer_path())]
+  }
+  command.append([
     "--watch",
     "--input",
     command_path,
@@ -214,7 +291,13 @@ pub fn sdk_e1_writer_command(
     sdk_root,
     "--poll-ms",
     poll_ms.to_string(),
-  ]
+  ])
+  if backend == Native {
+    command.append([
+      "--library",
+      library_path.unwrap_or(default_sdk_e1_library_path(sdk_root)),
+    ])
+  }
   if dry_run {
     command.push("--dry-run")
   }
@@ -225,11 +308,11 @@ pub fn sdk_e1_writer_command(
 pub fn spec_for_profile(
   profile : @core.RobotProfile,
   robobook_root : String,
-  sidecar_path? : String = default_sdk_e1_sidecar_path(),
-  host? : String = default_bridge_host(),
-  port? : Int = default_bridge_port(),
-  snapshot_path? : String = default_snapshot_path(),
-  command_path? : String = default_command_path(),
+  sidecar_path~ : String = default_sdk_e1_sidecar_path(),
+  host~ : String = default_bridge_host(),
+  port~ : Int32 = default_bridge_port(),
+  snapshot_path~ : String = default_snapshot_path(),
+  command_path~ : String = default_command_path(),
 ) -> BridgeSidecarSpec {
   {
     sidecar_id: sidecar_id(profile),
@@ -246,7 +329,7 @@ pub fn spec_for_profile(
       snapshot_path~,
       command_path~,
     ),
-    env: { "CYCLONEDDS_URI": "file://../sdk/config/dds.xml" },
+    env: sdk_environment(default_sdk_root()),
     contract_path: @bridge_protocol.route_for_operation(Contract).path,
     health_path: @bridge_protocol.route_for_operation(Health).path,
     telemetry_path: @bridge_protocol.route_for_operation(LatestTelemetry).path,
@@ -257,7 +340,7 @@ pub fn spec_for_profile(
 }
 
 ///|
-pub fn spec_json(spec : BridgeSidecarSpec, indent? : Int = 2) -> String {
+pub fn spec_json(spec : BridgeSidecarSpec, indent~ : Int32 = 2) -> String {
   spec.to_json().stringify(indent~)
 }
 
@@ -265,20 +348,24 @@ pub fn spec_json(spec : BridgeSidecarSpec, indent? : Int = 2) -> String {
 fn collector_process(
   profile : @core.RobotProfile,
   snapshot_path : String,
-  collector_path : String,
+  collector_path : String?,
   python_path : String,
+  backend : SdkE1Backend,
+  library_path : String?,
   sdk_root : String,
 ) -> RuntimeProcessSpec {
   {
     process_id: "\{sidecar_id(profile)}:collector",
     role: SnapshotCollector,
     command: sdk_e1_collector_command(
-      collector_path~,
+      collector_path?,
       python_path~,
+      backend~,
+      library_path?,
       sdk_root~,
       snapshot_path~,
     ),
-    env: { "CYCLONEDDS_URI": "file://\{sdk_root}/config/dds.xml" },
+    env: sdk_environment(sdk_root),
     cwd: ".",
     output_path: snapshot_path,
     health_path: "",
@@ -291,20 +378,24 @@ fn collector_process(
 fn writer_process(
   profile : @core.RobotProfile,
   command_path : String,
-  writer_path : String,
+  writer_path : String?,
   python_path : String,
+  backend : SdkE1Backend,
+  library_path : String?,
   sdk_root : String,
 ) -> RuntimeProcessSpec {
   {
     process_id: "\{sidecar_id(profile)}:writer",
     role: HighControlWriter,
     command: sdk_e1_writer_command(
-      writer_path~,
+      writer_path?,
       python_path~,
+      backend~,
+      library_path?,
       sdk_root~,
       command_path~,
     ),
-    env: { "CYCLONEDDS_URI": "file://\{sdk_root}/config/dds.xml" },
+    env: sdk_environment(sdk_root),
     cwd: ".",
     output_path: command_path,
     health_path: "",
@@ -319,7 +410,7 @@ fn bridge_process(
   robobook_root : String,
   sidecar_path : String,
   host : String,
-  port : Int,
+  port : Int32,
   snapshot_path : String,
   command_path : String,
 ) -> RuntimeProcessSpec {
@@ -352,15 +443,17 @@ fn bridge_process(
 pub fn runtime_spec_for_profile(
   profile : @core.RobotProfile,
   robobook_root : String,
-  sidecar_path? : String = default_sdk_e1_sidecar_path(),
-  collector_path? : String = default_sdk_e1_collector_path(),
-  writer_path? : String = default_sdk_e1_writer_path(),
-  python_path? : String = default_python_path(),
-  sdk_root? : String = default_sdk_root(),
-  host? : String = default_bridge_host(),
-  port? : Int = default_bridge_port(),
-  snapshot_path? : String = default_snapshot_path(),
-  command_path? : String = default_command_path(),
+  sidecar_path~ : String = default_sdk_e1_sidecar_path(),
+  collector_path? : String,
+  writer_path? : String,
+  python_path~ : String = default_python_path(),
+  backend~ : SdkE1Backend = default_sdk_e1_backend(),
+  library_path? : String,
+  sdk_root~ : String = default_sdk_root(),
+  host~ : String = default_bridge_host(),
+  port~ : Int32 = default_bridge_port(),
+  snapshot_path~ : String = default_snapshot_path(),
+  command_path~ : String = default_command_path(),
 ) -> PhysicalRuntimeSpec {
   {
     runtime_id: sidecar_id(profile),
@@ -371,9 +464,12 @@ pub fn runtime_spec_for_profile(
     bridge_base_url: "http://\{host}:\{port}",
     processes: [
       collector_process(
-        profile, snapshot_path, collector_path, python_path, sdk_root,
+        profile, snapshot_path, collector_path, python_path, backend, library_path,
+        sdk_root,
       ),
-      writer_process(profile, command_path, writer_path, python_path, sdk_root),
+      writer_process(
+        profile, command_path, writer_path, python_path, backend, library_path, sdk_root,
+      ),
       bridge_process(
         profile, robobook_root, sidecar_path, host, port, snapshot_path, command_path,
       ),
@@ -384,7 +480,7 @@ pub fn runtime_spec_for_profile(
 ///|
 pub fn runtime_spec_json(
   spec : PhysicalRuntimeSpec,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   spec.to_json().stringify(indent~)
 }
@@ -426,6 +522,6 @@ pub fn status_for_spec(
 }
 
 ///|
-pub fn status_json(status : BridgeSidecarStatus, indent? : Int = 2) -> String {
+pub fn status_json(status : BridgeSidecarStatus, indent~ : Int32 = 2) -> String {
   status.to_json().stringify(indent~)
 }

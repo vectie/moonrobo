@@ -1,0 +1,45 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/e1_actor_shadow"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/e1_actor",
+  "vectie/moonrobo/src/policy_skills",
+}
+
+// Values
+pub fn replay(Policy, ActorReplay) -> Json raise
+
+pub async fn replay_file(Policy, String, String) -> Json
+
+pub async fn serve(Policy, String, String) -> Unit
+
+// Errors
+
+// Types and methods
+pub(all) struct ActorReplay {
+  format : String
+  catalog : @policy_skills.Catalog
+  request : @policy_skills.Request
+  frames : Map[String, Array[ActorReplayFrame]]
+} derive(ToJson, @json.FromJson)
+pub fn ActorReplay::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ActorReplay::to_json(Self) -> Json
+
+pub(all) struct ActorReplayFrame {
+  captured_at_ms : Int64
+  observation : Array[Double]
+  goals : Array[Double]
+} derive(ToJson, @json.FromJson)
+pub fn ActorReplayFrame::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ActorReplayFrame::to_json(Self) -> Json
+
+pub struct Policy {
+  // private fields
+}
+pub fn Policy::from_actor(@e1_actor.Actor) -> Self raise
+pub fn Policy::new(history_frames~ : Int, goal_width~ : Int, physical_actions~ : Int, predict~ : (Array[Array[Double]], Array[Double]) -> Array[Double] raise, nominal_setpoints~ : (ArrayView[Double]) -> Array[Double] raise) -> Self raise
+
+// Type aliases
+
+// Traits

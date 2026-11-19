@@ -19,7 +19,7 @@ pub fn moonbook_remember_path() -> String {
 fn moonbook_memory_pack(
   root : String,
   generated_at_ms : Int64,
-  extra_cards? : Array[@moonbook.MoonBookMemoryCard] = [],
+  extra_cards~ : Array[@moonbook.MoonBookMemoryCard] = [],
 ) -> Result[@moonbook.MoonBookMemoryPack, HostApiResponse] {
   let book = match @runtime.load_robobook(root) {
     Ok(book) => book

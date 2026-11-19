@@ -25,6 +25,12 @@ fn ensure_release_bins(root : String) -> Unit raise {
   ) catch {
     _ => fail("failed to write sdk bridge test binary")
   }
+  @fsx.write_string_to_file(
+    @desktop_bundle.release_sdk_native_path(root),
+    "#!/usr/bin/env sh\n",
+  ) catch {
+    _ => fail("failed to write SDK native test binary")
+  }
 }
 
 ///|
@@ -92,6 +98,7 @@ test "desktop bundle manifest carries lepusa and host contracts" {
   assert_true(text.contains("index.html"))
   assert_true(text.contains("moonrobo-desktop-host"))
   assert_true(text.contains("moonrobo-sdk-e1-bridge"))
+  assert_true(text.contains("moonrobo-sdk-e1-native"))
   assert_true(text.contains("moonrobo-rabbita-cockpit"))
   assert_true(text.contains("npm"))
   assert_true(text.contains("\"readinessPath\": \"/__moonrobo_health\""))
@@ -128,6 +135,8 @@ test "desktop bundle writes descriptor files" {
     ui_root="ui/rabbita-cockpit",
     host="127.0.0.1",
     port=5543,
+    bridge_host="127.0.0.2",
+    bridge_port=5999,
     sidecar_path="cmd/main/main.mbt",
   )
   let files = @desktop_bundle.write_bundle_files(config, root).unwrap()
@@ -151,10 +160,11 @@ test "desktop bundle writes descriptor files" {
   assert_true(manifest.contains("moonrobo.runtime-supervisor.sh"))
   assert_true(manifest.contains("\"ui_root\": \"\{root}/ui\""))
   assert_true(
-    manifest.contains("\"bridge_base_url\": \"http://127.0.0.1:5391\""),
+    manifest.contains("\"bridge_base_url\": \"http://127.0.0.2:5999\""),
   )
   assert_true(manifest.contains("moonrobo-desktop-host"))
   assert_true(manifest.contains("moonrobo-sdk-e1-bridge"))
+  assert_true(manifest.contains("moonrobo-sdk-e1-native"))
   assert_true(manifest.contains("moonrobo-rabbita-cockpit"))
   assert_true(manifest.contains("\"command\""))
   assert_true(manifest.contains("\"sh\""))
@@ -163,6 +173,7 @@ test "desktop bundle writes descriptor files" {
   }
   assert_true(build.contains("moon build cmd/main --target native"))
   assert_true(build.contains("moon build cmd/sdk_e1_bridge --target native"))
+  assert_true(build.contains("moon build cmd/sdk_e1_native --target native"))
   assert_true(build.contains("npm --prefix 'ui/rabbita-cockpit' run build"))
   assert_true(build.contains("robobook-seed"))
   assert_true(
@@ -175,13 +186,21 @@ test "desktop bundle writes descriptor files" {
     _ => fail("failed to read supervisor runner")
   }
   assert_true(script.contains("#!/usr/bin/env sh"))
+  // Source-only fixtures do not execute these scripts. Dependency checks must
+  // run before cleanup/start, and repeat at launch after binaries are installed.
+  assert_true(script.contains("preflight_process"))
+  assert_true(script.contains("no processes started"))
+  assert_true(script.split("rm -f").to_array()[0].contains("preflight_process"))
   assert_true(script.contains("wait_for_file"))
   assert_true(script.contains("probe_health"))
   assert_true(
-    script.contains("exec >> '\{root}/moonrobo.runtime-supervisor.log' 2>&1"),
+    script.contains("'\{root}/bin/moonrobo-sdk-e1-native' 'read' '--live'"),
   )
-  assert_true(script.contains("moonrobo-sdk-e1-bridge"))
-  assert_true(script.contains("MoonRobo runtime supervisor"))
+  assert_true(
+    script.contains("'\{root}/bin/moonrobo-sdk-e1-native' 'write' '--watch'"),
+  )
+  assert_false(script.contains("python3"))
+  assert_true(manifest.contains("\"\{root}/bin/moonrobo-sdk-e1-native\""))
   let launch = @fsx.read_file_to_string(
     @desktop_bundle.desktop_launch_path(root),
   ) catch {
@@ -189,11 +208,24 @@ test "desktop bundle writes descriptor files" {
   }
   assert_true(launch.contains("#!/usr/bin/env sh"))
   assert_true(launch.contains("moonrobo.runtime-supervisor.sh"))
+  assert_true(launch.contains("$LEPUSA_RESOURCE_DIR/moonrobo-sdk-e1-native"))
+  assert_true(launch.contains("$LEPUSA_RESOURCE_DIR/moonrobo-sdk-e1-bridge"))
+  assert_true(
+    launch.contains("$LEPUSA_APP_DATA_DIR/moonrobo.runtime-supervisor.sh"),
+  )
+  assert_true(
+    launch.contains(
+      "runtime-supervisor-script \"$ROBOBOOK_ROOT\" '127.0.0.2' '5999'",
+    ),
+  )
+  assert_true(launch.contains("sh \"$RUNTIME_RUNNER\" &"))
+  assert_true(launch.contains("${MOONROBO_SDK_E1_ROOT:-$ROBOBOOK_ROOT/../sdk}"))
+  assert_false(launch.contains("--self-check"))
   assert_true(launch.contains("moonrobo-desktop-host"))
   assert_true(launch.contains("LEPUSA_RESOURCE_DIR"))
   assert_true(launch.contains("LEPUSA_APP_DATA_DIR"))
   assert_true(launch.contains("safe cockpit-only mode"))
   assert_true(launch.contains("\{root}/ui"))
-  assert_true(launch.contains("127.0.0.1' '5391"))
+  assert_true(launch.contains("127.0.0.2' '5999"))
   assert_true(launch.contains("wait \"$HOST_PID\""))
 }

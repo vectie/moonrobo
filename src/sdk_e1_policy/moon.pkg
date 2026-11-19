@@ -1,0 +1,12 @@
+import {
+  "vectie/moonrobo/src/e1_actor" @actor,
+  "vectie/moonrobo/src/sdk_e1_low" @low,
+  "moonbitlang/core/json",
+}
+
+import {
+  "vectie/lunakine/actor" @portable,
+  "moonbitlang/core/string",
+} for "test"
+
+supported_targets = "native"

@@ -2,8 +2,8 @@
 pub(all) struct PlatformProofSessionRequest {
   session_id : String
   task_message : @task.RobotTaskMessageRequest
-  iterations : Int
-  max_steps : Int
+  iterations : Int32
+  max_steps : Int32
   bootstrap : Bool
   stop_when_ready : Bool
 } derive(Debug, Eq, ToJson, FromJson)
@@ -15,14 +15,14 @@ pub(all) struct PlatformProofSessionResponse {
   persisted : Bool
   status : String
   ready : Bool
-  attempted_count : Int
-  requested_iterations : Int
+  attempted_count : Int32
+  requested_iterations : Int32
   stop_reason : String
   latest_proof_path : String
   next_route : String
-  feedback_binding_required_count : Int
-  feedback_binding_success_count : Int
-  latest_feedback_binding_status : Int
+  feedback_binding_required_count : Int32
+  feedback_binding_success_count : Int32
+  latest_feedback_binding_status : Int32
   latest_feedback_binding_message : String
   attempts : Array[PlatformProveLoopResponse]
   message : String
@@ -30,7 +30,7 @@ pub(all) struct PlatformProofSessionResponse {
 
 ///|
 pub(all) struct PlatformProofSessionListResponse {
-  session_count : Int
+  session_count : Int32
   sessions : Array[PlatformProofSessionResponse]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -273,7 +273,7 @@ fn write_proof_session_response(
 ///|
 fn proof_session_attempt_message(
   request : PlatformProofSessionRequest,
-  attempt_index : Int,
+  attempt_index : Int32,
 ) -> @task.RobotTaskMessageRequest {
   let base_id = if request.task_message.message_id == "" {
     request.session_id
@@ -292,7 +292,7 @@ fn proof_session_attempt_message(
 ///|
 fn proof_session_attempt_body(
   request : PlatformProofSessionRequest,
-  attempt_index : Int,
+  attempt_index : Int32,
 ) -> String {
   let prove : PlatformProveLoopRequest = {
     task_message: proof_session_attempt_message(request, attempt_index),
@@ -327,7 +327,7 @@ fn proof_session_status(ready : Bool, stop_reason : String) -> String {
 ///|
 fn proof_session_feedback_attempted_count(
   attempts : Array[PlatformProveLoopResponse],
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for attempt in attempts {
     if attempt.feedback_binding_required {
@@ -340,7 +340,7 @@ fn proof_session_feedback_attempted_count(
 ///|
 fn proof_session_feedback_success_count(
   attempts : Array[PlatformProveLoopResponse],
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for attempt in attempts {
     if attempt.feedback_binding_required &&
@@ -355,7 +355,7 @@ fn proof_session_feedback_success_count(
 ///|
 fn proof_session_latest_feedback_status(
   attempts : Array[PlatformProveLoopResponse],
-) -> Int {
+) -> Int32 {
   let mut status = 0
   for attempt in attempts {
     if attempt.feedback_binding_required {
@@ -381,7 +381,7 @@ fn proof_session_latest_feedback_message(
 ///|
 fn proof_session_message(
   status : String,
-  attempted_count : Int,
+  attempted_count : Int32,
   next_route : String,
 ) -> String {
   match status {

@@ -4,6 +4,8 @@ import {
   "vectie/moonrobo/src/runtime",
   "vectie/moonrobo/src/supervisor",
   "moonbitlang/core/json",
+  "moonbitlang/core/env",
+  "vectie/moonlib/pathx",
   "moonbitlang/x/fs" @fsx,
 }
 

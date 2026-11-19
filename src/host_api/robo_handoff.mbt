@@ -15,12 +15,12 @@ pub(all) struct RoboHandoffResponse {
   next_kind : String
   next_title : String
   next_work_id : String
-  queue_count : Int
+  queue_count : Int32
   readiness_status : String
   readiness_ready : Bool
   loop_status : String
   loop_ready : Bool
-  loop_percent : Int
+  loop_percent : Int32
   latest_gateway_command_path : String
   latest_execution_path : String
   message : String

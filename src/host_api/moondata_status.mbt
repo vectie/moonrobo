@@ -14,20 +14,20 @@ pub(all) struct MoonDataCockpitStatus {
   initialized : Bool
   status : String
   ready : Bool
-  artifact_count : Int
-  dataset_count : Int
-  capture_count : Int
-  episode_count : Int
-  frame_count : Int
-  robot_model_count : Int
-  quality_count : Int
-  version_count : Int
-  replay_count : Int
-  export_count : Int
+  artifact_count : Int32
+  dataset_count : Int32
+  capture_count : Int32
+  episode_count : Int32
+  frame_count : Int32
+  robot_model_count : Int32
+  quality_count : Int32
+  version_count : Int32
+  replay_count : Int32
+  export_count : Int32
   validation_status : String
-  blocker_count : Int
-  warning_count : Int
-  repair_open_count : Int
+  blocker_count : Int32
+  warning_count : Int32
+  repair_open_count : Int32
   artifacts : Array[MoonDataCockpitArtifact]
   message : String
 } derive(Debug, Eq, ToJson, FromJson)

@@ -21,7 +21,7 @@ pub(all) struct RoboLoopResponse {
 
 ///|
 pub(all) struct RoboLoopListResponse {
-  loop_count : Int
+  loop_count : Int32
   loops : Array[RoboLoopResponse]
 } derive(Debug, Eq, ToJson, FromJson)
 

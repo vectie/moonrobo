@@ -1,0 +1,13 @@
+import {
+  "vectie/moonrobo/src/e1_actor" @actor,
+  "vectie/moonrobo/src/policy_runner" @runner,
+  "vectie/moonrobo/src/policy_skills" @skills,
+  "vectie/moonrobo/src/policy_host" @host,
+  "moonbitlang/core/json",
+  "moonbitlang/core/env",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/http",
+  "moonbitlang/async/socket",
+}
+
+supported_targets = "native"

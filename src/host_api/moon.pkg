@@ -13,6 +13,7 @@ import {
   "vectie/moonrobo/src/moondata_api",
   "vectie/moonrobo/src/moondata_core",
   "vectie/moonrobo/src/moondata_store",
+  "vectie/moonrobo/src/moondata_learning",
   "vectie/moonrobo/src/routine_context",
   "vectie/moonrobo/src/moongate",
   "vectie/moonrobo/src/pipeline",
@@ -30,5 +31,12 @@ import {
   "vectie/moonrobo/src/platform_queue",
   "vectie/moonlib/pathx",
   "moonbitlang/core/json",
+  "moonbitlang/core/string",
   "moonbitlang/x/fs" @fsx,
 }
+
+import {
+  "vectie/moonrobo/src/moondata_blob",
+  "vectie/moonrobo/src/moondata_index",
+  "moonbitlang/core/encoding/utf8",
+} for "test"

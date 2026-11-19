@@ -1,0 +1,22 @@
+import {
+  "vectie/moonrobo/src/e1_actor" @actor,
+  "vectie/moonrobo/src/e1_actor_control" @control,
+  "vectie/moonrobo/src/e1_actor_reference" @reference,
+  "vectie/moonrobo/src/sdk_e1_policy" @policy,
+  "vectie/moonrobo/src/sdk_e1_low" @low,
+  "vectie/moonrobo/src/policy_host" @host,
+  "vectie/moonrobo/src/policy_skills" @skills,
+  "moonbitlang/core/json",
+  "moonbitlang/async/fs",
+}
+
+import {
+  "vectie/lunakine/actor" @portable,
+  "vectie/moonrobo/src/policy_task" @task,
+  "moonbitlang/core/env",
+  "moonbitlang/async",
+  "moonbitlang/async/http",
+  "moonbitlang/async/socket",
+} for "test"
+
+supported_targets = "native"

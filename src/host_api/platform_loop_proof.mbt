@@ -12,14 +12,14 @@ pub(all) struct PlatformLoopProofCheck {
 pub(all) struct PlatformLoopProofResponse {
   status : String
   ready : Bool
-  completed_count : Int
-  total_count : Int
-  percent : Int
+  completed_count : Int32
+  total_count : Int32
+  percent : Int32
   robot_id : @core.RobotId
   root : String
   readiness_status : String
-  readiness_pass_count : Int
-  readiness_fail_count : Int
+  readiness_pass_count : Int32
+  readiness_fail_count : Int32
   latest_task_execution_path : String
   latest_gateway_command_path : String
   latest_robo_loop_path : String
@@ -48,7 +48,7 @@ fn latest_path(paths : Array[String]) -> String {
 }
 
 ///|
-fn verified_execution_count(root : String) -> Int {
+fn verified_execution_count(root : String) -> Int32 {
   let paths = match @runtime.list_task_execution_snapshot_paths(root) {
     Ok(paths) => paths
     Err(_) => return 0
@@ -110,7 +110,7 @@ fn proof_check(
 }
 
 ///|
-fn completed_count(checks : Array[PlatformLoopProofCheck]) -> Int {
+fn completed_count(checks : Array[PlatformLoopProofCheck]) -> Int32 {
   let mut count = 0
   for check in checks {
     if check.ready {

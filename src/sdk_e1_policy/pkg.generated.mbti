@@ -1,0 +1,85 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/sdk_e1_policy"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/e1_actor",
+  "vectie/moonrobo/src/sdk_e1_low",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct Axis {
+  actor_joint : String
+  sdk_joint : String
+  motor_id : Int
+  direction : Double
+  zero : Double
+  kp : Double
+  kd : Double
+} derive(@json.FromJson)
+pub fn Axis::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+
+pub(all) struct Calibration {
+  format : String
+  profile_id : String
+  axes : Array[Axis]
+  fixed : Array[FixedMotor]
+} derive(@json.FromJson)
+pub fn Calibration::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+
+pub(all) struct FixedMotor {
+  sdk_joint : String
+  motor_id : Int
+  position : Double
+  velocity : Double
+  torque : Double
+  kp : Double
+  kd : Double
+} derive(@json.FromJson)
+pub fn FixedMotor::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+
+pub struct Imu {
+  // private fields
+}
+pub fn Imu::decode(Self, ArrayView[Double], ArrayView[Double], ArrayView[Double]) -> ImuFeatures raise
+pub fn Imu::new(ImuCalibration) -> Self raise
+
+pub(all) struct ImuCalibration {
+  quaternion_order : String
+  orientation_direction : String
+  gyro_frame : String
+  gyro_to_radians : Double
+  sensor_to_body : Array[Double]
+  world_to_actor_world : Array[Double]
+} derive(@json.FromJson)
+pub fn ImuCalibration::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+
+pub struct ImuFeatures {
+  // private fields
+}
+pub fn ImuFeatures::body_gyro(Self) -> ReadOnlyArray[Double]
+pub fn ImuFeatures::gravity(Self) -> ReadOnlyArray[Double]
+pub fn ImuFeatures::reference_orientation(Self) -> ReadOnlyArray[Double]
+
+pub struct Mapping {
+  // private fields
+}
+pub fn Mapping::commands(Self, ArrayView[Double]) -> Array[@sdk_e1_low.MotorCommand] raise
+pub fn Mapping::joint_state(Self, @sdk_e1_low.Sample) -> (Array[Double], Array[Double]) raise
+pub fn Mapping::new(@e1_actor.Bundle, Calibration, resolve~ : (String) -> Int raise) -> Self raise
+pub fn Mapping::profile_id(Self) -> String
+
+pub struct Observer {
+  // private fields
+}
+pub fn Observer::new(Mapping, Imu) -> Self raise
+pub fn Observer::observation(Self, @sdk_e1_low.Sample, ArrayView[Double], ArrayView[Double]) -> Array[Double] raise
+pub fn Observer::profile_id(Self) -> String
+
+// Type aliases
+
+// Traits

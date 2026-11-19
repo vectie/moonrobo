@@ -10,6 +10,7 @@ import {
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/gateway",
   "vectie/moonrobo/src/moonbook",
+  "vectie/moonrobo/src/moondata_learning",
   "vectie/moonrobo/src/moondata_store",
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/platform_queue",
@@ -71,7 +72,19 @@ pub fn intent_execute_path() -> String
 
 pub fn intent_submission_response(String, String) -> HostApiResponse
 
+pub fn is_learning_replay_asset_path(String) -> Bool
+
 pub fn is_moonbook_task_message_status_path(String) -> Bool
+
+pub fn learning_experiments_path() -> String
+
+pub fn learning_experiments_response(String) -> HostApiResponse
+
+pub fn learning_physics_response(String, String) -> HostApiResponse
+
+pub fn learning_replay_asset_response(String, String) -> Result[@moondata_learning.ReplayAsset, HostApiResponse]
+
+pub fn learning_replay_response(String, String) -> HostApiResponse
 
 pub fn moonbook_conversation_path() -> String
 

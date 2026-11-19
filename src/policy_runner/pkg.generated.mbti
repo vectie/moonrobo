@@ -1,0 +1,35 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/policy_runner"
+
+import {
+  "vectie/moonrobo/src/policy_skills",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct Inputs {
+  observation : Array[Double]
+  goals : Array[Double]
+  captured_at_ms : Int64
+  complete : Bool
+}
+
+pub struct Runner {
+  // private fields
+}
+pub fn Runner::interrupt(Self, detail~ : String) -> Unit
+pub fn Runner::new(@policy_skills.Supervisor, clock~ : () -> Int64, history_frames~ : Int, observation_width~ : Int, goal_width~ : Int, action_width~ : Int, predict~ : (Array[Array[Double]], Array[Double]) -> Array[Double] raise, reference~ : (@policy_skills.Execution, Int, Array[Double], Int64) -> Inputs raise, sink~ : (Array[Double]) -> Unit raise, stop~ : () -> Unit, maximum_sensor_age_ms? : Int64) -> Self raise
+pub fn Runner::tick(Self) -> Tick raise
+
+pub(all) enum Tick {
+  Idle
+  Action(Array[Double])
+  Stopped
+}
+
+// Type aliases
+
+// Traits

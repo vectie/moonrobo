@@ -1,7 +1,7 @@
 ///|
 pub struct Server {
   server : @http.Server
-  port : Int
+  port : Int32
 }
 
 ///|
@@ -50,9 +50,9 @@ priv struct DesktopRuntimeLogResponse {
   log_path : String
   exists : Bool
   truncated : Bool
-  line_count : Int
-  max_lines : Int
-  max_chars : Int
+  line_count : Int32
+  max_lines : Int32
+  max_chars : Int32
   tail : String
 } derive(ToJson)
 
@@ -69,7 +69,7 @@ priv struct DesktopRuntimeValidationResponse {
 ///|
 priv struct DesktopRuntimeValidationSessionResponse {
   persisted : Bool
-  sample_count : Int
+  sample_count : Int32
   session_path : String
   latest_session_path : String
   calibration_path : String
@@ -104,7 +104,7 @@ priv struct DesktopEmergencyStopResponse {
 } derive(ToJson)
 
 ///|
-pub fn Server::port(self : Server) -> Int {
+pub fn Server::port(self : Server) -> Int32 {
   self.port
 }
 
@@ -114,7 +114,7 @@ pub fn Server::close(self : Server) -> Unit {
 }
 
 ///|
-pub async fn Server::new(host : String, port : Int) -> Server {
+pub async fn Server::new(host : String, port : Int32) -> Server {
   install_native_signal_guards()
   let host = if host == "localhost" { "127.0.0.1" } else { host }
   let server = @http.Server::new(@socket.Addr::parse("\{host}:\{port}"))
@@ -165,6 +165,8 @@ async fn handle_request(
     send_json(conn, request.meth, 200, "OK", health_json(config))
   } else if path.has_prefix("/api/robobook/assets/") {
     send_robobook_asset_file(conn, request.meth, config.robobook_root, path)
+  } else if @host_api.is_learning_replay_asset_path(path) {
+    send_learning_replay_asset(conn, request.meth, config.robobook_root, path)
   } else if path == "/api" || path.has_prefix("/api/") {
     send_desktop_api_response(conn, request.meth, config, path, body)
   } else {
@@ -187,7 +189,7 @@ fn method_text(method_ : @http.RequestMethod) -> String {
 }
 
 ///|
-fn reason_text(status : Int) -> String {
+fn reason_text(status : Int32) -> String {
   match status {
     200 => "OK"
     400 => "Bad Request"
@@ -272,7 +274,7 @@ async fn desktop_api_response(
 
 ///|
 fn desktop_json_response(
-  status : Int,
+  status : Int32,
   body : Json,
 ) -> @host_api.HostApiResponse {
   { status, content_type: "application/json", body: body.stringify(indent=2), }
@@ -280,7 +282,7 @@ fn desktop_json_response(
 
 ///|
 fn desktop_text_response(
-  status : Int,
+  status : Int32,
   body : String,
 ) -> @host_api.HostApiResponse {
   { status, content_type: "text/plain", body, }
@@ -299,7 +301,7 @@ fn desktop_runtime_error_response(
 
 ///|
 fn desktop_command_available(command : Array[String]) -> Bool {
-  !command.is_empty() && @fsx.path_exists(command[0])
+  !command.is_empty() && @supervisor.resolve_executable(command[0]) is Some(_)
 }
 
 ///|
@@ -552,9 +554,9 @@ async fn desktop_platform_runtime_proof_response(
 ///|
 fn bounded_runtime_log_tail(
   text : String,
-  max_lines : Int,
-  max_chars : Int,
-) -> (String, Int, Bool) {
+  max_lines : Int32,
+  max_chars : Int32,
+) -> (String, Int32, Bool) {
   let lines = text.split("\n").to_array()
   let selected : Array[String] = []
   let mut used_chars = 0
@@ -728,7 +730,7 @@ async fn desktop_runtime_validation_response(
 ///|
 fn desktop_validation_sample_count(
   body : String,
-) -> Result[Int, @host_api.HostApiResponse] {
+) -> Result[Int32, @host_api.HostApiResponse] {
   let submitted = body.trim().to_owned()
   if submitted == "" || submitted == "{}" {
     return Ok(3)
@@ -1268,8 +1270,8 @@ fn desktop_persist_runtime_calibration(
 fn desktop_runtime_validation_block_response(
   report : @runtime_validation.RuntimeValidationReport,
   report_path : String,
-  calibration_path? : String = "",
-  latest_calibration_path? : String = "",
+  calibration_path~ : String = "",
+  latest_calibration_path~ : String = "",
 ) -> @host_api.HostApiResponse? {
   if report.ready_for_live_sdk {
     None
@@ -1496,7 +1498,7 @@ async fn task_message_execute_sidecar_response(
 async fn send_json(
   conn : @http.ServerConnection,
   method_ : @http.RequestMethod,
-  status : Int,
+  status : Int32,
   reason : String,
   body : Json,
 ) -> Unit {
@@ -1512,7 +1514,7 @@ async fn send_json(
 ///|
 async fn send_text_status(
   conn : @http.ServerConnection,
-  status : Int,
+  status : Int32,
   reason : String,
   body : String,
 ) -> Unit {
@@ -1605,7 +1607,7 @@ async fn send_robobook_asset_file(
 }
 
 ///|
-async fn read_request_body(reader : &@io.Reader, limit : Int) -> String {
+async fn read_request_body(reader : &@io.Reader, limit : Int32) -> String {
   let bytes : Array[Byte] = []
   let buf = FixedArray::make(1024, b'\x00')
   for ;; {

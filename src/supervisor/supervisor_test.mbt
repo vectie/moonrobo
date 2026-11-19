@@ -4,8 +4,12 @@ fn runtime(snapshot_path : String) -> @bridge_sidecar.PhysicalRuntimeSpec {
   @bridge_sidecar.runtime_spec_for_profile(
     profile,
     "examples/noetix-e1",
-    sidecar_path="moonrobo-sdk-e1-bridge",
-    collector_path="bridges/sdk_e1/sdk_e1_readonly_bridge.py",
+    // Metadata-only fixtures. No test executes these generated commands.
+    sidecar_path="/bin/sh",
+    collector_path="/bin/sh",
+    writer_path="/bin/sh",
+    backend=Native,
+    library_path="/bin/sh",
     snapshot_path~,
   )
 }
@@ -20,9 +24,9 @@ test "supervisor plan starts collector and writer before bridge" {
   assert_true(plan.processes[0].state == ReadyToStart)
   assert_true(plan.processes[1].state == ReadyToStart)
   assert_true(plan.processes[2].state == WaitingForSnapshot)
-  assert_eq(plan.processes[0].command_resolution, "search-path")
-  assert_eq(plan.processes[1].command_resolution, "search-path")
-  assert_eq(plan.processes[2].command_resolution, "search-path")
+  assert_eq(plan.processes[0].command_resolution, "local-path")
+  assert_eq(plan.processes[1].command_resolution, "local-path")
+  assert_eq(plan.processes[2].command_resolution, "local-path")
   assert_eq(plan.steps.length(), 9)
   assert_true(plan.steps[1].action == StartProcess)
   assert_eq(plan.steps[1].process_id, "noetix-e1-lab-01:sdk-e1:collector")
@@ -66,6 +70,10 @@ test "supervisor blocks structurally invalid dependencies" {
   assert_eq(plan.issues[0].code, "process-dependency-missing")
   assert_true(plan.processes[0].state == WaitingForDependency)
   assert_true(plan.steps[0].state == Blocked)
+  let script = @supervisor.shell_script(plan)
+  assert_true(script.contains("exit 1"))
+  assert_false(script.contains("rm -f"))
+  assert_false(script.contains("--watch"))
 }
 
 ///|
@@ -92,25 +100,85 @@ test "supervisor shell script launches collector then bridge with cleanup trap" 
   assert_true(script.contains("kill \"$BRIDGE_PID\""))
   assert_true(script.contains("kill \"$WRITER_PID\""))
   assert_true(script.contains("kill \"$COLLECTOR_PID\""))
-  assert_true(
-    script.contains(
-      "'python3' 'bridges/sdk_e1/sdk_e1_readonly_bridge.py' '--live'",
-    ),
-  )
+  assert_true(script.contains("'/bin/sh' 'read' '--live'"))
   assert_true(
     script.contains("wait_for_file '/tmp/moonrobo-supervisor-script.json'"),
   )
-  assert_true(
-    script.contains(
-      "'python3' 'bridges/sdk_e1/sdk_e1_high_control_writer.py' '--watch'",
-    ),
-  )
+  assert_true(script.contains("'/bin/sh' 'write' '--watch'"))
   assert_true(script.contains("'--input' '\{command_path}'"))
-  assert_true(
-    script.contains("'moonrobo-sdk-e1-bridge' 'serve' 'examples/noetix-e1'"),
-  )
+  assert_true(script.contains("'/bin/sh' 'serve' 'examples/noetix-e1'"))
   assert_true(script.contains("probe_health 'http://127.0.0.1:5391/health'"))
   assert_true(script.contains("wait \"$BRIDGE_PID\""))
+  assert_false(script.contains("python3"))
+}
+
+///|
+test "supervisor resolves PATH files and executable permissions without launching" {
+  assert_eq(
+    @supervisor.resolve_executable("sh", search_path="/bin"),
+    Some("/bin/sh"),
+  )
+  assert_eq(
+    @supervisor.resolve_executable(
+      "moonrobo-definitely-uninstalled-spec-fixture",
+      search_path="/bin:/usr/bin",
+    ),
+    None,
+  )
+  assert_eq(@supervisor.resolve_executable("/"), None)
+  assert_eq(
+    @supervisor.resolve_executable("src/supervisor/supervisor.mbt"),
+    None,
+  )
+  let valid = runtime("/tmp/native-missing-snapshot.json")
+  let missing : @bridge_sidecar.PhysicalRuntimeSpec = {
+    ..valid,
+    processes: [
+      {
+        ..valid.processes[0],
+        command: ["moonrobo-definitely-uninstalled-spec-fixture"],
+      },
+      valid.processes[1],
+      valid.processes[2],
+    ],
+  }
+  let plan = @supervisor.plan(missing, snapshot_ready=true)
+  assert_false(plan.ready)
+  assert_true(plan.processes[0].state is MissingCommand)
+  assert_false(plan.processes[0].command_available)
+  let absent_library = @bridge_sidecar.runtime_spec_for_profile(
+    @core.noetix_e1_profile("missing-adapter-fixture", "Fixture"),
+    "examples/noetix-e1",
+    backend=Native,
+    sidecar_path="/bin/sh",
+    collector_path="/bin/sh",
+    writer_path="/bin/sh",
+    library_path="/definitely-missing/moonrobo-sdk-e1.so",
+  )
+  let blocked = @supervisor.plan(absent_library, snapshot_ready=true)
+  assert_false(blocked.ready)
+  assert_true(blocked.processes[0].command_available)
+  assert_true(blocked.processes[0].state is MissingRuntimeDependency)
+  assert_true(
+    blocked.processes[0].detail.contains(
+      "/definitely-missing/moonrobo-sdk-e1.so",
+    ),
+  )
+  assert_true(
+    blocked.processes[0].detail.contains(
+      "SDK C ABI and live readiness have not been probed",
+    ),
+  )
+  let blocked_script = @supervisor.shell_script(blocked)
+  assert_true(blocked_script.contains("exit 1"))
+  assert_true(blocked_script.contains("/definitely-missing/moonrobo-sdk-e1.so"))
+  assert_true(
+    blocked_script.contains("[ -f \"$4\" ] && [ -r \"$4\" ] || exit 1"),
+  )
+  assert_true(blocked_script.contains("no processes started"))
+  assert_true(
+    blocked_script.split("rm -f").to_array()[0].contains("preflight_process"),
+  )
 }
 
 ///|
@@ -121,7 +189,7 @@ test "supervisor shell script quotes command arguments" {
     processes: [
       {
         ..valid.processes[0],
-        command: ["python3", "bridge with space.py", "value'quoted"],
+        command: ["/bin/sh", "bridge with space", "value'quoted"],
       },
       valid.processes[1],
     ],
@@ -129,6 +197,6 @@ test "supervisor shell script quotes command arguments" {
   let script = @supervisor.shell_script(
     @supervisor.plan(runtime, snapshot_ready=true),
   )
-  assert_true(script.contains("'bridge with space.py'"))
+  assert_true(script.contains("'bridge with space'"))
   assert_true(script.contains("'value'\"'\"'quoted'"))
 }

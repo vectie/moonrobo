@@ -1,0 +1,14 @@
+import {
+  "vectie/moonrobo/src/e1_actor" @actor,
+  "vectie/moonrobo/src/e1_actor_sdk_shadow" @shadow,
+  "vectie/moonrobo/src/sdk_e1_low" @low,
+  "moonbitlang/core/env",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/http",
+  "moonbitlang/async/socket",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native"

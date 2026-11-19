@@ -1,6 +1,60 @@
 # SDK E1 Bridge Helpers
 
-This folder contains the first sidecar scaffold for the Noetix E1 SDK reference.
+The product runtime now uses the parallel **native MoonBit** bridge by default.
+The two Python files in this directory are preserved as an explicit
+`python-reference` mode for later differential checks. No Python source was
+removed and no SDK, self-check, test or device operation was run for this change.
+
+The real native executable is built from `cmd/sdk_e1_native`; it shares its
+implementation with the source entry `src/sdk_e1_native/cli`. Deferred setup:
+
+```text
+moon run --target native scripts/install_sdk_e1_native.mbtx /ABSOLUTE/moonrobo /ABSOLUTE/install-prefix
+```
+
+Configure `MOONROBO_SDK_E1_NATIVE=/ABSOLUTE/install-prefix/bin/moonrobo-sdk-e1-native`
+and `MOONROBO_SDK_E1_LIBRARY=/ABSOLUTE/libmoonrobo_e1.so`, or put the installed
+binary on `PATH`. The native library is the actual E1 SDK C++ adapter, built
+separately with CMake, Eigen, DDS, the architecture's driver libraries and
+yaml-cpp. It does not require the Python SDK binding. See the complete
+[build, configuration and migration record](../../src/sdk_e1_native/MIGRATION.md).
+
+Native fixture and dry-run examples, deferred until checks are resumed:
+
+```text
+moon run src/sdk_e1_native/cli --target native -- read --once
+moon run src/sdk_e1_native/cli --target native -- write --dry-run --input /ABSOLUTE/command.json
+```
+
+Actual SDK access still requires an explicit live read or write command:
+
+The audited SDK's `HighController::init()` publishes a mode-selection message
+even for a live collector, matching the original Python reference. Only fixture,
+dry-run and metadata/preflight paths avoid SDK initialization/device interaction.
+
+```text
+moonrobo-sdk-e1-native read --live --sdk-root /ABSOLUTE/sdk --library /ABSOLUTE/libmoonrobo_e1.so --output /ABSOLUTE/snapshot.json
+moonrobo-sdk-e1-native write --watch --sdk-root /ABSOLUTE/sdk --library /ABSOLUTE/libmoonrobo_e1.so --input /ABSOLUTE/command.json
+```
+
+The product retains separate collector/writer processes, the normal task-message
+and `control-gated` authorization, and the command outbox. Watch mode skips an
+existing startup command and publishes only later changes. A missing native
+dependency never falls back to Python. Merely constructing a runtime spec does
+not start a process.
+
+For explicit reference comparison, use `backend=PythonReference` in the runtime
+constructors or set `MOONROBO_SDK_E1_BACKEND=python-reference` before generating
+the product runtime spec. `MOONROBO_SDK_E1_REFERENCE_PYTHON` selects its
+interpreter. To inspect either command set without launching it:
+
+```text
+moon run cmd/main --target native -- runtime-sdk-spec examples/noetix-e1 native
+moon run cmd/main --target native -- runtime-sdk-spec examples/noetix-e1 python-reference
+```
+
+The remaining sections document the preserved **Python reference** commands.
+Their fixture paths do not need SDK initialization; their live/write paths do.
 
 The collector emits the snapshot JSON consumed by the MoonBit `src/sdk_e1`
 adapter. It deliberately exposes only read APIs:

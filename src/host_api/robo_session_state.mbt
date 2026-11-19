@@ -1,7 +1,7 @@
 ///|
 pub(all) struct RoboExecutionProof {
-  execution_count : Int
-  verified_count : Int
+  execution_count : Int32
+  verified_count : Int32
   latest_snapshot_id : String
   latest : TaskExecutionProofRecord?
 } derive(Debug, Eq, ToJson, FromJson)

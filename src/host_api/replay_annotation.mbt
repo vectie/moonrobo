@@ -19,7 +19,7 @@ pub(all) struct ReplayAnnotationResponse {
 ///|
 pub(all) struct ReplayAnnotationListResponse {
   session_id : String
-  annotation_count : Int
+  annotation_count : Int32
   annotations : Array[@annotation.ReplayAnnotation]
 } derive(Debug, Eq, ToJson, FromJson)
 

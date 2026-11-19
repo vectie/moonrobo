@@ -1,0 +1,17 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/cmd/e1_actor"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+type Inputs derive(@json.FromJson)
+
+// Type aliases
+
+// Traits

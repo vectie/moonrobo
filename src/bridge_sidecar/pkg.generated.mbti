@@ -18,7 +18,13 @@ pub fn default_command_path_for_workspace_root(String) -> String
 
 pub fn default_python_path() -> String
 
+pub fn default_sdk_e1_backend() -> SdkE1Backend
+
 pub fn default_sdk_e1_collector_path() -> String
+
+pub fn default_sdk_e1_library_path(String) -> String
+
+pub fn default_sdk_e1_native_path() -> String
 
 pub fn default_sdk_e1_sidecar_path() -> String
 
@@ -30,15 +36,21 @@ pub fn default_snapshot_path() -> String
 
 pub fn default_snapshot_path_for_workspace_root(String) -> String
 
-pub fn runtime_spec_for_profile(@core.RobotProfile, String, sidecar_path? : String, collector_path? : String, writer_path? : String, python_path? : String, sdk_root? : String, host? : String, port? : Int, snapshot_path? : String, command_path? : String) -> PhysicalRuntimeSpec
+pub fn reference_sdk_e1_collector_path() -> String
+
+pub fn reference_sdk_e1_writer_path() -> String
+
+pub fn runtime_spec_for_profile(@core.RobotProfile, String, sidecar_path? : String, collector_path? : String, writer_path? : String, python_path? : String, backend? : SdkE1Backend, library_path? : String, sdk_root? : String, host? : String, port? : Int, snapshot_path? : String, command_path? : String) -> PhysicalRuntimeSpec
 
 pub fn runtime_spec_json(PhysicalRuntimeSpec, indent? : Int) -> String
 
-pub fn sdk_e1_collector_command(collector_path? : String, python_path? : String, sdk_root? : String, snapshot_path? : String, interval_ms? : Int) -> Array[String]
+pub fn sdk_e1_backend(String) -> SdkE1Backend?
+
+pub fn sdk_e1_collector_command(collector_path? : String, python_path? : String, backend? : SdkE1Backend, library_path? : String, sdk_root? : String, snapshot_path? : String, interval_ms? : Int) -> Array[String]
 
 pub fn sdk_e1_command(String, sidecar_path? : String, host? : String, port? : Int, snapshot_path? : String, command_path? : String, mode? : String) -> Array[String]
 
-pub fn sdk_e1_writer_command(writer_path? : String, python_path? : String, sdk_root? : String, command_path? : String, poll_ms? : Int, dry_run? : Bool) -> Array[String]
+pub fn sdk_e1_writer_command(writer_path? : String, python_path? : String, backend? : SdkE1Backend, library_path? : String, sdk_root? : String, command_path? : String, poll_ms? : Int, dry_run? : Bool) -> Array[String]
 
 pub fn sidecar_id(@core.RobotProfile) -> String
 
@@ -111,6 +123,11 @@ pub(all) struct RuntimeProcessSpec {
   health_path : String
   depends_on : Array[String]
   supervision : SupervisionPolicy
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum SdkE1Backend {
+  Native
+  PythonReference
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum SidecarState {

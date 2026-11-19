@@ -1,0 +1,47 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/policy_task"
+
+import {
+  "moonbitlang/async/http",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/policy_skills",
+}
+
+// Values
+pub async fn cancel(String, String) -> @policy_skills.Execution
+
+pub async fn fetch_catalog(String) -> Advertisement
+
+pub fn parse_proposal(String) -> @policy_skills.Proposal raise
+
+pub fn planner_prompt(Advertisement, String) -> String
+
+pub fn request(Advertisement, @policy_skills.Proposal, request_id~ : String, ttl_ms~ : Int) -> @policy_skills.Request raise
+
+pub async fn submit(String, @policy_skills.Request) -> @policy_skills.Execution
+
+// Errors
+
+// Types and methods
+pub(all) struct Advertisement {
+  now_ms : Int64
+  catalog : @policy_skills.Catalog
+} derive(ToJson, @json.FromJson)
+pub fn Advertisement::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Advertisement::to_json(Self) -> Json
+
+pub(all) struct Reply {
+  code : Int
+  body : Json
+}
+
+pub struct Service {
+  // private fields
+}
+pub fn Service::dispatch(Self, String, String, Json) -> Reply
+pub fn Service::new(@policy_skills.Supervisor, () -> Int64) -> Self
+pub async fn Service::serve(Self, @http.Server) -> Unit
+
+// Type aliases
+
+// Traits

@@ -12,6 +12,8 @@ pub fn plan(@bridge_sidecar.PhysicalRuntimeSpec, snapshot_ready? : Bool) -> Supe
 
 pub fn plan_json(SupervisorPlan, indent? : Int) -> String
 
+pub fn resolve_executable(String, cwd? : String, search_path? : String) -> String?
+
 pub fn shell_script(SupervisorPlan, wait_attempts? : Int, sleep_seconds? : String, log_path? : String) -> String
 
 // Errors
@@ -39,6 +41,7 @@ pub(all) struct SupervisorPlan {
 
 pub(all) enum SupervisorProcessState {
   MissingCommand
+  MissingRuntimeDependency
   ReadyToStart
   WaitingForDependency
   WaitingForSnapshot
