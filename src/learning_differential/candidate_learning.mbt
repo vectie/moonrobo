@@ -75,7 +75,12 @@ fn rows(
   width : Int32,
 ) -> Array[Array[Double]] raise {
   let value = get(input, name)
-  guard value.shape.last() == Some(width) && value.values.length() % width == 0 else {
+  let matrix = width == 9 &&
+    value.shape.length() >= 2 &&
+    value.shape[value.shape.length() - 2] == 3 &&
+    value.shape.last() == Some(3)
+  guard (value.shape.last() == Some(width) || matrix) &&
+    value.values.length() % width == 0 else {
     fail("fixed input last dimension mismatch: " + name)
   }
   Array::makei(value.values.length() / width, i => {
