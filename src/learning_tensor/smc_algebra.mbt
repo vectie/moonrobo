@@ -8,6 +8,15 @@ pub fn Backend::has_smc_algebra(self : Backend) -> Bool {
 }
 
 ///|
+#borrow(backend)
+extern "c" fn has_smc_source_order_native(backend : Backend) -> Int32 = "mr_tensor_has_smc_source_order"
+
+///|
+pub fn Backend::has_smc_source_order(self : Backend) -> Bool {
+  has_smc_source_order_native(self) != 0
+}
+
+///|
 #borrow(backend, x)
 extern "c" fn smc_unary_native(
   backend : Backend,
@@ -38,6 +47,30 @@ pub fn Tensor::rotation_vector_smc(self : Tensor) -> Tensor raise TensorError {
 /// Preserve SMC's subtraction/division order for [B,33] domain parameters.
 pub fn Tensor::normalize_xi_smc(self : Tensor) -> Tensor raise TensorError {
   let native = smc_unary_native(self.backend, self.native, 1)
+  self.backend.check()
+  { backend: self.backend, native, }
+}
+
+///|
+/// Source-order SMC Rodrigues expression with native ATen autograd.
+pub fn Tensor::rotation_matrix_smc(self : Tensor) -> Tensor raise TensorError {
+  let native = smc_unary_native(self.backend, self.native, 2)
+  self.backend.check()
+  { backend: self.backend, native, }
+}
+
+///|
+/// Source-order projected heading with native ATen autograd.
+pub fn Tensor::heading_matrix_smc(self : Tensor) -> Tensor raise TensorError {
+  let native = smc_unary_native(self.backend, self.native, 3)
+  self.backend.check()
+  { backend: self.backend, native, }
+}
+
+///|
+/// Corrected projected heading used by the aligned MDP, with ATen source order.
+pub fn Tensor::heading_matrix_stable(self : Tensor) -> Tensor raise TensorError {
+  let native = smc_unary_native(self.backend, self.native, 4)
   self.backend.check()
   { backend: self.backend, native, }
 }

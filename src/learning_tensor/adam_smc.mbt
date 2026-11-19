@@ -8,7 +8,8 @@ extern "c" fn smc_adam_native(
 ) -> Int32 = "mr_adam_step_smc_call"
 
 ///|
-/// Optional original-SMC foreach arithmetic for dense Float32 CUDA parameters.
+/// Optional Python Adam arithmetic for dense Float32 CPU/CUDA parameters:
+/// single-tensor on CPU, foreach on CUDA.
 /// Checks the finite L2 norm before modifying gradients or optimizer state.
 /// Keeps LibTorch checkpoint state; refuses unsupported optimizer options.
 pub fn Adam::step_smc(

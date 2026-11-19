@@ -102,6 +102,7 @@ pub fn Backend::has_linear(Self) -> Bool
 pub fn Backend::has_ln_silu_tail(Self) -> Bool
 pub fn Backend::has_native_cross(Self) -> Bool
 pub fn Backend::has_smc_algebra(Self) -> Bool
+pub fn Backend::has_smc_source_order(Self) -> Bool
 pub fn Backend::has_split_sections(Self) -> Bool
 pub fn Backend::load_compiled_block(Self, String, cuda_device~ : Int) -> CompiledBlock raise TensorError
 pub fn Backend::nccl_connect(Self, Bytes, rank~ : Int, world_size~ : Int, cuda_device~ : Int, timeout_ms? : Int) -> Collective raise TensorError
@@ -251,6 +252,7 @@ pub fn Tensor::cross_submitted(Self, Self) -> Self raise TensorError
 pub fn Tensor::cuda_device(Self) -> Int raise TensorError
 pub fn Tensor::detach(Self) -> Self raise TensorError
 pub fn Tensor::div(Self, Self) -> Self raise TensorError
+pub fn Tensor::divide_scalar(Self, Double) -> Self raise TensorError
 pub fn Tensor::dtype(Self) -> DType raise TensorError
 pub fn Tensor::elu(Self) -> Self raise TensorError
 pub fn Tensor::exp(Self) -> Self raise TensorError
@@ -263,6 +265,8 @@ pub fn Tensor::gradient(Self) -> Self raise TensorError
 pub fn Tensor::gradient_values(Self) -> Array[Double] raise TensorError
 pub fn Tensor::greater(Self, Self) -> Self raise TensorError
 pub fn Tensor::group_sum(Self, Self, Int) -> Self raise TensorError
+pub fn Tensor::heading_matrix_smc(Self) -> Self raise TensorError
+pub fn Tensor::heading_matrix_stable(Self) -> Self raise TensorError
 pub fn Tensor::index_select(Self, Self, axis? : Int) -> Self raise TensorError
 pub fn Tensor::layer_norm(Self, Self, Self, eps? : Double) -> Self raise TensorError
 pub fn Tensor::layer_norm_submitted(Self, Self, Self, eps? : Double) -> Self raise TensorError
@@ -277,9 +281,11 @@ pub fn Tensor::maximum(Self, Self) -> Self raise TensorError
 pub fn Tensor::mean(Self) -> Self raise TensorError
 pub fn Tensor::mean_dim(Self, Int, keepdim? : Bool) -> Self raise TensorError
 pub fn Tensor::mul(Self, Self) -> Self raise TensorError
+pub fn Tensor::multiply_scalar(Self, Double) -> Self raise TensorError
 pub fn Tensor::muon_update(Self, Self, Double) -> Unit raise TensorError
 pub fn Tensor::narrow(Self, Int, Int, Int) -> Self raise TensorError
 pub fn Tensor::native_cross(Self, Self) -> Self raise TensorError
+pub fn Tensor::negate(Self) -> Self raise TensorError
 pub fn Tensor::new_zeros(Self, Array[Int]) -> Self raise TensorError
 pub fn Tensor::normalize_xi_smc(Self) -> Self raise TensorError
 pub fn Tensor::population_variance_dim(Self, Int, keepdim? : Bool) -> Self raise TensorError
@@ -287,6 +293,7 @@ pub fn Tensor::pullback(Self, Self, Self, retain_graph? : Bool) -> Self raise Te
 pub fn Tensor::randperm(Self, Int) -> Self raise TensorError
 pub fn Tensor::relu(Self) -> Self raise TensorError
 pub fn Tensor::reshape(Self, Array[Int]) -> Self raise TensorError
+pub fn Tensor::rotation_matrix_smc(Self) -> Self raise TensorError
 pub fn Tensor::rotation_vector_smc(Self) -> Self raise TensorError
 pub fn Tensor::sample_with_replacement(Self, Int) -> Self raise TensorError
 pub fn Tensor::select_where(Self, Self, Self) -> Self raise TensorError
@@ -304,6 +311,7 @@ pub fn Tensor::sqrt(Self) -> Self raise TensorError
 pub fn Tensor::square(Self) -> Self raise TensorError
 pub fn Tensor::stop_gradient(Self) -> Self raise TensorError
 pub fn Tensor::sub(Self, Self) -> Self raise TensorError
+pub fn Tensor::subtract_from_scalar(Self, Double) -> Self raise TensorError
 pub fn Tensor::sum(Self) -> Self raise TensorError
 pub fn Tensor::sum_dim(Self, Int, keepdim? : Bool) -> Self raise TensorError
 pub fn Tensor::tanh(Self) -> Self raise TensorError

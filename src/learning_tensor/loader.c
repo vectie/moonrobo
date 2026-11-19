@@ -473,6 +473,11 @@ MOONBIT_FFI_EXPORT int32_t mr_nccl_control_call(Backend *b, NativeCollective *c,
 #include "adam_smc_loader.inc"
 #include "operator_diagnostics_loader.inc"
 #include "smc_algebra_loader.inc"
+MOONBIT_FFI_EXPORT int32_t mr_tensor_has_smc_source_order(Backend *b) {
+  return dlsym(b->library,"mr_tensor_smc_exp_v1") &&
+    dlsym(b->library,"mr_tensor_smc_heading_v1") &&
+    dlsym(b->library,"mr_tensor_stable_heading_v1");
+}
 #include "native_cross_loader.inc"
 #include "compact_rotation_loader.inc"
 #include "fused_rotation_loader.inc"

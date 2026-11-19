@@ -279,6 +279,10 @@ extern "C" void *mr_tensor_scalar_op(void *p, int op, double a, double b, char *
     auto &x = unbox(p);
     if (op == 0) return x * a + b;
     if (op == 1 && a <= b) return x.clamp(a, b);
+    if (op == 2 && std::isfinite(a) && a != 0) return x / a;
+    if (op == 3 && std::isfinite(a)) return a - x;
+    if (op == 4) return -x;
+    if (op == 5 && std::isfinite(a)) return x * a;
     throw std::invalid_argument("invalid tensor scalar operation");
   }, err, cap);
 }

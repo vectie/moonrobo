@@ -1,5 +1,5 @@
-// Optional original-SMC Adam route. Mirrors the noncapturable, float32 CUDA,
-// no-weight-decay foreach path in PyTorch v2.11 torch/optim/adam.py. The C++
+// Optional original-SMC Adam route. Mirrors noncapturable Float32 Adam:
+// Python's single-tensor CPU path and foreach CUDA path. The C++
 // optimizer state remains authoritative for checkpoint/audit compatibility.
 extern "C" int mr_adam_step_smc_v1(void* pointer,double max_norm,double max_value,char* err,int cap) {
   return status([&] {
@@ -14,9 +14,11 @@ extern "C" int mr_adam_step_smc_v1(void* pointer,double max_norm,double max_valu
       throw std::invalid_argument("SMC Adam requires no AMSGrad or weight decay");
     std::vector<torch::Tensor> gradients;
     for(const auto& p:a.parameters) {
-      if(!p.is_cuda()||p.scalar_type()!=torch::kFloat32||!p.grad().defined()||
+      if((!p.is_cuda()&&!p.device().is_cpu())||p.scalar_type()!=torch::kFloat32||!p.grad().defined()||
           p.grad().is_sparse()||p.grad().sizes()!=p.sizes()||p.grad().scalar_type()!=p.scalar_type())
-        throw std::invalid_argument("SMC Adam requires dense CUDA float32 gradients");
+        throw std::invalid_argument("SMC Adam requires dense CPU/CUDA float32 gradients");
+      if(p.device()!=a.parameters.front().device())
+        throw std::invalid_argument("SMC Adam requires one device per optimizer");
       gradients.push_back(p.grad());
     }
     // Reject before mutating gradients, parameters, moments or step counters.
@@ -48,10 +50,20 @@ extern "C" int mr_adam_step_smc_v1(void* pointer,double max_norm,double max_valu
       }
       auto& state=static_cast<torch::optim::AdamParamState&>(*states.at(key));
       state.step(state.step()+1);
+      if(p.device().is_cpu()) {
+        state.exp_avg().lerp_(p.grad(),1-beta1);
+        state.exp_avg_sq().mul_(beta2).addcmul_(p.grad(),p.grad(),1-beta2);
+        const auto correction1=1-std::pow(beta1,state.step());
+        const auto correction2=std::sqrt(1-std::pow(beta2,state.step()));
+        const auto denominator=(state.exp_avg_sq().sqrt()/correction2).add_(options.eps());
+        p.addcdiv_(state.exp_avg(),denominator,-options.lr()/correction1);
+        continue;
+      }
       means.push_back(state.exp_avg());variances.push_back(state.exp_avg_sq());
       corrections.emplace_back(std::sqrt(1-std::pow(beta2,state.step())));
       step_sizes.emplace_back(-options.lr()/(1-std::pow(beta1,state.step())));
     }
+    if(means.empty()) return;
     at::_foreach_lerp_(means,gradients,1-beta1);
     at::_foreach_mul_(variances,beta2);
     at::_foreach_addcmul_(variances,gradients,gradients,1-beta2);

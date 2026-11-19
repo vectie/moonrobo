@@ -205,6 +205,45 @@ pub fn Tensor::clamp(
 }
 
 ///|
+/// Scalar division, retaining ATen's division backward rather than multiplying
+/// by a rounded reciprocal. Requires scalar opcode 2 in the native plugin.
+pub fn Tensor::divide_scalar(
+  self : Tensor,
+  divisor : Double,
+) -> Tensor raise TensorError {
+  let native = scalar_op_native(self.backend, self.native, 2, divisor, 0.0)
+  self.backend.check()
+  { backend: self.backend, native, }
+}
+
+///|
+pub fn Tensor::subtract_from_scalar(
+  self : Tensor,
+  value : Double,
+) -> Tensor raise TensorError {
+  let native = scalar_op_native(self.backend, self.native, 3, value, 0.0)
+  self.backend.check()
+  { backend: self.backend, native, }
+}
+
+///|
+pub fn Tensor::negate(self : Tensor) -> Tensor raise TensorError {
+  let native = scalar_op_native(self.backend, self.native, 4, 0.0, 0.0)
+  self.backend.check()
+  { backend: self.backend, native, }
+}
+
+///|
+pub fn Tensor::multiply_scalar(
+  self : Tensor,
+  value : Double,
+) -> Tensor raise TensorError {
+  let native = scalar_op_native(self.backend, self.native, 5, value, 0.0)
+  self.backend.check()
+  { backend: self.backend, native, }
+}
+
+///|
 pub fn Tensor::sigmoid(self : Tensor) -> Tensor raise TensorError {
   self.unary(9)
 }

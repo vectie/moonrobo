@@ -1,5 +1,6 @@
 // Optional ABI-2 operations transcribed from SMC's original ATen expressions.
 // No custom backward, detached learning inputs, or changed precision policy.
+// MIT: Copyright (c) 2026 ETH Zurich, Chong Zhang. See SMC_LICENSE.
 namespace {
 void smc_float(const torch::Tensor &x) {
   if ((!x.device().is_cpu() && !x.device().is_cuda()) ||
@@ -9,6 +10,34 @@ void smc_float(const torch::Tensor &x) {
 torch::Tensor smc_normalize(const torch::Tensor &x) {
   return x / at::linalg_vector_norm(x, 2, {-1}, true).clamp_min(1e-12);
 }
+}
+extern "C" void *mr_tensor_smc_exp_v1(void *input, char *err, int cap) {
+  return tensor([&] {
+    auto &v=unbox(input); smc_float(v);
+    if(v.dim()!=2||v.size(0)<1||v.size(0)>131072||v.size(1)!=3)
+      throw std::invalid_argument("SMC exponential requires [1..131072,3]");
+    auto theta2=(v*v).sum(-1,true);
+    auto theta=torch::sqrt(theta2+1e-12);
+    auto small=theta2<1e-8;
+    auto a=torch::where(small,1-theta2/6,torch::sin(theta)/theta);
+    auto b=torch::where(small,0.5-theta2/24,(1-torch::cos(theta))/(theta2+1e-12));
+    auto parts=v.unbind(-1);
+    auto x=parts[0],y=parts[1],z=parts[2],o=torch::zeros_like(x);
+    auto k=torch::stack({o,-z,y,z,o,-x,-y,x,o},-1).reshape({v.size(0),3,3});
+    auto eye=torch::eye(3,v.options().requires_grad(false)).expand_as(k);
+    return eye+a.unsqueeze(-1)*k+b.unsqueeze(-1)*torch::matmul(k,k);
+  },err,cap);
+}
+extern "C" void *mr_tensor_smc_heading_v1(void *input, char *err, int cap) {
+  return tensor([&] {
+    auto &r=unbox(input); smc_float(r);
+    if(r.dim()!=3||r.size(0)<1||r.size(0)>131072||r.size(1)!=3||r.size(2)!=3)
+      throw std::invalid_argument("SMC heading requires [1..131072,3,3]");
+    auto fx=r.select(-2,0).select(-1,0),fy=r.select(-2,1).select(-1,0);
+    auto n=torch::sqrt(fx*fx+fy*fy+1e-9);
+    auto c=fx/n,s=fy/n,o=torch::zeros_like(c),one=torch::ones_like(c);
+    return torch::stack({c,-s,o,s,c,o,o,o,one},-1).reshape({r.size(0),3,3});
+  },err,cap);
 }
 extern "C" void *mr_tensor_smc_rotvec_v1(void *input, char *err, int cap) {
   return tensor([&] {
@@ -36,6 +65,20 @@ extern "C" void *mr_tensor_smc_rotvec_v1(void *input, char *err, int cap) {
     auto half=torch::atan2(n,w);
     auto scale=torch::where(n<1e-6,2.0/w.clamp_min(1e-6),2*half/(n+1e-12));
     return v*scale;
+  },err,cap);
+}
+extern "C" void *mr_tensor_stable_heading_v1(void *input, char *err, int cap) {
+  return tensor([&] {
+    auto &r=unbox(input); smc_float(r);
+    if(r.dim()!=3||r.size(0)<1||r.size(0)>131072||r.size(1)!=3||r.size(2)!=3)
+      throw std::invalid_argument("stable heading requires [1..131072,3,3]");
+    auto fx=r.select(-2,0).select(-1,0),fy=r.select(-2,1).select(-1,0);
+    auto vertical=fx.square()+fy.square()<1e-12;
+    fx=torch::where(vertical,r.select(-2,1).select(-1,1),fx);
+    fy=torch::where(vertical,-r.select(-2,0).select(-1,1),fy);
+    auto n=torch::sqrt(fx*fx+fy*fy).clamp_min(1e-12);
+    auto c=fx/n,s=fy/n,o=torch::zeros_like(c),one=torch::ones_like(c);
+    return torch::stack({c,-s,o,s,c,o,o,o,one},-1).reshape({r.size(0),3,3});
   },err,cap);
 }
 extern "C" void *mr_tensor_smc_xi_v1(void *input, char *err, int cap) {
