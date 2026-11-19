@@ -11,6 +11,18 @@ durable robot data artifacts.
 
 ## Reading Map
 
+- [E1 commissioning findings](E1_COMMISSIONING_FINDINGS.md): hardware preparation,
+  January SDK/decoder fixes, ankle diagnostics, failed attempts, successful
+  suspended elbow trials, live website and remaining handback limitations.
+- [E1 deployment tools](../deploy/e1/README.md): read-only telemetry, portable
+  controller, explicit stage launcher and loopback-only regression tests.
+- [LunaKine deployment plan](LUNAKINE_DEPLOYMENT_PLAN.md) and
+  [implementation history](LUNAKINE_IMPLEMENTATION_PLAN.md): LibTorch/CUDA
+  training, DGX Spark LunaFlux/MiniCPM and separate Ascend actor inference.
+- [Deferred Ascend training](ASCEND_BACKEND_PLAN.md) and
+  [deferred LunaFlux training](LUNAFLUX_TRAINING_BACKEND_PLAN.md): alternatives
+  outside the selected actor-inference split.
+
 - [Compare measurements by recorded mode](offline-state-conditioned-distribution.md):
   contrast same-row load/current distributions across repeated state codes, inspect
   undeclared codes, and export one explicit group for observation reanalysis.

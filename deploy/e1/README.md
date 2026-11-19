@@ -30,6 +30,10 @@ absolute Python path. MoonBit async is pinned at 0.20.2 in the scripts.
 Packet inspection additionally needs `tcpdump`, `iproute2`, the compiled
 status decoder library and capture privileges. SDK-free decoder/guard tests:
 
+The [SDK migration/build notes](../../src/sdk_e1_native/MIGRATION.md) describe
+the decoder and vendor-adapter build variants. These tests need neither the
+vendor archive nor a robot:
+
 ```sh
 cmake -S src/sdk_e1_native -B /tmp/e1-status-tests -DMOONROBO_E1_STATUS_TESTS_ONLY=ON
 cmake --build /tmp/e1-status-tests
@@ -86,6 +90,10 @@ Shadow accepts hold/drums/raised-drums and creates no command publisher.
 Shadow motion feedback is explicitly simulated while other telemetry remains
 measured; this validates the target path, not actual elbow tracking. Live
 `elbow` requires a fresh hold/handback receipt through `HANDBACK_OR_DASH`.
+After reviewing a successful real hold and observing actual handheld/factory
+control, `confirm_handback.mbtx HOLD_RUN OPERATOR OBSERVATION NEW_RECEIPT`
+records that operator observation. It does not perform the physical check and
+refuses an expired or unsuccessful hold.
 Other stages retain the deployed suspended commissioning behavior; accepting
 their arguments does not establish physical support or handback.
 

@@ -28,6 +28,14 @@ MoonRobo is built around:
 The first hardware reference target is the local Noetix E1 SDK in `../sdk`.
 The first interface reference is the sibling robot canvas work in `../olu`.
 
+The [E1 commissioning findings](docs/E1_COMMISSIONING_FINDINGS.md) record the
+January SDK fixes and supervised two-elbow hardware trials. The
+[E1 deployment runbook](deploy/e1/README.md) includes read-only live mirroring
+and isolated regression tests. The selected
+[LunaKine plan](docs/LUNAKINE_DEPLOYMENT_PLAN.md) keeps LibTorch/CUDA training
+in MoonRobo, LunaFlux/MiniCPM on DGX Spark and actor inference on the separate
+Ascend host; physical actor qualification remains separate from the elbow demo.
+
 ## Product Boundary
 
 MoonRobo is not the scheduler, model runtime, durable knowledge store, or proxy

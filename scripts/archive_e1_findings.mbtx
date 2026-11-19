@@ -1,0 +1,169 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+fn select(value : Json, keys : Array[String]) -> Json {
+  let selected : Map[String, Json] = Map([])
+  if value is Object(fields) {
+    for key in keys {
+      if fields.get(key) is Some(item) {
+        selected[key] = item
+      }
+    }
+  }
+  Json(selected)
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [archives, output] else {
+    fail("usage: ARCHIVE_PARENT NEW_SANITIZED_REPORT")
+  }
+  let suspended = "e1-suspended-elbow-20261119-umh6vXEg/"
+  let drums = "e1-drums-20261119-ikNWujF2/"
+  let raised = "e1-raised-drums-20261119-JCpVzHMS/"
+  let runs = [
+    (
+      suspended + "real-elbow90",
+      "single-initial",
+      "following stop; accidental 1-degree setting",
+    ),
+    (suspended + "real-elbow90-2", "single-restored", "following stop"),
+    (suspended + "real-elbow90-slow", "single-slow", "following stop"),
+    (
+      suspended + "real-elbow90-clock",
+      "robot-clock-probe",
+      "freshness stop before stroke",
+    ),
+    (
+      suspended + "real-elbow90-reset-20261119-1742",
+      "single-reset",
+      "freshness stop",
+    ),
+    (
+      suspended + "real-elbow90-pipeline-20261119",
+      "single-pipeline",
+      "completed",
+    ),
+    (suspended + "real-elbow90-repeat-20261119", "single-repeat", "completed"),
+    (drums + "real-drums", "drums-20deg", "right-elbow following stop"),
+    (drums + "real-drums-small", "drums-10deg", "completed"),
+    (
+      drums + "real-drums-repeat-20261119-1826",
+      "drums-retry-stale",
+      "freshness stop before stroke",
+    ),
+    (
+      drums + "real-drums-repeat2-20261119-1828",
+      "drums-10deg-repeat",
+      "completed",
+    ),
+    (
+      raised + "live-shadow",
+      "raised-shadow-initial",
+      "packet continuity stop; no command publisher",
+    ),
+    (
+      raised + "live-shadow2",
+      "raised-shadow-fixed",
+      "completed; simulated elbow feedback; no command publisher",
+    ),
+    (raised + "real-raised-drums", "raised-powered", "completed"),
+    (
+      raised + "real-raised-repeat-20261119-1934",
+      "raised-powered-repeat",
+      "completed",
+    ),
+  ]
+  let reports : Array[Json] = []
+  for (relative, label, outcome) in runs {
+    let hashes : Map[String, Json] = Map([])
+    let summaries : Map[String, Json] = Map([])
+    for
+      file in [
+        "transport.json", "planner.json", "wire-audit.json", "measured-motion.json",
+        "stroke-feedback.json", "wire.pcap", "targets.ndjson", "status.ndjson",
+      ] {
+      let path = archives + "/" + relative + "/" + file
+      if !@fs.exists(path) {
+        continue
+      }
+      let (code, stdout) = @process.collect_stdout("shasum", ["-a", "256", path])
+      guard code == 0 else { fail("hash failed: " + relative + "/" + file) }
+      hashes[file] = Json(stdout.text().split(" ").next().unwrap().to_owned())
+      if file == "transport.json" {
+        summaries[file] = select(@fs.read_file(path).json(), [
+          "stage", "profile", "timestamp_domain", "physical_handback_verified", "operator_confirmed_factory_control",
+          "action", "axes", "mode_request", "mode_requests_sent", "motor_samples_sent",
+          "live", "participant_deleted", "active_seconds",
+        ])
+      } else if file == "planner.json" {
+        summaries[file] = select(@fs.read_file(path).json(), [
+          "stage", "profile", "feedback", "software_stage_completed", "physical_handback_verified",
+          "frames", "guarded_updates", "packets", "active_ms", "max_fixed_target_change",
+          "moving_slots", "max_leg_feedback_change_deg", "max_other_feedback_change_deg",
+          "reference_wait_ticks", "cleared_left_spikes", "cleared_right_only_spikes",
+        ])
+      } else if file == "wire-audit.json" {
+        summaries[file] = select(@fs.read_file(path).json(), [
+          "passed", "motor_samples", "motor_records_checked", "mode_requests", "duplicate_retransmissions",
+          "duration_ms", "expected_no_commands", "action", "axes", "max_fixed_target_change_deg",
+          "elbow_min_offset_deg", "elbow_max_offset_deg", "elbow_final_offset_deg",
+          "right_min_offset_deg", "right_final_offset_deg", "left_strokes", "right_strokes",
+          "left_absolute_min", "right_absolute_min", "left_drop", "right_drop", "physical_handback_verified",
+        ])
+      } else if file == "measured-motion.json" {
+        summaries[file] = select(@fs.read_file(path).json(), [
+          "active_telemetry_packets", "post_disconnect_3s_packets", "initial_elbow_deg",
+          "initial_right_elbow_deg", "commanded_elbow_min_offset_deg", "commanded_elbow_last_offset_deg",
+          "measured_elbow_min_offset_deg", "measured_elbow_last_active_offset_deg",
+          "measured_elbow_post_disconnect_3s_offset_deg", "measured_right_min_offset_deg",
+          "measured_right_last_active_offset_deg", "measured_right_post_disconnect_3s_offset_deg",
+          "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot",
+        ])
+      } else if file == "stroke-feedback.json" {
+        summaries[file] = select(@fs.read_file(path).json(), ["strokes"])
+      }
+    }
+    guard hashes.length() > 0 else { fail("missing archived run: " + relative) }
+    reports.push({
+      "label": label,
+      "archive_relative": relative,
+      "outcome": outcome,
+      "artifact_sha256": Json(hashes),
+      "summaries": Json(summaries),
+    })
+  }
+  let snapshots : Map[String, Json] = Map([])
+  for archive in [suspended, drums, raised] {
+    let path = archives + "/" + archive + "SHA256SUMS"
+    if @fs.exists(path) {
+      let (code, stdout) = @process.collect_stdout("shasum", ["-a", "256", path])
+      guard code == 0 else { fail("source checksum manifest unavailable") }
+      snapshots[archive + "SHA256SUMS"] = Json(
+        stdout.text().split(" ").next().unwrap().to_owned(),
+      )
+    }
+  }
+  let result : Json = {
+    "format": "moonrobo.e1-commissioning-evidence.v1",
+    "recorded_date": "2026-11-19",
+    "scope": "Derived archive summaries and hashes; raw captures remain external. No robot or DDS connection is opened.",
+    "interpretation": "Fixed command records do not prove physically stationary legs. Raw ankle maxima include spikes. Reserved slot 23 is not a joint angle. Software completion does not prove physical handback.",
+    "source_checksum_manifest_sha256": Json(snapshots),
+    "source_scope": "These checksum manifests identify the retained deployment snapshots, not a claim that the final source revision was used by every earlier failed run. The maintained portable sources are separately versioned by Git.",
+    "runs": reports,
+  }
+  @fs.write_file(
+    output,
+    result.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+  )
+}

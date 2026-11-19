@@ -1,0 +1,1473 @@
+{
+  "format": "moonrobo.e1-commissioning-evidence.v1",
+  "recorded_date": "2026-11-19",
+  "scope": "Derived archive summaries and hashes; raw captures remain external. No robot or DDS connection is opened.",
+  "interpretation": "Fixed command records do not prove physically stationary legs. Raw ankle maxima include spikes. Reserved slot 23 is not a joint angle. Software completion does not prove physical handback.",
+  "source_checksum_manifest_sha256": {
+    "e1-suspended-elbow-20261119-umh6vXEg/SHA256SUMS": "b01c8fbcf63544843e54588481098b6c625e0a3a1364030c08aca959fbaf2cde",
+    "e1-drums-20261119-ikNWujF2/SHA256SUMS": "81ec8386cb9d2493ee40f46fc2852b8d31f85589475453140abe57e60e81d5dc",
+    "e1-raised-drums-20261119-JCpVzHMS/SHA256SUMS": "355f080ba59f06c041bbf5f297f15e91572dd1c51183ffd4b8002cb611965e60"
+  },
+  "source_scope": "These checksum manifests identify the retained deployment snapshots, not a claim that the final source revision was used by every earlier failed run. The maintained portable sources are separately versioned by Git.",
+  "runs": [
+    {
+      "label": "single-initial",
+      "archive_relative": "e1-suspended-elbow-20261119-umh6vXEg/real-elbow90",
+      "outcome": "following stop; accidental 1-degree setting",
+      "artifact_sha256": {
+        "transport.json": "2fbf299a54e0e9d7c8d84f3d07b382102ceed53b4ba452ad0b5c20f09c74696a",
+        "wire-audit.json": "8ff79706e2569ab6a908d963adfbf6551072f4e9d519e4f45325a06e5572354b",
+        "measured-motion.json": "e28e227e30366ecdc1977c77d5c6d02f13d183f1583806d521b6d3db23c9dba3",
+        "wire.pcap": "d40acc01504500d1b3d151d7e0e07ad7980fbdf7ab297817af128d860de4b88a",
+        "targets.ndjson": "67d8bee528a5d408dcd4f24de22f4562748cd8e80b6142a34688f0a343dd4fa3",
+        "status.ndjson": "5ff3837dac0aa406fd738ef93531537ad588fe38e8e0679f59cbc5f1bcd96728"
+      },
+      "summaries": {
+        "transport.json": {
+          "stage": "elbow90",
+          "profile": "suspended",
+          "physical_handback_verified": false,
+          "operator_confirmed_factory_control": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "mode_request": 2,
+          "mode_requests_sent": 1,
+          "motor_samples_sent": 2174,
+          "live": true,
+          "participant_deleted": true,
+          "active_seconds": 4.500026536996302
+        },
+        "wire-audit.json": {
+          "passed": true,
+          "motor_samples": 2174,
+          "motor_records_checked": 52176,
+          "mode_requests": [
+            2
+          ],
+          "duplicate_retransmissions": 0,
+          "duration_ms": 4499.842,
+          "expected_no_commands": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "elbow_min_offset_deg": -2.955197589452459,
+          "elbow_max_offset_deg": 0,
+          "elbow_final_offset_deg": -2.955197589452459,
+          "physical_handback_verified": false
+        },
+        "measured-motion.json": {
+          "active_telemetry_packets": 1562,
+          "post_disconnect_3s_packets": 1038,
+          "initial_elbow_deg": -1.8906510037728896,
+          "commanded_elbow_min_offset_deg": -2.9551975894524585,
+          "commanded_elbow_last_offset_deg": -2.9551975894524585,
+          "measured_elbow_min_offset_deg": -1.9233812702755906,
+          "measured_elbow_last_active_offset_deg": -1.9233812702755906,
+          "measured_elbow_post_disconnect_3s_offset_deg": -1.8140982435553865,
+          "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": [
+            0.1529962374082856,
+            0.8086943977295097,
+            0.021856605344040804,
+            1.9233812702755906,
+            0,
+            1.5955321901149786,
+            0.6557528018345842,
+            3.6063945232800925,
+            0.17485284275232643,
+            5.144001428351231,
+            17.181201385099733,
+            0.17485284275232643,
+            1.2895397152984074,
+            0.17485284275232643,
+            0.10928302672020401,
+            0.021856605344040804,
+            1.5737302262842978,
+            0.21856605344040803,
+            3.475254891215848,
+            1.2895943568117674,
+            5.182283714711879,
+            9.582259851107532,
+            0.17485284275232643,
+            716.1972439135291
+          ]
+        }
+      }
+    },
+    {
+      "label": "single-restored",
+      "archive_relative": "e1-suspended-elbow-20261119-umh6vXEg/real-elbow90-2",
+      "outcome": "following stop",
+      "artifact_sha256": {
+        "transport.json": "aef165dceabc41dacfd32ed033129852ea4bedf97be10bb6f49981fe253a60c4",
+        "wire-audit.json": "ae8e1139b085221de277865319dfb1b7422afb97ee92b9feb70b6380d50da0b9",
+        "measured-motion.json": "7b1bd4da3f969f8eae1f6c6154882d377e0df42645fe5e1939a700b0f806a8bd",
+        "wire.pcap": "35bad4c9cab4cc06aa4a8432d92b1a485128914fd5f468f736b8e1d202792c3a",
+        "targets.ndjson": "f788662ac63501ab2516856ddfde2dca46456d107b1a6d72e8bfd26a59046af3",
+        "status.ndjson": "0a6b2fd9833e5873b27064c6789766777f89a65ad54ad10c035eec201c62ce53"
+      },
+      "summaries": {
+        "transport.json": {
+          "stage": "elbow90",
+          "profile": "suspended",
+          "physical_handback_verified": false,
+          "operator_confirmed_factory_control": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "mode_request": 2,
+          "mode_requests_sent": 1,
+          "motor_samples_sent": 4619,
+          "live": true,
+          "participant_deleted": true,
+          "active_seconds": 9.539287589002925
+        },
+        "wire-audit.json": {
+          "passed": true,
+          "motor_samples": 4619,
+          "motor_records_checked": 110856,
+          "mode_requests": [
+            2
+          ],
+          "duplicate_retransmissions": 0,
+          "duration_ms": 9539.488,
+          "expected_no_commands": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "elbow_min_offset_deg": -16.75388874191848,
+          "elbow_max_offset_deg": 0,
+          "elbow_final_offset_deg": -16.75388874191848,
+          "physical_handback_verified": false
+        },
+        "measured-motion.json": {
+          "active_telemetry_packets": 3306,
+          "post_disconnect_3s_packets": 1074,
+          "initial_elbow_deg": -3.704749247328276,
+          "commanded_elbow_min_offset_deg": -16.75388874191848,
+          "commanded_elbow_last_offset_deg": -16.75388874191848,
+          "measured_elbow_min_offset_deg": -11.71530438894595,
+          "measured_elbow_last_active_offset_deg": -11.71530438894595,
+          "measured_elbow_post_disconnect_3s_offset_deg": -7.125362625184022,
+          "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": [
+            3.7375341553443375,
+            1.0272604511699177,
+            0,
+            11.71530438894595,
+            0,
+            1.6392454008030601,
+            0.7213226178667066,
+            3.7156775500002968,
+            0.24042265878444882,
+            5.243464012073977,
+            17.26359185817877,
+            0.17485284275232643,
+            1.2021679354356043,
+            0.17485284275232643,
+            0.10928302672020401,
+            0.021856605344040804,
+            1.6393000423164203,
+            0.2622792641284896,
+            3.4315416805277663,
+            1.2677377514677266,
+            5.267506173889965,
+            9.794928086166266,
+            0.8524076084175913,
+            716.1972439135291
+          ]
+        }
+      }
+    },
+    {
+      "label": "single-slow",
+      "archive_relative": "e1-suspended-elbow-20261119-umh6vXEg/real-elbow90-slow",
+      "outcome": "following stop",
+      "artifact_sha256": {
+        "transport.json": "eafeff2eaf1acf58d54c19c253698f4d73d2581de5e856bddd6a0274160c637f",
+        "wire-audit.json": "8c8db3f4d0b6219f2f4faef598191686d7d88e3ea2dbc6fcd8dc83255b309af5",
+        "measured-motion.json": "dede5374aec3462004f0cccbfb28ec4a140325f6421eea12fa51949efa9b9991",
+        "wire.pcap": "feba848241a642d1e2525aa1bf7dafdccfd3326170020993a12f72b9eb61453b",
+        "targets.ndjson": "c55b7e8fcfb4d9ccc4d64e2c8d10deccc359bdaa8d3e17881ffcefb3e1073b4b",
+        "status.ndjson": "26cae32377a08f04a9af24c3e974445a3151016dd3e9f5b70fc80ed057e87a8f"
+      },
+      "summaries": {
+        "transport.json": {
+          "stage": "elbow90",
+          "profile": "suspended",
+          "physical_handback_verified": false,
+          "operator_confirmed_factory_control": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "mode_request": 2,
+          "mode_requests_sent": 1,
+          "motor_samples_sent": 12043,
+          "live": true,
+          "participant_deleted": true,
+          "active_seconds": 24.95657980699616
+        },
+        "wire-audit.json": {
+          "passed": true,
+          "motor_samples": 12043,
+          "motor_records_checked": 289032,
+          "mode_requests": [
+            2
+          ],
+          "duplicate_retransmissions": 0,
+          "duration_ms": 24955.824,
+          "expected_no_commands": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "elbow_min_offset_deg": -14.819149055847596,
+          "elbow_max_offset_deg": 0,
+          "elbow_final_offset_deg": -14.819149055847596,
+          "physical_handback_verified": false
+        },
+        "measured-motion.json": {
+          "active_telemetry_packets": 8657,
+          "post_disconnect_3s_packets": 1041,
+          "initial_elbow_deg": -10.786398661824217,
+          "commanded_elbow_min_offset_deg": -14.819149055847596,
+          "commanded_elbow_last_offset_deg": -14.819149055847596,
+          "measured_elbow_min_offset_deg": -9.8137797240144,
+          "measured_elbow_last_active_offset_deg": -9.8137797240144,
+          "measured_elbow_post_disconnect_3s_offset_deg": -2.229428386605522,
+          "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": [
+            2.8632699415827054,
+            0.6338415549771833,
+            0.021856605344040804,
+            9.8137797240144,
+            0,
+            1.5955321901149786,
+            1.005458487339237,
+            3.6938209446562555,
+            0.24042265878444882,
+            5.299719730823545,
+            17.193274505536817,
+            0.17485284275232643,
+            0.7868377923854689,
+            0.17485284275232643,
+            0.10928302672020401,
+            0.021856605344040804,
+            1.6393000423164203,
+            0.5245585282569792,
+            3.3659718644956436,
+            1.35516417284389,
+            5.246177032952336,
+            9.075653797790194,
+            0.24042265878444882,
+            716.1972439135291
+          ]
+        }
+      }
+    },
+    {
+      "label": "robot-clock-probe",
+      "archive_relative": "e1-suspended-elbow-20261119-umh6vXEg/real-elbow90-clock",
+      "outcome": "freshness stop before stroke",
+      "artifact_sha256": {
+        "transport.json": "8f2aa5f4fb55888e50072a6a18b9636942a5036f6c10212212e1da58c172bccb",
+        "wire-audit.json": "654280f056ea6702fc7c4457ca657af5982c5fc2ca7e3290a4797362d901993f",
+        "measured-motion.json": "4071468be9f1a0ce2739b7d51961ebf5559319f943f92d38f5b367f651176ae8",
+        "wire.pcap": "f270ef8a8e8753a750a96ff47fce7dde7aaab560b3a011b6d4bebb0c34410c29",
+        "targets.ndjson": "10d91032643355ca3dd6f5d4561d4a62e2e739745b40020785b35810e6ffaffc",
+        "status.ndjson": "311dd3115d1891692a5deea20e8edd8ba13c80976d7cc3460fd42975d4eeca73"
+      },
+      "summaries": {
+        "transport.json": {
+          "stage": "elbow90",
+          "profile": "suspended",
+          "timestamp_domain": "robot",
+          "physical_handback_verified": false,
+          "operator_confirmed_factory_control": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "mode_request": 2,
+          "mode_requests_sent": 1,
+          "motor_samples_sent": 353,
+          "live": true,
+          "participant_deleted": true,
+          "active_seconds": 0.7291329340005177
+        },
+        "wire-audit.json": {
+          "passed": true,
+          "motor_samples": 353,
+          "motor_records_checked": 8472,
+          "mode_requests": [
+            2
+          ],
+          "duplicate_retransmissions": 0,
+          "duration_ms": 728.436,
+          "expected_no_commands": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "elbow_min_offset_deg": 0,
+          "elbow_max_offset_deg": 0,
+          "elbow_final_offset_deg": 0,
+          "physical_handback_verified": false
+        },
+        "measured-motion.json": {
+          "active_telemetry_packets": 255,
+          "post_disconnect_3s_packets": 1040,
+          "initial_elbow_deg": -12.010368561090502,
+          "commanded_elbow_min_offset_deg": 0,
+          "commanded_elbow_last_offset_deg": 0,
+          "measured_elbow_min_offset_deg": -0.04371321068808161,
+          "measured_elbow_last_active_offset_deg": -0.04371321068808161,
+          "measured_elbow_post_disconnect_3s_offset_deg": 0.6119849496331424,
+          "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": [
+            0.6338415549771833,
+            0.5245585282569792,
+            0,
+            0.04371321068808161,
+            0,
+            1.6173887954590194,
+            0.9617452766511554,
+            3.6719643393122148,
+            0.24042265878444882,
+            5.210544439593363,
+            17.203057990443774,
+            0.17485284275232643,
+            0.7649811870414281,
+            0.17485284275232643,
+            0.10928302672020401,
+            0.021856605344040804,
+            1.6174434369723796,
+            0.37156229084869363,
+            3.234832232431399,
+            1.4207339888760122,
+            5.071972013204227,
+            9.671149629447935,
+            0.1529962374082856,
+            716.1972439135291
+          ]
+        }
+      }
+    },
+    {
+      "label": "single-reset",
+      "archive_relative": "e1-suspended-elbow-20261119-umh6vXEg/real-elbow90-reset-20261119-1742",
+      "outcome": "freshness stop",
+      "artifact_sha256": {
+        "transport.json": "1830975a7ffe05b2cd1dfd6a465ea8273753b8f8f3e39c803212d14f9cc3be92",
+        "wire-audit.json": "8a5a2260f2fcbcecef96da02bff5fc7f26a059c40d639d69eb2ff3be32e4d58f",
+        "measured-motion.json": "5b14cdae444da08d6f4551c037ef1c63090f3f86e52a98bdbd7d151dd21b7064",
+        "wire.pcap": "4c5d6fa213b033c90924f82962622c14340ad33bc99eb0f3a4b7dfbf1bdc1ac4",
+        "targets.ndjson": "b63b557641e0ae180ff8326aaf1e53490dbf432969dd82968fc782943a3ac7b1",
+        "status.ndjson": "dcf477cb7391afc824dfbfd325fd9f56a24f723a5967d577fa958c8c209f4f36"
+      },
+      "summaries": {
+        "transport.json": {
+          "stage": "elbow90",
+          "profile": "suspended",
+          "timestamp_domain": "host",
+          "physical_handback_verified": false,
+          "operator_confirmed_factory_control": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "mode_request": 2,
+          "mode_requests_sent": 1,
+          "motor_samples_sent": 7106,
+          "live": true,
+          "participant_deleted": true,
+          "active_seconds": 14.714569645992015
+        },
+        "wire-audit.json": {
+          "passed": true,
+          "motor_samples": 7106,
+          "motor_records_checked": 170544,
+          "mode_requests": [
+            2
+          ],
+          "duplicate_retransmissions": 0,
+          "duration_ms": 14714.451,
+          "expected_no_commands": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "elbow_min_offset_deg": -5.019431416930272,
+          "elbow_max_offset_deg": 0,
+          "elbow_final_offset_deg": -5.019431416930272,
+          "physical_handback_verified": false
+        },
+        "measured-motion.json": {
+          "active_telemetry_packets": 5199,
+          "post_disconnect_3s_packets": 1045,
+          "initial_elbow_deg": -1.9343642144609712,
+          "commanded_elbow_min_offset_deg": -5.019431416930272,
+          "commanded_elbow_last_offset_deg": -5.019431416930272,
+          "measured_elbow_min_offset_deg": -3.322204012294202,
+          "measured_elbow_last_active_offset_deg": -3.322204012294202,
+          "measured_elbow_post_disconnect_3s_offset_deg": -3.0817813535097534,
+          "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": [
+            0.6557528018345842,
+            1.224024540779645,
+            0,
+            3.322204012294202,
+            0,
+            1.3113963206424482,
+            0.1311396320642448,
+            4.021670024816868,
+            0.3059924748165712,
+            5.78927393580488,
+            18.134384287759207,
+            0.10928302672020401,
+            1.224024540779645,
+            0,
+            0.021856605344040804,
+            0,
+            0.9835472404818362,
+            0.0655698160321224,
+            3.3659718644956436,
+            1.4863038049081347,
+            5.279194737687817,
+            10.926349392872174,
+            0.24042265878444882,
+            716.1972439135291
+          ]
+        }
+      }
+    },
+    {
+      "label": "single-pipeline",
+      "archive_relative": "e1-suspended-elbow-20261119-umh6vXEg/real-elbow90-pipeline-20261119",
+      "outcome": "completed",
+      "artifact_sha256": {
+        "transport.json": "29002ef325636d80b453895b66fd8fd12f5c8c9d8327dc47fa4e64bd0d3b825f",
+        "planner.json": "b5ada608f573cd8ede6835a310719b737399127266479a71ee3e421e32df2296",
+        "wire-audit.json": "f86eef6110d9f235c927c589a2dbcf792868552bb1096cad495312d067c00fdd",
+        "measured-motion.json": "45e9ca8f53edf230726ccdc33e23f99c3a6a12b8c917ababfce93a9ed8bbb884",
+        "wire.pcap": "a737d617115d601da6738a2931c4e34d5830f724fffc5cc3ef5ed4471e7c7812",
+        "targets.ndjson": "c8a6ee8e39037d0beed9327e4a2016f46c42d0972516bf587fe8f01f3fe7cdfa",
+        "status.ndjson": "cbbdc6bda3fc60d65138ad7558ac88319304156b4aadae07b686101d779cff2c"
+      },
+      "summaries": {
+        "transport.json": {
+          "stage": "elbow90",
+          "profile": "suspended",
+          "timestamp_domain": "host",
+          "physical_handback_verified": false,
+          "operator_confirmed_factory_control": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "mode_request": 2,
+          "mode_requests_sent": 1,
+          "motor_samples_sent": 87368,
+          "live": true,
+          "participant_deleted": true,
+          "active_seconds": 181.49815502899582
+        },
+        "planner.json": {
+          "stage": "elbow90",
+          "profile": "suspended",
+          "software_stage_completed": true,
+          "physical_handback_verified": false,
+          "frames": 9001,
+          "guarded_updates": 15807,
+          "packets": 63705,
+          "active_ms": 181501,
+          "max_leg_feedback_change_deg": 17.37323570645073,
+          "max_other_feedback_change_deg": 1.3114509621558084,
+          "cleared_left_spikes": 0,
+          "cleared_right_only_spikes": 0
+        },
+        "wire-audit.json": {
+          "passed": true,
+          "motor_samples": 87368,
+          "motor_records_checked": 2096832,
+          "mode_requests": [
+            2
+          ],
+          "duplicate_retransmissions": 0,
+          "duration_ms": 181498.278,
+          "expected_no_commands": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "elbow_min_offset_deg": -90,
+          "elbow_max_offset_deg": 0,
+          "elbow_final_offset_deg": 0,
+          "physical_handback_verified": false
+        },
+        "measured-motion.json": {
+          "active_telemetry_packets": 63357,
+          "post_disconnect_3s_packets": 1044,
+          "initial_elbow_deg": -4.447873829025664,
+          "commanded_elbow_min_offset_deg": -90,
+          "commanded_elbow_last_offset_deg": 0,
+          "measured_elbow_min_offset_deg": -86.3786157159699,
+          "measured_elbow_last_active_offset_deg": -1.879722701100869,
+          "measured_elbow_post_disconnect_3s_offset_deg": -1.9452925171329916,
+          "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": [
+            1.2895397152984074,
+            1.3114509621558084,
+            0.021856605344040804,
+            86.3786157159699,
+            0,
+            1.1584000832341625,
+            0.8524076084175913,
+            3.5189681019039294,
+            0.1311396320642448,
+            5.4977344090483875,
+            17.37323570645073,
+            0.10928302672020401,
+            1.202113293922244,
+            0,
+            0,
+            0,
+            1.2458265046103258,
+            0.10928302672020401,
+            3.016266178990991,
+            1.224024540779645,
+            5.628811288577686,
+            10.732098229292546,
+            0.10928302672020401,
+            716.1972439135291
+          ]
+        }
+      }
+    },
+    {
+      "label": "single-repeat",
+      "archive_relative": "e1-suspended-elbow-20261119-umh6vXEg/real-elbow90-repeat-20261119",
+      "outcome": "completed",
+      "artifact_sha256": {
+        "transport.json": "eca3e891953c7300b8f84bbb09bb7e83e96dd16aa81ba42beedd715ec3f2bc6f",
+        "planner.json": "ee357f068cb028426bddb24a27e8ea0f28594d740b23c942a7256415ebb1f8c5",
+        "wire-audit.json": "56899186e3e4941cacbd465eab3b9bb3c20fd6cee9a80889f181ab516a847e39",
+        "measured-motion.json": "7135199df7fcff0a1630353fa43420622e5309b56e4bd265849b4461f5d41e36",
+        "wire.pcap": "8b4b0598afec611870227e9ad9bb17cf46c996c90905687f17c7aec1eb7b1cdf",
+        "targets.ndjson": "39e956ce13effd2e5baf2735aa669633a0a7b3f845fe92bfc49e5c19e2f39521",
+        "status.ndjson": "c0a07a12237d8b36827fd3f439051f9f55a5395d2c6552277853f486e1ee990c"
+      },
+      "summaries": {
+        "transport.json": {
+          "stage": "elbow90",
+          "profile": "suspended",
+          "timestamp_domain": "host",
+          "physical_handback_verified": false,
+          "operator_confirmed_factory_control": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "mode_request": 2,
+          "mode_requests_sent": 1,
+          "motor_samples_sent": 87497,
+          "live": true,
+          "participant_deleted": true,
+          "active_seconds": 181.4964189279999
+        },
+        "planner.json": {
+          "stage": "elbow90",
+          "profile": "suspended",
+          "software_stage_completed": true,
+          "physical_handback_verified": false,
+          "frames": 9001,
+          "guarded_updates": 15813,
+          "packets": 63778,
+          "active_ms": 181500,
+          "max_leg_feedback_change_deg": 17.230962742389085,
+          "max_other_feedback_change_deg": 0.9179774244497138,
+          "cleared_left_spikes": 0,
+          "cleared_right_only_spikes": 0
+        },
+        "wire-audit.json": {
+          "passed": true,
+          "motor_samples": 87497,
+          "motor_records_checked": 2099928,
+          "mode_requests": [
+            2
+          ],
+          "duplicate_retransmissions": 0,
+          "duration_ms": 181496.49,
+          "expected_no_commands": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "elbow_min_offset_deg": -90,
+          "elbow_max_offset_deg": 0,
+          "elbow_final_offset_deg": 0,
+          "physical_handback_verified": false
+        },
+        "measured-motion.json": {
+          "active_telemetry_packets": 63430,
+          "post_disconnect_3s_packets": 1045,
+          "initial_elbow_deg": -6.393166346158655,
+          "commanded_elbow_min_offset_deg": -90,
+          "commanded_elbow_last_offset_deg": 0,
+          "measured_elbow_min_offset_deg": -86.29118929459374,
+          "measured_elbow_last_active_offset_deg": -1.7485284275232642,
+          "measured_elbow_post_disconnect_3s_offset_deg": -1.8140982435553865,
+          "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": [
+            0.9179774244497138,
+            0.8961208191056729,
+            0,
+            86.29118929459374,
+            0,
+            1.202113293922244,
+            0.43713210688081605,
+            3.453398285871807,
+            0.1529962374082856,
+            5.301558015941173,
+            17.230962742389085,
+            0.1311396320642448,
+            0.7431245816973873,
+            0,
+            0.10928302672020401,
+            0,
+            0.9616906351377953,
+            0.17485284275232643,
+            2.9725529683029093,
+            1.2895943568117674,
+            5.24344770867308,
+            10.652699923432063,
+            0.1529962374082856,
+            716.1972439135291
+          ]
+        }
+      }
+    },
+    {
+      "label": "drums-20deg",
+      "archive_relative": "e1-drums-20261119-ikNWujF2/real-drums",
+      "outcome": "right-elbow following stop",
+      "artifact_sha256": {
+        "transport.json": "88b5dc9e3ef79137270519b6aa67fc02e04ec33612fe369354ed223b1f714e69",
+        "wire-audit.json": "609c3335064a55e053db916f3a91a050c7bd9117457bff341fcca8945370adc1",
+        "measured-motion.json": "9c48feb644318d25142e1f25da874f2cc861fb396156e4a9d0348a2ef0bca152",
+        "wire.pcap": "b4b66d1530570e35229552443136ec061f06d47c00547e8dd0112ca6f76529c9",
+        "targets.ndjson": "a831343f775875b0531f18e91dd049c84e6d3161b3b8af814cfdc631b542fb8b",
+        "status.ndjson": "70b0050b97b9d36f1c0f177d4b00a45c71fc0c6872ab393513761df2c026646c"
+      },
+      "summaries": {
+        "transport.json": {
+          "stage": "drums",
+          "profile": "suspended",
+          "timestamp_domain": "host",
+          "physical_handback_verified": false,
+          "operator_confirmed_factory_control": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "mode_request": 2,
+          "mode_requests_sent": 1,
+          "motor_samples_sent": 8189,
+          "live": true,
+          "participant_deleted": true,
+          "active_seconds": 16.917400613994687
+        },
+        "wire-audit.json": {
+          "passed": true,
+          "motor_samples": 8189,
+          "motor_records_checked": 196536,
+          "mode_requests": [
+            2
+          ],
+          "duplicate_retransmissions": 0,
+          "duration_ms": 16917.021,
+          "expected_no_commands": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "max_fixed_target_change_deg": 0,
+          "elbow_min_offset_deg": -20,
+          "elbow_max_offset_deg": 0,
+          "elbow_final_offset_deg": 0,
+          "right_min_offset_deg": -14.539904997395467,
+          "right_final_offset_deg": -14.539904997395467,
+          "left_strokes": 1,
+          "right_strokes": 1,
+          "physical_handback_verified": false
+        },
+        "measured-motion.json": {
+          "active_telemetry_packets": 5895,
+          "post_disconnect_3s_packets": 1045,
+          "initial_elbow_deg": -8.207264589714041,
+          "initial_right_elbow_deg": -2.5682057694381544,
+          "commanded_elbow_min_offset_deg": -20,
+          "commanded_elbow_last_offset_deg": 0,
+          "measured_elbow_min_offset_deg": -18.79700844495525,
+          "measured_elbow_last_active_offset_deg": -0.6775547656652648,
+          "measured_elbow_post_disconnect_3s_offset_deg": -0.6775547656652648,
+          "measured_right_min_offset_deg": -9.52958921302851,
+          "measured_right_last_active_offset_deg": -9.52958921302851,
+          "measured_right_post_disconnect_3s_offset_deg": -8.611611788578797,
+          "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": [
+            0.6775547656652648,
+            1.0491170565139585,
+            0,
+            18.79700844495525,
+            0,
+            1.3551095313305297,
+            0.4589887122248569,
+            3.2347775909180387,
+            0.1529962374082856,
+            5.234114809744109,
+            17.29778290742507,
+            2.251284991949563,
+            0.6994113710093057,
+            0,
+            9.52958921302851,
+            0.04371321068808161,
+            1.0928302672020402,
+            0.17485284275232643,
+            2.753986914862501,
+            1.1803113300915635,
+            5.243561540848554,
+            10.670062441511686,
+            0.17485284275232643,
+            716.1972439135291
+          ]
+        }
+      }
+    },
+    {
+      "label": "drums-10deg",
+      "archive_relative": "e1-drums-20261119-ikNWujF2/real-drums-small",
+      "outcome": "completed",
+      "artifact_sha256": {
+        "transport.json": "a1aa8b07c48f4b2114a3debed5ed1dbaa5205ace2f6d38b78558c26bb636ef6d",
+        "planner.json": "4ef8381a257072962f875501b440e50735efcb2b9194ad6104f2fc434bc169bc",
+        "wire-audit.json": "69ef6ca43b5a0f41ed84898166570cdd06d298d252059df77f5fa7a083ddbe9f",
+        "measured-motion.json": "b00c854365f7b719acc0c859da21ba22b1e0b178fe6df33c80e7d73190064185",
+        "wire.pcap": "22f9246fa38de451294c95926738a1c3da243d4061dffd2f05b68711e2ba1dbb",
+        "targets.ndjson": "cea8cc54993b2c76a58086535cbfb19653ce4888b9ab706fc264f41829138c99",
+        "status.ndjson": "d7123755700bc5df099f5e0ce833a875d175b620323c0f818bd09b026317daf0"
+      },
+      "summaries": {
+        "transport.json": {
+          "stage": "drums",
+          "profile": "suspended",
+          "timestamp_domain": "host",
+          "physical_handback_verified": false,
+          "operator_confirmed_factory_control": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "mode_request": 2,
+          "mode_requests_sent": 1,
+          "motor_samples_sent": 23859,
+          "live": true,
+          "participant_deleted": true,
+          "active_seconds": 49.50046787199972
+        },
+        "planner.json": {
+          "stage": "drums",
+          "profile": "suspended",
+          "feedback": "live telemetry",
+          "software_stage_completed": true,
+          "physical_handback_verified": false,
+          "frames": 2401,
+          "guarded_updates": 4308,
+          "packets": 17583,
+          "active_ms": 49502,
+          "max_fixed_target_change": 0,
+          "moving_slots": [
+            3,
+            14
+          ],
+          "max_leg_feedback_change_deg": 17.17294549731336,
+          "max_other_feedback_change_deg": 1.2895397152984074,
+          "cleared_left_spikes": 0,
+          "cleared_right_only_spikes": 0
+        },
+        "wire-audit.json": {
+          "passed": true,
+          "motor_samples": 23859,
+          "motor_records_checked": 572616,
+          "mode_requests": [
+            2
+          ],
+          "duplicate_retransmissions": 0,
+          "duration_ms": 49500.361,
+          "expected_no_commands": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "max_fixed_target_change_deg": 0,
+          "elbow_min_offset_deg": -10.000000000000002,
+          "elbow_max_offset_deg": 0,
+          "elbow_final_offset_deg": 0,
+          "right_min_offset_deg": -10.000000000000002,
+          "right_final_offset_deg": 0,
+          "left_strokes": 2,
+          "right_strokes": 2,
+          "physical_handback_verified": false
+        },
+        "measured-motion.json": {
+          "active_telemetry_packets": 17235,
+          "post_disconnect_3s_packets": 1044,
+          "initial_elbow_deg": -8.884819355379307,
+          "initial_right_elbow_deg": -9.955847658750667,
+          "commanded_elbow_min_offset_deg": -10.000000000000002,
+          "commanded_elbow_last_offset_deg": 0,
+          "measured_elbow_min_offset_deg": -9.114368353005094,
+          "measured_elbow_last_active_offset_deg": -0.6338961964905434,
+          "measured_elbow_post_disconnect_3s_offset_deg": -0.6338961964905434,
+          "measured_right_min_offset_deg": -9.223596738211938,
+          "measured_right_last_active_offset_deg": -1.333252925986489,
+          "measured_right_post_disconnect_3s_offset_deg": -1.333252925986489,
+          "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": [
+            0.1311396320642448,
+            1.2895397152984074,
+            0,
+            9.114368353005094,
+            0,
+            1.3113963206424482,
+            0.8742642137616321,
+            3.453398285871807,
+            0.1529962374082856,
+            5.2769723839579425,
+            17.17294549731336,
+            0.7649811870414281,
+            0.8961208191056729,
+            0,
+            9.223596738211938,
+            0.021856605344040804,
+            1.4206793473626522,
+            0.1529962374082856,
+            2.9288397576148277,
+            1.2021679354356043,
+            5.287820723041438,
+            10.671992406343263,
+            0.24042265878444882,
+            716.1972439135291
+          ]
+        }
+      }
+    },
+    {
+      "label": "drums-retry-stale",
+      "archive_relative": "e1-drums-20261119-ikNWujF2/real-drums-repeat-20261119-1826",
+      "outcome": "freshness stop before stroke",
+      "artifact_sha256": {
+        "transport.json": "07dc30b8037c9933b143591148cea952aadcf3bf2d6e560d2c5e7b273436da8c",
+        "wire-audit.json": "4fb75f9bd6647f197a52fca0617abc95d2f3949ee82257c0c01f3cd4160e5f1d",
+        "measured-motion.json": "2afba0685a118c176794c5836a10d98bd1749d80927e2ade0af8d5dc37c1dcdd",
+        "wire.pcap": "7dc87d6025b55b209501ee5d1a73023cd0c159af96d2278b2ae112f1257c92bc",
+        "targets.ndjson": "600f5070853f9cddc37c947203eafc7670d6ce15b066ce226c46f4e185ceb2e8",
+        "status.ndjson": "8d301509e2d1157e2095a6d368321017b1296ef82badbc56ea5c4c10f925f155"
+      },
+      "summaries": {
+        "transport.json": {
+          "stage": "drums",
+          "profile": "suspended",
+          "timestamp_domain": "host",
+          "physical_handback_verified": false,
+          "operator_confirmed_factory_control": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "mode_request": 2,
+          "mode_requests_sent": 1,
+          "motor_samples_sent": 152,
+          "live": true,
+          "participant_deleted": true,
+          "active_seconds": 0.312273635994643
+        },
+        "wire-audit.json": {
+          "passed": true,
+          "motor_samples": 152,
+          "motor_records_checked": 3648,
+          "mode_requests": [
+            2
+          ],
+          "duplicate_retransmissions": 0,
+          "duration_ms": 312.184,
+          "expected_no_commands": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "max_fixed_target_change_deg": 0,
+          "elbow_min_offset_deg": 0,
+          "elbow_max_offset_deg": 0,
+          "elbow_final_offset_deg": 0,
+          "right_min_offset_deg": 0,
+          "right_final_offset_deg": 0,
+          "left_strokes": 0,
+          "right_strokes": 0,
+          "physical_handback_verified": false
+        },
+        "measured-motion.json": {
+          "active_telemetry_packets": 111,
+          "post_disconnect_3s_packets": 1023,
+          "initial_elbow_deg": -9.51871555186985,
+          "initial_right_elbow_deg": -11.289100584737154,
+          "commanded_elbow_min_offset_deg": 0,
+          "commanded_elbow_last_offset_deg": 0,
+          "measured_elbow_min_offset_deg": -0.021856605344040804,
+          "measured_elbow_last_active_offset_deg": -0.021856605344040804,
+          "measured_elbow_post_disconnect_3s_offset_deg": 0.08742642137616322,
+          "measured_right_min_offset_deg": -0.04371321068808161,
+          "measured_right_last_active_offset_deg": -0.04371321068808161,
+          "measured_right_post_disconnect_3s_offset_deg": 0,
+          "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": [
+            0.1529962374082856,
+            0.8524076084175913,
+            0,
+            0.021856605344040804,
+            0,
+            0.43713210688081605,
+            0.6119849496331424,
+            3.4096850751837255,
+            0.1311396320642448,
+            4.559499364141145,
+            16.146013056719195,
+            0.021856605344040804,
+            0.17485284275232643,
+            0,
+            0.04371321068808161,
+            0,
+            0.5245585282569792,
+            0.1311396320642448,
+            2.885126546926746,
+            1.224024540779645,
+            4.190154535388359,
+            9.227471847291632,
+            0.021856605344040804,
+            716.1972439135291
+          ]
+        }
+      }
+    },
+    {
+      "label": "drums-10deg-repeat",
+      "archive_relative": "e1-drums-20261119-ikNWujF2/real-drums-repeat2-20261119-1828",
+      "outcome": "completed",
+      "artifact_sha256": {
+        "transport.json": "a303511d17d0166b257ce37c3e47a716c8f53800322da82f47bdd27b4a803d1f",
+        "planner.json": "5b1ca5fd96551be69601f62cf1d200a6713b22b629390e78579313ae5a070ad6",
+        "wire-audit.json": "1a1db193d0556b2e082c375294206a2f4684ff4c4e84af2975cc33e1212d1a6f",
+        "measured-motion.json": "b0463bb54d4583aae7be3d037a8b5de3a654ac7e0ed4639cbf4ebe1b3e5aa5f5",
+        "wire.pcap": "5a826c831cbaeae7272ce7c98cf8fa6fe608a10545e61bc991bca815cdd8c565",
+        "targets.ndjson": "b737415eef72823c3f3cd43c2163d00c5698c6452ccaf6df363d31a1caab39b1",
+        "status.ndjson": "670f673ba2905b88cc27931255b885f0dad448f0fbb1437947293e72d8ff31a3"
+      },
+      "summaries": {
+        "transport.json": {
+          "stage": "drums",
+          "profile": "suspended",
+          "timestamp_domain": "host",
+          "physical_handback_verified": false,
+          "operator_confirmed_factory_control": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "mode_request": 2,
+          "mode_requests_sent": 1,
+          "motor_samples_sent": 23886,
+          "live": true,
+          "participant_deleted": true,
+          "active_seconds": 49.4997625870019
+        },
+        "planner.json": {
+          "stage": "drums",
+          "profile": "suspended",
+          "feedback": "live telemetry",
+          "software_stage_completed": true,
+          "physical_handback_verified": false,
+          "frames": 2401,
+          "guarded_updates": 4312,
+          "packets": 17647,
+          "active_ms": 49503,
+          "max_fixed_target_change": 0,
+          "moving_slots": [
+            3,
+            14
+          ],
+          "max_leg_feedback_change_deg": 16.493943854440023,
+          "max_other_feedback_change_deg": 0.7649811870414281,
+          "cleared_left_spikes": 0,
+          "cleared_right_only_spikes": 0
+        },
+        "wire-audit.json": {
+          "passed": true,
+          "motor_samples": 23886,
+          "motor_records_checked": 573264,
+          "mode_requests": [
+            2
+          ],
+          "duplicate_retransmissions": 0,
+          "duration_ms": 49499.15,
+          "expected_no_commands": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "max_fixed_target_change_deg": 0,
+          "elbow_min_offset_deg": -10.000000000000002,
+          "elbow_max_offset_deg": 0,
+          "elbow_final_offset_deg": 0,
+          "right_min_offset_deg": -10.000000000000002,
+          "right_final_offset_deg": 0,
+          "left_strokes": 2,
+          "right_strokes": 2,
+          "physical_handback_verified": false
+        },
+        "measured-motion.json": {
+          "active_telemetry_packets": 17298,
+          "post_disconnect_3s_packets": 1045,
+          "initial_elbow_deg": -9.431289130493687,
+          "initial_right_elbow_deg": -11.289100584737154,
+          "commanded_elbow_min_offset_deg": -10.000000000000002,
+          "commanded_elbow_last_offset_deg": 0,
+          "measured_elbow_min_offset_deg": -8.633468393922838,
+          "measured_elbow_last_active_offset_deg": -0.6994113710093057,
+          "measured_elbow_post_disconnect_3s_offset_deg": -0.6994113710093057,
+          "measured_right_min_offset_deg": -8.633523035436198,
+          "measured_right_last_active_offset_deg": -0.6994113710093057,
+          "measured_right_post_disconnect_3s_offset_deg": -0.6556981603212241,
+          "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": [
+            0.24042265878444882,
+            0.7649811870414281,
+            0,
+            8.633468393922838,
+            0,
+            1.5081057687388153,
+            0.48084531756889765,
+            3.650107733968174,
+            0.24042265878444882,
+            6.060093970716653,
+            16.493943854440023,
+            0.10928302672020401,
+            0.6994660125226658,
+            0,
+            8.633523035436198,
+            0.021856605344040804,
+            1.224024540779645,
+            0.10928302672020401,
+            3.0599793896790723,
+            1.5299623740828563,
+            5.6935874459446625,
+            9.631695522418507,
+            0.1311396320642448,
+            716.1972439135291
+          ]
+        }
+      }
+    },
+    {
+      "label": "raised-shadow-initial",
+      "archive_relative": "e1-raised-drums-20261119-JCpVzHMS/live-shadow",
+      "outcome": "packet continuity stop; no command publisher",
+      "artifact_sha256": {
+        "wire.pcap": "44386f79d4cbfd7c86dbf872a3ebf63fa3bfdaaf9ac681edd59d1e948a3a2930",
+        "targets.ndjson": "179e7a9248935a0c312847a746c140a0bebb4665177cfe7c06160fcf43fcd967",
+        "status.ndjson": "385872ae8c567cc2ef3288ddc0c62bdb69efbe9c808d53de9bf75c5aef8c87d7"
+      },
+      "summaries": {}
+    },
+    {
+      "label": "raised-shadow-fixed",
+      "archive_relative": "e1-raised-drums-20261119-JCpVzHMS/live-shadow2",
+      "outcome": "completed; simulated elbow feedback; no command publisher",
+      "artifact_sha256": {
+        "planner.json": "cdffddd4b789603ecf587c489e0cf371592dee4e0efae5faab96a10c6f5e4f56",
+        "wire.pcap": "e2e2e6c74f0e885769f3d036263828eae3d108992b08a4fd045ba7175fdee6a7",
+        "targets.ndjson": "cdc2f777711001c0c772f478f22b2ebd5f1e1d5f6992daa530ccaf474874afbe",
+        "status.ndjson": "b4852fcd145ea1dcd1383047b21ba62a324989465468327d9d837dcd25738188"
+      },
+      "summaries": {
+        "planner.json": {
+          "stage": "raised-drums",
+          "profile": "suspended",
+          "feedback": "live telemetry with explicitly simulated elbow tracking",
+          "software_stage_completed": true,
+          "physical_handback_verified": false,
+          "frames": 8551,
+          "guarded_updates": 15126,
+          "packets": 61064,
+          "active_ms": 173636,
+          "max_fixed_target_change": 0,
+          "moving_slots": [
+            3,
+            14
+          ],
+          "max_leg_feedback_change_deg": 12.041607241147716,
+          "max_other_feedback_change_deg": 0,
+          "reference_wait_ticks": 0,
+          "cleared_left_spikes": 0,
+          "cleared_right_only_spikes": 0
+        }
+      }
+    },
+    {
+      "label": "raised-powered",
+      "archive_relative": "e1-raised-drums-20261119-JCpVzHMS/real-raised-drums",
+      "outcome": "completed",
+      "artifact_sha256": {
+        "transport.json": "af0cba8d99808e40b1367abbd9bf584c6e0c259a2bf3ff5b08cffe0b0c5e14b8",
+        "planner.json": "125da8290089c0e4fdc85fa1ffc7c92ae1be994abb73f4581191d53d036d54da",
+        "wire-audit.json": "8cf9b55423529ee4e6e88ffa86f2c611522a6885d2f11b443609297786040497",
+        "measured-motion.json": "0fa102b9d21f0edbd6436dc7ba76f46901fedd1ed8833469720f9e91c3fb262e",
+        "stroke-feedback.json": "f4b52f87598e18af225d6e06ccd49ec58ae10116302382ad7af05019ca9c4b90",
+        "wire.pcap": "3a7ed7845001fcf115e2212197935caf9617b1e86e61ee351a21f485d773ca0f",
+        "targets.ndjson": "d0e018134a0c85179121f165885c19ff7bcbb5a5704db8617e3d1f7603b9b335",
+        "status.ndjson": "5a4836c2ce02eb8de20ea06dbd5924e1b9795e9d73871a25841fd55c638426ba"
+      },
+      "summaries": {
+        "transport.json": {
+          "stage": "raised-drums",
+          "profile": "suspended",
+          "timestamp_domain": "host",
+          "physical_handback_verified": false,
+          "operator_confirmed_factory_control": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "mode_request": 2,
+          "mode_requests_sent": 1,
+          "motor_samples_sent": 83829,
+          "live": true,
+          "participant_deleted": true,
+          "active_seconds": 173.66739463999693
+        },
+        "planner.json": {
+          "stage": "raised-drums",
+          "profile": "suspended",
+          "feedback": "live telemetry",
+          "software_stage_completed": true,
+          "physical_handback_verified": false,
+          "frames": 8551,
+          "guarded_updates": 15132,
+          "packets": 61074,
+          "active_ms": 173672,
+          "max_fixed_target_change": 0,
+          "moving_slots": [
+            3,
+            14
+          ],
+          "max_leg_feedback_change_deg": 17.440243402639155,
+          "max_other_feedback_change_deg": 0.8087490392428698,
+          "reference_wait_ticks": 0,
+          "cleared_left_spikes": 0,
+          "cleared_right_only_spikes": 0
+        },
+        "wire-audit.json": {
+          "passed": true,
+          "motor_samples": 83829,
+          "motor_records_checked": 2011896,
+          "mode_requests": [
+            2
+          ],
+          "duplicate_retransmissions": 0,
+          "duration_ms": 173667.018,
+          "expected_no_commands": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "max_fixed_target_change_deg": 0,
+          "elbow_min_offset_deg": -79.86929949849701,
+          "elbow_max_offset_deg": 0,
+          "elbow_final_offset_deg": 0,
+          "right_min_offset_deg": -78.05520125494162,
+          "right_final_offset_deg": 0,
+          "left_strokes": 2,
+          "right_strokes": 2,
+          "left_absolute_min": -90,
+          "right_absolute_min": -90,
+          "left_drop": 30.000000000000007,
+          "right_drop": 30.000000000000007,
+          "physical_handback_verified": false
+        },
+        "measured-motion.json": {
+          "active_telemetry_packets": 60725,
+          "post_disconnect_3s_packets": 1044,
+          "initial_elbow_deg": -10.130700501502993,
+          "initial_right_elbow_deg": -11.944798745058378,
+          "commanded_elbow_min_offset_deg": -79.869299498497,
+          "commanded_elbow_last_offset_deg": 0,
+          "measured_elbow_min_offset_deg": -76.6741190186757,
+          "measured_elbow_last_active_offset_deg": -1.2895397152984074,
+          "measured_elbow_post_disconnect_3s_offset_deg": -1.2676831099543666,
+          "measured_right_min_offset_deg": -74.72888114305607,
+          "measured_right_last_active_offset_deg": -1.35516417284389,
+          "measured_right_post_disconnect_3s_offset_deg": -1.2021679354356043,
+          "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": [
+            0.7649811870414281,
+            0.8087490392428698,
+            0,
+            76.6741190186757,
+            0,
+            1.4862491633947745,
+            0.8742642137616321,
+            3.7593907606883783,
+            0.10928302672020401,
+            5.419481922020274,
+            17.440243402639155,
+            0.7649811870414281,
+            0.6994113710093057,
+            0,
+            74.72888114305607,
+            0.021856605344040804,
+            1.4643925580507338,
+            0.17485284275232643,
+            3.1911190217433174,
+            1.4207339888760122,
+            5.320179182959934,
+            10.720199167109442,
+            0.08742642137616322,
+            716.1972439135291
+          ]
+        },
+        "stroke-feedback.json": {
+          "strokes": [
+            {
+              "stroke": 1,
+              "active_motor": 3,
+              "samples": 5603,
+              "left_min_bend_deg": 58.95906717976383,
+              "left_max_bend_deg": 86.8048195201787,
+              "right_min_bend_deg": 86.67367988811445,
+              "right_max_bend_deg": 86.67367988811445
+            },
+            {
+              "stroke": 2,
+              "active_motor": 14,
+              "samples": 5612,
+              "left_min_bend_deg": 86.8048195201787,
+              "left_max_bend_deg": 86.8048195201787,
+              "right_min_bend_deg": 59.439967138846086,
+              "right_max_bend_deg": 86.67367988811445
+            },
+            {
+              "stroke": 3,
+              "active_motor": 3,
+              "samples": 5605,
+              "left_min_bend_deg": 58.95906717976383,
+              "left_max_bend_deg": 86.8048195201787,
+              "right_min_bend_deg": 86.67367988811445,
+              "right_max_bend_deg": 86.67367988811445
+            },
+            {
+              "stroke": 4,
+              "active_motor": 14,
+              "samples": 5729,
+              "left_min_bend_deg": 86.8048195201787,
+              "left_max_bend_deg": 86.8048195201787,
+              "right_min_bend_deg": 59.439967138846086,
+              "right_max_bend_deg": 86.67367988811445
+            }
+          ]
+        }
+      }
+    },
+    {
+      "label": "raised-powered-repeat",
+      "archive_relative": "e1-raised-drums-20261119-JCpVzHMS/real-raised-repeat-20261119-1934",
+      "outcome": "completed",
+      "artifact_sha256": {
+        "transport.json": "0e863df19a39b3e4d2f343f5bd1e870f60fd859a0d369e3a3198096c8f78024c",
+        "planner.json": "4268579a5c3a5005d47c9bc5acc51600fa4db0a69e8b3eb4bcecdc9b8a878dd3",
+        "wire-audit.json": "e041a5fa274e98442a459f51e322eefe708cefe0d9c554ac9deb241796985a3e",
+        "measured-motion.json": "fda48f0f6df96ca4730c4613cf487612faa473d0a037e47ad111dc380fc0b283",
+        "stroke-feedback.json": "5118c949181c34055d8965842effa4d15597da8a26943d452c56555b1485bc75",
+        "wire.pcap": "23253784abd53be9896ddf1218d2d19910327ee78c238941c001482f8aba10bc",
+        "targets.ndjson": "419b9b968d3d5757abec431cf1e6fba2da55406fb787163682b77df9231ae4cd",
+        "status.ndjson": "2571809a434435cccf403d72b80786d836e019d01786cc6f8b65b95c3af3cfc5"
+      },
+      "summaries": {
+        "transport.json": {
+          "stage": "raised-drums",
+          "profile": "suspended",
+          "timestamp_domain": "host",
+          "physical_handback_verified": false,
+          "operator_confirmed_factory_control": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "mode_request": 2,
+          "mode_requests_sent": 1,
+          "motor_samples_sent": 83745,
+          "live": true,
+          "participant_deleted": true,
+          "active_seconds": 173.95771871700708
+        },
+        "planner.json": {
+          "stage": "raised-drums",
+          "profile": "suspended",
+          "feedback": "live telemetry",
+          "software_stage_completed": true,
+          "physical_handback_verified": false,
+          "frames": 8551,
+          "guarded_updates": 15158,
+          "packets": 61151,
+          "active_ms": 173961,
+          "max_fixed_target_change": 0,
+          "moving_slots": [
+            3,
+            14
+          ],
+          "max_leg_feedback_change_deg": 17.268778967426396,
+          "max_other_feedback_change_deg": 0.7649811870414281,
+          "reference_wait_ticks": 0,
+          "cleared_left_spikes": 0,
+          "cleared_right_only_spikes": 0
+        },
+        "wire-audit.json": {
+          "passed": true,
+          "motor_samples": 83745,
+          "motor_records_checked": 2009880,
+          "mode_requests": [
+            2
+          ],
+          "duplicate_retransmissions": 0,
+          "duration_ms": 173956.986,
+          "expected_no_commands": false,
+          "action": 11,
+          "axes": [
+            0,
+            0
+          ],
+          "max_fixed_target_change_deg": 0,
+          "elbow_min_offset_deg": -78.60161638854264,
+          "elbow_max_offset_deg": 0,
+          "elbow_final_offset_deg": 0,
+          "right_min_offset_deg": -76.85303331950601,
+          "right_final_offset_deg": 0,
+          "left_strokes": 2,
+          "right_strokes": 2,
+          "left_absolute_min": -90,
+          "right_absolute_min": -90,
+          "left_drop": 30.000000000000007,
+          "right_drop": 30.000000000000007,
+          "physical_handback_verified": false
+        },
+        "measured-motion.json": {
+          "active_telemetry_packets": 60803,
+          "post_disconnect_3s_packets": 1044,
+          "initial_elbow_deg": -11.398383611457358,
+          "initial_right_elbow_deg": -13.146966680493984,
+          "commanded_elbow_min_offset_deg": -78.60161638854264,
+          "commanded_elbow_last_offset_deg": 0,
+          "measured_elbow_min_offset_deg": -75.40643590872133,
+          "measured_elbow_last_active_offset_deg": -1.2895943568117674,
+          "measured_elbow_post_disconnect_3s_offset_deg": -1.2458811461236858,
+          "measured_right_min_offset_deg": -73.52671320762046,
+          "measured_right_last_active_offset_deg": -1.3551095313305297,
+          "measured_right_post_disconnect_3s_offset_deg": -0.6556981603212241,
+          "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": [
+            0.7649811870414281,
+            0.7213226178667066,
+            0.021856605344040804,
+            75.40643590872133,
+            0,
+            1.2895397152984074,
+            0.8961208191056729,
+            3.7156775500002968,
+            0.1529962374082856,
+            5.562375203509896,
+            17.268778967426396,
+            0.7649811870414281,
+            0.2622792641284896,
+            0,
+            73.52671320762046,
+            0.021856605344040804,
+            1.333252925986489,
+            0.21856605344040803,
+            3.125549205711195,
+            1.3333075674998491,
+            5.299819749505621,
+            10.509283197403876,
+            0.0655698160321224,
+            716.1972439135291
+          ]
+        },
+        "stroke-feedback.json": {
+          "strokes": [
+            {
+              "stroke": 1,
+              "active_motor": 3,
+              "samples": 5690,
+              "left_min_bend_deg": 58.95906717976383,
+              "left_max_bend_deg": 86.8048195201787,
+              "right_min_bend_deg": 86.67367988811445,
+              "right_max_bend_deg": 86.67367988811445
+            },
+            {
+              "stroke": 2,
+              "active_motor": 14,
+              "samples": 5676,
+              "left_min_bend_deg": 86.8048195201787,
+              "left_max_bend_deg": 86.8048195201787,
+              "right_min_bend_deg": 59.439967138846086,
+              "right_max_bend_deg": 86.67367988811445
+            },
+            {
+              "stroke": 3,
+              "active_motor": 3,
+              "samples": 5617,
+              "left_min_bend_deg": 58.95906717976383,
+              "left_max_bend_deg": 86.8048195201787,
+              "right_min_bend_deg": 86.67367988811445,
+              "right_max_bend_deg": 86.67367988811445
+            },
+            {
+              "stroke": 4,
+              "active_motor": 14,
+              "samples": 5618,
+              "left_min_bend_deg": 86.8048195201787,
+              "left_max_bend_deg": 86.8048195201787,
+              "right_min_bend_deg": 59.439967138846086,
+              "right_max_bend_deg": 86.67367988811445
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

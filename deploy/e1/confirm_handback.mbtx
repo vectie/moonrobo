@@ -1,0 +1,62 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [dir, operator_name, observation, output] &&
+    operator_name.length() > 0 &&
+    observation.length() > 0 else {
+    fail("usage: HOLD_RUN OPERATOR OBSERVED_HANDBACK NEW_RECEIPT")
+  }
+  let session = @fs.read_file(dir + "/session.json").json()
+  guard session
+    is {
+      "stage": "hold",
+      "planner_status": Number(0, ..),
+      "sender_status": Number(0, ..),
+      ..
+    } else {
+    fail("successful completed hold session required")
+  }
+  let planner = @fs.read_file(dir + "/planner.json").json()
+  guard planner
+    is {
+      "stage": "hold",
+      "software_stage_completed": True,
+      "max_non_elbow_target_change": Number(0, ..),
+      ..
+    } else {
+    fail("valid pose-hold planner receipt required")
+  }
+  let receipt = @fs.read_file(dir + "/transport.json").json()
+  guard receipt is Object(fields) &&
+    receipt
+    is {
+      "stage": "hold",
+      "result": "stage complete",
+      "live": True,
+      "participant_deleted": True,
+      "finished_epoch": Number(finished, ..),
+      ..
+    } &&
+    @env.now().to_double() / 1000.0 - finished >= 0 &&
+    @env.now().to_double() / 1000.0 - finished <= 600 else {
+    fail("recent real hold and disconnect required")
+  }
+  fields["operator_confirmed_factory_control"] = true
+  fields["hold_session_verified"] = true
+  fields["operator_name"] = Json(operator_name)
+  fields["operator_observation"] = Json(observation)
+  fields["confirmation_epoch"] = Json(@env.now().to_double() / 1000.0)
+  // This records an operator's observation; telemetry cannot prove ownership.
+  @fs.write_file(
+    output,
+    Json(fields).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+}
