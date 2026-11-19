@@ -2052,6 +2052,55 @@ input {
 }
 
 .design-workbench-launcher { bottom: 70px; }
+
+/* Learning evidence is opened from MoonData, within the existing cockpit. */
+.learning-experiments-dialog { padding: 24px; }
+#learning-experiments-panel { min-width: 0; font-size: 16px; line-height: 1.5; }
+#learning-experiments-panel > header { position: sticky; top: -24px; z-index: 1; padding: 12px 0; background: var(--panel); }
+#learning-experiments-panel > header button { flex-shrink: 0; white-space: nowrap; }
+#learning-experiments-panel :is(button, select, input) { min-height: 44px; }
+#learning-experiments-panel :is(button, select, input, summary):focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+#learning-experiments-panel button:active { background: var(--line); }
+#learning-experiments-panel :is(h3, p) { overflow-wrap: anywhere; }
+.le-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 16px 0; }
+.le-toolbar p { margin: 0; flex: 1 1 240px; }
+.le-table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+.le-table-wrap table { width: 100%; min-width: 920px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.le-table-wrap :is(th, td) { text-align: left; padding: 12px; border-bottom: 1px solid var(--line); }
+.le-table-wrap caption { text-align: left; padding: 12px; font-weight: 700; }
+.le-table-wrap th { font-size: 14px; }
+.le-failed { color: var(--red); font-weight: 700; }
+.le-reported-pass { color: var(--ink); font-weight: 700; }
+#le-inspector { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 8px; }
+#le-inspector label { display: block; margin-top: 12px; font-weight: 700; }
+#le-trial, #le-evaluation { width: min(100%, 560px); font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.le-legend { display: flex; flex-wrap: wrap; gap: 16px; }
+.le-baseline-key { border-bottom: 3px dashed var(--red); }
+.le-candidate-key { border-bottom: 3px solid var(--blue); }
+.le-reference-key { border-bottom: 3px dotted var(--ink); }
+.le-plots { display: grid; gap: 16px; }
+.le-plots figure { margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
+.le-plots figcaption { margin-bottom: 12px; font-weight: 700; }
+.le-chart-body { display: grid; grid-template-columns: 4.5em minmax(0, 1fr); }
+.le-y-axis { display: flex; flex-direction: column; justify-content: space-between; padding: 6px 0; font-variant-numeric: tabular-nums; }
+.le-plots svg { display: block; width: 100%; height: 180px; overflow: visible; }
+.le-chart-scale { display: flex; justify-content: space-between; padding-left: 4.5em; margin-top: 8px; font-variant-numeric: tabular-nums; }
+.le-axis { fill: none; stroke: var(--line); }
+.le-baseline, .le-candidate, .le-reference { fill: none; stroke-width: 2.5; }
+.le-baseline { stroke: var(--red); stroke-dasharray: 7 5; }
+.le-candidate { stroke: var(--blue); }
+.le-reference { stroke: var(--ink); stroke-dasharray: 2 4; }
+.le-baseline-end { fill: var(--red); }
+.le-candidate-end { fill: var(--blue); }
+.le-reference-end { fill: var(--ink); }
+.le-cursor { stroke: var(--ink); stroke-dasharray: 2 4; }
+#le-cursor { display: block; width: 100%; margin: 0; accent-color: var(--blue); }
+#le-provenance { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
+#le-inspector summary { min-height: 44px; padding: 10px 0; cursor: pointer; }
+@media (max-width: 720px) {
+  .learning-experiments-dialog { padding: 16px; }
+  #learning-experiments-panel > header { top: -16px; }
+}
 .telemetry-review-launcher { bottom: 116px; }
 #telemetry-review-panel { padding: 1rem; }
 #telemetry-review-panel label { display: block; margin: 0.75rem 0; }

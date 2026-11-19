@@ -4,7 +4,7 @@
 extern "js" fn same_command(a : Cmd, b : Cmd) -> Bool = "(a, b) => a === b"
 
 ///|
-fn emergency_test_html(model : AppModel, bridge? : Bool = false) -> String {
+fn emergency_test_html(model : AppModel, bridge~ : Bool = false) -> String {
   let page = @rabbita.simple_cell(model~, update=(_ : Msg, model) => model, view=(
     dispatch,
     model,

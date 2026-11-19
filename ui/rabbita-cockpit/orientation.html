@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#fff">
+<title>身体朝向逐帧对照 · MoonRobo</title><link rel="icon" href="data:,"><link rel="stylesheet" href="./heldout/orientation.css"></head>
+<body><a class="skip" href="#main">跳至朝向分析</a>
+<header class="topbar"><a class="brand" href="./compare.html">MoonRobo</a><nav aria-label="评测"><a id="back" href="./compare.html">双机回放</a><a id="workflow" href="./workflow.html">差距分析</a><a aria-current="page" href="./orientation.html">身体朝向</a></nav></header>
+<main id="main"><div class="intro-row"><div><h1>身体朝向从哪一帧偏离？</h1><p>G1 Moves 源动作、E1 重定向参考与 MuJoCo 实际姿态 · 14 个对应部位 · 50 Hz</p></div>
+<label class="picker">查看动作<select id="motion"></select></label></div>
+<p><a class="replay" href="./arm-ik.html">查看固定 14k 的肩肘 IK 实验 →</a></p><section class="panel-overview"><div class="head"><h2>共同执行段</h2><label>统计范围 <select id="scope"><option value="all">40 条动作等权平均</option><option value="clip">所选动作</option></select></label></div>
+<div class="tiles" id="overview"></div><p class="overview-note" id="overview-note"></p></section>
+<section class="wf-section chart-section"><div class="head"><h2 id="trace-title">逐帧角度</h2><label>部位 <select id="body"></select></label></div>
+<div class="legend" id="legend"></div><p id="notice" role="status"></p>
+<svg id="plot" viewBox="0 0 820 195" role="img" aria-labelledby="trace-title plot-caption"></svg>
+<p id="plot-caption"></p><label class="scrub">控制帧 <input type="range" id="frame" min="0" step="1" value="0"></label>
+<div class="readouts"><output id="reading"></output><a id="replay" class="replay" href="./compare.html">同步回放这一帧 ↗</a></div>
+<div id="triads" class="triads"></div><small class="axes-note">同一视角下的世界坐标轴 · X 红、Y 绿、Z 蓝。上图角误差另补偿根部航向。</small>
+</section>
+<section class="wf-section"><div class="head"><h2>哪些部位先偏？</h2><label>角误差连续 5 帧超过 <select id="limit"><option>10</option><option selected>15</option><option>20</option></select> °</label></div>
+<p id="onset-note"></p><div class="scroll"><table><thead><tr><th>部位</th><th>朝向分差</th><th>源→参考 RMS</th><th>参考→实际 RMS</th><th>源→参考首帧</th><th>参考→实际首帧</th><th>源→实际首帧</th></tr></thead><tbody id="onsets"></tbody></table></div>
+</section>
+<div class="details-grid"><section class="wf-section"><h2>以源动作为共同目标</h2><p>保持源动作和时间窗固定，依次放入源姿态、E1 参考、E1 实际姿态。每一步使用相同的朝向奖励公式。</p>
+<table><thead><tr><th>固定源目标的姿态替换</th><th>归一化朝向得分</th><th>本步损失</th></tr></thead><tbody id="replace"></tbody></table>
+<p id="loss-note"></p>
+<h3>身体朝向分差的部位贡献</h3><p>原评测中两台各自跟踪自己的参考。正值为 G1 得分较高。14 项按各部位平方角误差的变化沿直线分配指数奖励差，加总等于原分差。上下游骨骼会同步转动。</p>
+<div id="shares"></div><p>本页原版逆运动学直接约束双脚、躯干、双臂远端的朝向。肩、肘作为位置目标参与求解，其转角没有单独的拟合项。</p>
+</section><section class="wf-section"><div class="head"><h2>MuJoCo 单因素对照</h2><label>打分目标 <select id="factor-goal"><option value="source">同一源动作</option><option value="own">各自 E1 参考</option></select></label></div><p>同一条源动作，冻结 7k 或 14k 的 E1 策略，各执行两套参考。切换重定向时同步使用该参考的初始姿态。每行或每列只改变一个因素。</p>
+<table><thead><tr><th>E1 参考的 G1 绑定姿态</th><th>7k 策略</th><th>14k 策略</th><th>仅换策略</th></tr></thead><tbody id="factor"></tbody></table><p id="factor-note"></p>
+<details><summary>查看数据口径与原始记录</summary><p>每动作从第 0 帧复位。首偏可含复位帧，奖励从第 1 帧开始。每步比较先补偿相对根部航向，再计算最短 SO(3) 转角。分数按整条计划步数归一化，动作等权。部位用解剖绑定坐标对齐，G1 腕 yaw 对应 E1 的肘 yaw 末端。</p><p>四组物理对照共用源文件、训练数据、执行器、终止和数值运行库。7k 和 14k 来自同一训练过程；差值只适用于这两个检查点及这两种绑定方案。</p>
+<a id="raw" href="#">所选动作的逐帧四元数</a> · <a href="./heldout/orientation/manifest.json">部位映射与文件哈希</a> · <a href="./heldout/orientation/controls.json">各自参考得分</a> · <a href="./heldout/orientation/source-controls.json">统一源目标得分</a></details>
+</section></div>
+</main><script type="module" src="./heldout/orientation.js"></script></body></html>

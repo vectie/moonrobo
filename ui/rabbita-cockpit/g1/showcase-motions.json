@@ -1,0 +1,366 @@
+{
+  "catalogSha256": "3d82e09e8f5f52478ebb9dfd75bf9593741299fc1737dce6842f227a25b3cf84",
+  "lafanManifestSha256": "760c59585d792da74e9437f12dced4d216afd5d17411cf4bfa507ed51e6bc60f",
+  "clips": [
+    {
+      "index": 106075,
+      "name": "230509/broad_jump_002__A359",
+      "group": "Acrobatics",
+      "label": "broad jump",
+      "fps": 120,
+      "source": "9921daaefc8161383016eecae4e6263a6d0b977d5ee1c046f2de3aada9c89980",
+      "frames": 263,
+      "sha256": "1837764c1a5bc2ac369445ff7b49077f6a6a67d9460ba02b6d350512f96bee48"
+    },
+    {
+      "index": 88712,
+      "name": "230324/flip_090_001__A304",
+      "group": "Acrobatics",
+      "label": "flip 090",
+      "fps": 120,
+      "source": "787c091c8273464641bd2621a25a631576a708fc56ef56c5ac3fedb64c761aec",
+      "frames": 360,
+      "sha256": "cdf4267a467872fa4df3567c12ee961d8bad3826d74af2932bc4cc106852dd2b"
+    },
+    {
+      "index": 88725,
+      "name": "230324/flip_180_R_001__A304",
+      "group": "Acrobatics",
+      "label": "flip 180",
+      "fps": 120,
+      "source": "55f5a8dc8629dfc6dfc9983e38986f18f7689b978e7bf455c9a4b5903fe2d3e1",
+      "frames": 280,
+      "sha256": "7ddc126b61b03c903b43ca486eecc46bef0013f3fa5ce43abbf45593666b6fda"
+    },
+    {
+      "index": 88715,
+      "name": "230324/flip_360_001__A304",
+      "group": "Acrobatics",
+      "label": "flip 360",
+      "fps": 120,
+      "source": "c6ab95407a93cdbd9c9b9da1ee0b58344bb147b708578e715cc11a6b9c796565",
+      "frames": 358,
+      "sha256": "4ec70cd5420a5ac242aa110017929af740414e16eb5bc668afa4cd6c5e0e213f"
+    },
+    {
+      "index": 88945,
+      "name": "230324/flip_360_hero_landing_001__A304",
+      "group": "Acrobatics",
+      "label": "flip 360 hero landing",
+      "fps": 120,
+      "source": "c9507d3099d24584b95b6a7cbd5ade107e7d3df5a2b81d9986a73e583b224c0e",
+      "frames": 428,
+      "sha256": "4089d1291cf8860bbffbbe02f741b7368e877a8089da6eef5f9699d9c958fe63"
+    },
+    {
+      "index": 106023,
+      "name": "230509/frog_jump_001__A359",
+      "group": "Acrobatics",
+      "label": "frog jump",
+      "fps": 120,
+      "source": "85b5caffa62cec46d385a95493809880f37c970d36268d9e4268ad82771c0f96",
+      "frames": 521,
+      "sha256": "bf631061f060410589cdc4bfd9ddc4febfd5e750e52855586552d93ed486b9af"
+    },
+    {
+      "index": 120701,
+      "name": "231011/high_jump_full_turn_R_opt_1_001__A476",
+      "group": "Acrobatics",
+      "label": "high jump full turn",
+      "fps": 120,
+      "source": "9bc46bd67cce3fe7d96cfe90a84312ac3ae8d34160c5e45e374f3ddd1812d360",
+      "frames": 211,
+      "sha256": "61580c72058e42bce503f9f0c7045d583b7a71af8331201a8410fef7891af7d7"
+    },
+    {
+      "index": 105951,
+      "name": "230509/burpee_001__A359",
+      "group": "Contact rich",
+      "label": "burpee",
+      "fps": 120,
+      "source": "5473425856c7bf8d853f14b878584fc247a8e2685b7be1f8eab3ab6a9c2313db",
+      "frames": 631,
+      "sha256": "a40fcd4c3af6490d283163f1d6fe7bb18e4bdb819a47fe4ffdb7d58678497176"
+    },
+    {
+      "index": 122899,
+      "name": "231024/faint_stand_up_lying_side_R_001__A492",
+      "group": "Contact rich",
+      "label": "faint stand up lying side",
+      "fps": 120,
+      "source": "b34f041bd11340e8b4640cc64e8c24f852b65cdc2c7cc6d8783fc10ae82ab160",
+      "frames": 538,
+      "sha256": "e8cd8856a0be44dc9e91d3cbbb29e32500b86531cec7a72f760eb8213f206aef"
+    },
+    {
+      "index": 106011,
+      "name": "230509/inchworm_001__A359",
+      "group": "Contact rich",
+      "label": "inchworm",
+      "fps": 120,
+      "source": "e8f975e43d32f37d94c905e9b1233f471b35a8793e53d59f9e38925d28ae1aa6",
+      "frames": 355,
+      "sha256": "8a4bef97c8d162f9a9705af1bea4d161ded22a53ac3eff8e899984ff36456534"
+    },
+    {
+      "index": 88752,
+      "name": "230324/side_roll_R_001__A304",
+      "group": "Contact rich",
+      "label": "side roll",
+      "fps": 120,
+      "source": "825cb85ea749e709684e3165e6fa25fe6bb4a887e2fc9c4d6c28aa1303ac2ea2",
+      "frames": 273,
+      "sha256": "9333a0d5b52c3a0f391a47b30af83edec526e1197fde9d0672930aa01913ba3e"
+    },
+    {
+      "index": 106458,
+      "name": "230509/spider_crawl_R_001__A360",
+      "group": "Contact rich",
+      "label": "spider crawl",
+      "fps": 120,
+      "source": "876f1096d38ff189bbeb302a7f4a8b0fc59033de5545ecbb95a15f7c6e7f4407",
+      "frames": 673,
+      "sha256": "c48b97e041f800b1871c788ce893034c77236383b94d8dcb10ba4d3d6438bda9"
+    },
+    {
+      "index": 105855,
+      "name": "230427/axe_cutting_tree_horizontal_R_004__A355",
+      "group": "Manipulation",
+      "label": "axe cutting tree horizontal",
+      "fps": 120,
+      "source": "ec483d09177ff691c1e6eb77e46f011bbef1ec70ea0259cadee58e95d0d5f2e7",
+      "frames": 517,
+      "sha256": "14ce985defcd6e2cf5144754ede3601f1b0386e62c32973967177672de0cfd86"
+    },
+    {
+      "index": 126223,
+      "name": "231114/big_heavy_two_hands_pick_up_front_low_R_001__A508",
+      "group": "Manipulation",
+      "label": "big heavy two hands pick up front low",
+      "fps": 120,
+      "source": "7f192375a4f4a28080332b0300255e9c0b70b42ec31b260f58097a7a8fce5c9e",
+      "frames": 260,
+      "sha256": "3b5e51f38c2d87f182aa090dbbd629e9fe4523d48362086a71229f6407218a9f"
+    },
+    {
+      "index": 88277,
+      "name": "230322/chainsaw_cutting_tree_vertical_R_001__A296",
+      "group": "Manipulation",
+      "label": "chainsaw cutting tree vertical",
+      "fps": 120,
+      "source": "542dc52e1fe15fdc0e7b8b466101a9aa2db9c326c5699259b9e065688d336b46",
+      "frames": 1215,
+      "sha256": "e538a45293509014a3d1c7558cc297c70b20c62d711bdececeb367974188bf32"
+    },
+    {
+      "index": 119009,
+      "name": "231005/looking_for_something_around_ground_R_001__A460",
+      "group": "Manipulation",
+      "label": "looking for something around ground",
+      "fps": 120,
+      "source": "5f2f70f00b3306cd48c3069d2cf21a2b2a776727f7ce33218ab1bcf41c19532a",
+      "frames": 1308,
+      "sha256": "f8fac9eb0e6e70909df46c27d70dac0d48f04ff1605ca721cc3b0d177447622e"
+    },
+    {
+      "index": 84636,
+      "name": "230317/nailing_floor_R_004__A282",
+      "group": "Manipulation",
+      "label": "nailing floor",
+      "fps": 120,
+      "source": "c5b50ac2b571a5280d09bedb5da05aa4022b3857388dab7694ab49e2db7d02cb",
+      "frames": 477,
+      "sha256": "6619731acb9de1c938cf3a72334bbdbd61387769ba38f5b2afc6109e3ab217be"
+    },
+    {
+      "index": 119097,
+      "name": "231005/bump_into_small_obstacle_kick_walk_ff_180_R_001__A460",
+      "group": "Locomotion",
+      "label": "bump into small obstacle kick walk 180",
+      "fps": 120,
+      "source": "439f67d5b5efbd1e2ac1236a0a8e6a8f83d333cddc865ae40e8a98d21eea1965",
+      "frames": 631,
+      "sha256": "68013e2bd323f074d54465dbfd7517375f81c0b6bc8401ca97becc80017c5f27"
+    },
+    {
+      "index": 1910,
+      "name": "220713/jog_backward_loop_001__A021",
+      "group": "Locomotion",
+      "label": "jog backward loop",
+      "fps": 120,
+      "source": "efe186d82d5b4a7e6a1ae5fc4b24454e81d8e5d7f8a2e658e2dab000c4af473d",
+      "frames": 427,
+      "sha256": "814dc8fb581d16de205148228d2ea2b51773fc15bb6aa5d277f8b9972a2ec07d"
+    },
+    {
+      "index": 107004,
+      "name": "230509/jog_butt_kick_R_loop_001__A359",
+      "group": "Locomotion",
+      "label": "jog butt kick loop",
+      "fps": 120,
+      "source": "7dfb0033ac4a71c79f34965bd1dfc960b5f4350c98bd379cc17160b0e88432b7",
+      "frames": 218,
+      "sha256": "dfd4060096f1c43ca5a74ed953779b6de0933c0290e3c0622e2cb91355828901"
+    },
+    {
+      "index": 40006,
+      "name": "230103/neutral_kick_trash_R_001__A097",
+      "group": "Locomotion",
+      "label": "neutral kick trash",
+      "fps": 120,
+      "source": "503447f3c1b1d4a5027fe80b550154595412a553cfec6705efc95511ad71dcc7",
+      "frames": 325,
+      "sha256": "539456cb50723e6f123478072177a359015ca81a7758d9a2281c201caf1b085c"
+    },
+    {
+      "index": 136370,
+      "name": "240327/run_like_crazy_R_001__A533",
+      "group": "Locomotion",
+      "label": "run like crazy",
+      "fps": 120,
+      "source": "2b57924b4e7692680465919884daed4090f493fd78f45315defa8f6212e4a26c",
+      "frames": 403,
+      "sha256": "3d553fca3742a56cff965a46f92d075a5dcb54ab24754e4aeab3e79bdf59d749"
+    },
+    {
+      "index": 106099,
+      "name": "230509/skipping_R_001__A359",
+      "group": "Locomotion",
+      "label": "skipping",
+      "fps": 120,
+      "source": "f96240a9d4b7e9bee3a1f57377b0722e3fea41cfde9ed93780b019a74e739fb4",
+      "frames": 406,
+      "sha256": "e9cb4d5ce9ca353815980e6554b80ca96a42b3ba20b5827487a89f243a3683a9"
+    },
+    {
+      "index": 119789,
+      "name": "231006/dance_disco_fever_001__A464",
+      "group": "Dance",
+      "label": "dance disco fever",
+      "fps": 120,
+      "source": "eae0bdd5a6866683e61ce05221b36a2bf7543cdf4e06382d41e311b853781f14",
+      "frames": 502,
+      "sha256": "b62789111122267ed820514c9cc681ec13647bf2faf6fe09491e5112de4b43a3"
+    },
+    {
+      "index": 92707,
+      "name": "230412/dance_hiphop_funky_chicken_R_006__A311",
+      "group": "Dance",
+      "label": "dance hiphop funky chicken",
+      "fps": 120,
+      "source": "a45808dcd39c974341014a119975e15edd8fb7d97b2d7399e45e8d75bed9f1d3",
+      "frames": 345,
+      "sha256": "19b323efbefaf78ae8cf6aad65da5c8e3f34354a1909b00d9d6d851bd6a86ac5"
+    },
+    {
+      "index": 92930,
+      "name": "230412/dance_latino_salsa_step_360_R_001__A311",
+      "group": "Dance",
+      "label": "dance latino salsa step 360",
+      "fps": 120,
+      "source": "c772b4eb80aecca6480e14ada8a2bbd14aaa20ca0460dbcb0fe34d32a7dbd2db",
+      "frames": 233,
+      "sha256": "f9afd1f7fa59bae71b41f0c8942c171603539ac6239e0ba2de04890470ad6b95"
+    },
+    {
+      "index": 95269,
+      "name": "230413/dance_vouge_willie_bounce_R_001__A316",
+      "group": "Dance",
+      "label": "dance vouge willie bounce",
+      "fps": 120,
+      "source": "13b8fc3fa6b3891253437be6d50061984fcd7f4bd0d4035b5923e4fb6d1da5ac",
+      "frames": 323,
+      "sha256": "70f4467d483bfc37a301731672fc51d553fd87e512e7a6481d92189ba681116a"
+    },
+    {
+      "index": 119564,
+      "name": "231006/ninja_style_003__A464",
+      "group": "Dance",
+      "label": "ninja style",
+      "fps": 120,
+      "source": "0f8c68b04361fd569a243bcb0b57c03b9dd241854f80f7a84857707915a2c336",
+      "frames": 490,
+      "sha256": "82f1516f531d3b7358418c937cd3cda7804a9b0cf91be3cd3c8a92ec7a4c0eca"
+    },
+    {
+      "index": 90710,
+      "name": "230411/victory_dance_chicken_dance_180_R_001__A306",
+      "group": "Dance",
+      "label": "victory dance chicken dance 180",
+      "fps": 120,
+      "source": "d6f7f033f7c6842625dd3794554dae0dcfb67a736054e4245ea58d555bfde717",
+      "frames": 352,
+      "sha256": "6db701c9575c69fb3591b7b4e75d56c045f13f6f59b551e4c2504d3f83a7fab8"
+    },
+    {
+      "index": 90829,
+      "name": "230411/victory_dance_gangam_style_rodeo_R_001__A306",
+      "group": "Dance",
+      "label": "victory dance gangam style rodeo",
+      "fps": 120,
+      "source": "62a7318bcdcdad19bd016f5f0bcfe2dce6434334b8abb8beee581925e761ddab",
+      "frames": 466,
+      "sha256": "d220c61f8c8e837ef557fe0c19c2acba90e5e88f9dd717edef899b5e8f1f5b60"
+    },
+    {
+      "index": 90351,
+      "name": "230411/victory_dance_loser_jump_180_R_002__A306",
+      "group": "Dance",
+      "label": "victory dance loser jump 180",
+      "fps": 120,
+      "source": "7f8b6b2ca9765d59e7c19075906ac22c77db9f31e6fca97b47df94f167fc6344",
+      "frames": 211,
+      "sha256": "9f6b72c67196ca4d220b820259a1cc9e5e247323d2baa8cc6b638ba776ad5a5a"
+    },
+    {
+      "index": 90509,
+      "name": "230411/victory_dance_robot_dance_180_R_002__A306",
+      "group": "Dance",
+      "label": "victory dance robot dance 180",
+      "fps": 120,
+      "source": "8d664ab63072a6855e73dc2b57644e80cc7700987649b51727d4c4e48e4c99e3",
+      "frames": 428,
+      "sha256": "38045264fe4ce62387373906369a4336669df56ab50031ff749585fdd6e119c0"
+    },
+    {
+      "index": -4,
+      "name": "dance2_subject1",
+      "group": "LAFAN1",
+      "label": "dance2 subject1",
+      "fps": 30,
+      "source": "f8611569a28fff323577ccb53021b0b189114510a284f76b234fc6e0e9f089e1",
+      "frames": 11284,
+      "sha256": "5c9c1910fd2d98e490e785faf3c0118934fdc757e3a9249e74d6d89115e8cbec"
+    },
+    {
+      "index": -16,
+      "name": "fight1_subject3",
+      "group": "LAFAN1",
+      "label": "fight1 subject3",
+      "fps": 30,
+      "source": "013b7219ddbbb37d17483d2bd0c28ae3d4307c2fec6d4180feed27c65d2acfcd",
+      "frames": 12244,
+      "sha256": "73895b762227118051c054d532fb2834e19c0dca1cdef36b8e07c7a1ffbc650b"
+    },
+    {
+      "index": -27,
+      "name": "sprint1_subject2",
+      "group": "LAFAN1",
+      "label": "sprint1 subject2",
+      "fps": 30,
+      "source": "7babbd9d0a3cebf040709cb75fbf4268e925e337a2d44600dcce3d3b2d24a818",
+      "frames": 13656,
+      "sha256": "c172251d4d8989faae9b944df3e9fc0d8cc3675f92eead743f261b4f5a1d3e8d"
+    },
+    {
+      "index": -39,
+      "name": "walk3_subject5",
+      "group": "LAFAN1",
+      "label": "walk3 subject5",
+      "fps": 30,
+      "source": "2f2878a45d6345d78d5f7a1d35ab05cc96cf5d22b1be822bb4b07eab99096b85",
+      "frames": 12331,
+      "sha256": "20f3330669ae7de02eb446b517bb646081f70d04bd368244ef12fcb8fe36b41d"
+    }
+  ]
+}

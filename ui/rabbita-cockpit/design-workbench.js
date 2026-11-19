@@ -1,4 +1,5 @@
 import { REHEARSAL_PANEL, mountMissionRehearsal } from './mission-rehearsal.js'
+import { toolTabs } from './tool-tabs.js'
 // Digital artifact authoring only. No gateway, bridge, SDK or provider route.
 const API = '/api/moonrobo/design-workbench/'
 const SLUG = /^[a-z0-9_-]{1,64}$/
@@ -159,10 +160,12 @@ export function downloadSimulationInput(envelope, id, revision, document = globa
 }
 
 const PANEL = `
-  <header class="digital-trials-heading"><div><p class="eyebrow">MoonRobo · digital design</p><h2 id="design-workbench-title">Build a robot concept</h2></div><button id="dw-close" type="button">Close</button></header>
-  <p class="digital-trials-boundary">Excavation-haul rover only · simulation-only bridge · physical authority: <strong>false</strong></p>
+  <header class="digital-trials-heading"><div><h2 id="design-workbench-title">Build a robot concept</h2></div><button id="dw-close" class="dialog-close" type="button" aria-label="Close"><span class="close-mark" aria-hidden="true">×</span></button></header>
+  <p class="digital-trials-boundary">Excavation-haul rover · simulation only</p>
   <p id="dw-status" role="status" aria-live="polite">Start a draft, or browse your saved design library.</p>
-  <section aria-labelledby="dw-portable-title">
+  <div data-tool-workspace>
+  ${toolTabs('dw', [['design', 'Design', 'design'], ['library', 'Library', 'data'], ['import', 'Import', 'robot'], ['rehearse', 'Rehearse', 'operate']])}
+  <section id="dw-panel-import" role="tabpanel" aria-labelledby="dw-tab-import" tabindex="0" hidden>
     <h3 id="dw-portable-title">Bring a concept from another workspace</h3>
     <label for="dw-portable-file">Exported simulation-input envelope (JSON, up to 2 MiB)</label><input id="dw-portable-file" type="file" accept=".json,application/json" />
     <button id="dw-portable-inspect" type="button">Inspect local concept file</button>
@@ -172,9 +175,9 @@ const PANEL = `
     <button id="dw-portable-preview" type="button">Preview local concept replacement</button>
     <pre id="dw-portable-result" tabindex="0" aria-label="All replacement concept fields"></pre>
     <button id="dw-portable-apply" type="button">Replace editor with previewed concept</button>
-    <p>Only losslessly editable digital design declarations enter the editor. Choose an ID/revision pair different from the source and unused locally. Digests check file consistency, not author trust. Imported profiles, URDF, receipts and validation acceptance are never installed or reused as local readiness. Review the complete preview; replace, save, build and export are separate actions.</p>
+    <details><summary>Import details</summary><p>Choose a new local ID and revision. Review all fields before replacing the editor. Importing a concept does not establish hardware readiness; save and build it separately.</p></details>
   </section>
-  <section class="design-library" aria-labelledby="dw-library-title">
+  <section id="dw-panel-library" class="design-library" role="tabpanel" aria-labelledby="dw-tab-library" tabindex="0" hidden>
     <h3 id="dw-library-title">Saved design library</h3>
     <button id="dw-catalogue" type="button">Refresh saved designs</button>
     <p id="dw-library-status" role="status">Refresh to discover saved revisions. Browsing and comparing are read-only.</p>
@@ -189,7 +192,7 @@ const PANEL = `
       <div><h4>Task loop</h4><pre id="dw-diff-loop"></pre><h4>Mechanisms</h4><pre id="dw-diff-mechanisms"></pre></div>
       <div><h4>Validation scenarios</h4><pre id="dw-diff-scenarios"></pre><h4>Speed limits (m/s)</h4><pre id="dw-diff-speed"></pre></div>
     </div>
-    <h4>Reuse selected concept items</h4>
+    <details><summary>Reuse selected concept items</summary>
     <label for="dw-reuse-source">Inspected source</label><select id="dw-reuse-source"><option value="left">Revision A</option><option value="right">Revision B</option></select>
     <label for="dw-reuse-group">Source groups</label><select id="dw-reuse-group"><option value="both">Mechanisms and scenarios</option><option value="mechanisms">Mechanisms only</option><option value="scenarios">Scenarios only</option></select>
     <div class="design-workbench-grid"><div><label for="dw-reuse-mechanisms">Mechanisms to add (Ctrl/Command for several)</label><select id="dw-reuse-mechanisms" multiple size="4"></select></div><div><label for="dw-reuse-scenarios">Scenarios to add (Ctrl/Command for several)</label><select id="dw-reuse-scenarios" multiple size="4"></select></div></div>
@@ -197,12 +200,15 @@ const PANEL = `
     <p id="dw-reuse-status" role="status" aria-live="polite">Inspect a saved concept, select source items and preview them with your current editable design.</p>
     <pre id="dw-reuse-result" tabindex="0" aria-label="Combined concept fields preview"></pre>
     <p>Only selected declarations are added. Existing ID conflicts and totals above 12 mechanisms or 12 scenarios are rejected. Apply re-reads the exact source digest and fills the editor; save and build remain separate. Use a new revision before saving changes to a saved design. No hardware readiness or execution authority is copied.</p>
+    </details>
+    <details><summary>Fork revision</summary>
     <label for="dw-fork-source">Fork inspected revision</label><select id="dw-fork-source"><option value="left">Revision A</option><option value="right">Revision B</option></select>
     <label for="dw-fork-revision">New revision name</label><input id="dw-fork-revision" autocomplete="off" placeholder="r2" />
     <button id="dw-fork" type="button">Fork into editable fields</button>
     <p>Forking only fills the editor below. Save, build and download are separate actions. Originals stay immutable.</p>
+    </details>
   </section>
-  <div class="design-workbench-grid">
+  <div id="dw-panel-design" class="design-workbench-grid" role="tabpanel" aria-labelledby="dw-tab-design" tabindex="0">
     <section><h3>1. Describe the digital robot</h3><button id="dw-template" type="button">Start excavation-haul draft</button>
       <label for="dw-id">Design ID</label><input id="dw-id" autocomplete="off" placeholder="south-site-hauler" />
       <label for="dw-revision">Revision</label><input id="dw-revision" autocomplete="off" placeholder="r1" />
@@ -216,15 +222,14 @@ const PANEL = `
       <button id="dw-save" type="button">Save draft revision</button>
     </section>
     <section><h3>2. Build and inspect</h3><p id="dw-state">No saved revision selected</p><button id="dw-build" type="button">Build this digital revision</button>
-      <p>The existing builder produces a robot profile, generic box-link URDF, simulation bridge, deny-by-default physical safety policy, build receipt and artifact validation receipt.</p>
-      <p class="digital-trials-warning">This is a bounded concept builder. It does not create manufacturing CAD or calibrated dynamics. Validation checks artifact consistency; it does not run your mission scenarios.</p>
-      <pre id="dw-preview" tabindex="0" aria-label="Saved design and generated artifact summary">No build yet.</pre>
+      <p class="digital-trials-warning">Concept preview only. Validate dynamics and mission outcomes in simulation.</p>
+      <details><summary>Build details</summary><pre id="dw-preview" tabindex="0" aria-label="Saved design and generated artifact summary">No build yet.</pre></details>
       <h3>3. Continue in MoonMoon</h3><button id="dw-export" type="button">Download simulation-input package</button>
       <p id="dw-export-status">Build a saved revision first. MoonMoon still needs site, terrain, mission criteria and calibration evidence before simulation.</p>
-      <p>Your editable fields survive closing this panel. Refresh the library after a page reload. Downloads contain exact source text and SHA256 bindings; downloading does not run a simulation.</p>
     </section>
   </div>
-  ${REHEARSAL_PANEL}`
+  <div id="dw-panel-rehearse" role="tabpanel" aria-labelledby="dw-tab-rehearse" tabindex="0" hidden>${REHEARSAL_PANEL}</div>
+  </div>`
 
 export function mountDesignWorkbench({ root, dialog, launcher, hostUrl = '', fetchImpl = (...args) => globalThis.fetch(...args), now = () => new Date().toISOString(), download = downloadSimulationInput, confirmReplace = (text) => globalThis.confirm?.(text) === true } = {}) {
   if (!root || !dialog || !launcher) return null

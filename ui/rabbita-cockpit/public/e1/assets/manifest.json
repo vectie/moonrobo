@@ -220,6 +220,7 @@
       "r_arm_elbow_yaw_link"
     ]
   },
+  "dataset_sha256": "ff44590fa091138c70e4f85d90e913568a422f52426766ff7b513a9c0b6397b6",
   "scene_sha256": "e82d81514ff228cfa5bcc17fca6b57d645ec0871c644a8ded6eb2aaa5b5c9747",
   "meshes": {
     "base_link.STL": {
@@ -424,9 +425,53 @@
     }
   },
   "mesh_grid_m": 0.002,
-  "clips": [],
+  "clips": [
+    {
+      "id": "dance1",
+      "file": "motions/dance1.f32",
+      "sha256": "a468a836cfd89e9de693d393b684b4f0444c380a42a95ec9187068164dfe3e1c",
+      "frames": 11245,
+      "fps": 50,
+      "width": 30,
+      "split": "train",
+      "source_sha256": "d04c5f52b17810d46d4833a93d29c4557122ea6c53ff659b27cb94d9fced652a",
+      "kind": "reference"
+    },
+    {
+      "id": "0_boxing",
+      "file": "motions/0_boxing.f32",
+      "sha256": "cf0c460e5d75f66662d28b194246cd7e1b9cb1f39fc58d674fa09b097ace0016",
+      "frames": 200,
+      "fps": 50,
+      "width": 30,
+      "split": "train",
+      "source_sha256": "93e719564169b0db64981304defc1a12af214477b6ee6a2d73694301c37a2f78",
+      "kind": "reference"
+    },
+    {
+      "id": "135_02",
+      "file": "motions/135_02.f32",
+      "sha256": "0cdbe03c58ed68e4e5988c43a94386830e8b8e9e7e569de24b10a6c1340d6017",
+      "frames": 2160,
+      "fps": 50,
+      "width": 30,
+      "split": "validation",
+      "source_sha256": "b2bc96e1f057ecaec48b5e6948f21835c36fd00215582bb5a129cbac0358107c",
+      "kind": "reference"
+    },
+    {
+      "id": "02_boxing",
+      "file": "motions/02_boxing.f32",
+      "sha256": "68315d619971364c39092eb5921d595e3c7874cf355adf0298f91c21596231c8",
+      "frames": 385,
+      "fps": 50,
+      "width": 30,
+      "split": "validation",
+      "source_sha256": "a4117ad78e9b69387ab818c0ed23ae366bc643df180c3759faf512ed3146ab8b",
+      "kind": "reference"
+    }
+  ],
   "rotation": "xyzw",
   "pose": "root xyz, root xyzw, named joint radians",
-  "scope": "Read-only measured pose and nominal elbow preview; no policy rollout or command publishing",
-  "license": "BSD-3-Clause; see NOETIX-LICENSE.txt"
+  "scope": "E1 reference motion playback; kinematics only, not a policy rollout or hardware test"
 }

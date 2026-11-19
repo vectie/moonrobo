@@ -579,11 +579,11 @@ struct UrdfImportResult {
   urdf_source_path : String
   urdf_path : String
   model_primary : String
-  mesh_count : Int
-  copied_file_count : Int
-  joint_count : Int
-  link_count : Int
-  visual_count : Int
+  mesh_count : Int32
+  copied_file_count : Int32
+  joint_count : Int32
+  link_count : Int32
+  visual_count : Int32
   robot_name : String
   profile_path : String
   message : String
@@ -607,7 +607,7 @@ struct UrdfEditorEditReceiptResult {
   model_path : String
   changed : Bool
   status : String
-  issue_count : Int
+  issue_count : Int32
   before_digest : String
   after_digest : String
   before_source_path : String
@@ -620,7 +620,7 @@ struct UrdfEditorEditReceiptResult {
 struct UrdfEditorHistoryResult {
   model_primary : String
   model_path : String
-  receipt_count : Int
+  receipt_count : Int32
   receipts : Array[UrdfEditorEditReceiptResult]
 } derive(Debug, Eq, FromJson)
 
@@ -683,8 +683,8 @@ struct UrdfEditorEditRequestBody {
   selected_node_id : String?
   session : @urdf_editor.UrdfEditorSession?
   material_node_id : String?
-  visual_index : Int?
-  collision_index : Int?
+  visual_index : Int32?
+  collision_index : Int32?
   origin : @urdf_editor.UrdfOriginPatch?
   axis : @urdf_editor.UrdfAxisPatch?
   limit : @urdf_editor.UrdfLimitPatch?
@@ -721,7 +721,13 @@ struct UrdfEditorTransformCommit {
 ///|
 struct AppModel {
   snapshot : @cockpit.CockpitSnapshot
+  robot_context : String
   active_view : String
+  operate_section : String
+  robot_section : String
+  tasks_section : String
+  data_section : String
+  diagnostics_section : String
   source_url : String
   loading : Bool
   error : String?
@@ -943,7 +949,10 @@ struct AppModel {
 
 ///|
 enum Msg {
+  SelectRobotContext(String)
+  OpenRobotReplay
   SelectCockpitView(String)
+  SelectCockpitSection(String)
   RefreshSnapshot
   SnapshotLoaded(Result[@cockpit.CockpitSnapshot, String])
   RefreshMoonData
@@ -1091,11 +1100,11 @@ enum Msg {
   UpdateUrdfEditorPluginFilename(String)
   UpdateUrdfEditorPluginParameterName(String)
   UpdateUrdfEditorPluginParameterValue(String)
-  UpdateUrdfEditorPluginParameterNameAt(Int, String)
-  UpdateUrdfEditorPluginParameterValueAt(Int, String)
+  UpdateUrdfEditorPluginParameterNameAt(Int32, String)
+  UpdateUrdfEditorPluginParameterValueAt(Int32, String)
   AddUrdfEditorPluginParameter
   AddUrdfEditorPluginSchemaParameter(String)
-  RemoveUrdfEditorPluginParameter(Int)
+  RemoveUrdfEditorPluginParameter(Int32)
   ApplyUrdfEditorPluginSchema(String)
   SelectUrdfEditorNode(String)
   UrdfEditorTransformCommitted(UrdfEditorTransformCommit)
@@ -1317,7 +1326,7 @@ fn default_platform_runtime_proof_url() -> String {
 }
 
 ///|
-fn runtime_health_poll_interval_ms() -> Int {
+fn runtime_health_poll_interval_ms() -> Int32 {
   5000
 }
 
@@ -1386,7 +1395,13 @@ fn default_urdf_import_source() -> String {
 fn init_model() -> AppModel {
   {
     snapshot: sample_snapshot(),
+    robot_context: initial_robot_context(),
     active_view: "operate",
+    operate_section: "control",
+    robot_section: "model",
+    tasks_section: "chat",
+    data_section: "experiments",
+    diagnostics_section: "connection",
     source_url: default_snapshot_url(),
     loading: true,
     error: None,
@@ -2058,7 +2073,35 @@ fn update(
   model : AppModel,
 ) -> (@rabbita.Cmd, AppModel) {
   match msg {
-    SelectCockpitView(active_view) => (@rabbita.none, { ..model, active_view, })
+    SelectRobotContext(robot_context) =>
+      if ["workspace", "g1-simulation"].contains(robot_context) {
+        (remember_robot_context(robot_context), { ..model, robot_context, })
+      } else {
+        (@rabbita.none, model)
+      }
+    OpenRobotReplay =>
+      (@rabbita.none, { ..model, active_view: "data", data_section: "replay", })
+    SelectCockpitView(active_view) =>
+      if ["operate", "robot", "tasks", "data", "diagnostics"].contains(
+          active_view,
+        ) {
+        (@rabbita.none, { ..model, active_view, })
+      } else {
+        (@rabbita.none, model)
+      }
+    SelectCockpitSection(value) =>
+      if cockpit_sections(model.active_view).any(section => section.0 == value) {
+        let selected = match model.active_view {
+          "robot" => { ..model, robot_section: value, }
+          "tasks" => { ..model, tasks_section: value, }
+          "data" => { ..model, data_section: value, }
+          "diagnostics" => { ..model, diagnostics_section: value, }
+          _ => { ..model, operate_section: value, }
+        }
+        (@rabbita.none, selected)
+      } else {
+        (@rabbita.none, model)
+      }
     RefreshSnapshot =>
       (
         fetch_snapshot(dispatch, model.source_url),
@@ -4365,7 +4408,7 @@ fn freshness_label(stale : Bool) -> String {
 }
 
 ///|
-fn optional_int_label(value : Int?) -> String {
+fn optional_int_label(value : Int32?) -> String {
   match value {
     Some(v) => "\{v}"
     None => "-"

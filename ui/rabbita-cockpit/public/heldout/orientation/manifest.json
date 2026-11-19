@@ -1,0 +1,446 @@
+{
+  "format": "moonrobo.orientation-panel.v1",
+  "panel_sha256": "c82ae0092b35f34a5858605c724637f49d3a7854d894d0faf373011ccceafc90",
+  "generator_sha256": "e467c62c0265c8d677bff74e8ad0be3a3465ffdbdb6a53b2a95b7b697849eefe",
+  "e1_bodies": [
+    "base_link",
+    "l_leg_hip_roll_link",
+    "l_leg_knee_link",
+    "l_leg_ankle_roll_link",
+    "r_leg_hip_roll_link",
+    "r_leg_knee_link",
+    "r_leg_ankle_roll_link",
+    "waist_roll_link",
+    "l_arm_shoulder_roll_link",
+    "l_arm_elbow_pitch_link",
+    "l_arm_elbow_yaw_link",
+    "r_arm_shoulder_roll_link",
+    "r_arm_elbow_pitch_link",
+    "r_arm_elbow_yaw_link"
+  ],
+  "g1_bodies": [
+    "pelvis",
+    "left_hip_roll_link",
+    "left_knee_link",
+    "left_ankle_roll_link",
+    "right_hip_roll_link",
+    "right_knee_link",
+    "right_ankle_roll_link",
+    "torso_link",
+    "left_shoulder_roll_link",
+    "left_elbow_link",
+    "left_wrist_yaw_link",
+    "right_shoulder_roll_link",
+    "right_elbow_link",
+    "right_wrist_yaw_link"
+  ],
+  "order": [
+    "source",
+    "e1_reference",
+    "e1_physical",
+    "g1_physical"
+  ],
+  "quaternion": "wxyz, world rotations; both G1 streams calibrated into anatomical E1 bind axes",
+  "clips": [
+    {
+      "id": "dance/B_DadDance",
+      "steps": 2090,
+      "expected_steps": 2090,
+      "reference_sha256": "b320188edf0589fb6231a08873d9ab508ac5eac5e93828658e9196e1868efd66",
+      "g1_pose_sha256": "30793add8bd11aa5d9e1805674d24a8a857d2d40096b6aef4c1971916c362931",
+      "e1_pose_sha256": "9540af1a78d530b32b5feae2a52bd6fa6a74869f0d994feba531f2bcc48938a2",
+      "sha256": "46f9ccf4d55c2519c25dbc2ee4751701dc640ed3b678268d65d6046e56fdbb68",
+      "reward_max_abs_error": 1.5465647321827314e-9
+    },
+    {
+      "id": "dance/B_LongDance",
+      "steps": 5971,
+      "expected_steps": 5971,
+      "reference_sha256": "057d1e931f132ae6973c87e7efa2306722df13afee9afb9f63f3f57956c2f413",
+      "g1_pose_sha256": "ba7584dac7533888d7cc79a4ab3ac31f1eea0e182e572c1603bde12f2886e5be",
+      "e1_pose_sha256": "d1e0b394e61aafbebbf70645a5fcda6af0e768eceac19d107f2e7e5ac1ad6c0c",
+      "sha256": "b339c213c3f6aa8416d7771bca59dc8348df9d81502bdbfc2b185a918bbfce96",
+      "reward_max_abs_error": 2.1973991584656183e-9
+    },
+    {
+      "id": "dance/B_SpiralDance",
+      "steps": 2389,
+      "expected_steps": 2389,
+      "reference_sha256": "64e20799b628f34578261a9234d755f3d2b641a36225e44915bee3e79ec6fd35",
+      "g1_pose_sha256": "f8239f15d69d3eabaaab330a8437c90f991232e3899d8555b0c883e47ac1d713",
+      "e1_pose_sha256": "f38899f1fe9641b2e030b8ad769bd64a57fa357d18662eac9d522872eea6f206",
+      "sha256": "7372ef59cfe66d371d7a5e98c96fe211bc774c634ceb6166f06daa4a9c863d24",
+      "reward_max_abs_error": 1.5940700148764364e-9
+    },
+    {
+      "id": "dance/B_StretchDance",
+      "steps": 1256,
+      "expected_steps": 2154,
+      "reference_sha256": "cb8ee795d36e371e73657283446e20b65bbc3ce56806989201e14ba862f9e43c",
+      "g1_pose_sha256": "f6c9c639470f7c5265b980cc0fb1da10e75b4a2712626003fae5aa099f14e019",
+      "e1_pose_sha256": "3e34a70187f0d7e33e5af153cc739c4d3eb41d1f7b849a6a52a702ca9d3f3563",
+      "sha256": "bb87ad9270e571ca7e80aeee258a9f1a60dd4e1c7bc55b987257d74e7b235d53",
+      "reward_max_abs_error": 1.9943730295707285e-9
+    },
+    {
+      "id": "dance/J_Dance0_StepTouch",
+      "steps": 1623,
+      "expected_steps": 1623,
+      "reference_sha256": "f3ffb888da731c8ec2b3f8e8e530098c28c21a43be3cfe36d02f464a6a0df6e5",
+      "g1_pose_sha256": "de784130ffbc5aff651850e180c648174bf5ed64e2ceb8cef62ff14131e83cff",
+      "e1_pose_sha256": "79beb71e6e2ac409b11dbf20bf8f28d480fb717d7debd7ccf3ab3a32183a072c",
+      "sha256": "155da4b819ca32d99e0b7cf00336877d1323b5a54a9ad24ab60860da65d1f19a",
+      "reward_max_abs_error": 1.5837775500793239e-9
+    },
+    {
+      "id": "dance/J_Dance11_Gnarly",
+      "steps": 2256,
+      "expected_steps": 2256,
+      "reference_sha256": "e82febaec9a8d2751f4a07ffe41c80144be539d01124023758a052a9e53a7b75",
+      "g1_pose_sha256": "2eee36b15f273568a33d44f9b914b047f6f39c36807859d06e91b5525eab2090",
+      "e1_pose_sha256": "ecc5d16b17534bcc5dffe1592d4923e9fca1b010cff1ded9b1bd588063bafe0d",
+      "sha256": "01b242ff6831afb6a1cecb5fc5b1c145be709ef14ad9f56bb8e99ae87db8879a",
+      "reward_max_abs_error": 2.162110539216666e-9
+    },
+    {
+      "id": "dance/J_Dance12_LushLife",
+      "steps": 1779,
+      "expected_steps": 1779,
+      "reference_sha256": "ecec116a1aea587bfc9a5ee7f8b5e6976a9c2a2981216da1b529d7ab47368bee",
+      "g1_pose_sha256": "f78261863edbff91bba233ac7c5137092b17b2dbf6306e3de87a83c1b1a908b0",
+      "e1_pose_sha256": "a64b74f212f582d08da98b6aef6eb1b614af60970be2cf71957b6e3baae899cc",
+      "sha256": "649e9729e56a851304776b24618078fa2da875849f71b44f39dc3919adffc67e",
+      "reward_max_abs_error": 1.895102732726861e-9
+    },
+    {
+      "id": "dance/J_Dance17_Shuffle",
+      "steps": 1074,
+      "expected_steps": 1600,
+      "reference_sha256": "d48c2eb3d507362281eb5d30b1f9a165c92e0781b1ecb33b1716e99dad0f0711",
+      "g1_pose_sha256": "ecc3c7715dbdaa5bc1656b21e21338c1b82471512ad63a443b25ec564b6a3630",
+      "e1_pose_sha256": "9cd3970676f1708b14daa56d140176b1867ed8105b71ce9bf963e56ead9fb7ab",
+      "sha256": "d1df16f6f2ec679fd88852d9743cc5af3499db2b91775a5c90684ee014fbe275",
+      "reward_max_abs_error": 1.906512586691278e-9
+    },
+    {
+      "id": "dance/J_Dance18_TikTok",
+      "steps": 896,
+      "expected_steps": 896,
+      "reference_sha256": "87da5af4d93b194822cd250172073844fe508059e449ef0c515f186669b81c59",
+      "g1_pose_sha256": "debbabbfcf8df163c8976840ee152dcab0b8463ed178ab4054c7fa6c0ac685cf",
+      "e1_pose_sha256": "9009ac4d04cf04386d78cf64177190aa02e6f51402af3cf450d9a1adc22ed967",
+      "sha256": "8731dcc32d0802820dc59d15ef6235b94eb680745a3fed8d9005aa318ef3e4ec",
+      "reward_max_abs_error": 1.4539304274419074e-9
+    },
+    {
+      "id": "dance/J_Dance19_LetsGO",
+      "steps": 1241,
+      "expected_steps": 1241,
+      "reference_sha256": "8ee11d8960a30fc4cb04857e039b7952b30cbac7548269d49f3f1765537e23ea",
+      "g1_pose_sha256": "bdeeff455f3b4db3ff8736619c7acf0d75e183db51a62437364e82fb39fd8ea3",
+      "e1_pose_sha256": "f259f54fda50801682ed38b7df71f36643d8f9149c7342a66a3b24a44fd28ab2",
+      "sha256": "c608a0c8c89f533aebf9201664a31b24449d99e0ac01466f8554712986dae85e",
+      "reward_max_abs_error": 2.5277757248476362e-9
+    },
+    {
+      "id": "dance/J_Dance1_Modern",
+      "steps": 836,
+      "expected_steps": 1886,
+      "reference_sha256": "a6138a5c2b3137b5cbd63d3c58b929cfc90b20f92129bcc3ff75c59cf0e00246",
+      "g1_pose_sha256": "7c01dbd6c54615221439751d34e5d8ffcddd9005a38fba084b4675c252335067",
+      "e1_pose_sha256": "d0076015a64241ad9c26a62d3671a865330cc98ddeb4afd2fd9a65a8268d9fca",
+      "sha256": "fbf0dd5d95df9ef106f11ae38903164834d7fc95566259db9fb4dcd479b73ea8",
+      "reward_max_abs_error": 2.1434495203059845e-9
+    },
+    {
+      "id": "dance/J_Dance20_DWG",
+      "steps": 780,
+      "expected_steps": 780,
+      "reference_sha256": "eb8576aa65d74b02ae26aebcc80f0877551dd2c01a104bdbd159d1c0bead743e",
+      "g1_pose_sha256": "3f979dccae9f35db811e8d659fae7e7318c74afba267d3ff25825afef3aa0213",
+      "e1_pose_sha256": "462bc14a34b3ab617539da8e4ce2473f5f2da54abe977f30d09450d371d1decf",
+      "sha256": "426d67362febe29859c265a75fe7be18095053c5de977dff8065b31654c2456f",
+      "reward_max_abs_error": 1.677382458625809e-9
+    },
+    {
+      "id": "dance/J_Dance22_Thrilling",
+      "steps": 1348,
+      "expected_steps": 1348,
+      "reference_sha256": "9f6647eb110642b7f78cd16539c95fd6a2d407e2e31ef5cc14e266932f6b3283",
+      "g1_pose_sha256": "0a9f0a1fa300e6809ab62894925b10fa6261c130f1cfd052e00bbf929016811a",
+      "e1_pose_sha256": "efd19b217fb169a43faf09df584e84e48a4885ba6977c12215f43fa9dd75d006",
+      "sha256": "b3610481f870f4e8cbfbc06c31769cd5eededf316234fc925319a9aa13fcd01c",
+      "reward_max_abs_error": 1.9376250222358227e-9
+    },
+    {
+      "id": "dance/J_Dance23_MidnightSun",
+      "steps": 2428,
+      "expected_steps": 2428,
+      "reference_sha256": "bd9d165f0c2cbe52a8eec269d2b91f9ea9269f55d67955ee41e25a71f27b1ce9",
+      "g1_pose_sha256": "ae0e58037aea0c20f755aa59baf9be1776e779e3bbfaeb67ff52c860bea420a9",
+      "e1_pose_sha256": "1f3e7e6f5e94583e6ec9dfcbb11e5bdc9c75a24dff339cabe1d024f6a00f5b26",
+      "sha256": "31424a5c1d156c3b91280fd517aac06e6bd0eda6bf3948190e393e81cc87d573",
+      "reward_max_abs_error": 1.8324910911610148e-9
+    },
+    {
+      "id": "dance/J_Dance3_Woah",
+      "steps": 1499,
+      "expected_steps": 1499,
+      "reference_sha256": "06cb1ce02bfb6935f07d6c3f151ebdd9b9d0f97160bf37602c530ce6d10df949",
+      "g1_pose_sha256": "b820541b3170b26e16f9a89e959d77ca062b6410ddeb2ab4043d86f91e8d8af3",
+      "e1_pose_sha256": "cade994aa7e933dd91a17e2c5dc81e082a2bf086fe63e70a59eee31b940308de",
+      "sha256": "918815403e1cef32dd3e0256de8d5dd303b2a86cded18d70ee00de87da14488b",
+      "reward_max_abs_error": 1.565279777321349e-9
+    },
+    {
+      "id": "dance/J_Dance4_Broadway",
+      "steps": 1396,
+      "expected_steps": 1396,
+      "reference_sha256": "1af79dceb82fff85a1fbe331a7394e7fb56c3284b7907a47eb251a0d4a8cc73e",
+      "g1_pose_sha256": "bbbd2a9b9f0a89114a3a084976842a3a48dd05a6307d16d40c3b0525c9a19916",
+      "e1_pose_sha256": "875e46494ae76d8db3a19c0d54a3b78df721a017a831997ecf751e052bb488cd",
+      "sha256": "1164855815a0431ebfa268a6339c836641377e5009ed66941ee9569904fbeed5",
+      "reward_max_abs_error": 1.8894510201220016e-9
+    },
+    {
+      "id": "dance/J_Dance5_Hype",
+      "steps": 805,
+      "expected_steps": 1579,
+      "reference_sha256": "c28986dc8afc7ff5a194ec11e884ec9a478cba3dfb5de1c7de910d757e7a238b",
+      "g1_pose_sha256": "f7fb9aae86cdff09e0345de1a8840782204602a909e4ee49ce02d74aa293a8c2",
+      "e1_pose_sha256": "f872bb75cbdad69a1c259b3a481c65312adf51e3f25a290b364975a518f5ca0e",
+      "sha256": "5916b311bb9eb692eca2fd2a38b1914c1f8617faa1f9a251d36c270e12044d59",
+      "reward_max_abs_error": 1.5882940310185667e-9
+    },
+    {
+      "id": "dance/J_Dance8_WestCoast",
+      "steps": 1995,
+      "expected_steps": 1995,
+      "reference_sha256": "039eb6fa8131a120c6ab30dee7cb70d0916de9208d47588c93502afdef844cd4",
+      "g1_pose_sha256": "30cf690b20458ad0019f2eea8618818d55bbdff4348c1717db3adb92dd1ee8c6",
+      "e1_pose_sha256": "6a0cf985da5bf34fe6d521d2e1a1bcd8bc2f3dafc5c14fb9c5f30461d43de536",
+      "sha256": "35c0c95f7e66caeed65733726528f09b0cf1467ee018457510ca7526aa7bd1a4",
+      "reward_max_abs_error": 1.8342208463889564e-9
+    },
+    {
+      "id": "dance/J_ShortDance14_Disco",
+      "steps": 714,
+      "expected_steps": 714,
+      "reference_sha256": "2c91f432351a0ff73c50a62108f8bae448fc8634cba92b7abbd9e63e3ab9e80d",
+      "g1_pose_sha256": "bc3d921b2eb37c302dd8195707dd699304168d155b4460e921639d945dd82dcc",
+      "e1_pose_sha256": "5e5e950359c1f1468af15dc898fe5e001dfd52f8458fdf4f5e7fa48564faef2c",
+      "sha256": "d7a1d5403f7bbd2bfb0eae850147c6c6de37595dd895d9c62ef0c9c98b11f22e",
+      "reward_max_abs_error": 1.8985104148494525e-9
+    },
+    {
+      "id": "dance/J_ShortDance16_JazzWalk",
+      "steps": 530,
+      "expected_steps": 530,
+      "reference_sha256": "9792181693e07276cbdb90a7c6b9bbe1572dc67d5b50454493f5bfecda7c3579",
+      "g1_pose_sha256": "d6aba0264cea882d675354396b525f35461691c1de661540fb615d48cdba0e9a",
+      "e1_pose_sha256": "8e93a09e35a72f595ae0e5349b66b8d3bb9d989695215af0ae2d0580ac10677a",
+      "sha256": "280d74f263597009890eeb9db009df586702c1fed13805ab40679c66d8a2179d",
+      "reward_max_abs_error": 1.2942566497697872e-9
+    },
+    {
+      "id": "karate/B_AttackKarate",
+      "steps": 1204,
+      "expected_steps": 2358,
+      "reference_sha256": "bce9afe50a8a5b7fb8569c4291897e1dc2aea1e84f8593f42c6e4fbeaa57e46e",
+      "g1_pose_sha256": "84b2b78d0e0c53fb5be91ede234e3b69ed810f0698e5c74c83a4011d97c67410",
+      "e1_pose_sha256": "aee569e3d95a220c38ebe1bf03bc6e9fddad1044ad707727899529a297ce64f7",
+      "sha256": "842a6cbfa77ece62488f39c5142853ef20e46468c8e8dbe9660e2f5eec38f233",
+      "reward_max_abs_error": 1.5615595951729011e-9
+    },
+    {
+      "id": "karate/B_BowKarate",
+      "steps": 1244,
+      "expected_steps": 1877,
+      "reference_sha256": "ea7280c27ca73cbedced257396c33d7ca3c9f56e36211848eedf8a3e02ff98ba",
+      "g1_pose_sha256": "9b680bd24cfd8d43f3bca0b22d6204ad574ddf14be9370af14a7a1ec8b663d56",
+      "e1_pose_sha256": "39ca130dfa72044b8af3b0b68ef980f2d2f4208611a5c2f46f9e4fd79d2c6015",
+      "sha256": "26031b9c5ae88b2b68c94bb71b807b8a11bea8f050a0ffdd3c44f51bb2e8d46c",
+      "reward_max_abs_error": 1.6353456193385352e-9
+    },
+    {
+      "id": "karate/B_ChopsKarate",
+      "steps": 2632,
+      "expected_steps": 2632,
+      "reference_sha256": "ad53f91e2b8474788ce17fb564b4790e6ac840d194f93519710fb351e454c6e3",
+      "g1_pose_sha256": "573ec534eec1dd1edb932a47f9dd64b55ed0929b57b825d633409c38c9807c33",
+      "e1_pose_sha256": "7ed378b92678317a4d7966425806813f96164c9b2acd0074ec246acc8b06f51b",
+      "sha256": "7673b446ef5c2c9dfdc6e69fc567353fd0045be0f905b61a94c81d89da6ced6a",
+      "reward_max_abs_error": 1.5785850925043032e-9
+    },
+    {
+      "id": "karate/B_CrazyChopsKarate",
+      "steps": 1209,
+      "expected_steps": 1209,
+      "reference_sha256": "64f53c1424ecb631d9507d383785f9fa2a52a1f8365686a7c0bd4aa62f84f8de",
+      "g1_pose_sha256": "0d9aaf21c3a15cbdab5a68620092d658a8c30bef4f2424a22f57cb09b1399657",
+      "e1_pose_sha256": "4496f4eb853c836441714e78dcac2b5d3f7c7e0c6084b54157cfed7be3b3fd75",
+      "sha256": "795e6c47240e8cf07fad0e3fe3b3747e2cd1e77b71b051d9453f5b3b900593be",
+      "reward_max_abs_error": 1.537569663603855e-9
+    },
+    {
+      "id": "karate/B_ForwardKarate",
+      "steps": 1815,
+      "expected_steps": 1815,
+      "reference_sha256": "f4b305711c38c05bbb12655d0d80e5489a19e9b9037ead42c45ee12b8a399708",
+      "g1_pose_sha256": "7115747d432370ada483ec88bfbc6607d7de63afb6337ed4c4b28a4c134d34c6",
+      "e1_pose_sha256": "62c34b48634e2ee2314f9c7e1bbf806b4dc955b5f3afb58ac7c754853d386417",
+      "sha256": "e78e9bab71e30f136030c9a7ffc9b4640deea8a8ee6f77509170c06c203dce56",
+      "reward_max_abs_error": 1.5830617788870072e-9
+    },
+    {
+      "id": "karate/B_LongKarate",
+      "steps": 2400,
+      "expected_steps": 2400,
+      "reference_sha256": "f22573dfee9c6bc4b493f090ebb9e22e23ffd14115496777deaa4e4591c7773a",
+      "g1_pose_sha256": "d93e71fb1d225d94a415b1cbd0e255640f01655e4e83545a752da28aee4704ba",
+      "e1_pose_sha256": "db5e28fa6a31e4ac2ee898ec09634626dccca738489110849fc86e2d73c02098",
+      "sha256": "f82fcff827607a0b15815769df1f51a7224f0b415d6a3a5caf1f3aa3605f35cf",
+      "reward_max_abs_error": 1.738951618118767e-9
+    },
+    {
+      "id": "karate/B_SpinKarate",
+      "steps": 1282,
+      "expected_steps": 1282,
+      "reference_sha256": "ab11feb42e4561c3bf92725698962d04d646b82c903208b4be44674d1b7444f2",
+      "g1_pose_sha256": "185980dfac93aba067ce96426be625560dfab6ef629f486edbe0ac73e6f6c56a",
+      "e1_pose_sha256": "cc772147e4e44a3a5f55abf2b68d3880092924c632fcde52fdef0dc7502f5932",
+      "sha256": "dd67f7499836eba7d28bf1b560f62b4155bcbe1a970c2c61f53ed40cc30a5a94",
+      "reward_max_abs_error": 1.4013649702465658e-9
+    },
+    {
+      "id": "karate/M_Move1",
+      "steps": 1557,
+      "expected_steps": 1557,
+      "reference_sha256": "a6d39e395c271a4b78a2992d5336e2db09396b92495dcb75459054604a3c27c5",
+      "g1_pose_sha256": "2696eb879f610dffc0406e8e48b2edc93dc4b961686700730f0d0fede24177db",
+      "e1_pose_sha256": "86e52230bef878ea977d5d7e99d48e80ffc29afe864e8290a29d2c26ab17c182",
+      "sha256": "7510e5570af880725edb9c8beb262e22ef919eee50da26d721fd9b030a6b5dbc",
+      "reward_max_abs_error": 1.5937622263595408e-9
+    },
+    {
+      "id": "karate/M_Move17",
+      "steps": 1330,
+      "expected_steps": 1330,
+      "reference_sha256": "9cee5df6c589f15a5edb177033872ace0a2c1ad62660d12a0c37316a2b1c220b",
+      "g1_pose_sha256": "315dd3344a0307f03a296c571ba81c391aa08c8822b0632bfde1a65f079c8c35",
+      "e1_pose_sha256": "7f6b6d3f4a4dc859fe58d49def98a3539cdbcc25fedc1a3b0f46c19809d86168",
+      "sha256": "532f639e87f03466bf814b9054aa299710b8029e79e554006d9d8207b7200f36",
+      "reward_max_abs_error": 1.5570481848303785e-9
+    },
+    {
+      "id": "karate/M_Move19",
+      "steps": 842,
+      "expected_steps": 842,
+      "reference_sha256": "e290f634d0d906b2d28e14346db2bbb572f37860c7014eb02c0759bec8227c89",
+      "g1_pose_sha256": "385fa7e197401a2c6cd36e77bfcd6c7f870779e2dea11d78b4ba8b5d46a8de75",
+      "e1_pose_sha256": "f9a830f1cd0deaa4b1ac64ee6db2508b289088307e7b767e0509f80dc3b09e5a",
+      "sha256": "b1b253099a499aea87f019dd8c4d24ff307f48a2265a27a858cb50e5c65b0496",
+      "reward_max_abs_error": 1.4577667597354127e-9
+    },
+    {
+      "id": "karate/M_Move2",
+      "steps": 1821,
+      "expected_steps": 1821,
+      "reference_sha256": "6e24fc9d189c542fccb22ec95be2a878c0b26c13eb7726c86d736e278e138926",
+      "g1_pose_sha256": "fdb893f2736508ea63039e944b802ed4652adcd04461f4c471fd61d98b68bb5f",
+      "e1_pose_sha256": "f83e8aa373bb53105491bdded7614fa72f04cb79e354fb6a614721b6a0b18519",
+      "sha256": "9c4db162390f4aa9f7614208358963fda4500794beadf3c8ad04f3014cb17183",
+      "reward_max_abs_error": 1.506507391058065e-9
+    },
+    {
+      "id": "karate/M_Move3",
+      "steps": 635,
+      "expected_steps": 1597,
+      "reference_sha256": "042c7cee265a9437f964cc8f37ed320f6b012deb9cc2ba2b6b6db3138f87ad61",
+      "g1_pose_sha256": "52674dfaccff792bfaae82c5ac6f985ccde93892ac69a25e40aba4a4578399f5",
+      "e1_pose_sha256": "78ae04d684a44b30a7774dd76cd02b5c024124ae54a86a9da8b98e4456c832e3",
+      "sha256": "a8be348c604719a16b1a36ace0e7663f39d9b3cb448e554f07f7ff7691a05c61",
+      "reward_max_abs_error": 1.3384372533897793e-9
+    },
+    {
+      "id": "karate/M_Move5",
+      "steps": 1798,
+      "expected_steps": 1798,
+      "reference_sha256": "00e4ab4c2c4d456d842ce098100274f62b76eed280c482529127682c1b48b629",
+      "g1_pose_sha256": "bec6b21fd4b629d1571e5e43048c17bd5b36251d5cbe7e4c410c61684b0c24d3",
+      "e1_pose_sha256": "151a4f17c268a924a6798edb6a61712c98eb28f87ab66153f64441855d9fec62",
+      "sha256": "e0da762ce41fb2e7df0395cf9f1845fb356fd7dbc1f030cd1b03da1f452aa98c",
+      "reward_max_abs_error": 1.7854333636546649e-9
+    },
+    {
+      "id": "karate/M_Move6",
+      "steps": 1241,
+      "expected_steps": 1780,
+      "reference_sha256": "195d274931ef047bc9306b19476acc6bf20887b1b3ac4b2764b1bc5b8914f95f",
+      "g1_pose_sha256": "ecf0eb21c191502207e9d48b5b76029b72268e146a20530ed45c897b7033d733",
+      "e1_pose_sha256": "569af004a4884b674dddb34ebab843272c9a5d410f2c00c8e748e469068fe61b",
+      "sha256": "e509bc33c36f18ee97f58f6315d7bcfc92ef3be7abb9e526021f9dda2504a3cc",
+      "reward_max_abs_error": 1.4491924986426152e-9
+    },
+    {
+      "id": "karate/M_Move7",
+      "steps": 1190,
+      "expected_steps": 1190,
+      "reference_sha256": "71431e0847af78f291de8fdbc40df4ed3e7a93382e04b24bda147163e678dcbd",
+      "g1_pose_sha256": "e3435fd6099219b8bd58818f392b74032a59de72917c29f0f5bc49f70be35427",
+      "e1_pose_sha256": "fa69cf1712ff6aa396e5fa72462a497af8ba7e0ddcaf217399c689487420e3a9",
+      "sha256": "1ca9b6e94bf31d324ae59779f6587f750a5f9bbe9c085f35c2c8343029f66162",
+      "reward_max_abs_error": 2.1381772428996637e-9
+    },
+    {
+      "id": "karate/M_Move8",
+      "steps": 319,
+      "expected_steps": 701,
+      "reference_sha256": "69b04e89fa5a11b47fc649e9be853a3cad9fcec1d1b3ed093f7f9c0f6b9135c4",
+      "g1_pose_sha256": "08a3ce5d74fef6ba2eec601360b1e98824798440af0964f8dba6fc0366eb18e0",
+      "e1_pose_sha256": "1222832dfea71a050ab61d6602616e672ae6eb7cc2b3cad6a899a9850a0f5a58",
+      "sha256": "17b75f953747fa7150aadae6d8bf88e18ec6fe9423a9a12d0e7fde41e158da40",
+      "reward_max_abs_error": 1.3782825002833787e-9
+    },
+    {
+      "id": "karate/M_ShortMove12",
+      "steps": 388,
+      "expected_steps": 388,
+      "reference_sha256": "308afa3066e0a2231395e05f6a825e1e44034a5050767d73e00eba5f81fdfff5",
+      "g1_pose_sha256": "3e861fa46967f0507b7f1ab64c271ae9cfaf09592b37c5465c9bbba32767c1b6",
+      "e1_pose_sha256": "132cd89dbd6cce51dcb1c504260ef5a801ad83155b5ab84cfcd711ce667a79de",
+      "sha256": "8478697e53906334dad5d116fd582a0529260150f1d68bf9b9399e9060871b0b",
+      "reward_max_abs_error": 1.339236933156629e-9
+    },
+    {
+      "id": "karate/M_ShortMove13",
+      "steps": 448,
+      "expected_steps": 448,
+      "reference_sha256": "174e03ea6b07a01684141a5c04fbaf228c175d3e88e0bbfaf9075ea48baef12f",
+      "g1_pose_sha256": "e6bff26727320ccf9b220d960584c1d47184e42d16a380f5e79bc8070f8f4b4c",
+      "e1_pose_sha256": "8c8d267bae91d77077bd8d178478cda853b437c480e78f74ce20f099931a5299",
+      "sha256": "b10879c71a077f9b887e1d5ac7f1d038620a4ca9f4ae851ff134fdb6b806b323",
+      "reward_max_abs_error": 1.501908210646552e-9
+    },
+    {
+      "id": "karate/M_ShortMove14",
+      "steps": 326,
+      "expected_steps": 326,
+      "reference_sha256": "f5a6e51d9f6c7ab9a9f1def144f7de43e584eac5a40b7c88cb4320249241b5e5",
+      "g1_pose_sha256": "12511971ec6b880f877dde3ffb7f363efd7af42c39efafd120371600399d6563",
+      "e1_pose_sha256": "81330c98e3f82888de747eadf8db869af59632be4f0f93484d125498f97bdb79",
+      "sha256": "7e709c7ee229a1b2fda02e3dc76f8d4f705a8ec581226edfde73c221ef0e8f8c",
+      "reward_max_abs_error": 1.352870504858772e-9
+    },
+    {
+      "id": "karate/M_ShortMove16",
+      "steps": 368,
+      "expected_steps": 368,
+      "reference_sha256": "f12cc3de68e67786ccff73cdc72e887bf85c59c6c416d25295e7fbe2d9894c9d",
+      "g1_pose_sha256": "9a351ff400621516a96ebc680357f914aa5768f5123ec99e77b6d67cd7e60a34",
+      "e1_pose_sha256": "e2547a444ef7d8118d7c8af5e7d618c06b7fefac56759e34f579d9412b62295f",
+      "sha256": "807909cac40624d833f52ccb05f3a5bcdaeebb90316c8008637c7eecb8d9f09b",
+      "reward_max_abs_error": 1.689351682848672e-9
+    }
+  ]
+}

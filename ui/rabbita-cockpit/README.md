@@ -1,5 +1,67 @@
 # MoonRobo Rabbita Cockpit
 
+## Local results and read-only smoke
+
+`results.html` is the presentation view: overview, full-motion failures,
+experiment library, and provenance. It links back to a selected cockpit
+experiment through `/?experiment=ID`. The reference tab embeds the original
+SuperMimic site with explicit authorship; its scientific claims are separate
+from local smoke evidence. No training or physical execution is launched.
+
+The 2026-10-28 local session serves `target/ui-smoke-20261028/book` on port 5290
+and the built UI on port 4190. That isolated RoboBook is copied from the E1
+example, with `moondata` linked to the existing
+`target/learning/experiment-book/moondata` store. The robot example's mock
+telemetry is not displayed as live telemetry. The experimental records are
+the actual sealed local artifacts.
+
+Recreate the result export from a running host, from the repository root:
+
+```sh
+mkdir -p ui/rabbita-cockpit/public/results
+moon run scripts/smoke_results_site.mbtx -- "$PWD" http://127.0.0.1:5290 \
+  "$PWD/target/ui-smoke-20261028/book" "$PWD/ui/rabbita-cockpit/public/results"
+npm --prefix ui/rabbita-cockpit run build
+MOONROBO_REFERENCE_HOST=http://127.0.0.1:5290 node --test \
+  ui/rabbita-cockpit/reference-registry.integration.test.mjs
+```
+
+The export checks the service, read-only snapshot, experiment registry, sealed
+evaluation SHA-256 values, and both replay routes. It includes all 48 registered
+experiment summaries, both 40-motion evaluation reports, and their provenance.
+The browser verifies complete pose contracts and content-addressed mesh bytes.
+The hero poster is a screenshot of the registered feedforward replay at its
+initial frame, with the reference overlay hidden, not generated imagery.
+
+Verified workflows: task intake and refresh, experiment selection and trial
+inspection, replay selection/play/pause/seeking, motion filtering/details,
+source tabs, and desktop/mobile layout. Native replay roots may omit
+`parent_id`; the frontend accepts this equivalent of `null`. Submission errors
+remain visible outside collapsed technical details. The result page shows
+missing prediction/hardware/scale studies as not run or not registered.
+
+The `Data` workspace now opens an inline `Experiments → Results → 3D replay`
+flow. A single experiment selection is shared by all three tabs. Candidate
+inspection, motion filters, expanded motion details, and the replay cursor are
+retained when switching tabs or visiting another workspace. Playback pauses
+when hidden. Full-motion details expand inline; experiments without pose
+records show an empty state rather than another experiment's recording.
+Deep links accept `/?experiment=ID&view=results` (or `view=replay`).
+
+`learning-workspace.js` keeps the evidence and viewer controllers in a persistent
+DOM island attached to the Rabbita navigation slot. `workbench.css` applies the
+Results page's neutral typography, surfaces, cards, and controls to the cockpit.
+The presentation page remains available from the header.
+
+The replay uses a white stage and a single transport dock, following the
+SuperMimic presentation's light navigation and media-first composition.
+`replay-stage.css` keeps the workspace tabs sticky below the measured header.
+The picture height reserves space for the complete dock and timeline, including
+on a 375 × 667 viewport. A ResizeObserver recalculates it when the header,
+selectors, or transport wrap. Reference comparison is opt-in; playback details
+and source hashes are folded below the first screen. The language switch stays
+in document flow so it cannot cover playback controls.
+
 > **Integration migration — 2026-07-30:** The former
 > `/v1/robot/routine/run` shortcut is retired. The cockpit submits reviewed work
 > through MoonFlow to an installed MoonRobo adapter; MoonClaw remains the
@@ -9,12 +71,18 @@ This is the first MoonBit/Rabbita operator surface for MoonRobo. It renders the
 `vectie/moonrobo/src/cockpit` projection contract directly, so robot parsing,
 safety decisions, and bridge semantics stay in the MoonBit runtime packages.
 
-The cockpit uses five focused views instead of mounting every subsystem on one
-page: `Operate`, `Robot`, `Tasks`, `MoonData`, and `Diagnostics`. Robot identity,
-runtime state, telemetry freshness, refresh, and emergency stop remain in the
-persistent header. `Operate` is the default live workspace; detailed URDF
-editing is isolated in `Robot`, agent workflows in `Tasks`, and runtime proof in
-`Diagnostics`.
+The cockpit uses five workspaces: `Operate`, `Robot`, `Tasks`, `Data`, and
+`System`. Each has focused section tabs and remembers its selected section while
+switching workspaces. `Operate` opens the command flow beside the robot preview;
+telemetry and activity have their own tabs. `Tasks` separates chat, review,
+history, and observation. Model editing, design, and digital trials live under
+`Robot`; experiments and replay live under `Data`.
+
+Paths, internal identifiers, model geometry, and evidence are available through
+collapsed details. Connection, refresh, and emergency stop remain in the header.
+Design and trial dialogs also use section tabs and preserve their form drafts.
+Tabs support arrow keys, Home, and End; closing a tool returns focus to its
+launcher. Workspace labels support both English and Simplified Chinese.
 
 See [Cockpit Audit And Upgrade Record](../../docs/COCKPIT_AUDIT.md) for the
 measured baseline, the upgrade mapping, validation evidence, and remaining
@@ -87,6 +155,23 @@ artifact-family counts, validation blockers and warnings, repair pressure, the
 catalog path, and up to 40 canonical artifact summaries. Raw payloads and
 manifests remain owned by MoonData packages; browser code does not scan or parse
 the data root.
+
+**MoonData → Learning experiments** opens the registered learning comparison.
+It reads `/api/moondata/learning-experiments` and a selected candidate's
+`/{experiment}/physics/{seed}` evidence. The table preserves failed candidates;
+the inspector overlays recorded baseline/candidate root height and upright Z,
+with per-observation contacts and a shared simulated-time cursor. Curves stop
+at their own recorded endings; missing baseline timestamps are not interpolated.
+Checkpoint and physics payload references remain inspectable. See the
+[experiment registry guide](../../docs/LEARNING_EXPERIMENT_REGISTRY.md) for
+registration commands and current limits. There is no learning launch, skill
+activation or hardware execution in this viewer.
+
+For candidates with registered follow-ups, **Recorded evaluation** switches
+between original, repeat, fresh and extended reports. The view preserves the
+original pass duration and displays longer-trial failures. Each selection uses
+its own checksum-bound physics payload; it does not reinterpret a short pass
+as long-term stability.
 
 The Platform Readiness panel polls `/api/moonrobo/readiness`, the first
 milestone report for the selected RoboBook root. It shows whether the

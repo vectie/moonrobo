@@ -6,17 +6,20 @@
     "dev:e1-live": "vite --config vite.e1-live.config.js",
     "build:e1-live": "vite build --config vite.e1-live.config.js",
     "test:e1-live": "node --test e1/raised-drums.test.mjs e1/live-assets.test.mjs e1/live-server.test.mjs",
-    "predev": "moon build --target js --debug && node prepare-rabbita-build.mjs debug",
+    "predev": "moon build --target js --debug main && node prepare-rabbita-build.mjs debug",
     "dev": "vite --host 127.0.0.1 --port 5190",
-    "prebuild": "moon build --target js --release && node prepare-rabbita-build.mjs release",
+    "prebuild": "moon build --target js --release main && node prepare-rabbita-build.mjs release",
     "build": "vite build",
+    "build:compare": "vite build --config vite.compare.config.js --outDir ../../target/robo-public/site --emptyOutDir",
     "preview": "vite preview --host 127.0.0.1 --port 4190"
   },
   "dependencies": {
+    "@mujoco/mujoco": "3.15.0",
     "@rabbita/vite": "^0.2.0",
     "three": "^0.185.0"
   },
   "devDependencies": {
-    "vite": "^7.0.0"
+    "vite": "^7.0.0",
+    "wabt": "1.0.39"
   }
 }

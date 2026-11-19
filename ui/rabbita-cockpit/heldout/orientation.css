@@ -1,0 +1,18 @@
+@import url("./workflow.css");
+#main h2 {font-size:clamp(19px,2.4vw,26px);letter-spacing:-.025em}
+#main h3{font-size:16px;margin:22px 0 4px}
+#plot{height:auto;max-height:240px;margin-top:8px}
+.legend i{display:inline-block;vertical-align:middle;width:22px;border-top:3px solid;margin-right:5px}
+.scroll{overflow:auto}
+table{margin-top:9px}th,td{padding:8px 4px}th{white-space:nowrap}
+table button{color:var(--teal);text-decoration:underline;min-height:28px}
+tr.selected{background:#eef5f2}
+.triads{display:grid;grid-template-columns:repeat(4,1fr);margin-top:15px;border-top:1px solid #d7e3de;padding-top:8px}
+.triads figure{display:flex;align-items:center;margin:0;color:#475956;font-size:12px;gap:4px}
+.triads svg{width:63px;max-width:45%;height:51px}
+.share{display:grid;grid-template-columns:5em 1fr 4.5em;align-items:center;gap:8px;font-size:13px;line-height:1.6}
+.share i{display:block;height:7px;border-radius:2px;background:var(--teal)}
+.share output{text-align:right;font-variant-numeric:tabular-nums}
+@media(max-width:650px){.triads{grid-template-columns:1fr 1fr}.scroll table{min-width:625px}.topbar nav{gap:1px}.topbar nav a{padding:5px}.tiles{grid-template-columns:repeat(3,1fr)}#main{margin-bottom:30px}.tile strong{font-size:21px}}
+
+.axes-note{color:#526463;font-size:12px}.legend output{font-variant-numeric:tabular-nums;font-weight:650}

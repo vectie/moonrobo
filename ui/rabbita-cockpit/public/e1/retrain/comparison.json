@@ -1,0 +1,1338 @@
+{
+  "format": "moonrobo.supermimic-full-clip-evaluation.v1",
+  "protocol": {
+    "start_frame": 0,
+    "requested_horizon": "entire clip, no episode time limit",
+    "failure": "hard reference-relative training termination",
+    "normalization": "sum reward / ((frame_count - 1) * max_step_reward)",
+    "max_step_reward": 0.1,
+    "aggregation": "equal clip mean; separate frame-weighted mean",
+    "strict_tracking_is_separate": true,
+    "physical_settings": {
+      "robot": "noetix-e1-23-lab-v1",
+      "split": "external-bones-panel",
+      "backend": "native-mujoco"
+    }
+  },
+  "n_clips": 40,
+  "norm_return": 0.7155177511195837,
+  "norm_return_framew": 0.6923986595310405,
+  "n_failed": 4,
+  "failed": [
+    "230103/krakowiak_R_004__A100_M",
+    "230119/mohak_turn_360_004__A125_M",
+    "230414/dance_basic_turn_v1_180_R_loop_002__A323",
+    "230419/high_jump_R_001__A340_M"
+  ],
+  "n_completed": 36,
+  "incomplete_protocol_clips": [],
+  "missing_clips": [],
+  "unexpected_clips": [],
+  "benchmark_complete": true,
+  "evaluation_physical_steps": 14269,
+  "evaluation_simulated_physical_steps": 14269,
+  "catalog_clip_count": 40,
+  "full_catalog_evaluated": true,
+  "strict_tracking": {
+    "evaluated_clips": 40,
+    "passed_clips": 0,
+    "all_passed": false,
+    "interpretation": "additional engineering gate; not the paper's failure count"
+  },
+  "per_clip": [
+    {
+      "clip_id": "210531/rage_amateurl_003__A001",
+      "expected_steps": 648,
+      "executed_steps": 648,
+      "undiscounted_return": 54.34144446322257,
+      "maximum_full_clip_return": 64.8,
+      "normalized_return": 0.838602538012694,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 0,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.21212380542493237,
+          "root_position_rmse_m": 0.8208678409516234,
+          "root_orientation_rmse_rad": 0.08125304482181547,
+          "body_position_rmse_m": 0.8206963036118781,
+          "root_relative_body_position_rmse_m": 0.05470285099748115
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "220713/looking_around_horizontally_003__A024_M",
+      "expected_steps": 565,
+      "executed_steps": 565,
+      "undiscounted_return": 54.79814903343506,
+      "maximum_full_clip_return": 56.5,
+      "normalized_return": 0.9698787439546028,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 1,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.1310442722679316,
+          "root_position_rmse_m": 0.03917378296163123,
+          "root_orientation_rmse_rad": 0.03414186677272824,
+          "body_position_rmse_m": 0.038827608505489795,
+          "root_relative_body_position_rmse_m": 0.027477710635027894
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "220720/jog_sideway_090_start_003__A031",
+      "expected_steps": 167,
+      "executed_steps": 167,
+      "undiscounted_return": 10.006616887404082,
+      "maximum_full_clip_return": 16.7,
+      "normalized_return": 0.5991986160122205,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 2,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2320979516849131,
+          "root_position_rmse_m": 1.1882708774877342,
+          "root_orientation_rmse_rad": 0.1360950071439853,
+          "body_position_rmse_m": 1.1843127099766777,
+          "root_relative_body_position_rmse_m": 0.08146841426474716
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "220721/jog_sideway_090_start_002__A036",
+      "expected_steps": 174,
+      "executed_steps": 174,
+      "undiscounted_return": 10.63214364490546,
+      "maximum_full_clip_return": 17.400000000000002,
+      "normalized_return": 0.6110427382129574,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 3,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2219483307986131,
+          "root_position_rmse_m": 1.111262661155203,
+          "root_orientation_rmse_rad": 0.11850271833222069,
+          "body_position_rmse_m": 1.1322034161009098,
+          "root_relative_body_position_rmse_m": 0.07935401268041295
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "220727/walk_sideway_045_stop_001__A038_M",
+      "expected_steps": 357,
+      "executed_steps": 357,
+      "undiscounted_return": 28.955486814312703,
+      "maximum_full_clip_return": 35.7,
+      "normalized_return": 0.8110780620255659,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 4,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.1867933962380377,
+          "root_position_rmse_m": 0.5370215000265262,
+          "root_orientation_rmse_rad": 0.07552469665990912,
+          "body_position_rmse_m": 0.5430074573437361,
+          "root_relative_body_position_rmse_m": 0.05822058648203632
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "221010/legs_relax_003__A047",
+      "expected_steps": 315,
+      "executed_steps": 315,
+      "undiscounted_return": 25.563729906229227,
+      "maximum_full_clip_return": 31.5,
+      "normalized_return": 0.8115469811501342,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 5,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.19395637400930404,
+          "root_position_rmse_m": 0.29126687856503436,
+          "root_orientation_rmse_rad": 0.15407679233923502,
+          "body_position_rmse_m": 0.29199821844056173,
+          "root_relative_body_position_rmse_m": 0.07804626591764029
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "221011/idle_right_to_idle_003__A052",
+      "expected_steps": 185,
+      "executed_steps": 185,
+      "undiscounted_return": 17.77000137178513,
+      "maximum_full_clip_return": 18.5,
+      "normalized_return": 0.9605406146910882,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 6,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.1185257480973917,
+          "root_position_rmse_m": 0.048844588489881796,
+          "root_orientation_rmse_rad": 0.03857346401739459,
+          "body_position_rmse_m": 0.0502742296108807,
+          "root_relative_body_position_rmse_m": 0.02232479907091053
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "221115/omg_R_002__A060_M",
+      "expected_steps": 232,
+      "executed_steps": 232,
+      "undiscounted_return": 21.078253418137948,
+      "maximum_full_clip_return": 23.200000000000003,
+      "normalized_return": 0.9085454059542217,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 7,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.18732704993597554,
+          "root_position_rmse_m": 0.033796001501597055,
+          "root_orientation_rmse_rad": 0.029059271430421914,
+          "body_position_rmse_m": 0.04485869257578588,
+          "root_relative_body_position_rmse_m": 0.03557967152525526
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "221116/looking_around_up_001__A062_M",
+      "expected_steps": 817,
+      "executed_steps": 817,
+      "undiscounted_return": 78.83617455357025,
+      "maximum_full_clip_return": 81.7,
+      "normalized_return": 0.9649470569592441,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 8,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.12693648393660986,
+          "root_position_rmse_m": 0.04154774045630976,
+          "root_orientation_rmse_rad": 0.06817909806432004,
+          "body_position_rmse_m": 0.052098148867545234,
+          "root_relative_body_position_rmse_m": 0.04035049853611588
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "221118/body_stretch_1_005__A072_M",
+      "expected_steps": 192,
+      "executed_steps": 192,
+      "undiscounted_return": 15.533453612316464,
+      "maximum_full_clip_return": 19.200000000000003,
+      "normalized_return": 0.809034042308149,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 9,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.3831656317966832,
+          "root_position_rmse_m": 0.06673362029483243,
+          "root_orientation_rmse_rad": 0.18067938753318533,
+          "body_position_rmse_m": 0.08124287523358342,
+          "root_relative_body_position_rmse_m": 0.06427723080951973
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "221130/inj_torso_stoop_down_R_002__A082",
+      "expected_steps": 743,
+      "executed_steps": 743,
+      "undiscounted_return": 56.16700058331259,
+      "maximum_full_clip_return": 74.3,
+      "normalized_return": 0.755948863840008,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 10,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.26625334660072497,
+          "root_position_rmse_m": 1.0537882908062306,
+          "root_orientation_rmse_rad": 0.12848709903069433,
+          "body_position_rmse_m": 1.0419708768567777,
+          "root_relative_body_position_rmse_m": 0.07872877041621869
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230103/krakowiak_R_004__A100_M",
+      "expected_steps": 152,
+      "executed_steps": 68,
+      "undiscounted_return": 4.26400198248026,
+      "maximum_full_clip_return": 15.200000000000001,
+      "normalized_return": 0.2805264462158066,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": [
+        68
+      ],
+      "metadata": {
+        "clip_index": 11,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.40376586891714694,
+          "root_position_rmse_m": 0.2703819312732218,
+          "root_orientation_rmse_rad": 0.13827770461722738,
+          "body_position_rmse_m": 0.29183677827452087,
+          "root_relative_body_position_rmse_m": 0.11419536651852631
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230112/i_got_this_003__A116",
+      "expected_steps": 177,
+      "executed_steps": 177,
+      "undiscounted_return": 16.43806731558467,
+      "maximum_full_clip_return": 17.7,
+      "normalized_return": 0.9287043681121284,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 12,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.1485888730477625,
+          "root_position_rmse_m": 0.03545806611482357,
+          "root_orientation_rmse_rad": 0.04257869737974614,
+          "body_position_rmse_m": 0.04969969112655717,
+          "root_relative_body_position_rmse_m": 0.0369437840812341
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230119/mohak_turn_360_004__A125_M",
+      "expected_steps": 518,
+      "executed_steps": 76,
+      "undiscounted_return": 0.7277255786403207,
+      "maximum_full_clip_return": 51.800000000000004,
+      "normalized_return": 0.014048756344407734,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": [
+        76
+      ],
+      "metadata": {
+        "clip_index": 13,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 1.0318519692497907,
+          "root_position_rmse_m": 0.4609824897602593,
+          "root_orientation_rmse_rad": 1.1535533564799645,
+          "body_position_rmse_m": 0.4524013690079698,
+          "root_relative_body_position_rmse_m": 0.3292946785663274
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230124/triumph_one_handed_R_001__A142",
+      "expected_steps": 267,
+      "executed_steps": 267,
+      "undiscounted_return": 23.36421674419789,
+      "maximum_full_clip_return": 26.700000000000003,
+      "normalized_return": 0.8750642975355014,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 14,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2240784097240979,
+          "root_position_rmse_m": 0.05702972971455802,
+          "root_orientation_rmse_rad": 0.0853037665677889,
+          "body_position_rmse_m": 0.08007405823541904,
+          "root_relative_body_position_rmse_m": 0.06542710210686668
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230201/praying_002__A164",
+      "expected_steps": 202,
+      "executed_steps": 202,
+      "undiscounted_return": 18.968291850794397,
+      "maximum_full_clip_return": 20.200000000000003,
+      "normalized_return": 0.9390243490492275,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 15,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.1690950160706218,
+          "root_position_rmse_m": 0.057722545769500117,
+          "root_orientation_rmse_rad": 0.06368063450864318,
+          "body_position_rmse_m": 0.06818080287301365,
+          "root_relative_body_position_rmse_m": 0.047745629740625795
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230209/idle_turn_360_002__A177",
+      "expected_steps": 278,
+      "executed_steps": 278,
+      "undiscounted_return": 24.438287775668684,
+      "maximum_full_clip_return": 27.8,
+      "normalized_return": 0.8790750998441972,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 16,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.162492898899199,
+          "root_position_rmse_m": 0.17989016256399007,
+          "root_orientation_rmse_rad": 0.08029185949953516,
+          "body_position_rmse_m": 0.1844647036104312,
+          "root_relative_body_position_rmse_m": 0.05734022730777692
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230213/sitting_legs_bend_arms_back_loop_001__A186_M",
+      "expected_steps": 869,
+      "executed_steps": 869,
+      "undiscounted_return": -17.10298997233753,
+      "maximum_full_clip_return": 86.9,
+      "normalized_return": -0.1968123126851269,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 17,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.8417030498790239,
+          "root_position_rmse_m": 1.297274400274139,
+          "root_orientation_rmse_rad": 1.2202616573822171,
+          "body_position_rmse_m": 1.338298505220622,
+          "root_relative_body_position_rmse_m": 0.382146390066978
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230217/jog_ff_loop_180_R_005__A208_M",
+      "expected_steps": 122,
+      "executed_steps": 122,
+      "undiscounted_return": 9.887966276581986,
+      "maximum_full_clip_return": 12.200000000000001,
+      "normalized_return": 0.8104890390640972,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 18,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.11776863871293286,
+          "root_position_rmse_m": 0.11801559644656122,
+          "root_orientation_rmse_rad": 0.07617042955948553,
+          "body_position_rmse_m": 0.12870662986264844,
+          "root_relative_body_position_rmse_m": 0.03781648736170955
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230227/jump_ff_360_002__A220",
+      "expected_steps": 274,
+      "executed_steps": 274,
+      "undiscounted_return": 24.908721635905312,
+      "maximum_full_clip_return": 27.400000000000002,
+      "normalized_return": 0.9090774319673471,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 19,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.16646817743587225,
+          "root_position_rmse_m": 0.22294172038089022,
+          "root_orientation_rmse_rad": 0.04784143546485937,
+          "body_position_rmse_m": 0.22452363280012938,
+          "root_relative_body_position_rmse_m": 0.03766719053183529
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230301/injured_torso_jog_ff_loop_360_R_001__A232_M",
+      "expected_steps": 227,
+      "executed_steps": 227,
+      "undiscounted_return": 13.781794411787233,
+      "maximum_full_clip_return": 22.700000000000003,
+      "normalized_return": 0.6071275071271908,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 20,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.276528588652998,
+          "root_position_rmse_m": 0.5037009903304663,
+          "root_orientation_rmse_rad": 0.14297419414496765,
+          "body_position_rmse_m": 0.504606261413747,
+          "root_relative_body_position_rmse_m": 0.0782825845235739
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230302/walk_ff_loop_270_R_003__A237",
+      "expected_steps": 171,
+      "executed_steps": 171,
+      "undiscounted_return": 12.622066911488513,
+      "maximum_full_clip_return": 17.1,
+      "normalized_return": 0.7381325679233048,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 21,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.18525985874613066,
+          "root_position_rmse_m": 0.5257968543404024,
+          "root_orientation_rmse_rad": 0.1061310073166723,
+          "body_position_rmse_m": 0.5316543059273484,
+          "root_relative_body_position_rmse_m": 0.07928216981382007
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230307/jog_ff_loop_180_R_002__A253",
+      "expected_steps": 111,
+      "executed_steps": 111,
+      "undiscounted_return": 7.44692283655871,
+      "maximum_full_clip_return": 11.100000000000001,
+      "normalized_return": 0.6708939492395234,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 22,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.14867108861001013,
+          "root_position_rmse_m": 0.6446605254134654,
+          "root_orientation_rmse_rad": 0.09933670355203679,
+          "body_position_rmse_m": 0.6459645597051469,
+          "root_relative_body_position_rmse_m": 0.046794104203310496
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230313/walk_ff_stop_225_R_003__A267",
+      "expected_steps": 267,
+      "executed_steps": 267,
+      "undiscounted_return": 21.601141283262482,
+      "maximum_full_clip_return": 26.700000000000003,
+      "normalized_return": 0.8090315087364225,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 23,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.17501877044695868,
+          "root_position_rmse_m": 0.3111923241958261,
+          "root_orientation_rmse_rad": 0.0819067773448086,
+          "body_position_rmse_m": 0.3107899298076553,
+          "root_relative_body_position_rmse_m": 0.050730972600864885
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230316/hurry_idle_to_hurry_idle_right_R_002__A281_M",
+      "expected_steps": 347,
+      "executed_steps": 347,
+      "undiscounted_return": 30.636240849017472,
+      "maximum_full_clip_return": 34.7,
+      "normalized_return": 0.8828887852742787,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 24,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2921988967574257,
+          "root_position_rmse_m": 0.08474353460482774,
+          "root_orientation_rmse_rad": 0.09515350857706338,
+          "body_position_rmse_m": 0.07173969930314372,
+          "root_relative_body_position_rmse_m": 0.048919731205619564
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230322/operating_fridge_mid_in_R_001__A299",
+      "expected_steps": 269,
+      "executed_steps": 269,
+      "undiscounted_return": 24.692376923592594,
+      "maximum_full_clip_return": 26.900000000000002,
+      "normalized_return": 0.9179322276428473,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 25,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.17799285257730527,
+          "root_position_rmse_m": 0.0494162798720578,
+          "root_orientation_rmse_rad": 0.061164085697810414,
+          "body_position_rmse_m": 0.06492263902049535,
+          "root_relative_body_position_rmse_m": 0.044048060568704604
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230411/dance_western_horse_step_with_leg_undercut_R_002__A306_M",
+      "expected_steps": 451,
+      "executed_steps": 451,
+      "undiscounted_return": 30.05281641185594,
+      "maximum_full_clip_return": 45.1,
+      "normalized_return": 0.6663595656730806,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 26,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.3170053754521178,
+          "root_position_rmse_m": 0.3713471337352139,
+          "root_orientation_rmse_rad": 0.13614754275900534,
+          "body_position_rmse_m": 0.39124107141056214,
+          "root_relative_body_position_rmse_m": 0.09904543028459539
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230413/dance_hiphop_wobble_R_fast_002__A319",
+      "expected_steps": 177,
+      "executed_steps": 177,
+      "undiscounted_return": 11.739097007870791,
+      "maximum_full_clip_return": 17.7,
+      "normalized_return": 0.6632258196537171,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 27,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2604353976611718,
+          "root_position_rmse_m": 0.269691963831051,
+          "root_orientation_rmse_rad": 0.10986989511194885,
+          "body_position_rmse_m": 0.2684915729152511,
+          "root_relative_body_position_rmse_m": 0.08046444527455579
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230414/dance_basic_turn_v1_180_R_loop_002__A323",
+      "expected_steps": 575,
+      "executed_steps": 211,
+      "undiscounted_return": 13.677094388723297,
+      "maximum_full_clip_return": 57.5,
+      "normalized_return": 0.23786251110823126,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": [
+        211
+      ],
+      "metadata": {
+        "clip_index": 28,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.3291339438122825,
+          "root_position_rmse_m": 0.41501364977084715,
+          "root_orientation_rmse_rad": 0.3311571826902064,
+          "body_position_rmse_m": 0.40879262349427264,
+          "root_relative_body_position_rmse_m": 0.11865587256157936
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230419/high_jump_R_001__A340_M",
+      "expected_steps": 155,
+      "executed_steps": 73,
+      "undiscounted_return": 6.008929801566207,
+      "maximum_full_clip_return": 15.5,
+      "normalized_return": 0.3876728904236263,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": [
+        73
+      ],
+      "metadata": {
+        "clip_index": 29,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.17627091850360663,
+          "root_position_rmse_m": 0.07497292681173495,
+          "root_orientation_rmse_rad": 0.04951521376473078,
+          "body_position_rmse_m": 0.08197190757708171,
+          "root_relative_body_position_rmse_m": 0.03835760727112763
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230427/shovel_idle_R_004__A358_M",
+      "expected_steps": 1049,
+      "executed_steps": 1049,
+      "undiscounted_return": 87.89748810497716,
+      "maximum_full_clip_return": 104.9,
+      "normalized_return": 0.8379169504764267,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 30,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.4526421492397852,
+          "root_position_rmse_m": 0.02329959172910489,
+          "root_orientation_rmse_rad": 0.03816798256451362,
+          "body_position_rmse_m": 0.05513382169229424,
+          "root_relative_body_position_rmse_m": 0.056658520993435955
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230523/dancing_routine_V002_003__A390_M",
+      "expected_steps": 754,
+      "executed_steps": 754,
+      "undiscounted_return": 59.96828703228732,
+      "maximum_full_clip_return": 75.4,
+      "normalized_return": 0.7953353717809989,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 31,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.24859342071083693,
+          "root_position_rmse_m": 0.35969286492586816,
+          "root_orientation_rmse_rad": 0.07230251462955188,
+          "body_position_rmse_m": 0.3615721523891851,
+          "root_relative_body_position_rmse_m": 0.06764784612671905
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230530/object_looking_at_R_002__A412_M",
+      "expected_steps": 538,
+      "executed_steps": 538,
+      "undiscounted_return": 48.821151702722375,
+      "maximum_full_clip_return": 53.800000000000004,
+      "normalized_return": 0.907456351351717,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 32,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.25276469927518896,
+          "root_position_rmse_m": 0.033461114278557635,
+          "root_orientation_rmse_rad": 0.06867358886565536,
+          "body_position_rmse_m": 0.06523143614507314,
+          "root_relative_body_position_rmse_m": 0.05528587428782432
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "230904/jump_ff_270_R_002__A441",
+      "expected_steps": 129,
+      "executed_steps": 129,
+      "undiscounted_return": 11.13748738960935,
+      "maximum_full_clip_return": 12.9,
+      "normalized_return": 0.8633711154735929,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 33,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.1511456033916133,
+          "root_position_rmse_m": 0.2755291619235702,
+          "root_orientation_rmse_rad": 0.05894660917419135,
+          "body_position_rmse_m": 0.2755053524829107,
+          "root_relative_body_position_rmse_m": 0.03474150959464569
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "231006/its_dynamite_007__A467_M",
+      "expected_steps": 562,
+      "executed_steps": 562,
+      "undiscounted_return": 35.51944287263248,
+      "maximum_full_clip_return": 56.2,
+      "normalized_return": 0.6320185564525352,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 34,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2816419764890284,
+          "root_position_rmse_m": 0.5956079777665328,
+          "root_orientation_rmse_rad": 0.13887029320950459,
+          "body_position_rmse_m": 0.5955987880925966,
+          "root_relative_body_position_rmse_m": 0.10200288987581169
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "231024/wave_right_hand_000_R_jog_ff_start_315_R_point_dir_horizontal_right_hand_head_090_R_003__A492",
+      "expected_steps": 387,
+      "executed_steps": 387,
+      "undiscounted_return": 23.013402300939237,
+      "maximum_full_clip_return": 38.7,
+      "normalized_return": 0.5946615581638045,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 35,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.3375488737994761,
+          "root_position_rmse_m": 1.826855006571802,
+          "root_orientation_rmse_rad": 0.13280604605497656,
+          "body_position_rmse_m": 1.8282235647503557,
+          "root_relative_body_position_rmse_m": 0.08920402480943891
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "231114/medium_big_light_two_hands_idle_turn_270_R_002__A509_M",
+      "expected_steps": 326,
+      "executed_steps": 326,
+      "undiscounted_return": 21.486171781136342,
+      "maximum_full_clip_return": 32.6,
+      "normalized_return": 0.6590850239612375,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 36,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2859944976675701,
+          "root_position_rmse_m": 1.291053642657319,
+          "root_orientation_rmse_rad": 0.13721100890784524,
+          "body_position_rmse_m": 1.277210030691086,
+          "root_relative_body_position_rmse_m": 0.09610082866868892
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "231116/small_light_one_hand_behind_medium_to_behind_low_R_001__A518",
+      "expected_steps": 238,
+      "executed_steps": 238,
+      "undiscounted_return": 17.045665177025807,
+      "maximum_full_clip_return": 23.8,
+      "normalized_return": 0.716204419202765,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 37,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.3066990893179803,
+          "root_position_rmse_m": 0.8106039563305135,
+          "root_orientation_rmse_rad": 0.10200733382420284,
+          "body_position_rmse_m": 0.8025053553758863,
+          "root_relative_body_position_rmse_m": 0.07171539060176864
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "231120/big_light_two_hands_behind_high_to_front_high_R_001__A526",
+      "expected_steps": 573,
+      "executed_steps": 573,
+      "undiscounted_return": 38.54503248038507,
+      "maximum_full_clip_return": 57.300000000000004,
+      "normalized_return": 0.6726881759229505,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 38,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.9000010899175124,
+          "root_position_rmse_m": 0.2211495277877443,
+          "root_orientation_rmse_rad": 0.11571036043291796,
+          "body_position_rmse_m": 0.29185184301199957,
+          "root_relative_body_position_rmse_m": 0.1818199742195436
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "240918/lighter_light_cigarette_start_R_001__A552_M",
+      "expected_steps": 681,
+      "executed_steps": 681,
+      "undiscounted_return": 60.015443847673104,
+      "maximum_full_clip_return": 68.10000000000001,
+      "normalized_return": 0.8812840506266241,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 39,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.1988023283456339,
+          "root_position_rmse_m": 0.09614669274800651,
+          "root_orientation_rmse_rad": 0.07938630174885986,
+          "body_position_rmse_m": 0.09147607969585092,
+          "root_relative_body_position_rmse_m": 0.05485152097506529
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    }
+  ],
+  "actor_archive_sha256": "97dd56586679f992900e47b33fa73f22bf173eeac68bdad6e62dddc8f49f7b63",
+  "source_checkpoint_sha256": "d762eeae24de2d73835a4e3c22e26cecd579e6cc99ca231c0fff1ece024b42c1",
+  "training_dataset_sha256": "0b340e05e81d39ef62a8a9f947134c4bf15b13f784ede581292cbe2776c5e847",
+  "tensor_library_sha256": "b08818ec2316e96f30fc7cbfcb80d5b16eed5d557d986f1edaf3597d8dda2da7",
+  "mujoco_library_sha256": "76845f2712200efaa5a38da7a004e944ecdb7397c41fd8b8ea7684a82d3e4bd0",
+  "references_sha256": "dbfe23b4fb51d313096101aeedd48ed7fd761a2efb7575ced2f8b3d0d8fce6e8"
+}

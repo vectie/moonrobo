@@ -1,3 +1,7 @@
 **/pkg.generated.mbti whitespace=-blank-at-eof
 # Preserve vendor scene bytes: the live manifest verifies its SHA-256.
 ui/rabbita-cockpit/public/e1/assets/scene.xml whitespace=-blank-at-eol,-blank-at-eof
+# Retain supplied notices and hash-verified model XML byte for byte.
+ui/rabbita-cockpit/public/g1/licenses/*.txt whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+ui/rabbita-cockpit/public/heldout/g1-model/UNITREE-LICENSE.txt whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+ui/rabbita-cockpit/public/heldout/g1-model/scene.xml whitespace=-blank-at-eol,-blank-at-eof

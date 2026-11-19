@@ -1,0 +1,1338 @@
+{
+  "format": "moonrobo.supermimic-full-clip-evaluation.v1",
+  "protocol": {
+    "start_frame": 0,
+    "requested_horizon": "entire clip, no episode time limit",
+    "failure": "hard reference-relative training termination",
+    "normalization": "sum reward / ((frame_count - 1) * max_step_reward)",
+    "max_step_reward": 0.1,
+    "aggregation": "equal clip mean; separate frame-weighted mean",
+    "strict_tracking_is_separate": true,
+    "physical_settings": {
+      "robot": "noetix-e1-23-lab-v1",
+      "split": "paired-external-panel",
+      "backend": "native-mujoco"
+    }
+  },
+  "n_clips": 40,
+  "norm_return": 0.6862935735603053,
+  "norm_return_framew": 0.6843130003987942,
+  "n_failed": 4,
+  "failed": [
+    "dance/B_StretchDance",
+    "dance/J_Dance19_LetsGO",
+    "dance/J_Dance1_Modern",
+    "karate/M_Move8"
+  ],
+  "n_completed": 36,
+  "incomplete_protocol_clips": [],
+  "missing_clips": [],
+  "unexpected_clips": [],
+  "benchmark_complete": true,
+  "evaluation_physical_steps": 61268,
+  "evaluation_simulated_physical_steps": 61268,
+  "catalog_clip_count": 40,
+  "full_catalog_evaluated": true,
+  "strict_tracking": {
+    "evaluated_clips": 40,
+    "passed_clips": 0,
+    "all_passed": false,
+    "interpretation": "additional engineering gate; not the paper's failure count"
+  },
+  "per_clip": [
+    {
+      "clip_id": "dance/B_DadDance",
+      "expected_steps": 2090,
+      "executed_steps": 2090,
+      "undiscounted_return": 179.6463105713015,
+      "maximum_full_clip_return": 209,
+      "normalized_return": 0.8595517252215383,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 0,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.17092998854758268,
+          "root_position_rmse_m": 0.2522990356975322,
+          "root_orientation_rmse_rad": 0.08255190120704198,
+          "body_position_rmse_m": 0.25295995635979807,
+          "root_relative_body_position_rmse_m": 0.07063211613369184
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/B_LongDance",
+      "expected_steps": 5971,
+      "executed_steps": 5971,
+      "undiscounted_return": 413.77707162724107,
+      "maximum_full_clip_return": 597.1,
+      "normalized_return": 0.6929778456326261,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 1,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.24512047615491162,
+          "root_position_rmse_m": 2.8514550713328997,
+          "root_orientation_rmse_rad": 0.1297511364350674,
+          "body_position_rmse_m": 2.8529194994451172,
+          "root_relative_body_position_rmse_m": 0.07566004162904735
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/B_SpiralDance",
+      "expected_steps": 2389,
+      "executed_steps": 2389,
+      "undiscounted_return": 182.93650424933213,
+      "maximum_full_clip_return": 238.9,
+      "normalized_return": 0.7657450994111852,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 2,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.25135419088363403,
+          "root_position_rmse_m": 0.6953371887406231,
+          "root_orientation_rmse_rad": 0.0796671953172259,
+          "body_position_rmse_m": 0.6920655664680659,
+          "root_relative_body_position_rmse_m": 0.08894140775254848
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/B_StretchDance",
+      "expected_steps": 2154,
+      "executed_steps": 1051,
+      "undiscounted_return": 85.17688419598787,
+      "maximum_full_clip_return": 215.4,
+      "normalized_return": 0.39543585977710244,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": [
+        1051
+      ],
+      "metadata": {
+        "clip_index": 3,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.3180054357084615,
+          "root_position_rmse_m": 0.23937165072159075,
+          "root_orientation_rmse_rad": 0.13064267098614285,
+          "body_position_rmse_m": 0.25864923257673256,
+          "root_relative_body_position_rmse_m": 0.10929102656014289
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_Dance0_StepTouch",
+      "expected_steps": 1623,
+      "executed_steps": 1623,
+      "undiscounted_return": 121.00323981399876,
+      "maximum_full_clip_return": 162.3,
+      "normalized_return": 0.7455529255329559,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 4,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2645800526523122,
+          "root_position_rmse_m": 0.7605122342498143,
+          "root_orientation_rmse_rad": 0.12356057370917523,
+          "body_position_rmse_m": 0.7672609152481156,
+          "root_relative_body_position_rmse_m": 0.08679257311343647
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_Dance11_Gnarly",
+      "expected_steps": 2256,
+      "executed_steps": 2256,
+      "undiscounted_return": 170.51237153989166,
+      "maximum_full_clip_return": 225.60000000000002,
+      "normalized_return": 0.7558172497335622,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 5,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.28841435818595507,
+          "root_position_rmse_m": 0.42889759454027165,
+          "root_orientation_rmse_rad": 0.10052670062124125,
+          "body_position_rmse_m": 0.4268175795663618,
+          "root_relative_body_position_rmse_m": 0.07484558694906265
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_Dance12_LushLife",
+      "expected_steps": 1779,
+      "executed_steps": 1779,
+      "undiscounted_return": 120.75988901680509,
+      "maximum_full_clip_return": 177.9,
+      "normalized_return": 0.6788076954289213,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 6,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.3082920606312296,
+          "root_position_rmse_m": 1.4397097352136223,
+          "root_orientation_rmse_rad": 0.15999915805143664,
+          "body_position_rmse_m": 1.4445908361179955,
+          "root_relative_body_position_rmse_m": 0.08283297052825071
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_Dance17_Shuffle",
+      "expected_steps": 1600,
+      "executed_steps": 1600,
+      "undiscounted_return": 106.74579722123656,
+      "maximum_full_clip_return": 160,
+      "normalized_return": 0.6671612326327285,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 7,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2637574658889182,
+          "root_position_rmse_m": 2.421110116147822,
+          "root_orientation_rmse_rad": 0.1483731013096025,
+          "body_position_rmse_m": 2.4213877168488165,
+          "root_relative_body_position_rmse_m": 0.08730472766459911
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_Dance18_TikTok",
+      "expected_steps": 896,
+      "executed_steps": 896,
+      "undiscounted_return": 63.44767429181164,
+      "maximum_full_clip_return": 89.60000000000001,
+      "normalized_return": 0.7081213648639691,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 8,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.24006577436634138,
+          "root_position_rmse_m": 0.3656885601083199,
+          "root_orientation_rmse_rad": 0.14901976141536816,
+          "body_position_rmse_m": 0.3746851717348409,
+          "root_relative_body_position_rmse_m": 0.07853115473880838
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_Dance19_LetsGO",
+      "expected_steps": 1241,
+      "executed_steps": 1047,
+      "undiscounted_return": 76.78428920155172,
+      "maximum_full_clip_return": 124.10000000000001,
+      "normalized_return": 0.6187291635902635,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": [
+        1047
+      ],
+      "metadata": {
+        "clip_index": 9,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.26322367670872654,
+          "root_position_rmse_m": 0.29390050857915073,
+          "root_orientation_rmse_rad": 0.15582293237373387,
+          "body_position_rmse_m": 0.29241505870218776,
+          "root_relative_body_position_rmse_m": 0.08295660215523455
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_Dance1_Modern",
+      "expected_steps": 1886,
+      "executed_steps": 874,
+      "undiscounted_return": 68.54218878933027,
+      "maximum_full_clip_return": 188.60000000000002,
+      "normalized_return": 0.3634262396040841,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": [
+        874
+      ],
+      "metadata": {
+        "clip_index": 10,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.3420406536101774,
+          "root_position_rmse_m": 0.24710984203101755,
+          "root_orientation_rmse_rad": 0.14237472296929923,
+          "body_position_rmse_m": 0.2675507007491115,
+          "root_relative_body_position_rmse_m": 0.11249037656478487
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_Dance20_DWG",
+      "expected_steps": 780,
+      "executed_steps": 780,
+      "undiscounted_return": 66.8489570834433,
+      "maximum_full_clip_return": 78,
+      "normalized_return": 0.8570379113261961,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 11,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2222889340563248,
+          "root_position_rmse_m": 0.06832873295980002,
+          "root_orientation_rmse_rad": 0.0741577246811796,
+          "body_position_rmse_m": 0.08688204186446719,
+          "root_relative_body_position_rmse_m": 0.07061750080166784
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_Dance22_Thrilling",
+      "expected_steps": 1348,
+      "executed_steps": 1348,
+      "undiscounted_return": 102.19215461684936,
+      "maximum_full_clip_return": 134.8,
+      "normalized_return": 0.7581020372169833,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 12,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2465413691525005,
+          "root_position_rmse_m": 0.4155888498570902,
+          "root_orientation_rmse_rad": 0.11769903114545927,
+          "body_position_rmse_m": 0.42033714148118057,
+          "root_relative_body_position_rmse_m": 0.07111434660242795
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_Dance23_MidnightSun",
+      "expected_steps": 2428,
+      "executed_steps": 2428,
+      "undiscounted_return": 172.50516115791908,
+      "maximum_full_clip_return": 242.8,
+      "normalized_return": 0.7104825418365694,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 13,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.37668725185061197,
+          "root_position_rmse_m": 0.8049515631592695,
+          "root_orientation_rmse_rad": 0.12314640089702861,
+          "body_position_rmse_m": 0.8032691612489803,
+          "root_relative_body_position_rmse_m": 0.08464940798946274
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_Dance3_Woah",
+      "expected_steps": 1499,
+      "executed_steps": 1499,
+      "undiscounted_return": 122.12602687447772,
+      "maximum_full_clip_return": 149.9,
+      "normalized_return": 0.8147166569344744,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 14,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2650855813287004,
+          "root_position_rmse_m": 0.2198077168769511,
+          "root_orientation_rmse_rad": 0.09526722714099078,
+          "body_position_rmse_m": 0.22460891336581593,
+          "root_relative_body_position_rmse_m": 0.07085684773175532
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_Dance4_Broadway",
+      "expected_steps": 1396,
+      "executed_steps": 1396,
+      "undiscounted_return": 92.49877324558808,
+      "maximum_full_clip_return": 139.6,
+      "normalized_return": 0.6625986622176797,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 15,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.41782847375952903,
+          "root_position_rmse_m": 2.083768734845524,
+          "root_orientation_rmse_rad": 0.1518073012321853,
+          "body_position_rmse_m": 2.0738493973704872,
+          "root_relative_body_position_rmse_m": 0.10556539583719367
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_Dance5_Hype",
+      "expected_steps": 1579,
+      "executed_steps": 1579,
+      "undiscounted_return": 78.42143419695405,
+      "maximum_full_clip_return": 157.9,
+      "normalized_return": 0.49665252816310357,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 16,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.42900091459024015,
+          "root_position_rmse_m": 2.23461345791441,
+          "root_orientation_rmse_rad": 0.24121367410087902,
+          "body_position_rmse_m": 2.237743144886885,
+          "root_relative_body_position_rmse_m": 0.12756989530567148
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_Dance8_WestCoast",
+      "expected_steps": 1995,
+      "executed_steps": 1995,
+      "undiscounted_return": 144.7277989195396,
+      "maximum_full_clip_return": 199.5,
+      "normalized_return": 0.7254526261631057,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 17,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.22534309883106987,
+          "root_position_rmse_m": 1.094006086045132,
+          "root_orientation_rmse_rad": 0.11362605613019425,
+          "body_position_rmse_m": 1.0951512334770843,
+          "root_relative_body_position_rmse_m": 0.06946279190868002
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_ShortDance14_Disco",
+      "expected_steps": 714,
+      "executed_steps": 714,
+      "undiscounted_return": 54.68010316831892,
+      "maximum_full_clip_return": 71.4,
+      "normalized_return": 0.7658277754666515,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 18,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2215395377674109,
+          "root_position_rmse_m": 0.33144469506676183,
+          "root_orientation_rmse_rad": 0.10190812882769093,
+          "body_position_rmse_m": 0.33872734613267547,
+          "root_relative_body_position_rmse_m": 0.060741882463968416
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance/J_ShortDance16_JazzWalk",
+      "expected_steps": 530,
+      "executed_steps": 530,
+      "undiscounted_return": 38.92186652214004,
+      "maximum_full_clip_return": 53,
+      "normalized_return": 0.7343748400403781,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 19,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.26575172887359105,
+          "root_position_rmse_m": 0.4867322313407951,
+          "root_orientation_rmse_rad": 0.1051608623958254,
+          "body_position_rmse_m": 0.4906131630313265,
+          "root_relative_body_position_rmse_m": 0.0747722312499406
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/B_AttackKarate",
+      "expected_steps": 2358,
+      "executed_steps": 2358,
+      "undiscounted_return": 154.14666118101877,
+      "maximum_full_clip_return": 235.8,
+      "normalized_return": 0.6537178167133959,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 20,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.36154096656803775,
+          "root_position_rmse_m": 1.7544988805220596,
+          "root_orientation_rmse_rad": 0.15932793221754452,
+          "body_position_rmse_m": 1.738867080406158,
+          "root_relative_body_position_rmse_m": 0.10906431379071668
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/B_BowKarate",
+      "expected_steps": 1877,
+      "executed_steps": 1877,
+      "undiscounted_return": 138.5501814889549,
+      "maximum_full_clip_return": 187.70000000000002,
+      "normalized_return": 0.7381469445335903,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 21,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.3513555451386968,
+          "root_position_rmse_m": 1.1616598383373749,
+          "root_orientation_rmse_rad": 0.1355260981750768,
+          "body_position_rmse_m": 1.1597484660276074,
+          "root_relative_body_position_rmse_m": 0.09604207584210059
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/B_ChopsKarate",
+      "expected_steps": 2632,
+      "executed_steps": 2632,
+      "undiscounted_return": 179.5937261175848,
+      "maximum_full_clip_return": 263.2,
+      "normalized_return": 0.6823469837294255,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 22,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.20389711660532936,
+          "root_position_rmse_m": 2.787412444383496,
+          "root_orientation_rmse_rad": 0.16275361939531424,
+          "body_position_rmse_m": 2.7904808644013355,
+          "root_relative_body_position_rmse_m": 0.08731503276764047
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/B_CrazyChopsKarate",
+      "expected_steps": 1209,
+      "executed_steps": 1209,
+      "undiscounted_return": 79.5692937952654,
+      "maximum_full_clip_return": 120.9,
+      "normalized_return": 0.6581413878847426,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 23,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2302821694167999,
+          "root_position_rmse_m": 2.0031579469617125,
+          "root_orientation_rmse_rad": 0.1373843199458007,
+          "body_position_rmse_m": 2.007544146723917,
+          "root_relative_body_position_rmse_m": 0.08170180755819766
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/B_ForwardKarate",
+      "expected_steps": 1815,
+      "executed_steps": 1815,
+      "undiscounted_return": 136.96476515967822,
+      "maximum_full_clip_return": 181.5,
+      "normalized_return": 0.7546268052874833,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 24,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.23779443543616754,
+          "root_position_rmse_m": 0.9805254664276729,
+          "root_orientation_rmse_rad": 0.1016585501120579,
+          "body_position_rmse_m": 0.9836863861283853,
+          "root_relative_body_position_rmse_m": 0.07514406267836304
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/B_LongKarate",
+      "expected_steps": 2400,
+      "executed_steps": 2400,
+      "undiscounted_return": 167.93449843942454,
+      "maximum_full_clip_return": 240,
+      "normalized_return": 0.6997270768309356,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 25,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.21502179315475775,
+          "root_position_rmse_m": 2.6478878697630184,
+          "root_orientation_rmse_rad": 0.13774580925643967,
+          "body_position_rmse_m": 2.648630003140503,
+          "root_relative_body_position_rmse_m": 0.08265481521508708
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/B_SpinKarate",
+      "expected_steps": 1282,
+      "executed_steps": 1282,
+      "undiscounted_return": 88.78695313340792,
+      "maximum_full_clip_return": 128.20000000000002,
+      "normalized_return": 0.6925659370780648,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 26,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.26730780600127796,
+          "root_position_rmse_m": 0.5661310960957846,
+          "root_orientation_rmse_rad": 0.1657097846664889,
+          "body_position_rmse_m": 0.5681427762237614,
+          "root_relative_body_position_rmse_m": 0.10601798570214155
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/M_Move1",
+      "expected_steps": 1557,
+      "executed_steps": 1557,
+      "undiscounted_return": 110.67463270518469,
+      "maximum_full_clip_return": 155.70000000000002,
+      "normalized_return": 0.7108197347796061,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 27,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.30554296125728836,
+          "root_position_rmse_m": 0.8836469164550826,
+          "root_orientation_rmse_rad": 0.16058286228540963,
+          "body_position_rmse_m": 0.8846729729899941,
+          "root_relative_body_position_rmse_m": 0.09763060393900581
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/M_Move17",
+      "expected_steps": 1330,
+      "executed_steps": 1330,
+      "undiscounted_return": 95.43769236253992,
+      "maximum_full_clip_return": 133,
+      "normalized_return": 0.7175766343048114,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 28,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.22672254603074907,
+          "root_position_rmse_m": 0.6694700666479619,
+          "root_orientation_rmse_rad": 0.10514263925184428,
+          "body_position_rmse_m": 0.6751944626016612,
+          "root_relative_body_position_rmse_m": 0.07413870579716587
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/M_Move19",
+      "expected_steps": 842,
+      "executed_steps": 842,
+      "undiscounted_return": 67.14192039689567,
+      "maximum_full_clip_return": 84.2,
+      "normalized_return": 0.7974099809607561,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 29,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.23892627223316434,
+          "root_position_rmse_m": 0.6036145796901756,
+          "root_orientation_rmse_rad": 0.08817737282196875,
+          "body_position_rmse_m": 0.5985219605508854,
+          "root_relative_body_position_rmse_m": 0.06376674538793653
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/M_Move2",
+      "expected_steps": 1821,
+      "executed_steps": 1821,
+      "undiscounted_return": 129.95303027931686,
+      "maximum_full_clip_return": 182.10000000000002,
+      "normalized_return": 0.7136355314624758,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 30,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.29149357821663807,
+          "root_position_rmse_m": 0.9376204394920923,
+          "root_orientation_rmse_rad": 0.16252838601270408,
+          "body_position_rmse_m": 0.9382309892783829,
+          "root_relative_body_position_rmse_m": 0.1049184483201415
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/M_Move3",
+      "expected_steps": 1597,
+      "executed_steps": 1597,
+      "undiscounted_return": 104.92407256763556,
+      "maximum_full_clip_return": 159.70000000000002,
+      "normalized_return": 0.657007342314562,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 31,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.3020622522342603,
+          "root_position_rmse_m": 2.563845061207364,
+          "root_orientation_rmse_rad": 0.1756029170536027,
+          "body_position_rmse_m": 2.5559740871869794,
+          "root_relative_body_position_rmse_m": 0.10498514421123353
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/M_Move5",
+      "expected_steps": 1798,
+      "executed_steps": 1798,
+      "undiscounted_return": 122.51009055174596,
+      "maximum_full_clip_return": 179.8,
+      "normalized_return": 0.6813686904991433,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 32,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2660565651838422,
+          "root_position_rmse_m": 2.2539213022145725,
+          "root_orientation_rmse_rad": 0.17031888236217507,
+          "body_position_rmse_m": 2.2658888478769725,
+          "root_relative_body_position_rmse_m": 0.10086453817030726
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/M_Move6",
+      "expected_steps": 1780,
+      "executed_steps": 1780,
+      "undiscounted_return": 121.95859281724441,
+      "maximum_full_clip_return": 178,
+      "normalized_return": 0.6851606338047439,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 33,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.2295118240878809,
+          "root_position_rmse_m": 0.8333866992908008,
+          "root_orientation_rmse_rad": 0.20395245141602894,
+          "body_position_rmse_m": 0.8388652399029989,
+          "root_relative_body_position_rmse_m": 0.0925982075612006
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/M_Move7",
+      "expected_steps": 1190,
+      "executed_steps": 1190,
+      "undiscounted_return": 84.41138490195173,
+      "maximum_full_clip_return": 119,
+      "normalized_return": 0.7093393689239642,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 34,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.19564909290504837,
+          "root_position_rmse_m": 0.7393348432326355,
+          "root_orientation_rmse_rad": 0.12315966338537102,
+          "body_position_rmse_m": 0.7473547188654532,
+          "root_relative_body_position_rmse_m": 0.08039142605475949
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/M_Move8",
+      "expected_steps": 701,
+      "executed_steps": 405,
+      "undiscounted_return": 16.799462129409545,
+      "maximum_full_clip_return": 70.10000000000001,
+      "normalized_return": 0.2396499590500648,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": [
+        405
+      ],
+      "metadata": {
+        "clip_index": 35,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.36526700858984956,
+          "root_position_rmse_m": 1.82880814049584,
+          "root_orientation_rmse_rad": 0.30460908125565056,
+          "body_position_rmse_m": 1.8072947559444223,
+          "root_relative_body_position_rmse_m": 0.14081841795347183
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/M_ShortMove12",
+      "expected_steps": 388,
+      "executed_steps": 388,
+      "undiscounted_return": 30.8312371692584,
+      "maximum_full_clip_return": 38.800000000000004,
+      "normalized_return": 0.7946195146716082,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 36,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.18250673643032192,
+          "root_position_rmse_m": 0.4582569212419037,
+          "root_orientation_rmse_rad": 0.11190546554964427,
+          "body_position_rmse_m": 0.46950548695071787,
+          "root_relative_body_position_rmse_m": 0.06856310542067405
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/M_ShortMove13",
+      "expected_steps": 448,
+      "executed_steps": 448,
+      "undiscounted_return": 28.901960385891858,
+      "maximum_full_clip_return": 44.800000000000004,
+      "normalized_return": 0.6451330443279432,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 37,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.30538553139847835,
+          "root_position_rmse_m": 0.6935549203515583,
+          "root_orientation_rmse_rad": 0.17922312399372042,
+          "body_position_rmse_m": 0.7024021035225638,
+          "root_relative_body_position_rmse_m": 0.1084474430806449
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/M_ShortMove14",
+      "expected_steps": 326,
+      "executed_steps": 326,
+      "undiscounted_return": 27.77177838990525,
+      "maximum_full_clip_return": 32.6,
+      "normalized_return": 0.8518950426351304,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 38,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.19965960426746146,
+          "root_position_rmse_m": 0.11895758563454585,
+          "root_orientation_rmse_rad": 0.09870498891353705,
+          "body_position_rmse_m": 0.13452297746076475,
+          "root_relative_body_position_rmse_m": 0.06745146175586354
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "karate/M_ShortMove16",
+      "expected_steps": 368,
+      "executed_steps": 368,
+      "undiscounted_return": 21.79599717118532,
+      "maximum_full_clip_return": 36.800000000000004,
+      "normalized_return": 0.592282531825688,
+      "failed": false,
+      "completed_full_duration": true,
+      "protocol_complete": true,
+      "termination_frame": null,
+      "metadata": {
+        "clip_index": 39,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.3108877176126326,
+          "root_position_rmse_m": 0.45569312151525926,
+          "root_orientation_rmse_rad": 0.12111234560167429,
+          "body_position_rmse_m": 0.47910887982103617,
+          "root_relative_body_position_rmse_m": 0.09811995918786111
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    }
+  ],
+  "actor_archive_sha256": "fd2104e257635ef824efb92b1816d8d7159a550b0f2f10fa64b7ed329c2ba8c3",
+  "source_checkpoint_sha256": "83a0ffcf03fb4912045a6cc791916364b2a0495d4820b4880acc9238a9bd97a6",
+  "training_dataset_sha256": "0b340e05e81d39ef62a8a9f947134c4bf15b13f784ede581292cbe2776c5e847",
+  "tensor_library_sha256": "b08818ec2316e96f30fc7cbfcb80d5b16eed5d557d986f1edaf3597d8dda2da7",
+  "mujoco_library_sha256": "76845f2712200efaa5a38da7a004e944ecdb7397c41fd8b8ea7684a82d3e4bd0",
+  "references_sha256": "a86c4b57c185a2e14531710d205559866fd9423c86628483fd4ec02347019502"
+}

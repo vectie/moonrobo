@@ -1,0 +1,876 @@
+{
+  "format": "moonrobo.heldout-pair.v1",
+  "control_hz": 50,
+  "iteration": 14000,
+  "dataset": "exptech/g1-moves",
+  "revision": "895d064b2385725e6aabf540461c219afc3e0916",
+  "panel_sha256": "c82ae0092b35f34a5858605c724637f49d3a7854d894d0faf373011ccceafc90",
+  "robots": {
+    "g1": {
+      "joints": [
+        "left_hip_pitch_joint",
+        "left_hip_roll_joint",
+        "left_hip_yaw_joint",
+        "left_knee_joint",
+        "left_ankle_pitch_joint",
+        "left_ankle_roll_joint",
+        "right_hip_pitch_joint",
+        "right_hip_roll_joint",
+        "right_hip_yaw_joint",
+        "right_knee_joint",
+        "right_ankle_pitch_joint",
+        "right_ankle_roll_joint",
+        "waist_yaw_joint",
+        "waist_roll_joint",
+        "waist_pitch_joint",
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint",
+        "left_wrist_pitch_joint",
+        "left_wrist_yaw_joint",
+        "right_shoulder_pitch_joint",
+        "right_shoulder_roll_joint",
+        "right_shoulder_yaw_joint",
+        "right_elbow_joint",
+        "right_wrist_roll_joint",
+        "right_wrist_pitch_joint",
+        "right_wrist_yaw_joint"
+      ],
+      "scene_sha256": "b9f8b0e0cbfa4a82c125ac330b38e1a8bf4c825252caf2c3d0dffe678ca5f7af",
+      "actor_sha256": "5888458a564ba6b9f6346b2dbdf940856850af5f773b5d24c5ebf346d20e9017"
+    },
+    "e1": {
+      "joints": [
+        "l_leg_hip_yaw_joint",
+        "l_leg_hip_roll_joint",
+        "l_leg_hip_pitch_joint",
+        "l_leg_knee_joint",
+        "l_leg_ankle_pitch_joint",
+        "l_leg_ankle_roll_joint",
+        "r_leg_hip_yaw_joint",
+        "r_leg_hip_roll_joint",
+        "r_leg_hip_pitch_joint",
+        "r_leg_knee_joint",
+        "r_leg_ankle_pitch_joint",
+        "r_leg_ankle_roll_joint",
+        "waist_yaw_joint",
+        "l_arm_shoulder_pitch_joint",
+        "l_arm_shoulder_roll_joint",
+        "l_arm_shoulder_yaw_joint",
+        "l_arm_elbow_pitch_joint",
+        "l_arm_elbow_yaw_joint",
+        "r_arm_shoulder_pitch_joint",
+        "r_arm_shoulder_roll_joint",
+        "r_arm_shoulder_yaw_joint",
+        "r_arm_elbow_pitch_joint",
+        "r_arm_elbow_yaw_joint"
+      ],
+      "scene_sha256": "e82d81514ff228cfa5bcc17fca6b57d645ec0871c644a8ded6eb2aaa5b5c9747",
+      "actor_sha256": "fd2104e257635ef824efb92b1816d8d7159a550b0f2f10fa64b7ed329c2ba8c3"
+    }
+  },
+  "clips": [
+    {
+      "id": "dance/B_DadDance",
+      "expected_steps": 2090,
+      "g1": {
+        "file": "g1/0.f32",
+        "sha256": "30793add8bd11aa5d9e1805674d24a8a857d2d40096b6aef4c1971916c362931",
+        "steps": 2090,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8812558868930479
+      },
+      "e1": {
+        "file": "e1/0.f32",
+        "sha256": "9540af1a78d530b32b5feae2a52bd6fa6a74869f0d994feba531f2bcc48938a2",
+        "steps": 2090,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8527200023689516
+      }
+    },
+    {
+      "id": "dance/B_LongDance",
+      "expected_steps": 5971,
+      "g1": {
+        "file": "g1/1.f32",
+        "sha256": "ba7584dac7533888d7cc79a4ab3ac31f1eea0e182e572c1603bde12f2886e5be",
+        "steps": 5971,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7666518647420931
+      },
+      "e1": {
+        "file": "e1/1.f32",
+        "sha256": "d1e0b394e61aafbebbf70645a5fcda6af0e768eceac19d107f2e7e5ac1ad6c0c",
+        "steps": 5971,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.567615461770735
+      }
+    },
+    {
+      "id": "dance/B_SpiralDance",
+      "expected_steps": 2389,
+      "g1": {
+        "file": "g1/2.f32",
+        "sha256": "f8239f15d69d3eabaaab330a8437c90f991232e3899d8555b0c883e47ac1d713",
+        "steps": 2389,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8542229938779221
+      },
+      "e1": {
+        "file": "e1/2.f32",
+        "sha256": "f38899f1fe9641b2e030b8ad769bd64a57fa357d18662eac9d522872eea6f206",
+        "steps": 2389,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6765490313366272
+      }
+    },
+    {
+      "id": "dance/B_StretchDance",
+      "expected_steps": 2154,
+      "g1": {
+        "file": "g1/3.f32",
+        "sha256": "f6c9c639470f7c5265b980cc0fb1da10e75b4a2712626003fae5aa099f14e019",
+        "steps": 1256,
+        "completed": false,
+        "termination_frame": 1256,
+        "score": 0.48852365504426787
+      },
+      "e1": {
+        "file": "e1/3.f32",
+        "sha256": "3e34a70187f0d7e33e5af153cc739c4d3eb41d1f7b849a6a52a702ca9d3f3563",
+        "steps": 2154,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7056731355194388
+      }
+    },
+    {
+      "id": "dance/J_Dance0_StepTouch",
+      "expected_steps": 1623,
+      "g1": {
+        "file": "g1/4.f32",
+        "sha256": "de784130ffbc5aff651850e180c648174bf5ed64e2ceb8cef62ff14131e83cff",
+        "steps": 1623,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8318453899204064
+      },
+      "e1": {
+        "file": "e1/4.f32",
+        "sha256": "79beb71e6e2ac409b11dbf20bf8f28d480fb717d7debd7ccf3ab3a32183a072c",
+        "steps": 1623,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6867088131846697
+      }
+    },
+    {
+      "id": "dance/J_Dance11_Gnarly",
+      "expected_steps": 2256,
+      "g1": {
+        "file": "g1/5.f32",
+        "sha256": "2eee36b15f273568a33d44f9b914b047f6f39c36807859d06e91b5525eab2090",
+        "steps": 2256,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8252150484812192
+      },
+      "e1": {
+        "file": "e1/5.f32",
+        "sha256": "ecc5d16b17534bcc5dffe1592d4923e9fca1b010cff1ded9b1bd588063bafe0d",
+        "steps": 2256,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.5751177550607689
+      }
+    },
+    {
+      "id": "dance/J_Dance12_LushLife",
+      "expected_steps": 1779,
+      "g1": {
+        "file": "g1/6.f32",
+        "sha256": "f78261863edbff91bba233ac7c5137092b17b2dbf6306e3de87a83c1b1a908b0",
+        "steps": 1779,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7831027845697077
+      },
+      "e1": {
+        "file": "e1/6.f32",
+        "sha256": "a64b74f212f582d08da98b6aef6eb1b614af60970be2cf71957b6e3baae899cc",
+        "steps": 1779,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6235241469245376
+      }
+    },
+    {
+      "id": "dance/J_Dance17_Shuffle",
+      "expected_steps": 1600,
+      "g1": {
+        "file": "g1/7.f32",
+        "sha256": "ecc3c7715dbdaa5bc1656b21e21338c1b82471512ad63a443b25ec564b6a3630",
+        "steps": 1600,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7757360277611609
+      },
+      "e1": {
+        "file": "e1/7.f32",
+        "sha256": "9cd3970676f1708b14daa56d140176b1867ed8105b71ce9bf963e56ead9fb7ab",
+        "steps": 1074,
+        "completed": false,
+        "termination_frame": 1074,
+        "score": 0.41045936975973935
+      }
+    },
+    {
+      "id": "dance/J_Dance18_TikTok",
+      "expected_steps": 896,
+      "g1": {
+        "file": "g1/8.f32",
+        "sha256": "debbabbfcf8df163c8976840ee152dcab0b8463ed178ab4054c7fa6c0ac685cf",
+        "steps": 896,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8099097417905936
+      },
+      "e1": {
+        "file": "e1/8.f32",
+        "sha256": "9009ac4d04cf04386d78cf64177190aa02e6f51402af3cf450d9a1adc22ed967",
+        "steps": 896,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6122344396466478
+      }
+    },
+    {
+      "id": "dance/J_Dance19_LetsGO",
+      "expected_steps": 1241,
+      "g1": {
+        "file": "g1/9.f32",
+        "sha256": "bdeeff455f3b4db3ff8736619c7acf0d75e183db51a62437364e82fb39fd8ea3",
+        "steps": 1241,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8231349131073883
+      },
+      "e1": {
+        "file": "e1/9.f32",
+        "sha256": "f259f54fda50801682ed38b7df71f36643d8f9149c7342a66a3b24a44fd28ab2",
+        "steps": 1241,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.701854348079643
+      }
+    },
+    {
+      "id": "dance/J_Dance1_Modern",
+      "expected_steps": 1886,
+      "g1": {
+        "file": "g1/10.f32",
+        "sha256": "7c01dbd6c54615221439751d34e5d8ffcddd9005a38fba084b4675c252335067",
+        "steps": 1059,
+        "completed": false,
+        "termination_frame": 1059,
+        "score": 0.45144281410405757
+      },
+      "e1": {
+        "file": "e1/10.f32",
+        "sha256": "d0076015a64241ad9c26a62d3671a865330cc98ddeb4afd2fd9a65a8268d9fca",
+        "steps": 836,
+        "completed": false,
+        "termination_frame": 836,
+        "score": 0.3270175808800383
+      }
+    },
+    {
+      "id": "dance/J_Dance20_DWG",
+      "expected_steps": 780,
+      "g1": {
+        "file": "g1/11.f32",
+        "sha256": "3f979dccae9f35db811e8d659fae7e7318c74afba267d3ff25825afef3aa0213",
+        "steps": 780,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8401463320366874
+      },
+      "e1": {
+        "file": "e1/11.f32",
+        "sha256": "462bc14a34b3ab617539da8e4ce2473f5f2da54abe977f30d09450d371d1decf",
+        "steps": 780,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8044071450522109
+      }
+    },
+    {
+      "id": "dance/J_Dance22_Thrilling",
+      "expected_steps": 1348,
+      "g1": {
+        "file": "g1/12.f32",
+        "sha256": "0a9f0a1fa300e6809ab62894925b10fa6261c130f1cfd052e00bbf929016811a",
+        "steps": 1348,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8210045741693174
+      },
+      "e1": {
+        "file": "e1/12.f32",
+        "sha256": "efd19b217fb169a43faf09df584e84e48a4885ba6977c12215f43fa9dd75d006",
+        "steps": 1348,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6782969734318283
+      }
+    },
+    {
+      "id": "dance/J_Dance23_MidnightSun",
+      "expected_steps": 2428,
+      "g1": {
+        "file": "g1/13.f32",
+        "sha256": "ae0e58037aea0c20f755aa59baf9be1776e779e3bbfaeb67ff52c860bea420a9",
+        "steps": 2428,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7814858260881739
+      },
+      "e1": {
+        "file": "e1/13.f32",
+        "sha256": "1f3e7e6f5e94583e6ec9dfcbb11e5bdc9c75a24dff339cabe1d024f6a00f5b26",
+        "steps": 2428,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6430051206174298
+      }
+    },
+    {
+      "id": "dance/J_Dance3_Woah",
+      "expected_steps": 1499,
+      "g1": {
+        "file": "g1/14.f32",
+        "sha256": "b820541b3170b26e16f9a89e959d77ca062b6410ddeb2ab4043d86f91e8d8af3",
+        "steps": 1499,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8259232857106636
+      },
+      "e1": {
+        "file": "e1/14.f32",
+        "sha256": "cade994aa7e933dd91a17e2c5dc81e082a2bf086fe63e70a59eee31b940308de",
+        "steps": 1499,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6074564734794151
+      }
+    },
+    {
+      "id": "dance/J_Dance4_Broadway",
+      "expected_steps": 1396,
+      "g1": {
+        "file": "g1/15.f32",
+        "sha256": "bbbd2a9b9f0a89114a3a084976842a3a48dd05a6307d16d40c3b0525c9a19916",
+        "steps": 1396,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8146244703305944
+      },
+      "e1": {
+        "file": "e1/15.f32",
+        "sha256": "875e46494ae76d8db3a19c0d54a3b78df721a017a831997ecf751e052bb488cd",
+        "steps": 1396,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6316980573069936
+      }
+    },
+    {
+      "id": "dance/J_Dance5_Hype",
+      "expected_steps": 1579,
+      "g1": {
+        "file": "g1/16.f32",
+        "sha256": "f7fb9aae86cdff09e0345de1a8840782204602a909e4ee49ce02d74aa293a8c2",
+        "steps": 1579,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6690754770209308
+      },
+      "e1": {
+        "file": "e1/16.f32",
+        "sha256": "f872bb75cbdad69a1c259b3a481c65312adf51e3f25a290b364975a518f5ca0e",
+        "steps": 805,
+        "completed": false,
+        "termination_frame": 805,
+        "score": 0.26668630430960527
+      }
+    },
+    {
+      "id": "dance/J_Dance8_WestCoast",
+      "expected_steps": 1995,
+      "g1": {
+        "file": "g1/17.f32",
+        "sha256": "30cf690b20458ad0019f2eea8618818d55bbdff4348c1717db3adb92dd1ee8c6",
+        "steps": 1995,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7890110286731834
+      },
+      "e1": {
+        "file": "e1/17.f32",
+        "sha256": "6a0cf985da5bf34fe6d521d2e1a1bcd8bc2f3dafc5c14fb9c5f30461d43de536",
+        "steps": 1995,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6509929067171029
+      }
+    },
+    {
+      "id": "dance/J_ShortDance14_Disco",
+      "expected_steps": 714,
+      "g1": {
+        "file": "g1/18.f32",
+        "sha256": "bc3d921b2eb37c302dd8195707dd699304168d155b4460e921639d945dd82dcc",
+        "steps": 714,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8225980246569493
+      },
+      "e1": {
+        "file": "e1/18.f32",
+        "sha256": "5e5e950359c1f1468af15dc898fe5e001dfd52f8458fdf4f5e7fa48564faef2c",
+        "steps": 714,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6295498523094698
+      }
+    },
+    {
+      "id": "dance/J_ShortDance16_JazzWalk",
+      "expected_steps": 530,
+      "g1": {
+        "file": "g1/19.f32",
+        "sha256": "d6aba0264cea882d675354396b525f35461691c1de661540fb615d48cdba0e9a",
+        "steps": 530,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7856175203611628
+      },
+      "e1": {
+        "file": "e1/19.f32",
+        "sha256": "8e93a09e35a72f595ae0e5349b66b8d3bb9d989695215af0ae2d0580ac10677a",
+        "steps": 530,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6722952883189908
+      }
+    },
+    {
+      "id": "karate/B_AttackKarate",
+      "expected_steps": 2358,
+      "g1": {
+        "file": "g1/20.f32",
+        "sha256": "84b2b78d0e0c53fb5be91ede234e3b69ed810f0698e5c74c83a4011d97c67410",
+        "steps": 1204,
+        "completed": false,
+        "termination_frame": 1204,
+        "score": 0.42895403483864186
+      },
+      "e1": {
+        "file": "e1/20.f32",
+        "sha256": "aee569e3d95a220c38ebe1bf03bc6e9fddad1044ad707727899529a297ce64f7",
+        "steps": 1515,
+        "completed": false,
+        "termination_frame": 1515,
+        "score": 0.37126860830804503
+      }
+    },
+    {
+      "id": "karate/B_BowKarate",
+      "expected_steps": 1877,
+      "g1": {
+        "file": "g1/21.f32",
+        "sha256": "9b680bd24cfd8d43f3bca0b22d6204ad574ddf14be9370af14a7a1ec8b663d56",
+        "steps": 1877,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8058870031021883
+      },
+      "e1": {
+        "file": "e1/21.f32",
+        "sha256": "39ca130dfa72044b8af3b0b68ef980f2d2f4208611a5c2f46f9e4fd79d2c6015",
+        "steps": 1244,
+        "completed": false,
+        "termination_frame": 1244,
+        "score": 0.45132058278401194
+      }
+    },
+    {
+      "id": "karate/B_ChopsKarate",
+      "expected_steps": 2632,
+      "g1": {
+        "file": "g1/22.f32",
+        "sha256": "573ec534eec1dd1edb932a47f9dd64b55ed0929b57b825d633409c38c9807c33",
+        "steps": 2632,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7737529192562885
+      },
+      "e1": {
+        "file": "e1/22.f32",
+        "sha256": "7ed378b92678317a4d7966425806813f96164c9b2acd0074ec246acc8b06f51b",
+        "steps": 2632,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6640163935839858
+      }
+    },
+    {
+      "id": "karate/B_CrazyChopsKarate",
+      "expected_steps": 1209,
+      "g1": {
+        "file": "g1/23.f32",
+        "sha256": "0d9aaf21c3a15cbdab5a68620092d658a8c30bef4f2424a22f57cb09b1399657",
+        "steps": 1209,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.767607363523461
+      },
+      "e1": {
+        "file": "e1/23.f32",
+        "sha256": "4496f4eb853c836441714e78dcac2b5d3f7c7e0c6084b54157cfed7be3b3fd75",
+        "steps": 1209,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.5749640082918324
+      }
+    },
+    {
+      "id": "karate/B_ForwardKarate",
+      "expected_steps": 1815,
+      "g1": {
+        "file": "g1/24.f32",
+        "sha256": "7115747d432370ada483ec88bfbc6607d7de63afb6337ed4c4b28a4c134d34c6",
+        "steps": 1815,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8106559995930787
+      },
+      "e1": {
+        "file": "e1/24.f32",
+        "sha256": "62c34b48634e2ee2314f9c7e1bbf806b4dc955b5f3afb58ac7c754853d386417",
+        "steps": 1815,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.723901223607807
+      }
+    },
+    {
+      "id": "karate/B_LongKarate",
+      "expected_steps": 2400,
+      "g1": {
+        "file": "g1/25.f32",
+        "sha256": "d93e71fb1d225d94a415b1cbd0e255640f01655e4e83545a752da28aee4704ba",
+        "steps": 2400,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7553556629578507
+      },
+      "e1": {
+        "file": "e1/25.f32",
+        "sha256": "db5e28fa6a31e4ac2ee898ec09634626dccca738489110849fc86e2d73c02098",
+        "steps": 2400,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6772578085238259
+      }
+    },
+    {
+      "id": "karate/B_SpinKarate",
+      "expected_steps": 1282,
+      "g1": {
+        "file": "g1/26.f32",
+        "sha256": "185980dfac93aba067ce96426be625560dfab6ef629f486edbe0ac73e6f6c56a",
+        "steps": 1282,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8123349206649205
+      },
+      "e1": {
+        "file": "e1/26.f32",
+        "sha256": "cc772147e4e44a3a5f55abf2b68d3880092924c632fcde52fdef0dc7502f5932",
+        "steps": 1282,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6297857697901875
+      }
+    },
+    {
+      "id": "karate/M_Move1",
+      "expected_steps": 1557,
+      "g1": {
+        "file": "g1/27.f32",
+        "sha256": "2696eb879f610dffc0406e8e48b2edc93dc4b961686700730f0d0fede24177db",
+        "steps": 1557,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8305492670149988
+      },
+      "e1": {
+        "file": "e1/27.f32",
+        "sha256": "86e52230bef878ea977d5d7e99d48e80ffc29afe864e8290a29d2c26ab17c182",
+        "steps": 1557,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7026177531199129
+      }
+    },
+    {
+      "id": "karate/M_Move17",
+      "expected_steps": 1330,
+      "g1": {
+        "file": "g1/28.f32",
+        "sha256": "315dd3344a0307f03a296c571ba81c391aa08c8822b0632bfde1a65f079c8c35",
+        "steps": 1330,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.825853410350044
+      },
+      "e1": {
+        "file": "e1/28.f32",
+        "sha256": "7f6b6d3f4a4dc859fe58d49def98a3539cdbcc25fedc1a3b0f46c19809d86168",
+        "steps": 1330,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.5152633471114577
+      }
+    },
+    {
+      "id": "karate/M_Move19",
+      "expected_steps": 842,
+      "g1": {
+        "file": "g1/29.f32",
+        "sha256": "385fa7e197401a2c6cd36e77bfcd6c7f870779e2dea11d78b4ba8b5d46a8de75",
+        "steps": 842,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8412385549069158
+      },
+      "e1": {
+        "file": "e1/29.f32",
+        "sha256": "f9a830f1cd0deaa4b1ac64ee6db2508b289088307e7b767e0509f80dc3b09e5a",
+        "steps": 842,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8118097154605153
+      }
+    },
+    {
+      "id": "karate/M_Move2",
+      "expected_steps": 1821,
+      "g1": {
+        "file": "g1/30.f32",
+        "sha256": "fdb893f2736508ea63039e944b802ed4652adcd04461f4c471fd61d98b68bb5f",
+        "steps": 1821,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7983269520736295
+      },
+      "e1": {
+        "file": "e1/30.f32",
+        "sha256": "f83e8aa373bb53105491bdded7614fa72f04cb79e354fb6a614721b6a0b18519",
+        "steps": 1821,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6639963145872302
+      }
+    },
+    {
+      "id": "karate/M_Move3",
+      "expected_steps": 1597,
+      "g1": {
+        "file": "g1/31.f32",
+        "sha256": "52674dfaccff792bfaae82c5ac6f985ccde93892ac69a25e40aba4a4578399f5",
+        "steps": 1597,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.767027443176273
+      },
+      "e1": {
+        "file": "e1/31.f32",
+        "sha256": "78ae04d684a44b30a7774dd76cd02b5c024124ae54a86a9da8b98e4456c832e3",
+        "steps": 635,
+        "completed": false,
+        "termination_frame": 635,
+        "score": 0.2017759603927494
+      }
+    },
+    {
+      "id": "karate/M_Move5",
+      "expected_steps": 1798,
+      "g1": {
+        "file": "g1/32.f32",
+        "sha256": "bec6b21fd4b629d1571e5e43048c17bd5b36251d5cbe7e4c410c61684b0c24d3",
+        "steps": 1798,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7946528927138806
+      },
+      "e1": {
+        "file": "e1/32.f32",
+        "sha256": "151a4f17c268a924a6798edb6a61712c98eb28f87ab66153f64441855d9fec62",
+        "steps": 1798,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.6872832737410938
+      }
+    },
+    {
+      "id": "karate/M_Move6",
+      "expected_steps": 1780,
+      "g1": {
+        "file": "g1/33.f32",
+        "sha256": "ecf0eb21c191502207e9d48b5b76029b72268e146a20530ed45c897b7033d733",
+        "steps": 1780,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8004762407401511
+      },
+      "e1": {
+        "file": "e1/33.f32",
+        "sha256": "569af004a4884b674dddb34ebab843272c9a5d410f2c00c8e748e469068fe61b",
+        "steps": 1241,
+        "completed": false,
+        "termination_frame": 1241,
+        "score": 0.3587938858056817
+      }
+    },
+    {
+      "id": "karate/M_Move7",
+      "expected_steps": 1190,
+      "g1": {
+        "file": "g1/34.f32",
+        "sha256": "e3435fd6099219b8bd58818f392b74032a59de72917c29f0f5bc49f70be35427",
+        "steps": 1190,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7760620919496237
+      },
+      "e1": {
+        "file": "e1/34.f32",
+        "sha256": "fa69cf1712ff6aa396e5fa72462a497af8ba7e0ddcaf217399c689487420e3a9",
+        "steps": 1190,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.5993395890914517
+      }
+    },
+    {
+      "id": "karate/M_Move8",
+      "expected_steps": 701,
+      "g1": {
+        "file": "g1/35.f32",
+        "sha256": "08a3ce5d74fef6ba2eec601360b1e98824798440af0964f8dba6fc0366eb18e0",
+        "steps": 319,
+        "completed": false,
+        "termination_frame": 319,
+        "score": 0.2872755881917137
+      },
+      "e1": {
+        "file": "e1/35.f32",
+        "sha256": "1222832dfea71a050ab61d6602616e672ae6eb7cc2b3cad6a899a9850a0f5a58",
+        "steps": 378,
+        "completed": false,
+        "termination_frame": 378,
+        "score": 0.2537367863854927
+      }
+    },
+    {
+      "id": "karate/M_ShortMove12",
+      "expected_steps": 388,
+      "g1": {
+        "file": "g1/36.f32",
+        "sha256": "3e861fa46967f0507b7f1ab64c271ae9cfaf09592b37c5465c9bbba32767c1b6",
+        "steps": 388,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8777297758870108
+      },
+      "e1": {
+        "file": "e1/36.f32",
+        "sha256": "132cd89dbd6cce51dcb1c504260ef5a801ad83155b5ab84cfcd711ce667a79de",
+        "steps": 388,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7844632464633294
+      }
+    },
+    {
+      "id": "karate/M_ShortMove13",
+      "expected_steps": 448,
+      "g1": {
+        "file": "g1/37.f32",
+        "sha256": "e6bff26727320ccf9b220d960584c1d47184e42d16a380f5e79bc8070f8f4b4c",
+        "steps": 448,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7848431176367827
+      },
+      "e1": {
+        "file": "e1/37.f32",
+        "sha256": "8c8d267bae91d77077bd8d178478cda853b437c480e78f74ce20f099931a5299",
+        "steps": 448,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.621892594929963
+      }
+    },
+    {
+      "id": "karate/M_ShortMove14",
+      "expected_steps": 326,
+      "g1": {
+        "file": "g1/38.f32",
+        "sha256": "12511971ec6b880f877dde3ffb7f363efd7af42c39efafd120371600399d6563",
+        "steps": 326,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8760543752033251
+      },
+      "e1": {
+        "file": "e1/38.f32",
+        "sha256": "81330c98e3f82888de747eadf8db869af59632be4f0f93484d125498f97bdb79",
+        "steps": 326,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.8472779987682842
+      }
+    },
+    {
+      "id": "karate/M_ShortMove16",
+      "expected_steps": 368,
+      "g1": {
+        "file": "g1/39.f32",
+        "sha256": "9a351ff400621516a96ebc680357f914aa5768f5123ec99e77b6d67cd7e60a34",
+        "steps": 368,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.7050493132761646
+      },
+      "e1": {
+        "file": "e1/39.f32",
+        "sha256": "e2547a444ef7d8118d7c8af5e7d618c06b7fefac56759e34f579d9412b62295f",
+        "steps": 368,
+        "completed": true,
+        "termination_frame": null,
+        "score": 0.5871283249708567
+      }
+    }
+  ]
+}

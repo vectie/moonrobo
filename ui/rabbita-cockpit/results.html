@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="MoonRobo 本地实验结果：真实仿真记录、逐动作评测和只读 smoke 验证。">
+  <title>MoonRobo — 动作与结果</title>
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <a class="skip-link" href="#main">跳至内容</a>
+  <header class="site-header">
+    <a class="wordmark" href="./results.html"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="7" width="14" height="13" rx="5"/><path d="M12 3v4M2 12v5m20-5v5M9 12v2m6-2v2M9 17h6"/></svg>MoonRobo<span>Results</span></a>
+    <div class="source-tabs" role="tablist" aria-label="结果来源">
+      <button id="source-local" role="tab" aria-selected="true" aria-controls="local-content">本地结果</button>
+      <button id="source-paper" role="tab" aria-selected="false" aria-controls="paper-content" tabindex="-1">论文参考 <span aria-hidden="true">↗</span></button>
+    </div>
+    <a class="header-link" href="./g1.html">G1 · 14,000 轮实测 <span aria-hidden="true">↗</span></a>
+    <a class="header-link" href="./e1.html">Noetix E1 · 重训 36/40 <span aria-hidden="true">↗</span></a>
+    <a class="header-link" href="./?robot=g1-simulation">Unitree G1 <span aria-hidden="true">↗</span></a>
+  </header>
+  <main id="main">
+    <div id="local-content" role="tabpanel" aria-labelledby="source-local">
+      <nav class="section-tabs" role="tablist" aria-label="结果视图">
+        <button id="tab-overview" role="tab" aria-selected="true" aria-controls="overview">概览</button>
+        <button id="tab-motions" role="tab" aria-selected="false" aria-controls="motions" tabindex="-1">动作与失败</button>
+        <button id="tab-experiments" role="tab" aria-selected="false" aria-controls="experiments" tabindex="-1">实验库</button>
+        <button id="tab-method" role="tab" aria-selected="false" aria-controls="method" tabindex="-1">方法与来源</button>
+      </nav>
+      <p id="page-status" class="page-status wrap" role="status" aria-live="polite">正在读取本地结果…</p>
+      <section id="overview" role="tabpanel" aria-labelledby="tab-overview">
+        <div class="hero wrap">
+          <div><p class="eyebrow">MOONROBO / MOTION LEARNING</p><h1>让动作，<br><span>自己说话。</span></h1><p class="hero-copy">从真实记录出发。看动作，比较结果，找到下一步。</p><div class="hero-actions"><a class="pill primary" href="#replay">播放记录 <span aria-hidden="true">↗</span></a><a class="pill" href="./results/smoke.json" download>下载完整结果 <span aria-hidden="true">↓</span></a></div></div>
+          <div class="hero-side"><a href="#replay" aria-label="查看真实 G1 动作回放"><img src="./results/replay-poster.jpg" width="360" height="360" alt="已登记 G1 仿真记录的实际回放画面"></a><div class="hero-note"><span class="status-dot"></span><span>只读 smoke 已验证</span><p id="checked-at"></p><p>本轮未启动训练</p></div></div>
+        </div>
+        <div id="highlights" class="highlight-grid wrap" aria-label="本地结果概览"></div>
+        <section class="replay-section wrap" id="replay">
+          <div class="section-heading"><div><p class="eyebrow">RECORDED MOTION</p><h2>在同一帧，看见差别。</h2></div><span class="tag">已有实验 · 3D 回放</span></div>
+          <p class="section-intro">参考动作与物理记录同步播放。此处为已登记的初始化实验，与下方 40 动作 smoke 评测分开。</p>
+          <dialog open id="replay-shell" aria-label="已有实验回放"><div id="results-replay"></div></dialog>
+        </section>
+        <section class="band"><div class="wrap"><div class="section-heading"><div><p class="eyebrow">COMPUTE</p><h2>计算量，按实际记录。</h2></div><span class="tag">历史 CPU smoke</span></div><div id="compute-grid" class="compute-grid"></div><details><summary>计算口径</summary><p>这些数值来自已封存的两轮 CPU smoke。本轮只重读和校验数据；历史耗时不包括完整动作评测，也不能转换成论文的 GPU 加速比。</p></details></div></section>
+        <section class="wrap coverage-section"><div class="section-heading"><div><p class="eyebrow">RESULT COVERAGE</p><h2>每一项，都有明确状态。</h2></div><a href="#method">查看来源 <span aria-hidden="true">↗</span></a></div><div id="coverage-grid" class="coverage-grid"></div></section>
+      </section>
+      <section id="motions" class="wrap content-panel" role="tabpanel" aria-labelledby="tab-motions" hidden>
+        <p class="eyebrow">FULL-MOTION EVALUATION</p><h1 class="page-title">失败也完整保留。</h1><p class="section-intro">40 条 LAFAN1 动作的完整协议评测。全部从首帧执行，提前终止仍使用完整动作时长归一化。</p>
+        <div class="filter-row"><label for="motion-evaluation">评测记录<select id="motion-evaluation"></select></label></div>
+        <div id="motion-summary" class="summary-line"></div><div id="failure-chart" class="failure-chart" aria-label="动作类别失败统计"></div>
+        <div class="filter-row"><label for="motion-search">查找动作<input id="motion-search" type="search" placeholder="例如 walk、dance"></label><label for="motion-group">类别<select id="motion-group"><option value="">全部类别</option></select></label><a id="evaluation-download" class="pill" href="./results/evaluation.json" download>下载评测 ↓</a></div>
+        <div class="table-scroll"><table><caption id="motion-count">逐动作结果</caption><thead><tr><th>动作</th><th>归一化回报</th><th>执行 / 计划</th><th>结果</th><th><span class="sr-only">详情</span></th></tr></thead><tbody id="motion-rows"></tbody></table></div>
+        <p class="muted">此评测没有登记全身姿态或世界模型预测轨迹，无法从汇总指标还原 3D 动作。</p>
+      </section>
+      <section id="experiments" class="wrap content-panel" role="tabpanel" aria-labelledby="tab-experiments" hidden>
+        <p class="eyebrow">EXPERIMENT LIBRARY</p><h1 class="page-title">所有实验，一处查看。</h1><p class="section-intro">读取当前本地服务；服务离线时可查看导出快照。单次达标与完整实验达标分开显示。</p>
+        <div class="filter-row"><label for="experiment-search">查找实验<input id="experiment-search" type="search" placeholder="名称或关键词"></label><label for="experiment-filter">记录类型<select id="experiment-filter"><option value="">全部</option><option value="replay">有 3D 回放</option><option value="pass">有达标候选</option><option value="full">完整动作评测</option></select></label><button id="refresh-library" class="pill">刷新 <span aria-hidden="true">↻</span></button></div>
+        <p id="library-status" role="status" class="muted"></p><div id="experiment-list" class="experiment-list"></div>
+      </section>
+      <section id="method" class="wrap content-panel" role="tabpanel" aria-labelledby="tab-method" hidden>
+        <p class="eyebrow">METHOD & EVIDENCE</p><h1 class="page-title">从记录，回到依据。</h1>
+        <div class="method-flow"><article><span>01</span><h2>采集</h2><p>仿真器记录真实状态转移。</p></article><article><span>02</span><h2>拟合</h2><p>世界模型学习 8 步状态变化。</p></article><article><span>03</span><h2>想象</h2><p>32 步展开，更新策略与价值。</p></article></div>
+        <p class="muted">上图说明已有实验的方法。本轮 smoke 只执行读取、完整性校验与网页工作流验证。</p>
+        <h2>本轮 smoke</h2><ul id="smoke-checks" class="check-list"></ul>
+        <h2>原站结果对照</h2><p class="section-intro">下列为 SuperMimic 作者公开结果；使用 129,514 条 BONES-SEED 动作，与本地 40 条 LAFAN1 评测不可直接横比。</p>
+        <div class="table-scroll"><table><caption><a href="https://supermimic.github.io/#compute" target="_blank" rel="noopener">SuperMimic 原站 · 2026-10-28 查看 ↗</a></caption><thead><tr><th>公开配置</th><th>训练时间</th><th>失败动作</th></tr></thead><tbody><tr><td>SONIC · 128 GPU</td><td>7 天</td><td>179</td></tr><tr><td>SuperMimic · 1 GPU</td><td>3 小时</td><td>25</td></tr><tr><td>SuperMimic · 2 GPU</td><td>9.8 小时</td><td>0</td></tr></tbody></table></div>
+        <div class="source-actions"><a class="pill primary" href="#paper">浏览原站全部结果 ↗</a><a class="pill" href="https://arxiv.org/abs/2610.28480" target="_blank" rel="noopener">论文 ↗</a><a class="pill" href="./results/report.json" download>历史训练报告 ↓</a><a class="pill" href="./results/smoke.json" download>完整证据包 ↓</a></div>
+        <details><summary>来源与完整性</summary><pre id="provenance"></pre></details>
+      </section>
+    </div>
+    <section id="paper-content" role="tabpanel" aria-labelledby="source-paper" hidden>
+      <div class="reference-bar"><div><strong>SuperMimic · 作者原站</strong><p>原站公开结果与交互，直接载入。不是本地训练结果。</p></div><a class="pill" href="https://supermimic.github.io/" target="_blank" rel="noopener">独立打开 ↗</a></div>
+      <iframe id="paper-frame" title="SuperMimic 原站全部公开结果" data-src="https://supermimic.github.io/" referrerpolicy="no-referrer" allow="fullscreen"></iframe>
+    </section>
+  </main>
+  <footer class="wrap"><span>MoonRobo / Results</span><span>记录可追溯 · 仅仿真证据</span><a href="./?robot=g1-simulation">返回工作台 ↗</a></footer>
+  <dialog id="motion-detail" aria-labelledby="motion-title"><button class="dialog-close pill" aria-label="关闭详情">关闭 ×</button><h2 id="motion-title"></h2><div id="motion-detail-body"></div></dialog>
+  <dialog id="experiment-detail" aria-labelledby="experiment-title"><button class="dialog-close pill" aria-label="关闭详情">关闭 ×</button><h2 id="experiment-title"></h2><div id="experiment-detail-body"></div></dialog>
+  <script type="module" src="/results.js"></script>
+  <script type="module" src="/moonsuite-i18n.js"></script>
+</body>
+</html>

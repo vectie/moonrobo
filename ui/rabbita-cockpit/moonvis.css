@@ -1,0 +1,275 @@
+/* MoonVis visual_system/catalog.mbt · tokens 1.0.0 · assets 1.1.0.
+   Source SHA-256: 2325dc52dd5034c83f1cbddba3ac94776b6fc38a765e0f8412cfcd53896340ba.
+   Native consumer mapping. World surfaces remain opaque; only navigation uses glass.
+   The standalone research presentation has its own white media canvas. */
+:root {
+  color-scheme: dark;
+  --obsidian: #080b0d; --carbon: #111719; --smoke: #1a2224;
+  --frost: #f0f4f2; --mineral: #98a49f;
+  --signal: #8ec97f; --route: #d8b56a; --critical: #ff5b61;
+  --glass-structural: rgba(12,16,17,.86);
+  --glass-floating: rgba(18,24,23,.66);
+  --glass-control: rgba(230,238,233,.10); --glass-blur: 28px;
+  --radius-frame: 12px; --radius-panel: 24px; --radius-control: 18px; --radius-pill: 999px;
+  --bg: var(--obsidian); --panel: var(--carbon); --ink: var(--frost); --muted: var(--mineral);
+  --line: rgba(226,235,231,.14); --blue: var(--signal); --green: var(--signal);
+  --amber: var(--route); --red: var(--critical); --cyan: var(--mineral);
+  --soft-accent: var(--glass-control); --shadow: none;
+  font-family: Inter, "Noto Sans SC", "PingFang SC", -apple-system, sans-serif;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --obsidian: #f7f9f7; --carbon: #ffffff; --smoke: #e9eeea;
+  --frost: #18231d; --mineral: #58675e;
+  --signal: #33712e; --route: #846016; --critical: #bf2936;
+  --glass-structural: rgba(251,253,251,.92);
+  --glass-floating: rgba(255,255,255,.82);
+  --glass-control: rgba(25,51,35,.07);
+  --line: rgba(25,51,35,.16);
+}
+.glyph-theme { mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5'/%3E%3C/svg%3E") center/contain no-repeat; }
+[data-theme="light"] .glyph-theme { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linejoin='round'%3E%3Cpath d='M20 14A8.5 8.5 0 0 1 10 4a8.5 8.5 0 1 0 10 10Z'/%3E%3C/svg%3E"); }
+html, body { background: var(--bg); color: var(--ink); }
+button, input, select, textarea { font: inherit; }
+::selection { background: #8ec97f40; }
+:is(button,input,select,textarea,summary,[tabindex]):focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+.app-shell :is(button,input,select,textarea) { min-height: 44px; }
+.app-shell :is(input,select,textarea) { background: var(--bg); border: 1px solid var(--line); color: var(--ink); border-radius: var(--radius-control); }
+.app-shell :is(input,textarea)::placeholder { color: var(--muted); }
+.app-shell :is(button,a) { -webkit-tap-highlight-color: transparent; }
+.app-shell .robo-glyph { width: 18px; height: 18px; flex-basis: 18px; }
+
+/* One stable command bar for every workspace. */
+.app-shell[class] .cockpit-header {
+  position: sticky; top: 8px; z-index: 30; display: grid;
+  grid-template-columns: auto 1fr auto auto; align-items: center;
+  width: calc(100% - 32px); max-width: 1160px; min-height: 56px;
+  margin: 8px auto 0; padding: 6px 16px; gap: 12px;
+  border: 1px solid var(--line); border-radius: var(--radius-panel);
+  background: var(--glass-structural); backdrop-filter: blur(var(--glass-blur)); box-shadow: none;
+}
+.app-shell[class] .cockpit-header-inner { display: contents; }
+.app-shell[class] .cockpit-identity { grid-column: 1; grid-row: 1; }
+.app-shell[class] .cockpit-identity h1 { font-size: 18px; font-weight: 600; letter-spacing: -.5px; }
+.app-shell[class] .cockpit-identity { display: flex; align-items: center; gap: 12px; }
+.app-shell[class] .robot-switch { width: 136px; max-width: 100%; min-height: 44px; padding: 8px 24px 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-pill); background-color: var(--glass-control); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; text-overflow: ellipsis; }
+.recorded-robot-panel { position: relative; border: 1px solid var(--line); border-radius: var(--radius-panel); overflow: hidden; background: var(--surface); }
+.recorded-robot-toolbar { position: absolute; z-index: 1; right: 16px; top: 12px; }
+.recorded-robot-toolbar button, .robot-context-empty button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 8px 16px; background: var(--glass-control); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+.recorded-robot { position: relative; }
+.recorded-robot-viewport { width: 100%; height: max(280px,calc(100svh - 180px)); }
+.glyph-focus { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5'/%3E%3C/svg%3E"); }
+.recorded-robot-viewport canvas { display: block; width: 100%; height: 100%; }
+.recorded-robot-status { position: absolute; top: 16px; left: 16px; margin: 0; color: var(--muted); }
+.recorded-robot-fit { position: absolute; right: 16px; bottom: 16px; width: 44px; height: 44px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--glass-control); color: var(--ink); }
+.robot-context-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; min-height: 320px; text-align: center; padding: 32px; }
+.robot-context-empty > .robo-glyph { width: 32px; height: 32px; color: var(--muted); }
+.robot-context-empty h2 { font-size: 20px; font-weight: 500; margin: 0; }
+.robot-context-empty p { font-size: 13px; color: var(--muted); margin: 0; }
+.robot-context-empty button { min-height: 44px; }
+.app-shell[class] :is(.brand-mark,.robot-identity) { display: none; }
+.app-shell[class] .cockpit-nav { grid-column: 2; grid-row: 1; padding: 0; width: auto; gap: 4px; justify-content: center; }
+.app-shell[class] .cockpit-tab { min-width: 44px; min-height: 44px; padding: 8px 12px; border: 0; border-radius: var(--radius-pill); font-size: 12px; color: var(--muted); background: transparent; }
+.app-shell[class] .cockpit-tab.active { color: var(--ink); background: var(--glass-control); }
+.app-shell[class] .cockpit-tab:hover { color: var(--ink); }
+.app-shell[class] .cockpit-health { grid-column: 3; grid-row: 1; gap: 6px; }
+.app-shell[class] .cockpit-health .health-indicator { display: none; }
+.app-shell[class] .cockpit-health .badge { border: 0; background: transparent; padding: 0; font-weight: 400; }
+.app-shell[class] .cockpit-global-actions { grid-column: 4; grid-row: 1; display: flex; gap: 4px; }
+.app-shell[class] .cockpit-global-actions .header-action { min-width: 44px; min-height: 44px; padding: 10px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--muted); }
+.app-shell[class] .cockpit-global-actions .header-action:hover { color: var(--ink); background: var(--glass-control); }
+.app-shell[class] .header-action.emergency { color: var(--critical); }
+.app-shell[class] .header-action.emergency span:not(.robo-glyph) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.app-shell[class] .cockpit-header > .intent-status { grid-column: 1/-1; margin: 0; }
+.app-shell .cockpit-main { max-width: 1200px; padding: 12px 32px 32px; }
+.app-shell .cockpit-main > .workspace-tabs {
+  position: sticky; top: var(--cockpit-header-edge,80px); z-index: 20;
+  display: flex; width: max-content; max-width: 100%; margin: 0 auto 16px; padding: 4px;
+  min-height: 52px; gap: 4px; background: var(--glass-structural); backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--line); border-radius: var(--radius-pill); box-shadow: none;
+}
+.app-shell .workspace-tabs .workspace-tab { min-height: 44px; padding: 8px 16px; font-size: 12px; color: var(--muted); background: transparent; border: 0; box-shadow: none; border-radius: var(--radius-pill); }
+.app-shell .workspace-tabs .workspace-tab.active { color: var(--ink); background: var(--glass-control); }
+.workspace-content { scroll-margin-top: calc(var(--cockpit-header-edge,80px) + 72px); }
+.app-shell .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-panel); box-shadow: none; }
+.app-shell .panel-heading { padding: 16px 24px; border-color: var(--line); }
+.app-shell .panel-heading h2 { font-size: 15px; font-weight: 500; letter-spacing: 0; }
+.app-shell .panel-body { padding: 24px; }
+.app-shell .badge { background: transparent; border-color: var(--line); font-weight: 400; }
+.app-shell :is(.badge.ok,.freshness.ok) { color: var(--signal); background: #8ec97f0d; border-color: #8ec97f30; }
+.app-shell :is(.badge.warning,.freshness.warning) { color: var(--route); background: #d8b56a0d; border-color: #d8b56a30; }
+.app-shell :is(.badge.danger,.freshness.danger) { color: var(--critical); background: #ff5b610d; border-color: #ff5b6130; }
+.app-shell :is(.badge.accent,.freshness.neutral) { color: var(--muted); background: var(--glass-control); border-color: var(--line); }
+.app-shell :is(.metric,.key-value,.moondata-artifact,.task-message-row,.viewport-link,.viewport-joint,.joint-chip,.intent-status,.receipt-summary,.runtime-log-tail) { background: transparent; color: var(--ink); border-color: var(--line); }
+.app-shell :is(.loop-proof,.readiness-check,.urdf-editor-lane,.urdf-editor-tree-row,.urdf-editor-field,.urdf-editor-command-button,.urdf-editor-node,.urdf-editor-issue,.urdf-editor-history-row,.urdf-editor-diff-card,.urdf-editor-saved-receipt,.urdf-editor-source-snippet) { background: var(--bg); color: var(--ink); border-color: var(--line); }
+.app-shell :is(.urdf-editor-tree-row.selected,.urdf-editor-command-button.active,.urdf-editor-history-row.current) { background: var(--smoke); border-color: var(--signal); }
+.app-shell :is(.urdf-editor-issue.warning,.urdf-editor-tree-row.warning) { color: var(--route); border-color: #d8b56a50; }
+.app-shell .urdf-editor-issue.error { color: var(--critical); border-color: #ff5b6150; }
+.app-shell :is(.command-button,.header-action) { background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-control); font-weight: 500; }
+.app-shell :is(.command-button.primary,.operator-next-action) { background: var(--frost); border-color: var(--frost); color: var(--obsidian); }
+.app-shell :is(.command-button.danger,.operator-next-action.is-danger) { background: transparent; color: var(--critical); border-color: #ff5b6150; }
+.app-shell button:disabled { opacity: .45; }
+.workspace-details .workspace-details { border-color: var(--line); }
+.workspace-details > summary .robo-glyph { display: none; }
+.app-shell .workspace-tool { background: transparent; border: 0; min-height: 280px; }
+.app-shell .workspace-tool-icon { background: transparent; margin-bottom: 8px; }
+.app-shell .workspace-tool h2 { font-weight: 400; }
+.app-shell .workspace-tool .operator-next-action { margin-top: 24px; }
+
+/* World first. Compact the connection gate; keep consequences visible. */
+.app-shell .operator-flow { background: transparent; border: 0; padding: 8px 0; gap: 8px; }
+.operator-flow-head h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.operator-flow-head .operator-flow-copy { margin: 0; font-size: 13px; color: var(--muted); }
+.operator-flow .operator-flow-rail { gap: 8px; }
+.operator-flow .operator-flow-step { min-height: 32px; border-radius: 0; padding: 4px 8px; color: var(--muted); }
+.operator-flow .operator-flow-step.is-blocked { color: var(--route); border-color: var(--route); background: transparent; }
+.operator-flow .operator-flow-step.is-current { color: var(--signal); border-color: var(--signal); background: transparent; }
+.operator-flow > .workspace-details { justify-self: end; border: 0; }
+.operator-flow > .workspace-details > summary { min-height: 28px; padding: 0; gap: 12px; }
+.app-shell .twin-panel { overflow: hidden; }
+.app-shell .twin-panel .panel-body { padding: 0; }
+.app-shell .moonrobo-mesh-viewer { background: var(--bg); min-height: 360px; }
+.app-shell .view-robot .section-model .moonrobo-mesh-viewer { height: calc(100svh - 250px); min-height: 320px; }
+.app-shell .mesh-viewer-status, .app-shell .mesh-viewer-transform-tools { background: var(--glass-structural); color: var(--muted); border-color: var(--line); font-size: 11px; border-radius: var(--radius-frame); }
+.app-shell .moonrobo-mesh-viewer[data-load-state="ready"] .mesh-viewer-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.app-shell .mesh-viewer-transform-tools button { background: transparent; color: var(--ink); border-color: var(--line); }
+.section-model .mesh-viewer-transform-tools { display: none; }
+.app-shell .mesh-viewer-layer-tools { background: var(--glass-structural); border-color: var(--line); border-radius: var(--radius-pill); }
+.app-shell .mesh-viewer-layer-tools button { color: var(--muted); font-weight: 400; border-radius: var(--radius-pill); }
+.app-shell .mesh-viewer-layer-tools button.active { color: var(--ink); background: var(--glass-control); border-color: transparent; }
+
+/* The conversation explains ownership by position, without repeated labels. */
+.app-shell .message-panel { border: 0; background: transparent; }
+.app-shell .message-panel > .panel-heading { display: none; }
+.app-shell .message-panel > .panel-body { display: grid; grid-template-columns: minmax(0,1fr) auto; padding: 8px 0; gap: 16px; }
+.message-panel > .panel-body > * { grid-column: 1/-1; }
+.message-panel > .panel-body > .message-editor { grid-column: 1; order: 1; }
+.message-panel > .panel-body > .observation-actions { grid-column: 2; order: 1; display: flex; align-items: end; gap: 8px; }
+.message-panel .observation-actions .command-button { width: auto; }
+.message-editor .key-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.message-panel .observation-actions .command-button:first-child { min-width: 44px; width: 44px; padding: 10px; font-size: 0; }
+.message-panel .observation-actions .command-button:first-child::before { content: ''; display: block; width: 18px; height: 18px; background: currentColor; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.35' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10a8 8 0 1 0-1 7M20 3v7h-7'/%3E%3C/svg%3E") center/contain no-repeat; }
+.task-conversation { gap: 12px; margin: 0; max-height: max(220px,calc(100svh - 370px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--smoke) transparent; padding-right: 12px; }
+.app-shell .task-turn { border: 0; background: transparent; padding: 12px 0; }
+.app-shell .task-turn.user { justify-self: end; max-width: 85%; background: var(--smoke); padding: 12px 20px; border-radius: var(--radius-control); }
+.app-shell .task-turn.robo { max-width: 92%; }
+.task-turn-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.app-shell .task-turn-copy { line-height: 1.7; }
+.task-turn.robo .workspace-details { margin-top: 8px; }
+.task-turn.robo .workspace-details:not([open]) { border-top: 0; }
+.app-shell .task-turn.robo .workspace-details > summary { font-size: 11px; min-height: 32px; }
+.app-shell .moondata-metrics { margin-bottom: 24px; }
+.app-shell .moondata-artifacts { gap: 0; }
+.app-shell .moondata-artifact { border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 16px 0; }
+
+/* Experiments are records, not promotional cards. */
+#learning-workspace > .lw-status:not([data-error="true"]):not([data-loading="true"]),
+.lw-context > label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: -1px; }
+#learning-workspace > .lw-status:is([data-error="true"],[data-loading="true"]) { position: static; width: auto; height: auto; clip-path: none; margin: 12px 0; }
+#learning-workspace[data-section="experiments"] > .lw-context { display: none; }
+#learning-workspace .lw-context { grid-template-columns: minmax(0,1fr) 44px; padding: 0; margin-bottom: 24px; background: transparent; gap: 8px; }
+#learning-workspace button, #learning-workspace input:not([type=range]):not([type=checkbox]), #learning-workspace select { color: var(--ink); background: var(--carbon); border-color: var(--line); border-radius: var(--radius-control); }
+#learning-workspace :is(input:not([type=range]):not([type=checkbox]),select) { color: var(--ink); background: var(--carbon); border-color: var(--line); border-radius: var(--radius-control); }
+#learning-workspace button:hover { background: var(--smoke); }
+#learning-workspace :is(button.lw-primary,#lr-play) { background: var(--frost); border-color: var(--frost); color: var(--obsidian); }
+#learning-workspace .lw-context select { background: var(--carbon); padding: 10px 16px; }
+#learning-workspace .lw-filters { align-items: center; margin: 8px 0 16px; gap: 12px; }
+#learning-workspace .lw-filters label { font-size: 0; gap: 0; }
+#learning-workspace .lw-filters label :is(input,select) { font-size: 13px; }
+#learning-workspace .lw-filters > span { padding: 0; font-variant-numeric: tabular-nums; }
+#learning-workspace #lw-refresh { width: 44px; min-width: 44px; padding: 10px; background: transparent; border: 0; }
+.lw-cards { display: block; }
+.lw-card, .lw-card.is-selected { display: block; padding: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
+#learning-workspace .lw-card .lw-open { display: grid; grid-template-columns: 24px minmax(0,1fr) 40px 130px 24px; gap: 16px; align-items: center; width: 100%; min-height: 72px; padding: 16px; border: 0; border-radius: var(--radius-frame); background: transparent; text-align: left; font-weight: 400; }
+#learning-workspace .lw-card.is-selected .lw-open { background: var(--carbon); box-shadow: inset 2px 0 var(--signal); }
+#learning-workspace .lw-card .lw-open:hover { background: var(--smoke); }
+.lw-open .robo-glyph, .lw-recording, .lw-arrow { color: var(--muted); }
+.lw-name { overflow-wrap: anywhere; font-size: 14px; }
+.lw-recording { font-size: 11px; }
+.lw-outcome { font-size: 12px; color: var(--muted); text-align: right; }
+.lw-outcome.is-pass { color: var(--signal); }
+.lw-arrow { text-align: right; font-size: 18px; }
+.lw-empty, .lw-metrics article, .lw-candidates .le-plots figure { background: var(--carbon); }
+.lw-metrics article { border-radius: var(--radius-control); }
+.lw-motions, .lw-candidates .le-table-wrap { border-color: var(--line); }
+.lw-motion[open] { background: var(--carbon); }
+.lw-candidates .le-table-wrap caption { background: transparent; color: var(--muted); padding: 8px 0 16px; text-align: left; }
+.lw-candidates :is(th,td) { background: transparent; border-color: var(--line); }
+.lw-candidates .le-table-wrap th { color: var(--muted); }
+#learning-workspace .le-table-wrap button { color: var(--signal); background: transparent; }
+#learning-workspace .le-reported-pass { color: var(--signal); }
+#learning-workspace .le-failed { color: var(--route); }
+#learning-workspace .le-plots svg { background: transparent; }
+#learning-workspace .le-plots svg text { fill: var(--muted); }
+#learning-workspace .le-plots svg line { stroke: var(--line); }
+
+/* Same stage geometry and transport across desktop and mobile. */
+#lw-player .learning-replay, #lw-player .lr-stage, #lw-player .lr-viewport { background: var(--bg); }
+#lw-player .lr-selectors .lw-context { margin: 0; }
+#lw-player .lr-selectors :is(select,#lw-experiment) { background: var(--carbon); color: var(--ink); }
+#lw-player .lr-dock { background: var(--carbon); border: 1px solid var(--line); border-radius: var(--radius-panel); }
+#lw-player .lr-controls button, #lw-player #lr-speed { background: transparent; color: var(--ink); }
+#lw-player .lr-reference-toggle { background: var(--glass-structural); color: var(--muted); min-height: 44px; }
+#lw-player .lr-reference-toggle:has(input:checked) { background: var(--carbon); color: var(--route); }
+#lw-player .lr-render-status, #lw-player .lr-track-status { background: var(--glass-structural); color: var(--route); }
+#lw-player .lr-timeline-heading { color: var(--muted); }
+#lw-player #lr-time { accent-color: var(--signal); }
+#lw-player .lr-details { border-color: var(--line); }
+body #moonsuite-language { position: static !important; display: flex; width: max-content; margin: 16px 24px 20px auto; z-index: auto !important; box-shadow: none !important; }
+body #moonsuite-language { background: var(--panel) !important; border-color: var(--line) !important; }
+body #moonsuite-language select { color: var(--muted) !important; min-height: 32px; }
+.digital-trials-dialog :is(input,select,textarea,button,.design-library,#dw-preview,pre) { color: var(--ink); background: var(--bg); border-color: var(--line); }
+.digital-trials-dialog :is(.digital-trials-boundary,.digital-trials-warning) { color: var(--route); background: #d8b56a0d; }
+.digital-trials-dialog .workspace-tabs { background: var(--bg); }
+.digital-trials-dialog .workspace-tab.active { background: var(--smoke); color: var(--ink); }
+
+@media(max-width:1000px) and (min-width:761px) {
+  .app-shell[class] .cockpit-identity h1 { display: none; }
+  .app-shell[class] .cockpit-tab:not(.active) .cockpit-tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .app-shell[class] .cockpit-tab.active .cockpit-tab-label { position: static; width: auto; height: auto; clip-path: none; }
+}
+@media(max-width:760px) {
+  .app-shell .cockpit-main { padding-inline: 16px; }
+  .app-shell .panel-body { padding: 16px; }
+  .app-shell .panel-heading { padding: 16px; }
+  #learning-workspace .lw-filters { flex-wrap: wrap; gap: 8px; }
+  #learning-workspace .lw-filters > span { width: auto; }
+  #learning-workspace .lw-card .lw-open { grid-template-columns: 20px minmax(0,1fr) auto 20px; gap: 8px; padding: 16px 8px; }
+  .lw-name { font-size: 13px; }
+  .lw-recording { grid-column: 1; grid-row: 2; font-size: 10px; }
+  .lw-outcome { grid-column: 2/4; grid-row: 2; text-align: left; font-size: 11px; }
+  .lw-arrow { grid-column: 4; grid-row: 1/3; }
+}
+@media(max-width:760px) {
+  #learning-workspace #lw-experiments > .lw-filters { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) 44px; }
+  #lw-experiments .lw-filters > #lw-count { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .app-shell .message-panel > .panel-body { grid-template-columns: minmax(0,1fr); gap: 12px; }
+  .message-panel > .panel-body > .message-editor, .message-panel > .panel-body > .observation-actions { grid-column: 1; }
+  .message-panel > .panel-body > .observation-actions { order: 2; justify-content: flex-end; }
+  .task-conversation { max-height: max(180px,calc(100svh - 430px)); padding-right: 0; }
+  .app-shell[class] .cockpit-header { width: calc(100% - 24px); grid-template-columns: 1fr auto auto; padding: 4px 10px; gap: 2px 8px; border-radius: var(--radius-control); }
+  .app-shell[class] .cockpit-identity h1 { display: none; }
+  .app-shell[class] .cockpit-identity { min-width: 0; }
+  .app-shell[class] .robot-switch { width: 116px; padding-left: 8px; }
+  .app-shell[class] .cockpit-header { gap: 2px 4px; }
+  .app-shell[class] .cockpit-global-actions { gap: 0; }
+  .recorded-robot-viewport { height: max(260px,calc(100svh - 210px)); }
+  .app-shell[class] .cockpit-nav { grid-column: 1/-1; grid-row: 2; justify-content: space-between; width: 100%; }
+  .app-shell[class] .cockpit-tab { flex: 1; min-height: 44px; padding: 6px; }
+  .app-shell[class] .cockpit-tab-label { position: static; width: auto; height: auto; clip-path: none; font-size: 11px; }
+  .app-shell[class] .cockpit-tab .robo-glyph { display: none; }
+  .app-shell[class] .cockpit-health { grid-column: 2; grid-row: 1; }
+  .cockpit-health .mode-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .cockpit-health .mode-status::before { content: ''; display: block; width: 16px; height: 16px; background: currentColor; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E") center/contain no-repeat; }
+  .cockpit-health .mode-status.read-only::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round'%3E%3Crect x='5' y='10' width='14' height='11' rx='3'/%3E%3Cpath d='M8 10V6a4 4 0 0 1 8 0v4m-4 5v2'/%3E%3C/svg%3E"); }
+  .cockpit-health .mode-status.live::before { background: var(--critical); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Ccircle cx='12' cy='12' r='4' fill='black'/%3E%3C/svg%3E"); }
+  .app-shell[class] .cockpit-global-actions { grid-column: 3; grid-row: 1; }
+  .app-shell .cockpit-main { padding: 10px 12px 24px; }
+  .app-shell .cockpit-main > .workspace-tabs { width: 100%; margin-bottom: 12px; }
+  .app-shell .workspace-tabs .workspace-tab { padding: 8px 10px; }
+  .operator-flow-head { grid-template-columns: 1fr auto; }
+  .operator-flow-next { min-width: 0; }
+  .operator-flow .operator-flow-copy { font-size: 12px; }
+  .operator-flow .operator-next-action { padding-inline: 12px; min-width: 0; }
+  #learning-workspace .lw-context { margin-bottom: 16px; }
+}

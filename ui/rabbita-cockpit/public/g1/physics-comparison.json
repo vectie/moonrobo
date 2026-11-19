@@ -1,0 +1,702 @@
+{
+  "format": "moonrobo.browser-g1-physics-check.v1",
+  "engine": "3.15.0",
+  "scene_sha256": "b9f8b0e0cbfa4a82c125ac330b38e1a8bf4c825252caf2c3d0dffe678ca5f7af",
+  "actor_source": "5888458a564ba6b9f6346b2dbdf940856850af5f773b5d24c5ebf346d20e9017",
+  "friction": 1,
+  "action_noise": 0,
+  "summary": {
+    "early": {
+      "browser_completed": 1,
+      "apic_completed": 1,
+      "matching_outcomes": 40
+    },
+    "final": {
+      "browser_completed": 37,
+      "apic_completed": 38,
+      "matching_outcomes": 39
+    }
+  },
+  "per_clip": [
+    {
+      "index": 0,
+      "name": "210531/rage_amateurl_003__A001",
+      "expected_steps": 648,
+      "early": {
+        "browser_steps": 47,
+        "browser_failed": true,
+        "apic_steps": 47,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 648,
+        "browser_failed": false,
+        "apic_steps": 648,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 3520,
+      "name": "220713/looking_around_horizontally_003__A024_M",
+      "expected_steps": 565,
+      "early": {
+        "browser_steps": 47,
+        "browser_failed": true,
+        "apic_steps": 47,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 565,
+        "browser_failed": false,
+        "apic_steps": 565,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 7040,
+      "name": "220720/jog_sideway_090_start_003__A031",
+      "expected_steps": 167,
+      "early": {
+        "browser_steps": 41,
+        "browser_failed": true,
+        "apic_steps": 42,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 167,
+        "browser_failed": false,
+        "apic_steps": 167,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 10560,
+      "name": "220721/jog_sideway_090_start_002__A036",
+      "expected_steps": 174,
+      "early": {
+        "browser_steps": 44,
+        "browser_failed": true,
+        "apic_steps": 44,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 174,
+        "browser_failed": false,
+        "apic_steps": 174,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 14080,
+      "name": "220727/walk_sideway_045_stop_001__A038_M",
+      "expected_steps": 357,
+      "early": {
+        "browser_steps": 45,
+        "browser_failed": true,
+        "apic_steps": 45,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 357,
+        "browser_failed": false,
+        "apic_steps": 357,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 17601,
+      "name": "221010/legs_relax_003__A047",
+      "expected_steps": 315,
+      "early": {
+        "browser_steps": 45,
+        "browser_failed": true,
+        "apic_steps": 45,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 315,
+        "browser_failed": false,
+        "apic_steps": 315,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 21121,
+      "name": "221011/idle_right_to_idle_003__A052",
+      "expected_steps": 185,
+      "early": {
+        "browser_steps": 55,
+        "browser_failed": true,
+        "apic_steps": 55,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 185,
+        "browser_failed": false,
+        "apic_steps": 185,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 24641,
+      "name": "221115/omg_R_002__A060_M",
+      "expected_steps": 232,
+      "early": {
+        "browser_steps": 45,
+        "browser_failed": true,
+        "apic_steps": 45,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 232,
+        "browser_failed": false,
+        "apic_steps": 232,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 28161,
+      "name": "221116/looking_around_up_001__A062_M",
+      "expected_steps": 817,
+      "early": {
+        "browser_steps": 45,
+        "browser_failed": true,
+        "apic_steps": 45,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 817,
+        "browser_failed": false,
+        "apic_steps": 817,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 31681,
+      "name": "221118/body_stretch_1_005__A072_M",
+      "expected_steps": 192,
+      "early": {
+        "browser_steps": 48,
+        "browser_failed": true,
+        "apic_steps": 48,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 192,
+        "browser_failed": false,
+        "apic_steps": 192,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 35202,
+      "name": "221130/inj_torso_stoop_down_R_002__A082",
+      "expected_steps": 743,
+      "early": {
+        "browser_steps": 46,
+        "browser_failed": true,
+        "apic_steps": 46,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 743,
+        "browser_failed": false,
+        "apic_steps": 743,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 38722,
+      "name": "230103/krakowiak_R_004__A100_M",
+      "expected_steps": 152,
+      "early": {
+        "browser_steps": 42,
+        "browser_failed": true,
+        "apic_steps": 42,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 79,
+        "browser_failed": true,
+        "apic_steps": 78,
+        "apic_failed": true
+      }
+    },
+    {
+      "index": 42242,
+      "name": "230112/i_got_this_003__A116",
+      "expected_steps": 177,
+      "early": {
+        "browser_steps": 48,
+        "browser_failed": true,
+        "apic_steps": 48,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 177,
+        "browser_failed": false,
+        "apic_steps": 177,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 45762,
+      "name": "230119/mohak_turn_360_004__A125_M",
+      "expected_steps": 518,
+      "early": {
+        "browser_steps": 15,
+        "browser_failed": true,
+        "apic_steps": 15,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 207,
+        "browser_failed": true,
+        "apic_steps": 237,
+        "apic_failed": true
+      }
+    },
+    {
+      "index": 49282,
+      "name": "230124/triumph_one_handed_R_001__A142",
+      "expected_steps": 267,
+      "early": {
+        "browser_steps": 44,
+        "browser_failed": true,
+        "apic_steps": 44,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 267,
+        "browser_failed": false,
+        "apic_steps": 267,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 52803,
+      "name": "230201/praying_002__A164",
+      "expected_steps": 202,
+      "early": {
+        "browser_steps": 42,
+        "browser_failed": true,
+        "apic_steps": 42,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 202,
+        "browser_failed": false,
+        "apic_steps": 202,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 56323,
+      "name": "230209/idle_turn_360_002__A177",
+      "expected_steps": 278,
+      "early": {
+        "browser_steps": 45,
+        "browser_failed": true,
+        "apic_steps": 45,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 278,
+        "browser_failed": false,
+        "apic_steps": 278,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 59843,
+      "name": "230213/sitting_legs_bend_arms_back_loop_001__A186_M",
+      "expected_steps": 869,
+      "early": {
+        "browser_steps": 869,
+        "browser_failed": false,
+        "apic_steps": 869,
+        "apic_failed": false
+      },
+      "final": {
+        "browser_steps": 869,
+        "browser_failed": false,
+        "apic_steps": 869,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 63363,
+      "name": "230217/jog_ff_loop_180_R_005__A208_M",
+      "expected_steps": 122,
+      "early": {
+        "browser_steps": 16,
+        "browser_failed": true,
+        "apic_steps": 16,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 122,
+        "browser_failed": false,
+        "apic_steps": 122,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 66883,
+      "name": "230227/jump_ff_360_002__A220",
+      "expected_steps": 274,
+      "early": {
+        "browser_steps": 43,
+        "browser_failed": true,
+        "apic_steps": 43,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 274,
+        "browser_failed": false,
+        "apic_steps": 274,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 70404,
+      "name": "230301/injured_torso_jog_ff_loop_360_R_001__A232_M",
+      "expected_steps": 227,
+      "early": {
+        "browser_steps": 75,
+        "browser_failed": true,
+        "apic_steps": 75,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 227,
+        "browser_failed": false,
+        "apic_steps": 227,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 73924,
+      "name": "230302/walk_ff_loop_270_R_003__A237",
+      "expected_steps": 171,
+      "early": {
+        "browser_steps": 36,
+        "browser_failed": true,
+        "apic_steps": 36,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 171,
+        "browser_failed": false,
+        "apic_steps": 171,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 77444,
+      "name": "230307/jog_ff_loop_180_R_002__A253",
+      "expected_steps": 111,
+      "early": {
+        "browser_steps": 24,
+        "browser_failed": true,
+        "apic_steps": 24,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 111,
+        "browser_failed": false,
+        "apic_steps": 111,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 80964,
+      "name": "230313/walk_ff_stop_225_R_003__A267",
+      "expected_steps": 267,
+      "early": {
+        "browser_steps": 40,
+        "browser_failed": true,
+        "apic_steps": 40,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 267,
+        "browser_failed": false,
+        "apic_steps": 267,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 84484,
+      "name": "230316/hurry_idle_to_hurry_idle_right_R_002__A281_M",
+      "expected_steps": 347,
+      "early": {
+        "browser_steps": 46,
+        "browser_failed": true,
+        "apic_steps": 46,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 347,
+        "browser_failed": false,
+        "apic_steps": 347,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 88005,
+      "name": "230322/operating_fridge_mid_in_R_001__A299",
+      "expected_steps": 269,
+      "early": {
+        "browser_steps": 48,
+        "browser_failed": true,
+        "apic_steps": 48,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 269,
+        "browser_failed": false,
+        "apic_steps": 269,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 91525,
+      "name": "230411/dance_western_horse_step_with_leg_undercut_R_002__A306_M",
+      "expected_steps": 451,
+      "early": {
+        "browser_steps": 48,
+        "browser_failed": true,
+        "apic_steps": 48,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 451,
+        "browser_failed": false,
+        "apic_steps": 451,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 95045,
+      "name": "230413/dance_hiphop_wobble_R_fast_002__A319",
+      "expected_steps": 177,
+      "early": {
+        "browser_steps": 51,
+        "browser_failed": true,
+        "apic_steps": 51,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 177,
+        "browser_failed": false,
+        "apic_steps": 177,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 98565,
+      "name": "230414/dance_basic_turn_v1_180_R_loop_002__A323",
+      "expected_steps": 575,
+      "early": {
+        "browser_steps": 40,
+        "browser_failed": true,
+        "apic_steps": 40,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 575,
+        "browser_failed": false,
+        "apic_steps": 575,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 102085,
+      "name": "230419/high_jump_R_001__A340_M",
+      "expected_steps": 155,
+      "early": {
+        "browser_steps": 43,
+        "browser_failed": true,
+        "apic_steps": 43,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 155,
+        "browser_failed": false,
+        "apic_steps": 155,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 105606,
+      "name": "230427/shovel_idle_R_004__A358_M",
+      "expected_steps": 1049,
+      "early": {
+        "browser_steps": 45,
+        "browser_failed": true,
+        "apic_steps": 45,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 1049,
+        "browser_failed": false,
+        "apic_steps": 1049,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 109126,
+      "name": "230523/dancing_routine_V002_003__A390_M",
+      "expected_steps": 754,
+      "early": {
+        "browser_steps": 40,
+        "browser_failed": true,
+        "apic_steps": 40,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 754,
+        "browser_failed": false,
+        "apic_steps": 754,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 112646,
+      "name": "230530/object_looking_at_R_002__A412_M",
+      "expected_steps": 538,
+      "early": {
+        "browser_steps": 45,
+        "browser_failed": true,
+        "apic_steps": 45,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 538,
+        "browser_failed": false,
+        "apic_steps": 538,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 116166,
+      "name": "230904/jump_ff_270_R_002__A441",
+      "expected_steps": 129,
+      "early": {
+        "browser_steps": 46,
+        "browser_failed": true,
+        "apic_steps": 46,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 129,
+        "browser_failed": false,
+        "apic_steps": 129,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 119686,
+      "name": "231006/its_dynamite_007__A467_M",
+      "expected_steps": 562,
+      "early": {
+        "browser_steps": 51,
+        "browser_failed": true,
+        "apic_steps": 51,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 562,
+        "browser_failed": false,
+        "apic_steps": 562,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 123207,
+      "name": "231024/wave_right_hand_000_R_jog_ff_start_315_R_point_dir_horizontal_right_hand_head_090_R_003__A492",
+      "expected_steps": 387,
+      "early": {
+        "browser_steps": 47,
+        "browser_failed": true,
+        "apic_steps": 47,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 254,
+        "browser_failed": true,
+        "apic_steps": 387,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 126727,
+      "name": "231114/medium_big_light_two_hands_idle_turn_270_R_002__A509_M",
+      "expected_steps": 326,
+      "early": {
+        "browser_steps": 45,
+        "browser_failed": true,
+        "apic_steps": 45,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 326,
+        "browser_failed": false,
+        "apic_steps": 326,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 130247,
+      "name": "231116/small_light_one_hand_behind_medium_to_behind_low_R_001__A518",
+      "expected_steps": 238,
+      "early": {
+        "browser_steps": 50,
+        "browser_failed": true,
+        "apic_steps": 50,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 238,
+        "browser_failed": false,
+        "apic_steps": 238,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 133767,
+      "name": "231120/big_light_two_hands_behind_high_to_front_high_R_001__A526",
+      "expected_steps": 573,
+      "early": {
+        "browser_steps": 49,
+        "browser_failed": true,
+        "apic_steps": 49,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 573,
+        "browser_failed": false,
+        "apic_steps": 573,
+        "apic_failed": false
+      }
+    },
+    {
+      "index": 137288,
+      "name": "240918/lighter_light_cigarette_start_R_001__A552_M",
+      "expected_steps": 681,
+      "early": {
+        "browser_steps": 48,
+        "browser_failed": true,
+        "apic_steps": 48,
+        "apic_failed": true
+      },
+      "final": {
+        "browser_steps": 681,
+        "browser_failed": false,
+        "apic_steps": 681,
+        "apic_failed": false
+      }
+    }
+  ]
+}

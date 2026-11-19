@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#fff"><title>E1 肩肘重定向对照 · MoonRobo</title><link rel="icon" href="data:,"><link rel="stylesheet" href="./heldout/arm-ik.css"></head>
+<body><a class="skip" href="#main">跳至对照结果</a>
+<header class="topbar"><a class="brand" href="./compare.html">MoonRobo</a><nav aria-label="评测"><a id="guard-replay" href="./compare.html">修复版回放</a><a id="replay" href="./compare.html">原版回放</a><a id="orientation" href="./orientation.html">朝向逐帧</a><a aria-current="page" href="./arm-ik.html">重定向实验</a><a href="#finetune">策略微调</a></nav></header>
+<main id="main"><div class="intro-row"><div><h1>E1 肩肘重定向对照</h1><p>同一 14k 策略 · 40 条留出动作 · MuJoCo 物理回放</p></div><label class="picker">查看范围<select id="scope" disabled><option>载入实验…</option></select></label></div><p id="status" role="status"></p>
+<div id="results" hidden>
+<section class="panel-overview"><h2>从第 0 帧到动作结束</h2><p id="summary"></p>
+<div class="scroll"><table><thead><tr><th scope="col">E1 参考</th><th>左肘首帧</th><th>右肘首帧</th><th>右肩跟踪 RMS</th><th>整段回报</th><th>相对原版</th><th>完成数</th><th>参考过筛</th></tr></thead><tbody id="outcomes"></tbody></table></div>
+<p class="explain">双肘比较源动作与拟合参考，单位为度。右肩比较参考与实际姿态，取所有方案和 G1 都在执行的相同帧。每条动作等权，整段回报按原计划时长归一化。</p></section>
+<section class="wf-section"><h2>手臂修正后的自碰撞</h2><p id="repair-result"></p><div id="pair-view" hidden><p id="pair-label"></p><details><summary>每次修正量与原版碰撞余量的对照</summary><table><thead><tr><th>修正量</th><th>全身最深穿透</th><th>原超限碰撞体对超过原版的最大值</th></tr></thead><tbody id="pair-attempts"></tbody></table></details><label>控制帧 <input type="range" id="pair-frame" min="0" step="1"><output id="pair-frame-label" for="pair-frame"></output></label><table><thead><tr><th>方案</th><th>参考双臂穿透</th><th>实际姿态双臂穿透</th></tr></thead><tbody id="pair-rows"></tbody></table><a id="pair-replay" href="./compare.html">在修复版回放中查看这一帧</a> · <a href="./heldout/arm-ik/pair-audit.json">下载独立 MuJoCo 复算结果</a></div></section>
+<div class="details-grid"><section class="wf-section"><h2>右肩偏差发生在哪一段？</h2><div id="legend" class="legend"><span>源 → 参考</span><span>参考 → 实际</span><span>源 → 实际</span></div><div id="angle-chart"></div><p id="angles-note"></p></section>
+<section class="wf-section"><h2>双肘是否从复位开始就偏？</h2><p>首帧单独计数，并列出从首帧起连续 5 帧均超过 15° 的动作数。</p><table><thead><tr><th>方案</th><th>左肘首帧</th><th>右肘首帧</th><th>左肘持续</th><th>右肘持续</th></tr></thead><tbody id="elbows"></tbody></table></section></div>
+<section class="wf-section"><div class="head"><h2>支撑期脚底接触</h2><label>观察对象 <select id="feet-scope"><option value="physical_feet">实际 · 共同时间窗</option><option value="reference_feet">参考 · 完整时长</option><option value="whole_physical_feet">实际 · 各自执行全程</option></select></label></div>
+<p>所有组使用同一份源动作支撑脚标记。足底距离来自 MuJoCo 碰撞几何。左右脚分别计数，百分比按支撑足帧汇总。</p>
+<div class="scroll"><table><thead><tr><th>方案</th><th>支撑足帧</th><th>触地 ≤ 0 mm</th><th>近地 ≤ 2 mm</th><th>离地 &gt; 20 mm</th><th>最深穿透</th><th>滑速</th></tr></thead><tbody id="contacts"></tbody></table></div>
+<p class="contact-result" id="contact-result"></p><p id="foot-note"></p></section>
+<section class="wf-section"><div class="head"><h2>哪些动作改变了结果？</h2><label>与原版对照 <select id="candidate"><option value="1">只加肩</option><option value="2">只加肘</option><option value="3">肩肘都加</option><option value="4">肩肘都加 · 锁住下身</option><option value="5" selected>锁住下身 · 几何复查</option></select></label></div><p id="changes"></p><p id="gates"></p>
+<details><summary>逐动作回报、停止帧与几何筛查</summary><div class="scroll"><table><thead><tr><th>动作</th><th>原版回报</th><th>新回报</th><th>回报差</th><th>原版执行帧</th><th>新执行帧</th><th>参考筛查</th></tr></thead><tbody id="motion-list"></tbody></table></div></details></section>
+<details class="methods"><summary>求解与测量方法</summary><p>前三个改动分别在原版全身 IK 中加入左右肩、左右肘或两者的 SO(3) 朝向残差。两个部位独立开关，每个残差均使用既有臂远端权重 0.12，雅可比和回溯代价启用相同的项。第四个改动以原版筛查后的姿态为起点，仅开放手臂关节重新求解，同时保留位置、碰撞、关节角及逐帧速度约束。第五个改动检查完整轨迹。仅当手臂引入新的筛查失败时，全片逐次减半手臂关节相对原版的修正量，重算任务误差和碰撞。若新增自碰撞，先验证整段全身穿透峰值，再对每一对曾超过 20 mm 的碰撞体单独比较整段峰值。两项均须回到各自的原版水平，数值容差为 10⁻⁹ m。最小候选仍失败时回到原参考。所有选择只使用参考几何。</p>
+<p>根部航向补偿、50 Hz 控制、执行器、奖励与终止规则沿用原评测。每组包括所有提前终止和参考筛查失败的动作。仅在比较右肩和共同执行脚底指标时截到最早停止帧。脚底滑速为连续两个支撑近地帧内，同一鞋底接触位置的水平位移乘以 50 Hz，再按有效足步平均。几何接触指标不测量地面反力。</p>
+<a href="./heldout/arm-ik/results.json">下载逐动作实测值、脚底样本数及文件哈希</a><div id="raw-reports"></div></details>
+</div>
+<section id="finetune" class="wf-section" aria-labelledby="finetune-title">
+<h2 id="finetune-title">修复参考上的策略微调</h2>
+<p>从同一 14k 检查点继续更新 100 次。两版策略逐条跟踪相同的肩肘修复参考，每条动作在平均回报中权重相同。新增 21 条在微调前锁定。</p>
+<p id="finetune-status" role="status"></p>
+<div class="scroll"><table><thead><tr><th scope="col">评测集</th><th>14k 回报</th><th>微调回报</th><th>回报差</th><th>14k 完成</th><th>微调完成</th></tr></thead><tbody id="finetune-scores"></tbody></table></div>
+<p id="finetune-changes"></p><p id="finetune-tracking"></p><p id="finetune-feet"></p>
+<p><a id="finetune-replay" href="./compare.html">查看微调版 E1 回放</a> · <a href="./heldout/arm-ik/finetune/result.json">下载 61 条回报和停止帧</a> · <a href="./heldout/arm-ik/finetune/tracking.json">下载右肩与脚底逐项实测</a></p>
+</section></main><script type="module" src="./heldout/arm-ik.js"></script></body></html>

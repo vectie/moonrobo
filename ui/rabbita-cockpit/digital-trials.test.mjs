@@ -116,7 +116,7 @@ test('cockpit launcher and bootstrap wire a separate inert panel with no eager f
   assert.equal(h.el('session-id').value, '')
   assert.equal(h.el('review').disabled, true)
   assert.equal(h.el('export').disabled, true)
-  assert.match(h.root.markup, /Local physical authority: <strong>false<\/strong>/)
+  assert.match(h.root.markup, /Simulation records · no robot control/)
   await h.launcher.dispatch('click')
   assert.equal(h.dialog.open, true)
   await h.click('close')
@@ -301,7 +301,7 @@ test('server content is rendered as text; digital-ready remains explicitly digit
   assert.match(h.el('inspection').textContent, /<img/)
   assert.match(h.el('calibration').textContent, /<img/)
   assert.equal(h.root.markup.includes(warning), false)
-  assert.match(h.root.markup, /Local physical authority: <strong>false/)
+  assert.match(h.root.markup, /Simulation records · no robot control/)
 })
 
 test('export downloads the complete host response and keeps Book retention pending', async () => {

@@ -260,10 +260,10 @@ function readLayerSettings() {
     const raw = JSON.parse(window.localStorage.getItem(LAYER_STORAGE_KEY) || 'null')
     return {
       visuals: raw?.visuals !== false,
-      collisions: raw?.collisions !== false,
+      collisions: raw?.collisions === true,
     }
   } catch (_error) {
-    return { visuals: true, collisions: true }
+    return { visuals: true, collisions: false }
   }
 }
 
@@ -456,9 +456,8 @@ function focusCameraOnBox(camera, controls, box) {
 }
 
 function materialFor(index) {
-  const colors = [0x60786f, 0x3f6f8f, 0x99733a, 0x6b7285, 0x765f53, 0x4f8060]
   const material = new THREE.MeshStandardMaterial({
-    color: colors[index % colors.length],
+    color: 0xb5beb8,
     roughness: 0.62,
     metalness: 0.08,
     side: THREE.DoubleSide,
@@ -505,7 +504,7 @@ function makeRenderer(mount) {
     antialias: true,
     preserveDrawingBuffer: true,
   })
-  renderer.setClearColor(0xf4f6f3, 1)
+  renderer.setClearColor(0x080b0d, 1)
   renderer.outputColorSpace = THREE.SRGBColorSpace
   renderer.toneMapping = THREE.NeutralToneMapping
   mount.appendChild(renderer.domElement)
@@ -530,7 +529,8 @@ function addSceneBasics(scene) {
   fill.position.set(-4, 3, 3)
   scene.add(fill)
 
-  const grid = new THREE.GridHelper(6, 36, 0x9aaba4, 0xdbe3df)
+  const grid = new THREE.GridHelper(6, 36, 0x33413c, 0x1a2421)
+  grid.name = 'display-grid'
   grid.material.transparent = true
   grid.material.opacity = 0.55
   scene.add(grid)
@@ -650,6 +650,7 @@ function fitInitialCamera(mount, camera, controls, viewport, robotGroup) {
 function dispose(viewer) {
   if (!viewer || viewer.disposed) return
   viewer.disposed = true
+  window.removeEventListener('moonrobo:theme-change', viewer.themeChanged)
   if (viewer.canvas && viewer.clickHandler) {
     viewer.canvas.removeEventListener('click', viewer.clickHandler)
   }
@@ -776,6 +777,7 @@ async function loadMeshes(mount, robotGroup, viewport, runId, layerControls) {
     }`,
   )
   layerControls?.refresh()
+  mount.dataset.loadState = state.failedMeshes ? 'partial' : 'ready'
 }
 
 async function mountViewer(mount) {
@@ -789,7 +791,7 @@ async function mountViewer(mount) {
 
   const renderer = makeRenderer(mount)
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color(0xf4f6f3)
+  scene.background = new THREE.Color(0x080b0d)
   addSceneBasics(scene)
 
   const camera = new THREE.PerspectiveCamera(42, 1, 0.001, 100)
@@ -818,6 +820,21 @@ async function mountViewer(mount) {
     robotGroup,
   })
   const viewer = { renderer, controls, resizeObserver, transformEditor, layerControls: null, disposed: false }
+  viewer.themeChanged = () => {
+    const dark = document.documentElement.dataset.theme !== 'light'
+    scene.background.set(dark ? 0x080b0d : 0xf7f9f7)
+    const previous = scene.getObjectByName('display-grid')
+    scene.remove(previous)
+    previous.geometry.dispose()
+    previous.material.dispose()
+    const grid = new THREE.GridHelper(6, 36, dark ? 0x33413c : 0xb1bfb6, dark ? 0x1a2421 : 0xd6dfd9)
+    grid.name = 'display-grid'
+    grid.material.transparent = true
+    grid.material.opacity = 0.55
+    scene.add(grid)
+  }
+  viewer.themeChanged()
+  window.addEventListener('moonrobo:theme-change', viewer.themeChanged)
   activeViewer = viewer
   viewerRegistry.set(mount, viewer)
 
@@ -912,7 +929,8 @@ async function mountViewer(mount) {
     state.error = error instanceof Error ? error.message : String(error)
     mount.classList.remove('is-loading')
     mount.classList.add('is-error')
-    setStatus(mount, `Mesh render error: ${state.error}`)
+    setStatus(mount, 'Robot preview unavailable. Check your connection.')
+    mount.querySelector('.mesh-viewer-status').title = state.error
   }
 }
 

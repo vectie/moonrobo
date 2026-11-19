@@ -1,0 +1,21 @@
+@import url("./workflow.css");
+#finetune { scroll-margin-top: 1rem; }
+#finetune a { display: inline-block; padding: .65em 0; color: var(--teal); text-decoration: underline; }
+#finetune table { min-width: 0; }
+#finetune th { white-space: normal; }
+#pair-view input { vertical-align:middle; width:min(58%,32em); margin:0 .7em; accent-color:var(--teal); }
+#pair-view output { font-variant-numeric:tabular-nums; }
+#pair-view th { white-space:normal; }
+#pair-view details { margin:.8em 0; }
+#pair-view a { display:inline-block; padding:.6em 0; color:var(--teal); text-decoration:underline; }
+#main h2{font-size:clamp(19px,2.3vw,25px)}
+.panel-overview h2{margin-bottom:7px}.panel-overview p,.wf-section p,.methods p{font-size:14px;color:#405451;line-height:1.6;margin:8px 0}
+.scroll{overflow:auto}.scroll table{min-width:690px}table th,table td{padding:9px 5px;white-space:nowrap}table th:first-child{font-weight:590}td{font-variant-numeric:tabular-nums}
+#outcomes tr:last-child{background:#dcebe6}#main .explain{font-size:12px;margin-top:12px}.details-grid{grid-template-columns:1.35fr 1fr;margin:30px 0}
+.legend span:before{content:"";display:inline-block;width:10px;height:10px;margin-right:5px;background:var(--bar)}
+.legend span:nth-child(1),.angle-row i:nth-child(1){--bar:#4469a2}.legend span:nth-child(2),.angle-row i:nth-child(2){--bar:#9a572b}.legend span:nth-child(3),.angle-row i:nth-child(3){--bar:#007463}
+.angle-row {display:grid;grid-template-columns:9em 1fr;align-items:center;gap:12px;margin:10px 0;font-size:13px}
+.angle-bars{display:grid;gap:3px;margin-right:46px}.angle-bars i{display:block;position:relative;height:9px;min-width:1px;background:var(--bar);border-radius:2px}.angle-bars b{font:normal 11px/9px Inter,sans-serif;position:absolute;left:100%;padding-left:4px;color:#283b37}.methods{margin:30px 0}.methods a{color:var(--teal);text-decoration:underline}.wf-section td:last-child{font-weight:500}#motion-list button{color:var(--teal);text-decoration:underline}
+@media(max-width:760px){.details-grid{grid-template-columns:1fr}.angle-row{grid-template-columns:8em 1fr}.topbar nav{gap:1px}.topbar nav a{padding:5px}}
+
+#main .contact-result{font-weight:600;color:#234a41}.details-grid section{min-width:0}@media(max-width:620px){.details-grid table{font-size:11px}.details-grid table th,.details-grid table td{padding:7px 1px}.details-grid table th:first-child{white-space:normal}}

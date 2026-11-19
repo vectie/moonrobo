@@ -1,0 +1,45 @@
+{
+  "actor_sha256": "1fb12d353b0187efed1d9a2984c8a7790a5277b91e29f339f112571a44ff5a60",
+  "source_checkpoint_sha256": "847e3d4b090c021455d2317f589e6da80c87a8a3336d498f73af8105dc664562",
+  "clips": [
+    {
+      "id": "7k-turn",
+      "title": "舞步转身",
+      "kind": "policy-rollout",
+      "checkpoint": 7000,
+      "file": "panel-7000/7k-turn.f32",
+      "sha256": "fac95a67ae614c6df1e2075fcd742ee3d1ee6660a3b735cca634d04ef71f8101",
+      "width": 30,
+      "frames": 576,
+      "fps": 50,
+      "clip_id": "230414/dance_basic_turn_v1_180_R_loop_002__A323",
+      "normalized_return": 0.4600829130018726
+    },
+    {
+      "id": "7k-stoop",
+      "title": "向右俯身",
+      "kind": "policy-rollout",
+      "checkpoint": 7000,
+      "file": "panel-7000/7k-stoop.f32",
+      "sha256": "44d0b5c8be57727dd0fd962188467748cc753484fe579d07412c17ed7d4144c0",
+      "width": 30,
+      "frames": 744,
+      "fps": 50,
+      "clip_id": "221130/inj_torso_stoop_down_R_002__A082",
+      "normalized_return": 0.6046817026044138
+    },
+    {
+      "id": "7k-lift",
+      "title": "双手前举",
+      "kind": "policy-rollout",
+      "checkpoint": 7000,
+      "file": "panel-7000/7k-lift.f32",
+      "sha256": "0ff88b75b92aa4114cab24b180c0555ccb3cfce588e086b2be4bfcef8a532004",
+      "width": 30,
+      "frames": 574,
+      "fps": 50,
+      "clip_id": "231120/big_light_two_hands_behind_high_to_front_high_R_001__A526",
+      "normalized_return": 0.5918552369927284
+    }
+  ]
+}

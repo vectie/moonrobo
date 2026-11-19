@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" role="img">
+<title>DGX Spark single-node training illustration</title>
+<defs>
+ <linearGradient id="lid" x2=".8" y2="1" gradientUnits="objectBoundingBox"><stop stop-color="#eee4c9"/><stop offset=".55" stop-color="#d5c4a2"/><stop offset="1" stop-color="#beaa86"/></linearGradient>
+ <linearGradient id="side" x2="1" y2=".4"><stop stop-color="#c7b899"/><stop offset="1" stop-color="#9b8869"/></linearGradient>
+ <pattern id="grain" width="3" height="3" patternUnits="userSpaceOnUse"><path d="M0 1h3" stroke="#fff" opacity=".1" stroke-width=".7"/></pattern>
+ <pattern id="fins" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="skewY(7)"><rect width="6" height="6" fill="#ad9b7a"/><path d="M1 0v6" stroke="#6e624a" stroke-width="1.2"/><path d="M2.9 0v6" stroke="#ecddbd" stroke-width="1.1"/></pattern>
+ <radialGradient id="shade"><stop stop-color="#66636a" stop-opacity=".3"/><stop offset="1" stop-color="#66636a" stop-opacity="0"/></radialGradient>
+ <pattern id="dots" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="6" cy="6" r="2.2" fill="#babac1"/></pattern>
+ <linearGradient id="fade"><stop stop-color="#fff" stop-opacity=".1"/><stop offset=".53" stop-color="#fff" stop-opacity=".65"/><stop offset="1" stop-color="#fff" stop-opacity=".05"/></linearGradient>
+ <mask id="bank"><rect width="100%" height="100%" fill="url(#fade)"/></mask>
+</defs>
+<g mask="url(#bank)" transform="matrix(1,-.13,.62,.42,90,132)"><rect width="730" height="330" fill="url(#dots)"/></g>
+<ellipse cx="507" cy="320" rx="235" ry="32" fill="url(#shade)"/>
+<path d="m309 183 192-56q6-2 13-1l175 38q5 1 5 7l-1 70q0 6-7 8l-188 65q-6 2-13 0l-173-45q-5-1-5-7l-1-73q0-4 3-6z" fill="url(#side)"/>
+<path d="m310 192 178 44q6 1 10 0l193-62-1 65q0 5-4 7l-190 65q-5 1-10 0l-174-45q-3-1-3-4z" fill="url(#fins)"/>
+<path d="m312 181 190-56q7-2 12-1l173 38q13 3 1 8l-191 62q-6 2-12 0l-173-43q-12-4 0-8z" fill="url(#lid)" stroke="#c1b59d"/>
+<path d="m312 181 190-56q7-2 12-1l173 38q13 3 1 8l-191 62q-6 2-12 0l-173-43q-12-4 0-8z" fill="url(#grain)"/>
+<path d="m554 193 47-15 18 4-47 15z" fill="#eee4d0" opacity=".65"/>
+<circle cx="340" cy="239" r="3.2" fill="#ddf1cb"/>
+</svg>

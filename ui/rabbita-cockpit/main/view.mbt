@@ -38,7 +38,7 @@ fn compact_route(value : String) -> String {
 fn command_field(
   label_text : String,
   value : String,
-  step : Int,
+  step : Int32,
   on_change : (String) -> @rabbita.Cmd,
 ) -> Html {
   label(class="command-field", [
@@ -113,7 +113,7 @@ fn plugin_bool_button_class(value : String, target : String) -> String {
 ///|
 fn schema_plugin_parameter_value_field(
   dispatch : @rabbita.Emit[Msg],
-  index : Int,
+  index : Int32,
   parameter_schema : @urdf_editor.UrdfPluginParameterSchema,
   value : String,
 ) -> Html {
@@ -154,7 +154,7 @@ fn schema_plugin_parameter_value_field(
 ///|
 fn schema_plugin_parameter_row(
   dispatch : @rabbita.Emit[Msg],
-  index : Int,
+  index : Int32,
   parameter : UrdfEditorPluginParameterForm,
   parameter_schema : @urdf_editor.UrdfPluginParameterSchema,
 ) -> Html {
@@ -206,7 +206,7 @@ fn missing_schema_plugin_parameter_row(
 ///|
 fn generic_plugin_parameter_row(
   dispatch : @rabbita.Emit[Msg],
-  index : Int,
+  index : Int32,
   parameter : UrdfEditorPluginParameterForm,
 ) -> Html {
   div(class="plugin-parameter-row", [
@@ -351,7 +351,7 @@ fn panel(
 ) -> Html {
   section(class="panel \{klass}", [
     div(class="panel-heading", [
-      div([p(class="eyebrow", eyebrow), h2(title)]),
+      div([span(class="visually-hidden", eyebrow), h2(title)]),
       chip,
     ]),
     div(class="panel-body", body),
@@ -685,7 +685,7 @@ fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
     div(class="moonrobo-mesh-viewer", [
       div(class="mesh-viewer-status", "Loading mech"),
     ]),
-    div(class="viewport-summary", [
+    disclosure("Model details", [
       key_value("Source", viewport.source_path),
       key_value("Renderer", viewport.renderer),
       key_value("Root Link", viewport.root_link),
@@ -948,7 +948,7 @@ fn urdf_editor_active_issues(
 }
 
 ///|
-fn urdf_editor_session_blocking_count(model : AppModel) -> Int {
+fn urdf_editor_session_blocking_count(model : AppModel) -> Int32 {
   let mut count = 0
   for issue in urdf_editor_active_issues(model) {
     if issue.severity == @urdf_editor.Error {
@@ -959,7 +959,7 @@ fn urdf_editor_session_blocking_count(model : AppModel) -> Int {
 }
 
 ///|
-fn urdf_editor_session_advisory_count(model : AppModel) -> Int {
+fn urdf_editor_session_advisory_count(model : AppModel) -> Int32 {
   let mut count = 0
   for issue in urdf_editor_active_issues(model) {
     match issue.severity {
@@ -1612,165 +1612,177 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         ),
       ]),
       p(class="detail-copy intent-status", model.urdf_editor_status),
-      div(class="urdf-editor-form", [
-        text_field("Command", model.urdf_editor_command, value => {
-          dispatch(UpdateUrdfEditorCommand(value))
-        }),
-        text_field("Joint", model.urdf_editor_joint_name, value => {
-          dispatch(UpdateUrdfEditorJointName(value))
-        }),
-        text_field("Joint Type", model.urdf_editor_joint_type, value => {
-          dispatch(UpdateUrdfEditorJointType(value))
-        }),
-        text_field("Link", model.urdf_editor_link_name, value => {
-          dispatch(UpdateUrdfEditorLinkName(value))
-        }),
-        text_field("Child Link", model.urdf_editor_child_link_name, value => {
-          dispatch(UpdateUrdfEditorChildLinkName(value))
-        }),
-        text_field("New Name", model.urdf_editor_new_name, value => {
-          dispatch(UpdateUrdfEditorNewName(value))
-        }),
-        command_field("Visual Index", model.urdf_editor_visual_index, 1, value => {
-          dispatch(UpdateUrdfEditorVisualIndex(value))
-        }),
-        command_field("Collision Index", model.urdf_editor_collision_index, 1, value => {
-          dispatch(UpdateUrdfEditorCollisionIndex(value))
-        }),
-        text_field("XYZ", model.urdf_editor_xyz, value => {
-          dispatch(UpdateUrdfEditorXyz(value))
-        }),
-        text_field("RPY", model.urdf_editor_rpy, value => {
-          dispatch(UpdateUrdfEditorRpy(value))
-        }),
-        text_field("Axis XYZ", model.urdf_editor_axis_xyz, value => {
-          dispatch(UpdateUrdfEditorAxisXyz(value))
-        }),
-        command_field("Lower", model.urdf_editor_limit_lower, 1, value => {
-          dispatch(UpdateUrdfEditorLimitLower(value))
-        }),
-        command_field("Upper", model.urdf_editor_limit_upper, 1, value => {
-          dispatch(UpdateUrdfEditorLimitUpper(value))
-        }),
-        command_field("Effort", model.urdf_editor_limit_effort, 1, value => {
-          dispatch(UpdateUrdfEditorLimitEffort(value))
-        }),
-        command_field("Velocity", model.urdf_editor_limit_velocity, 1, value => {
-          dispatch(UpdateUrdfEditorLimitVelocity(value))
-        }),
-        command_field("Damping", model.urdf_editor_dynamics_damping, 1, value => {
-          dispatch(UpdateUrdfEditorDynamicsDamping(value))
-        }),
-        command_field("Friction", model.urdf_editor_dynamics_friction, 1, value => {
-          dispatch(UpdateUrdfEditorDynamicsFriction(value))
-        }),
-        text_field("Mimic Joint", model.urdf_editor_mimic_joint, value => {
-          dispatch(UpdateUrdfEditorMimicJoint(value))
-        }),
-        command_field("Mimic Mult", model.urdf_editor_mimic_multiplier, 1, value => {
-          dispatch(UpdateUrdfEditorMimicMultiplier(value))
-        }),
-        command_field("Mimic Offset", model.urdf_editor_mimic_offset, 1, value => {
-          dispatch(UpdateUrdfEditorMimicOffset(value))
-        }),
-        command_field("Cal Rising", model.urdf_editor_calibration_rising, 1, value => {
-          dispatch(UpdateUrdfEditorCalibrationRising(value))
-        }),
-        command_field("Cal Falling", model.urdf_editor_calibration_falling, 1, value => {
-          dispatch(UpdateUrdfEditorCalibrationFalling(value))
-        }),
-        command_field("Soft Lower", model.urdf_editor_safety_soft_lower, 1, value => {
-          dispatch(UpdateUrdfEditorSafetySoftLower(value))
-        }),
-        command_field("Soft Upper", model.urdf_editor_safety_soft_upper, 1, value => {
-          dispatch(UpdateUrdfEditorSafetySoftUpper(value))
-        }),
-        command_field("K Position", model.urdf_editor_safety_k_position, 1, value => {
-          dispatch(UpdateUrdfEditorSafetyKPosition(value))
-        }),
-        command_field("K Velocity", model.urdf_editor_safety_k_velocity, 1, value => {
-          dispatch(UpdateUrdfEditorSafetyKVelocity(value))
-        }),
-        command_field("Mass", model.urdf_editor_inertial_mass, 1, value => {
-          dispatch(UpdateUrdfEditorInertialMass(value))
-        }),
-        command_field("Ixx", model.urdf_editor_inertial_ixx, 1, value => {
-          dispatch(UpdateUrdfEditorInertialIxx(value))
-        }),
-        command_field("Ixy", model.urdf_editor_inertial_ixy, 1, value => {
-          dispatch(UpdateUrdfEditorInertialIxy(value))
-        }),
-        command_field("Ixz", model.urdf_editor_inertial_ixz, 1, value => {
-          dispatch(UpdateUrdfEditorInertialIxz(value))
-        }),
-        command_field("Iyy", model.urdf_editor_inertial_iyy, 1, value => {
-          dispatch(UpdateUrdfEditorInertialIyy(value))
-        }),
-        command_field("Iyz", model.urdf_editor_inertial_iyz, 1, value => {
-          dispatch(UpdateUrdfEditorInertialIyz(value))
-        }),
-        command_field("Izz", model.urdf_editor_inertial_izz, 1, value => {
-          dispatch(UpdateUrdfEditorInertialIzz(value))
-        }),
-        text_field("Material RGBA", model.urdf_editor_material_color_rgba, value => {
-          dispatch(UpdateUrdfEditorMaterialColorRgba(value))
-        }),
-        text_field("Material Texture", model.urdf_editor_material_texture, value => {
-          dispatch(UpdateUrdfEditorMaterialTexture(value))
-        }),
-        text_field("Geometry", model.urdf_editor_geometry_kind, value => {
-          dispatch(UpdateUrdfEditorGeometryKind(value))
-        }),
-        text_field("Mesh", model.urdf_editor_mesh_filename, value => {
-          dispatch(UpdateUrdfEditorMeshFilename(value))
-        }),
-        text_field("Mesh Scale", model.urdf_editor_mesh_scale, value => {
-          dispatch(UpdateUrdfEditorMeshScale(value))
-        }),
-        text_field("Size", model.urdf_editor_geometry_size, value => {
-          dispatch(UpdateUrdfEditorGeometrySize(value))
-        }),
-        command_field("Radius", model.urdf_editor_geometry_radius, 1, value => {
-          dispatch(UpdateUrdfEditorGeometryRadius(value))
-        }),
-        command_field("Length", model.urdf_editor_geometry_length, 1, value => {
-          dispatch(UpdateUrdfEditorGeometryLength(value))
-        }),
-        text_field("Extension Source", model.urdf_editor_extension_raw_source, value => {
-          dispatch(UpdateUrdfEditorExtensionRawSource(value))
-        }),
-        text_field("Extension Attr", model.urdf_editor_extension_attr_name, value => {
-          dispatch(UpdateUrdfEditorExtensionAttrName(value))
-        }),
-        text_field("Attr Value", model.urdf_editor_extension_attr_value, value => {
-          dispatch(UpdateUrdfEditorExtensionAttrValue(value))
-        }),
-        text_field("Transmission Type", model.urdf_editor_transmission_type, value => {
-          dispatch(UpdateUrdfEditorTransmissionType(value))
-        }),
-        text_field("Transmission Joint", model.urdf_editor_transmission_joint, value => {
-          dispatch(UpdateUrdfEditorTransmissionJoint(value))
-        }),
-        text_field(
-          "Transmission Actuator",
-          model.urdf_editor_transmission_actuator,
-          value => dispatch(UpdateUrdfEditorTransmissionActuator(value)),
-        ),
-        command_field(
-          "Mechanical Reduction",
-          model.urdf_editor_transmission_mechanical_reduction,
-          1,
-          value => {
-            dispatch(UpdateUrdfEditorTransmissionMechanicalReduction(value))
-          },
-        ),
-        text_field("Plugin Name", model.urdf_editor_plugin_name, value => {
-          dispatch(UpdateUrdfEditorPluginName(value))
-        }),
-        text_field("Plugin Filename", model.urdf_editor_plugin_filename, value => {
-          dispatch(UpdateUrdfEditorPluginFilename(value))
-        }),
-        render_urdf_editor_plugin_parameters(dispatch, model),
+      disclosure("Command parameters", [
+        div(class="urdf-editor-form", [
+          text_field("Command", model.urdf_editor_command, value => {
+            dispatch(UpdateUrdfEditorCommand(value))
+          }),
+          text_field("Joint", model.urdf_editor_joint_name, value => {
+            dispatch(UpdateUrdfEditorJointName(value))
+          }),
+          text_field("Joint Type", model.urdf_editor_joint_type, value => {
+            dispatch(UpdateUrdfEditorJointType(value))
+          }),
+          text_field("Link", model.urdf_editor_link_name, value => {
+            dispatch(UpdateUrdfEditorLinkName(value))
+          }),
+          text_field("Child Link", model.urdf_editor_child_link_name, value => {
+            dispatch(UpdateUrdfEditorChildLinkName(value))
+          }),
+          text_field("New Name", model.urdf_editor_new_name, value => {
+            dispatch(UpdateUrdfEditorNewName(value))
+          }),
+          command_field("Visual Index", model.urdf_editor_visual_index, 1, value => {
+            dispatch(UpdateUrdfEditorVisualIndex(value))
+          }),
+          command_field(
+            "Collision Index",
+            model.urdf_editor_collision_index,
+            1,
+            value => dispatch(UpdateUrdfEditorCollisionIndex(value)),
+          ),
+          text_field("XYZ", model.urdf_editor_xyz, value => {
+            dispatch(UpdateUrdfEditorXyz(value))
+          }),
+          text_field("RPY", model.urdf_editor_rpy, value => {
+            dispatch(UpdateUrdfEditorRpy(value))
+          }),
+          text_field("Axis XYZ", model.urdf_editor_axis_xyz, value => {
+            dispatch(UpdateUrdfEditorAxisXyz(value))
+          }),
+          command_field("Lower", model.urdf_editor_limit_lower, 1, value => {
+            dispatch(UpdateUrdfEditorLimitLower(value))
+          }),
+          command_field("Upper", model.urdf_editor_limit_upper, 1, value => {
+            dispatch(UpdateUrdfEditorLimitUpper(value))
+          }),
+          command_field("Effort", model.urdf_editor_limit_effort, 1, value => {
+            dispatch(UpdateUrdfEditorLimitEffort(value))
+          }),
+          command_field("Velocity", model.urdf_editor_limit_velocity, 1, value => {
+            dispatch(UpdateUrdfEditorLimitVelocity(value))
+          }),
+          command_field("Damping", model.urdf_editor_dynamics_damping, 1, value => {
+            dispatch(UpdateUrdfEditorDynamicsDamping(value))
+          }),
+          command_field("Friction", model.urdf_editor_dynamics_friction, 1, value => {
+            dispatch(UpdateUrdfEditorDynamicsFriction(value))
+          }),
+          text_field("Mimic Joint", model.urdf_editor_mimic_joint, value => {
+            dispatch(UpdateUrdfEditorMimicJoint(value))
+          }),
+          command_field("Mimic Mult", model.urdf_editor_mimic_multiplier, 1, value => {
+            dispatch(UpdateUrdfEditorMimicMultiplier(value))
+          }),
+          command_field("Mimic Offset", model.urdf_editor_mimic_offset, 1, value => {
+            dispatch(UpdateUrdfEditorMimicOffset(value))
+          }),
+          command_field("Cal Rising", model.urdf_editor_calibration_rising, 1, value => {
+            dispatch(UpdateUrdfEditorCalibrationRising(value))
+          }),
+          command_field(
+            "Cal Falling",
+            model.urdf_editor_calibration_falling,
+            1,
+            value => dispatch(UpdateUrdfEditorCalibrationFalling(value)),
+          ),
+          command_field("Soft Lower", model.urdf_editor_safety_soft_lower, 1, value => {
+            dispatch(UpdateUrdfEditorSafetySoftLower(value))
+          }),
+          command_field("Soft Upper", model.urdf_editor_safety_soft_upper, 1, value => {
+            dispatch(UpdateUrdfEditorSafetySoftUpper(value))
+          }),
+          command_field("K Position", model.urdf_editor_safety_k_position, 1, value => {
+            dispatch(UpdateUrdfEditorSafetyKPosition(value))
+          }),
+          command_field("K Velocity", model.urdf_editor_safety_k_velocity, 1, value => {
+            dispatch(UpdateUrdfEditorSafetyKVelocity(value))
+          }),
+          command_field("Mass", model.urdf_editor_inertial_mass, 1, value => {
+            dispatch(UpdateUrdfEditorInertialMass(value))
+          }),
+          command_field("Ixx", model.urdf_editor_inertial_ixx, 1, value => {
+            dispatch(UpdateUrdfEditorInertialIxx(value))
+          }),
+          command_field("Ixy", model.urdf_editor_inertial_ixy, 1, value => {
+            dispatch(UpdateUrdfEditorInertialIxy(value))
+          }),
+          command_field("Ixz", model.urdf_editor_inertial_ixz, 1, value => {
+            dispatch(UpdateUrdfEditorInertialIxz(value))
+          }),
+          command_field("Iyy", model.urdf_editor_inertial_iyy, 1, value => {
+            dispatch(UpdateUrdfEditorInertialIyy(value))
+          }),
+          command_field("Iyz", model.urdf_editor_inertial_iyz, 1, value => {
+            dispatch(UpdateUrdfEditorInertialIyz(value))
+          }),
+          command_field("Izz", model.urdf_editor_inertial_izz, 1, value => {
+            dispatch(UpdateUrdfEditorInertialIzz(value))
+          }),
+          text_field("Material RGBA", model.urdf_editor_material_color_rgba, value => {
+            dispatch(UpdateUrdfEditorMaterialColorRgba(value))
+          }),
+          text_field("Material Texture", model.urdf_editor_material_texture, value => {
+            dispatch(UpdateUrdfEditorMaterialTexture(value))
+          }),
+          text_field("Geometry", model.urdf_editor_geometry_kind, value => {
+            dispatch(UpdateUrdfEditorGeometryKind(value))
+          }),
+          text_field("Mesh", model.urdf_editor_mesh_filename, value => {
+            dispatch(UpdateUrdfEditorMeshFilename(value))
+          }),
+          text_field("Mesh Scale", model.urdf_editor_mesh_scale, value => {
+            dispatch(UpdateUrdfEditorMeshScale(value))
+          }),
+          text_field("Size", model.urdf_editor_geometry_size, value => {
+            dispatch(UpdateUrdfEditorGeometrySize(value))
+          }),
+          command_field("Radius", model.urdf_editor_geometry_radius, 1, value => {
+            dispatch(UpdateUrdfEditorGeometryRadius(value))
+          }),
+          command_field("Length", model.urdf_editor_geometry_length, 1, value => {
+            dispatch(UpdateUrdfEditorGeometryLength(value))
+          }),
+          text_field(
+            "Extension Source",
+            model.urdf_editor_extension_raw_source,
+            value => dispatch(UpdateUrdfEditorExtensionRawSource(value)),
+          ),
+          text_field("Extension Attr", model.urdf_editor_extension_attr_name, value => {
+            dispatch(UpdateUrdfEditorExtensionAttrName(value))
+          }),
+          text_field("Attr Value", model.urdf_editor_extension_attr_value, value => {
+            dispatch(UpdateUrdfEditorExtensionAttrValue(value))
+          }),
+          text_field("Transmission Type", model.urdf_editor_transmission_type, value => {
+            dispatch(UpdateUrdfEditorTransmissionType(value))
+          }),
+          text_field(
+            "Transmission Joint",
+            model.urdf_editor_transmission_joint,
+            value => dispatch(UpdateUrdfEditorTransmissionJoint(value)),
+          ),
+          text_field(
+            "Transmission Actuator",
+            model.urdf_editor_transmission_actuator,
+            value => dispatch(UpdateUrdfEditorTransmissionActuator(value)),
+          ),
+          command_field(
+            "Mechanical Reduction",
+            model.urdf_editor_transmission_mechanical_reduction,
+            1,
+            value => {
+              dispatch(UpdateUrdfEditorTransmissionMechanicalReduction(value))
+            },
+          ),
+          text_field("Plugin Name", model.urdf_editor_plugin_name, value => {
+            dispatch(UpdateUrdfEditorPluginName(value))
+          }),
+          text_field("Plugin Filename", model.urdf_editor_plugin_filename, value => {
+            dispatch(UpdateUrdfEditorPluginFilename(value))
+          }),
+          render_urdf_editor_plugin_parameters(dispatch, model),
+        ]),
       ]),
       ..render_urdf_editor_document(dispatch, model),
       render_urdf_editor_saved_history(dispatch, model),
@@ -1787,8 +1799,12 @@ fn render_twin(model : AppModel) -> Html {
   panel(
     "twin-panel",
     "URDF Viewport",
-    "Embodiment Simulation",
-    badge(viewport.status, status_tone(viewport.status)),
+    "Robot preview",
+    if model.last_source == "sample fallback" {
+      badge("Preview", "neutral")
+    } else {
+      badge(viewport.status, status_tone(viewport.status))
+    },
     [render_viewport_body(viewport)],
   )
 }
@@ -1805,50 +1821,52 @@ fn render_model_workspace(
     "URDF Workspace",
     badge(viewport.status, status_tone(viewport.status)),
     [
-      render_urdf_import(dispatch, model),
+      disclosure("Import model", [render_urdf_import(dispatch, model)]),
       render_urdf_editor(dispatch, model),
-      div(class="model-inspector-grid", [
-        div(class="model-inspector-group", [
-          span(class="model-inspector-title", "Joints"),
-          div(
-            class="joint-strip viewport-joints",
-            viewport_joint_rows(dispatch, model, viewport),
-          ),
-        ]),
-        div(class="model-inspector-group", [
-          span(class="model-inspector-title", "Links"),
-          div(
-            class="viewport-links",
-            viewport_link_rows(dispatch, model, viewport),
-          ),
-        ]),
-        div(class="model-inspector-group", [
-          span(class="model-inspector-title", "Visual Geometry"),
-          div(
-            class="viewport-links",
-            viewport_visual_rows(dispatch, model, viewport),
-          ),
-        ]),
-        div(class="model-inspector-group", [
-          span(class="model-inspector-title", "Collision Geometry"),
-          div(
-            class="viewport-links",
-            viewport_collision_rows(dispatch, model, viewport),
-          ),
-        ]),
-        div(class="model-inspector-group", [
-          span(class="model-inspector-title", "Inertials"),
-          div(
-            class="viewport-links",
-            viewport_inertial_rows(dispatch, model, viewport),
-          ),
-        ]),
-        div(class="model-inspector-group", [
-          span(class="model-inspector-title", "World Instances"),
-          div(
-            class="viewport-links",
-            viewport_visual_instance_rows(dispatch, model, viewport),
-          ),
+      disclosure("Geometry details", [
+        div(class="model-inspector-grid", [
+          div(class="model-inspector-group", [
+            span(class="model-inspector-title", "Joints"),
+            div(
+              class="joint-strip viewport-joints",
+              viewport_joint_rows(dispatch, model, viewport),
+            ),
+          ]),
+          div(class="model-inspector-group", [
+            span(class="model-inspector-title", "Links"),
+            div(
+              class="viewport-links",
+              viewport_link_rows(dispatch, model, viewport),
+            ),
+          ]),
+          div(class="model-inspector-group", [
+            span(class="model-inspector-title", "Visual Geometry"),
+            div(
+              class="viewport-links",
+              viewport_visual_rows(dispatch, model, viewport),
+            ),
+          ]),
+          div(class="model-inspector-group", [
+            span(class="model-inspector-title", "Collision Geometry"),
+            div(
+              class="viewport-links",
+              viewport_collision_rows(dispatch, model, viewport),
+            ),
+          ]),
+          div(class="model-inspector-group", [
+            span(class="model-inspector-title", "Inertials"),
+            div(
+              class="viewport-links",
+              viewport_inertial_rows(dispatch, model, viewport),
+            ),
+          ]),
+          div(class="model-inspector-group", [
+            span(class="model-inspector-title", "World Instances"),
+            div(
+              class="viewport-links",
+              viewport_visual_instance_rows(dispatch, model, viewport),
+            ),
+          ]),
         ]),
       ]),
     ],
@@ -1967,6 +1985,10 @@ fn render_bridge(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
   let bridge = snapshot.bridge
   let sidecar = snapshot.sidecar
   let runtime = model.runtime_supervisor_status
+  let telemetry_available = runtime.ready &&
+    model.error is None &&
+    model.last_source != "sample fallback" &&
+    snapshot.telemetry.captured_at_ms > 0L
   let health_rows = match model.latest_runtime_health {
     Some(health) =>
       [
@@ -2036,29 +2058,43 @@ fn render_bridge(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
     "Runtime Link",
     badge(runtime.status, status_tone(runtime.status)),
     [
-      key_value("Bridge ID", bridge.bridge_id),
-      key_value("Mode", bridge.mode),
-      key_value("Sidecar", sidecar.sidecar_id),
-      key_value("Command", sidecar.command_path),
-      key_value("Runtime", runtime.status),
-      key_value("Bridge URL", runtime.bridge_base_url),
-      key_value("Processes", "\{runtime.processes.length()}"),
-      key_value("Issues", "\{runtime.issues.length()}"),
-      key_value("Health", model.runtime_health_status),
-      ..health_rows,
-      ..validation_rows,
-      ..validation_session_rows,
-      key_value(
-        "Telemetry Age",
-        "\{optional_int_label(bridge.telemetry_age_ms)} ms",
+      disclosure(
+        "Connection details",
+        [
+          key_value("Bridge ID", bridge.bridge_id),
+          key_value("Mode", bridge.mode),
+          key_value("Sidecar", sidecar.sidecar_id),
+          key_value("Command", sidecar.command_path),
+          key_value("Bridge URL", runtime.bridge_base_url),
+          key_value("Processes", "\{runtime.processes.length()}"),
+          key_value("Issues", "\{runtime.issues.length()}"),
+          key_value("Health", model.runtime_health_status),
+          key_value(
+            "Telemetry Age",
+            if telemetry_available {
+              "\{optional_int_label(bridge.telemetry_age_ms)} ms"
+            } else {
+              "—"
+            },
+          ),
+          ..health_rows,
+        ],
+      ),
+      disclosure(
+        "Validation details",
+        [..validation_rows, ..validation_session_rows],
       ),
       div(
-        class="freshness \{status_tone(if bridge.telemetry_stale { "stale" } else { "fresh" })}",
-        freshness_label(bridge.telemetry_stale),
+        class="freshness \{if !telemetry_available { "neutral" } else { status_tone(if bridge.telemetry_stale { "stale" } else { "fresh" }) }}",
+        if telemetry_available {
+          freshness_label(bridge.telemetry_stale)
+        } else {
+          "Telemetry unavailable"
+        },
       ),
       div(class="freshness \{status_tone(sidecar.state)}", sidecar.detail),
       p(class="detail-copy intent-status", model.runtime_launch_status),
-      render_runtime_log(model),
+      disclosure("Runtime log", [render_runtime_log(model)]),
       div(class="command-actions", [
         button(
           class="command-button",
@@ -2111,12 +2147,16 @@ fn render_safety(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
   panel(
     "safety-panel",
     "Safety Gate",
-    "Command Review",
-    badge(safety.decision, status_tone(safety.decision)),
+    "Motion command",
+    badge(
+      if safety.decision == "dry-run-required" {
+        "Dry run needed"
+      } else {
+        safety.decision
+      },
+      status_tone(safety.decision),
+    ),
     [
-      key_value("Capability", safety.capability),
-      key_value("Next Action", safety.next_action),
-      key_value("Reason", safety.reason),
       div(class="command-editor", [
         command_field("X", model.walk_x, 1, value => {
           dispatch(UpdateWalkX(value))
@@ -2128,9 +2168,20 @@ fn render_safety(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
           dispatch(UpdateWalkDuration(value))
         }),
       ]),
-      p(class="detail-copy", safety.detail),
-      p(class="detail-copy intent-status", model.intent_status),
-      div(class="evidence-strip", [
+      p(
+        class="detail-copy",
+        if safety.reason == "dry-run-missing" {
+          "Run a preview before approving this motion."
+        } else {
+          safety.detail
+        },
+      ),
+      disclosure("Command details", [
+        key_value("Reason", safety.reason),
+        p(class="detail-copy", safety.detail),
+        key_value("Capability", safety.capability),
+        key_value("Next action", safety.next_action),
+        p(class="detail-copy intent-status", model.intent_status),
         key_value(
           "Dry Run",
           if model.dry_run_receipt_id == "" {
@@ -2148,37 +2199,39 @@ fn render_safety(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
           },
         ),
       ]),
-      div(class="command-actions", [
-        button(
-          class="command-button primary",
-          type_="button",
-          disabled=model.evaluating || model.loading,
-          on_click=dispatch(EvaluateWalk),
-          evaluate_button_label(model),
-        ),
-        button(
-          class="command-button",
-          type_="button",
-          disabled=model.collecting_dry_run || model.loading,
-          on_click=dispatch(CollectDryRun),
-          dry_run_button_label(model),
-        ),
-        button(
-          class="command-button",
-          type_="button",
-          disabled=model.approving ||
-            model.loading ||
-            model.dry_run_receipt_id == "",
-          on_click=dispatch(ApproveWalk),
-          approval_button_label(model),
-        ),
-        button(
-          class="command-button danger",
-          type_="button",
-          disabled=model.executing || model.loading || model.approval_id == "",
-          on_click=dispatch(ExecuteWalk),
-          execute_button_label(model),
-        ),
+      disclosure("All command actions", [
+        div(class="command-actions", [
+          button(
+            class="command-button primary",
+            type_="button",
+            disabled=model.evaluating || model.loading,
+            on_click=dispatch(EvaluateWalk),
+            evaluate_button_label(model),
+          ),
+          button(
+            class="command-button",
+            type_="button",
+            disabled=model.collecting_dry_run || model.loading,
+            on_click=dispatch(CollectDryRun),
+            dry_run_button_label(model),
+          ),
+          button(
+            class="command-button",
+            type_="button",
+            disabled=model.approving ||
+              model.loading ||
+              model.dry_run_receipt_id == "",
+            on_click=dispatch(ApproveWalk),
+            approval_button_label(model),
+          ),
+          button(
+            class="command-button danger",
+            type_="button",
+            disabled=model.executing || model.loading || model.approval_id == "",
+            on_click=dispatch(ExecuteWalk),
+            execute_button_label(model),
+          ),
+        ]),
       ]),
     ],
   )
@@ -2226,12 +2279,16 @@ fn render_task_conversation_turn(turn : TaskConversationTurn) -> Array[Html] {
   [
     div(class="task-turn user", [
       span(class="task-turn-label", "You"),
-      p(class="task-turn-copy", turn.user_text),
+      p(
+        class="task-turn-copy",
+        attrs=@html.Attrs::build().data_set("i18n-scope", "content"),
+        turn.user_text,
+      ),
     ]),
     div(class="task-turn robo", [
       span(class="task-turn-label", "Robo"),
       p(class="task-turn-copy", turn.robo_text),
-      div(class="task-turn-meta", [
+      disclosure("Turn details", [
         key_value("Turn", turn.turn_id),
         key_value("Task", turn.task_id),
         key_value("Created", turn.created_at_ms),
@@ -2256,12 +2313,12 @@ fn render_persisted_task_conversation(
     }
   }
   [
-    p(class="detail-copy intent-status", conversation.message),
-    div(class="evidence-strip observation-result", [
+    div(class="task-conversation", rows),
+    disclosure("Conversation details", [
+      p(class="detail-copy", conversation.message),
       key_value("Turns", conversation.turn_count),
       key_value("Latest", conversation.latest_task_id),
     ]),
-    div(class="task-conversation", rows),
   ]
 }
 
@@ -2293,12 +2350,16 @@ fn render_current_task_message_turn(model : AppModel) -> Array[Html] {
     div(class="task-conversation", [
       div(class="task-turn user", [
         span(class="task-turn-label", "You"),
-        p(class="task-turn-copy", user_text),
+        p(
+          class="task-turn-copy",
+          attrs=@html.Attrs::build().data_set("i18n-scope", "content"),
+          user_text,
+        ),
       ]),
       div(class="task-turn robo", [
         span(class="task-turn-label", "Robo"),
         p(class="task-turn-copy", task_message_reply(model)),
-        div(class="task-turn-meta", [
+        disclosure("Turn details", [
           key_value("Task", task_id),
           key_value("Next", next_route),
         ]),
@@ -2312,9 +2373,19 @@ fn render_task_message_conversation(model : AppModel) -> Array[Html] {
   match model.latest_task_conversation {
     Some(conversation) if !conversation.turns.is_empty() =>
       render_persisted_task_conversation(conversation)
+    _ if model.task_message_status == "No task message submitted" =>
+      [
+        div(class="conversation-empty", [
+          robo_glyph("chat"),
+          h2("What shall we work on?"),
+          p("Ask Robo to inspect the robot or plan your next task."),
+        ]),
+      ]
     _ =>
       [
-        p(class="detail-copy intent-status", model.task_conversation_status),
+        disclosure("Conversation details", [
+          p(class="detail-copy intent-status", model.task_conversation_status),
+        ]),
         ..render_current_task_message_turn(model),
       ]
   }
@@ -2462,7 +2533,11 @@ fn render_robo_session(model : AppModel) -> Array[Html] {
             key_value("Loop %", value.handoff.loop_percent),
             key_value("Title", value.handoff.next_title),
           ]),
-          p(class="detail-copy review-summary", value.session.latest_user_text),
+          p(
+            class="detail-copy review-summary",
+            attrs=@html.Attrs::build().data_set("i18n-scope", "content"),
+            value.session.latest_user_text,
+          ),
           p(class="detail-copy review-summary", value.session.latest_robo_text),
         ]),
       ]
@@ -2653,7 +2728,11 @@ fn render_task_message_ledger_rows(
                 span(class="task-message-id", item.task_id),
                 span(class="badge \{status_tone(item.stage)}", item.stage),
               ]),
-              p(class="task-message-goal", item.goal),
+              p(
+                class="task-message-goal",
+                attrs=@html.Attrs::build().data_set("i18n-scope", "content"),
+                item.goal,
+              ),
               div(class="task-message-meta", [
                 key_value("Class", item.classification),
                 key_value("Current", item.route),
@@ -2746,7 +2825,7 @@ fn render_task_message(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html 
       if model.submitting_task_message {
         "running"
       } else {
-        "routine"
+        "Ready"
       },
       "accent",
     ),
@@ -2756,15 +2835,28 @@ fn render_task_message(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html 
           dispatch(UpdateTaskMessage(value))
         }),
       ]),
-      p(class="detail-copy intent-status", model.task_message_status),
-      ..render_robo_loop(model),
-      ..render_robo_turn(model),
-      ..render_robo_session(model),
-      ..render_robo_loop_history(model),
-      ..render_robo_turn_history(model),
+      if model.task_message_status.has_prefix("Task message rejected:") ||
+        model.task_message_status.has_prefix("Robo loop rejected:") {
+        p(
+          class="task-feedback-error",
+          attrs=@html.Attrs::build().role("alert"),
+          "Request could not be completed. Check the task details or try: inspect robot status.",
+        )
+      } else {
+        span("")
+      },
       ..render_task_message_conversation(model),
-      ..render_task_message_result(model.latest_task_message),
-      ..render_task_message_ledger(dispatch, model),
+      if model.latest_task_message_review is Some(_) ||
+        model.latest_task_message_status is Some(_) {
+        button(
+          class="command-button",
+          type_="button",
+          on_click=dispatch(SelectCockpitSection("review")),
+          [robo_glyph("shield"), span("Review task")],
+        )
+      } else {
+        span("")
+      },
       div(class="command-actions observation-actions", [
         button(
           class="command-button secondary",
@@ -2775,7 +2867,7 @@ fn render_task_message(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html 
           if model.loading_task_messages || model.loading_task_conversation {
             "Refreshing..."
           } else {
-            "Refresh Ledger"
+            "Refresh"
           },
         ),
         button(
@@ -2803,10 +2895,20 @@ fn render_task_message(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html 
           if model.submitting_task_message || model.running_moonclaw_routine {
             "Looping..."
           } else {
-            "Run Loop"
+            "Continue task"
           },
         ),
       ]),
+      disclosure(
+        "Task details",
+        [
+          p(class="detail-copy intent-status", model.task_message_status),
+          ..render_robo_loop(model),
+          ..render_robo_turn(model),
+          ..render_robo_session(model),
+          ..render_task_message_result(model.latest_task_message),
+        ],
+      ),
     ],
   )
 }
@@ -2971,27 +3073,19 @@ fn next_work_kind(queue : @platform_queue.RobotPlatformQueue) -> String {
 ///|
 fn render_next_work(queue : @platform_queue.RobotPlatformQueue) -> Array[Html] {
   if queue.items.is_empty() {
-    [
-      div(class="evidence-strip work-metrics", [
-        key_value("Priority", "-"),
-        key_value("Kind", "clear"),
-        key_value("Target", "-"),
-        key_value("Route", "-"),
-      ]),
-      p(class="detail-copy review-summary", "No queued MoonClaw work"),
-    ]
+    [p(class="detail-copy review-summary", "No pending work")]
   } else {
     let item = queue.items[0]
     [
-      div(class="evidence-strip work-metrics", [
+      h2(item.title),
+      p(class="detail-copy review-summary", item.summary),
+      disclosure("Work details", [
         key_value("Priority", "\{item.priority}"),
         key_value("Kind", item.kind),
         key_value("Target", item.target_id),
         key_value("Route", item.target_path),
       ]),
-      key_value("Title", item.title),
-      key_value("Summary", item.summary),
-      p(class="detail-copy review-summary", item.reason),
+      disclosure("Why this step", [p(class="detail-copy", item.reason)]),
     ]
   }
 }
@@ -3184,11 +3278,9 @@ fn render_platform_queue(
     "Next Work",
     badge(next_work_kind(queue), status_tone(next_work_kind(queue))),
     [
-      p(class="detail-copy intent-status", model.platform_queue_status),
       div(class="metric-grid work-summary", [
         metric("Items", "\{queue.item_count}"),
         metric("High", "\{queue.high_priority_count}"),
-        metric("Generated", "\{queue.generated_at_ms}"),
       ]),
       ..render_next_work(queue),
       ..render_runtime_calibration(
@@ -3201,6 +3293,10 @@ fn render_platform_queue(
       p(class="detail-copy intent-status", model.task_message_review_status),
       ..render_task_message_review_result(model.latest_task_message_review),
       ..render_task_message_status_result(model.latest_task_message_status),
+      disclosure("Queue details", [
+        p(class="detail-copy", model.platform_queue_status),
+        key_value("Generated", "\{queue.generated_at_ms}"),
+      ]),
       div(class="command-actions", [
         button(
           class="command-button secondary",

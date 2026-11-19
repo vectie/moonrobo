@@ -1,0 +1,302 @@
+{
+  "format": "moonrobo.supermimic-aligned-training.v1",
+  "profile": "cpu-smoke",
+  "identity": {
+    "scene": "/Users/kq/Workspace/moonrobo/target/learning/g1-aligned-data/g1_description/scene.xml",
+    "scene_sha256": "5230533e1aea5593de5d57146412cb4ae62ca356eef2bbee63224a165d0ce699",
+    "motions": [
+      {
+        "name": "dance1_subject1.csv",
+        "sha256": "e2a369e92e5ad076c5acffff7bce53157a0e6cd9e7e9f6a08dadfb1eb2928d8f"
+      },
+      {
+        "name": "dance1_subject2.csv",
+        "sha256": "3c2d37391ab08af18224f7a63ea55f1cd83480bdec779c320acb4d0b3062633e"
+      },
+      {
+        "name": "dance1_subject3.csv",
+        "sha256": "983ab290f7ac70fcd4baa56ea5321bc48522f613980986e4a0a83c884b940884"
+      },
+      {
+        "name": "dance2_subject1.csv",
+        "sha256": "f8611569a28fff323577ccb53021b0b189114510a284f76b234fc6e0e9f089e1"
+      },
+      {
+        "name": "dance2_subject2.csv",
+        "sha256": "85af86f623b3f7cf329bed84088382989f11df11025d305ad5aa1600e8f6828a"
+      },
+      {
+        "name": "dance2_subject3.csv",
+        "sha256": "487bcfa3710811acf6fcb2b6c916a79cec8e84fb5494b9b04361c0800852d83a"
+      },
+      {
+        "name": "dance2_subject4.csv",
+        "sha256": "e057410a0e7ec0618f58a5d5eceafe686ca292c9ad4dd3c4068eaad15283a46f"
+      },
+      {
+        "name": "dance2_subject5.csv",
+        "sha256": "2d10031bb293d20ccf6fd8aa76e00d4a5d8dc92cba5f59773d48cc9c8b25637f"
+      },
+      {
+        "name": "fallAndGetUp1_subject1.csv",
+        "sha256": "97e98a9cac5150917bc5a2ca3517759a3f3c380582cde5e92ad663c1e0553e12"
+      },
+      {
+        "name": "fallAndGetUp1_subject4.csv",
+        "sha256": "5e9cf9acddc62a8646151567fffac09c7e088186d87a9a8543743cac517ddf0b"
+      },
+      {
+        "name": "fallAndGetUp1_subject5.csv",
+        "sha256": "55a22ca723f26170aae8529ccb26dbda9bf2cb816b4f29eed3c57260dadb05ca"
+      },
+      {
+        "name": "fallAndGetUp2_subject2.csv",
+        "sha256": "49ae9726ae176b10b1213b441535946ffcca93586e1091e8398e239f4a049a47"
+      },
+      {
+        "name": "fallAndGetUp2_subject3.csv",
+        "sha256": "fa6e33725a450789160c8f3220b0a5e9001798f023fd14e3ff6c230a0829d75d"
+      },
+      {
+        "name": "fallAndGetUp3_subject1.csv",
+        "sha256": "fc00701411a270a9ab61c321ba836ba36437c61630c65f8fe276ac851f23ccd7"
+      },
+      {
+        "name": "fight1_subject2.csv",
+        "sha256": "c9ae5b9d90258061dfc79f617eaded73f2dde581fe37ac2d8e6b229c1a4a0ecb"
+      },
+      {
+        "name": "fight1_subject3.csv",
+        "sha256": "013b7219ddbbb37d17483d2bd0c28ae3d4307c2fec6d4180feed27c65d2acfcd"
+      },
+      {
+        "name": "fight1_subject5.csv",
+        "sha256": "d1490265b7b8ee5ac488853a3933ebdaee8ba6c9ecb5ef300146330b51b8c0dc"
+      },
+      {
+        "name": "fightAndSports1_subject1.csv",
+        "sha256": "076c2614df1a155e52c2b14074da8aa3b209176d930d2e3ffd059a9e9847fdc2"
+      },
+      {
+        "name": "fightAndSports1_subject4.csv",
+        "sha256": "83e2f3ec77ab9d3edc43c73e1894b0be2d9d0b2361098294bb178ab5cf32a1d9"
+      },
+      {
+        "name": "jumps1_subject1.csv",
+        "sha256": "3f55c1a0f87564044a71817d62dc2a40aa76332aa1cab3f1c817333a197c78c2"
+      },
+      {
+        "name": "jumps1_subject2.csv",
+        "sha256": "fde765a738e3aa586be3694163795502d4dc932757178956f4512e7c9d317a58"
+      },
+      {
+        "name": "jumps1_subject5.csv",
+        "sha256": "2f678d598faa9746aff778e92518970f51f0b1e08a10f05d0423a7cda3b9183c"
+      },
+      {
+        "name": "run1_subject2.csv",
+        "sha256": "ec02af4447a62214a6fec6afff60c75d0ecc8f80f8fb45e3cd4119fed9ceac8d"
+      },
+      {
+        "name": "run1_subject5.csv",
+        "sha256": "eacc38d7d6f5d7f32bfefcdf5d91510fea5f815000be870f91cc6e3483a126f6"
+      },
+      {
+        "name": "run2_subject1.csv",
+        "sha256": "ae64767c4b4e8f59578c22c5848cefc569923fea8bd3755c8dfb02b5313773da"
+      },
+      {
+        "name": "run2_subject4.csv",
+        "sha256": "2f0331426b74be03e87a2364733f8bf3262debdea54ab2c5059c2b707cff06f7"
+      },
+      {
+        "name": "sprint1_subject2.csv",
+        "sha256": "7babbd9d0a3cebf040709cb75fbf4268e925e337a2d44600dcce3d3b2d24a818"
+      },
+      {
+        "name": "sprint1_subject4.csv",
+        "sha256": "96d207b15323ef823274aa73ea1c2aaea7e98b4fe0f6de217332763bdf04ce00"
+      },
+      {
+        "name": "walk1_subject1.csv",
+        "sha256": "68c7887438e94f1f3d9ebacd3a8ce59251a22c7b05129a0f5d7cacaedc48c28d"
+      },
+      {
+        "name": "walk1_subject2.csv",
+        "sha256": "f8e6ccd5df574dcc5343a0a83d12efddfb5b34578b8b2f00582cb8098ed7fffc"
+      },
+      {
+        "name": "walk1_subject5.csv",
+        "sha256": "5421216dfbd2f16a90b5a7a52d4530b6269f7f9407f7ccfd09b5e5d3a72117af"
+      },
+      {
+        "name": "walk2_subject1.csv",
+        "sha256": "51cf310f14ecbb8be1f41ea09345df0c89024ff884fb9ab881cac339f820c787"
+      },
+      {
+        "name": "walk2_subject3.csv",
+        "sha256": "43a4342a9534ebb49e0dd9ef11ff40bf8a11d4925dac86352ebc7e7ae1220644"
+      },
+      {
+        "name": "walk2_subject4.csv",
+        "sha256": "d8e8d0383a64f0277218c0c490d55e4fcc20bd14776c0c8772f38a0cd4b88679"
+      },
+      {
+        "name": "walk3_subject1.csv",
+        "sha256": "22ab870d9957a62c1dfe3c1ec0a8a9af84c6c965065fff6fc936c3fac21d16eb"
+      },
+      {
+        "name": "walk3_subject2.csv",
+        "sha256": "55e8b8fe0e6a9a62b1f437985c4456055d750c75f46a17adbcbe3392fd33c674"
+      },
+      {
+        "name": "walk3_subject3.csv",
+        "sha256": "2819b75eceef11856e9c3e7aea931eafcd03dddb0d5c1f68353ba0b3dd9fc574"
+      },
+      {
+        "name": "walk3_subject4.csv",
+        "sha256": "11a79dd8c534a562b99abdb42a221064b2b2166948d088f7ca9b63ac13f25368"
+      },
+      {
+        "name": "walk3_subject5.csv",
+        "sha256": "2f2878a45d6345d78d5f7a1d35ab05cc96cf5d22b1be822bb4b07eab99096b85"
+      },
+      {
+        "name": "walk4_subject1.csv",
+        "sha256": "03fe681190873e70d2b5635dc35aa228084136fcd61f1a0dcfcd6c25e12cdbaa"
+      }
+    ],
+    "backend": "mujoco",
+    "device": "cpu",
+    "observation_mode": "observable"
+  },
+  "config": {
+    "profile": "cpu-smoke",
+    "seed": 0,
+    "threads": 4,
+    "num_envs": 2,
+    "iterations": 2,
+    "buffer_steps": 128,
+    "warmup_steps": 40,
+    "wm_only_iters": 0,
+    "wm_hidden": [
+      64,
+      64,
+      64
+    ],
+    "pi_hidden": [
+      64,
+      64
+    ],
+    "critic_hidden": [
+      64,
+      32
+    ],
+    "wm_window": 8,
+    "horizon": 32,
+    "hist": 10,
+    "goal_frames": 10,
+    "wm_batches": 2,
+    "wm_batch": 8,
+    "pi_batch": 4,
+    "critic_epochs": 2,
+    "critic_minibatches": 2,
+    "lr": 0.0002,
+    "gamma": 0.99,
+    "lam": 0.95,
+    "utd": 0.4,
+    "observation_mode": "observable",
+    "observation_noise": true,
+    "action_noise": 0.1,
+    "self_collisions": true,
+    "amp": "none",
+    "checkpoint_every": 1
+  },
+  "resume_kind": "fresh",
+  "iteration": 2,
+  "counters": {
+    "physical_transitions": 90,
+    "imagined_transitions": 256,
+    "actor_updates": 2,
+    "model_updates": 4,
+    "critic_updates": 8,
+    "model_fit_transition_slots": 256
+  },
+  "wall_seconds_this_invocation": 1.046205332968384,
+  "updates": [
+    {
+      "iteration": 1,
+      "world_model": {
+        "wm_loss": 11.749103546142578,
+        "wm_err8": 24.210208892822266,
+        "wm_updates": 2
+      },
+      "learning_rate": 0.0002,
+      "policy": {
+        "pi_loss": -0.7975084781646729,
+        "v_loss": 0.04125888179987669,
+        "imag_rew": 0.2630002200603485,
+        "pi_gradnorm": 0.028461549431085587,
+        "imag_survival": 0.29665499925613403,
+        "actor_updates": 1,
+        "critic_updates": 4,
+        "imagined_steps": 128,
+        "critic_tail": true
+      }
+    },
+    {
+      "iteration": 2,
+      "world_model": {
+        "wm_loss": 9.846046447753906,
+        "wm_err8": 20.659618377685547,
+        "wm_updates": 2
+      },
+      "learning_rate": 0.0001999999999923412,
+      "policy": {
+        "pi_loss": -0.5259917974472046,
+        "v_loss": 0.012476162053644657,
+        "imag_rew": 0.2243560552597046,
+        "pi_gradnorm": 0.02974112704396248,
+        "imag_survival": 0.7737281322479248,
+        "actor_updates": 1,
+        "critic_updates": 4,
+        "imagined_steps": 128,
+        "critic_tail": true
+      }
+    }
+  ],
+  "result_scope": "method-integration smoke",
+  "hardware_execution": false,
+  "checkpoint_sha256": "c895ce19ba63bebbb59f5f5f5fbf3693a1edce7ba21268c92139f1bfb0dd580f",
+  "source_files": {
+    "__init__.py": "09417f65a738b24937a7877710f7a87bbd68cded25cc2e853df0c35a676ef3d8",
+    "assets.py": "2d7d4090196deff662cbaefdea3cef22868c702ef45b499a06f409e2ea0f09d5",
+    "buffer.py": "bee1ecd6c001ebfe0c0f3c0fb1f818adc88cdb4c97520466829e8dbeb940c2c1",
+    "evaluation.py": "50b4ec66c5b07d0f214f595db08cc3d42ef17b601ddffacf7ca760db545f9b1b",
+    "export.py": "70ace42f01469d7347c1496d0bc5bc88867c8eadc41217cc2f0124347ebe22cd",
+    "isaac_env.py": "3b2ba3847423fc47cfb490e487517867a63b69eeec42b5ba96f2d295fd6cfbe4",
+    "kinematics.py": "3a0fa79099a28bc8b66ee16d9eb3a69bf30cfa2b8592e164e0a27e1c787255af",
+    "learning.py": "02191fd267e2e6bf39c26869f9317e560cb7ac739471790853db1896780df501",
+    "mdp.py": "cfaec7bce8a83d8208ab01803b9b5e79920e73c59e7b3977f718517ad17095f8",
+    "motion.py": "35f5bed78790e47a234221be3d038d8cc4c41d4d046113ecf834efcb1d280d1a",
+    "mujoco_env.py": "16a748fdb290cc1a7bf35ee2bbfcf932671f1e5c990aeea8c3d65d4ff19b3361",
+    "networks.py": "d0e07d29ae8af1d0b6d388475b77efd9e31344d166404231717b2d3a3f0af192",
+    "robot.py": "c4ff27c3be9ca4c0f7c99bf9294eed35dbdb0a60da60b56e490218ae84a4fff0",
+    "rotations.py": "c7df75b4c4193cafddfe7a06b5545224b85503a4971d3a231f810c9103299aa7",
+    "sampling.py": "3131aeca79a3c9ecb6fbef0926e035e55c3292a72eba8ce21037ff01220c4dc5",
+    "test_aligned_evaluation.py": "c359cc7037d7997f3858227065e2262301f93b182be8f8c10f86b041e8b4adc7",
+    "test_aligned_isaac.py": "fe405ed9a6ba7e29abe431d1e0c57b64a8a15a4c20d52fd06f13f91548d9bfeb",
+    "test_aligned_learning.py": "f3f84560cda5a9e628671cb04eab84093f50ad3d7f9cc0f2edd7ffe0b8961e9d",
+    "test_aligned_resume.py": "3174e0053ceff54845599d1c85c3aea3c840b9fd3b95da5488c1f2102f15862c",
+    "train.py": "fe197996bca28b8aabe19473fce6a8a0a45d637b4724abdbbd8e8a4983fd1d9a"
+  },
+  "parameters": {
+    "wm": 21830,
+    "pi": 126461,
+    "critic": 60673
+  },
+  "motion_frames": 441140,
+  "dependencies": {
+    "torch": "2.9.1"
+  }
+}

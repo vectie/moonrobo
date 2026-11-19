@@ -1,0 +1,1501 @@
+{
+  "format": "moonrobo.supermimic-full-clip-evaluation.v1",
+  "protocol": {
+    "start_frame": 0,
+    "requested_horizon": "entire clip, no episode time limit",
+    "failure": "hard reference-relative training termination",
+    "normalization": "sum reward / ((frame_count - 1) * max_step_reward)",
+    "max_step_reward": 0.1,
+    "aggregation": "equal clip mean; separate frame-weighted mean",
+    "strict_tracking_is_separate": true,
+    "physical_settings": {
+      "backend": "mujoco-cpu",
+      "friction": 1.0,
+      "randomization": false,
+      "observation_noise": false,
+      "self_collisions": false,
+      "reset_noise": false,
+      "scene": "/Users/kq/Workspace/moonrobo/target/learning/g1-aligned-data/g1_description/scene.xml",
+      "physics_substep_seconds": 0.005,
+      "physics_substeps": 4,
+      "control_seconds": 0.02,
+      "context_resampling": "environment"
+    }
+  },
+  "n_clips": 40,
+  "norm_return": 0.001651335414779468,
+  "norm_return_framew": 0.0015723306822502485,
+  "n_failed": 40,
+  "failed": [
+    "dance1_subject1",
+    "dance1_subject2",
+    "dance1_subject3",
+    "dance2_subject1",
+    "dance2_subject2",
+    "dance2_subject3",
+    "dance2_subject4",
+    "dance2_subject5",
+    "fallAndGetUp1_subject1",
+    "fallAndGetUp1_subject4",
+    "fallAndGetUp1_subject5",
+    "fallAndGetUp2_subject2",
+    "fallAndGetUp2_subject3",
+    "fallAndGetUp3_subject1",
+    "fight1_subject2",
+    "fight1_subject3",
+    "fight1_subject5",
+    "fightAndSports1_subject1",
+    "fightAndSports1_subject4",
+    "jumps1_subject1",
+    "jumps1_subject2",
+    "jumps1_subject5",
+    "run1_subject2",
+    "run1_subject5",
+    "run2_subject1",
+    "run2_subject4",
+    "sprint1_subject2",
+    "sprint1_subject4",
+    "walk1_subject1",
+    "walk1_subject2",
+    "walk1_subject5",
+    "walk2_subject1",
+    "walk2_subject3",
+    "walk2_subject4",
+    "walk3_subject1",
+    "walk3_subject2",
+    "walk3_subject3",
+    "walk3_subject4",
+    "walk3_subject5",
+    "walk4_subject1"
+  ],
+  "n_completed": 0,
+  "incomplete_protocol_clips": [],
+  "missing_clips": [],
+  "unexpected_clips": [],
+  "benchmark_complete": true,
+  "evaluation_physical_steps": 1764,
+  "strict_tracking": {
+    "evaluated_clips": 40,
+    "passed_clips": 0,
+    "all_passed": false,
+    "interpretation": "additional engineering gate; not the paper's failure count"
+  },
+  "per_clip": [
+    {
+      "clip_id": "dance1_subject1",
+      "expected_steps": 6573,
+      "executed_steps": 41,
+      "undiscounted_return": 1.6028574379161,
+      "maximum_full_clip_return": 657.3000000000001,
+      "normalized_return": 0.002438547752801004,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 41,
+      "metadata": {
+        "clip_index": 0,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.4637216008802936,
+          "body_position_rmse_m": 0.3074250085651011,
+          "root_position_rmse_m": 0.23928528755037748,
+          "root_orientation_rmse_rad": 0.43252842760029514
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance1_subject2",
+      "expected_steps": 6573,
+      "executed_steps": 49,
+      "undiscounted_return": 2.023082164116204,
+      "maximum_full_clip_return": 657.3000000000001,
+      "normalized_return": 0.0030778672814790863,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 49,
+      "metadata": {
+        "clip_index": 1,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.45108203592111046,
+          "body_position_rmse_m": 0.3258324979100471,
+          "root_position_rmse_m": 0.25773251308982115,
+          "root_orientation_rmse_rad": 0.3171875234438423
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance1_subject3",
+      "expected_steps": 6573,
+      "executed_steps": 39,
+      "undiscounted_return": 1.3810322303324938,
+      "maximum_full_clip_return": 657.3000000000001,
+      "normalized_return": 0.0021010683558991233,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 39,
+      "metadata": {
+        "clip_index": 2,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.5000050902668711,
+          "body_position_rmse_m": 0.3288420079242927,
+          "root_position_rmse_m": 0.2335596466969241,
+          "root_orientation_rmse_rad": 0.40982067831838653
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance2_subject1",
+      "expected_steps": 11283,
+      "executed_steps": 40,
+      "undiscounted_return": 1.4970670128241181,
+      "maximum_full_clip_return": 1128.3,
+      "normalized_return": 0.0013268341866738617,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 40,
+      "metadata": {
+        "clip_index": 3,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.4846476734503384,
+          "body_position_rmse_m": 0.3194237839294918,
+          "root_position_rmse_m": 0.2335738779037127,
+          "root_orientation_rmse_rad": 0.40852158984499937
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance2_subject2",
+      "expected_steps": 11283,
+      "executed_steps": 42,
+      "undiscounted_return": 1.6196063607931137,
+      "maximum_full_clip_return": 1128.3,
+      "normalized_return": 0.0014354394760197765,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 42,
+      "metadata": {
+        "clip_index": 4,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.49182030823686684,
+          "body_position_rmse_m": 0.3291908512666673,
+          "root_position_rmse_m": 0.2455774990706121,
+          "root_orientation_rmse_rad": 0.3146457497740023
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance2_subject3",
+      "expected_steps": 11283,
+      "executed_steps": 46,
+      "undiscounted_return": 1.8007372878491879,
+      "maximum_full_clip_return": 1128.3,
+      "normalized_return": 0.001595973843702196,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 46,
+      "metadata": {
+        "clip_index": 5,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.49493261294509,
+          "body_position_rmse_m": 0.3248933145140685,
+          "root_position_rmse_m": 0.23449515868876603,
+          "root_orientation_rmse_rad": 0.3792875876843051
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance2_subject4",
+      "expected_steps": 11283,
+      "executed_steps": 41,
+      "undiscounted_return": 1.5040385136380792,
+      "maximum_full_clip_return": 1128.3,
+      "normalized_return": 0.0013330129519082507,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 41,
+      "metadata": {
+        "clip_index": 6,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.5044279628718625,
+          "body_position_rmse_m": 0.3336096643607641,
+          "root_position_rmse_m": 0.23145448891772186,
+          "root_orientation_rmse_rad": 0.38670562262144864
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "dance2_subject5",
+      "expected_steps": 11283,
+      "executed_steps": 41,
+      "undiscounted_return": 1.5516489436849952,
+      "maximum_full_clip_return": 1128.3,
+      "normalized_return": 0.0013752095574625501,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 41,
+      "metadata": {
+        "clip_index": 7,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.485748372506484,
+          "body_position_rmse_m": 0.3332233367908727,
+          "root_position_rmse_m": 0.23234094964646704,
+          "root_orientation_rmse_rad": 0.3514141840248016
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "fallAndGetUp1_subject1",
+      "expected_steps": 8410,
+      "executed_steps": 43,
+      "undiscounted_return": 1.6444639749825,
+      "maximum_full_clip_return": 841.0,
+      "normalized_return": 0.0019553673899910824,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 43,
+      "metadata": {
+        "clip_index": 8,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.4980758108690852,
+          "body_position_rmse_m": 0.3200378159620835,
+          "root_position_rmse_m": 0.2306579503384611,
+          "root_orientation_rmse_rad": 0.4095458752211669
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "fallAndGetUp1_subject4",
+      "expected_steps": 8410,
+      "executed_steps": 52,
+      "undiscounted_return": 2.12813619710505,
+      "maximum_full_clip_return": 841.0,
+      "normalized_return": 0.002530482992990547,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 52,
+      "metadata": {
+        "clip_index": 9,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.5086861362854763,
+          "body_position_rmse_m": 0.3415931976410045,
+          "root_position_rmse_m": 0.25043132616198754,
+          "root_orientation_rmse_rad": 0.3700497511402015
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "fallAndGetUp1_subject5",
+      "expected_steps": 8410,
+      "executed_steps": 40,
+      "undiscounted_return": 1.4780751941725612,
+      "maximum_full_clip_return": 841.0,
+      "normalized_return": 0.0017575210394441868,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 40,
+      "metadata": {
+        "clip_index": 10,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.47275473967758264,
+          "body_position_rmse_m": 0.33422778845869955,
+          "root_position_rmse_m": 0.2411096782635766,
+          "root_orientation_rmse_rad": 0.3597243050874319
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "fallAndGetUp2_subject2",
+      "expected_steps": 8195,
+      "executed_steps": 47,
+      "undiscounted_return": 1.9418287752196193,
+      "maximum_full_clip_return": 819.5,
+      "normalized_return": 0.002369528706796363,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 47,
+      "metadata": {
+        "clip_index": 11,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.5087971276039228,
+          "body_position_rmse_m": 0.3271941631271699,
+          "root_position_rmse_m": 0.24599287250362406,
+          "root_orientation_rmse_rad": 0.2867959619821493
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "fallAndGetUp2_subject3",
+      "expected_steps": 8195,
+      "executed_steps": 42,
+      "undiscounted_return": 1.549601354636252,
+      "maximum_full_clip_return": 819.5,
+      "normalized_return": 0.001890910743912449,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 42,
+      "metadata": {
+        "clip_index": 12,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.4879919946030259,
+          "body_position_rmse_m": 0.3305072316004699,
+          "root_position_rmse_m": 0.24320593581721817,
+          "root_orientation_rmse_rad": 0.41984313674043183
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "fallAndGetUp3_subject1",
+      "expected_steps": 5108,
+      "executed_steps": 39,
+      "undiscounted_return": 1.4605870740488172,
+      "maximum_full_clip_return": 510.8,
+      "normalized_return": 0.002859410873235742,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 39,
+      "metadata": {
+        "clip_index": 13,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.47329428453641537,
+          "body_position_rmse_m": 0.31025948314077695,
+          "root_position_rmse_m": 0.24611282767747603,
+          "root_orientation_rmse_rad": 0.46967932287962383
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "fight1_subject2",
+      "expected_steps": 12243,
+      "executed_steps": 46,
+      "undiscounted_return": 1.9116378221660852,
+      "maximum_full_clip_return": 1224.3,
+      "normalized_return": 0.001561412907102904,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 46,
+      "metadata": {
+        "clip_index": 14,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.45974010264309473,
+          "body_position_rmse_m": 0.3223752182088034,
+          "root_position_rmse_m": 0.25448485438823354,
+          "root_orientation_rmse_rad": 0.32135793683271974
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "fight1_subject3",
+      "expected_steps": 12243,
+      "executed_steps": 42,
+      "undiscounted_return": 1.5468108709901571,
+      "maximum_full_clip_return": 1224.3,
+      "normalized_return": 0.00126342470880516,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 42,
+      "metadata": {
+        "clip_index": 15,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.4889517366084571,
+          "body_position_rmse_m": 0.3297520076193227,
+          "root_position_rmse_m": 0.24452624652367225,
+          "root_orientation_rmse_rad": 0.4129340248122259
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "fight1_subject5",
+      "expected_steps": 12243,
+      "executed_steps": 42,
+      "undiscounted_return": 1.5903208516538143,
+      "maximum_full_clip_return": 1224.3,
+      "normalized_return": 0.0012989633681726818,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 42,
+      "metadata": {
+        "clip_index": 16,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.4826921908943226,
+          "body_position_rmse_m": 0.337304458944719,
+          "root_position_rmse_m": 0.24235295111221672,
+          "root_orientation_rmse_rad": 0.34596430219579943
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "fightAndSports1_subject1",
+      "expected_steps": 12256,
+      "executed_steps": 43,
+      "undiscounted_return": 1.683558494783938,
+      "maximum_full_clip_return": 1225.6000000000001,
+      "normalized_return": 0.0013736606517492965,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 43,
+      "metadata": {
+        "clip_index": 17,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.47494911098334297,
+          "body_position_rmse_m": 0.31978985122467013,
+          "root_position_rmse_m": 0.2384906353493433,
+          "root_orientation_rmse_rad": 0.41816920736301
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "fightAndSports1_subject4",
+      "expected_steps": 12256,
+      "executed_steps": 42,
+      "undiscounted_return": 1.5240288814529777,
+      "maximum_full_clip_return": 1225.6000000000001,
+      "normalized_return": 0.0012434961500105888,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 42,
+      "metadata": {
+        "clip_index": 18,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.5020866237970174,
+          "body_position_rmse_m": 0.34075619452315964,
+          "root_position_rmse_m": 0.24285258751574196,
+          "root_orientation_rmse_rad": 0.39784758620316746
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "jumps1_subject1",
+      "expected_steps": 12221,
+      "executed_steps": 41,
+      "undiscounted_return": 1.5245702005922794,
+      "maximum_full_clip_return": 1222.1000000000001,
+      "normalized_return": 0.0012475003687032807,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 41,
+      "metadata": {
+        "clip_index": 19,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.49051342239531404,
+          "body_position_rmse_m": 0.32352768284585887,
+          "root_position_rmse_m": 0.2405262862719674,
+          "root_orientation_rmse_rad": 0.42141021835502146
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "jumps1_subject2",
+      "expected_steps": 12221,
+      "executed_steps": 51,
+      "undiscounted_return": 2.298809776082635,
+      "maximum_full_clip_return": 1222.1000000000001,
+      "normalized_return": 0.001881032465495978,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 51,
+      "metadata": {
+        "clip_index": 20,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.4453756745252075,
+          "body_position_rmse_m": 0.30986063277653364,
+          "root_position_rmse_m": 0.26024212861510865,
+          "root_orientation_rmse_rad": 0.31716140650168917
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "jumps1_subject5",
+      "expected_steps": 12221,
+      "executed_steps": 40,
+      "undiscounted_return": 1.5208034878596663,
+      "maximum_full_clip_return": 1222.1000000000001,
+      "normalized_return": 0.0012444182046147338,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 40,
+      "metadata": {
+        "clip_index": 21,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.4662538244503303,
+          "body_position_rmse_m": 0.32734832364314553,
+          "root_position_rmse_m": 0.23483739441578483,
+          "root_orientation_rmse_rad": 0.35317547349407763
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "run1_subject2",
+      "expected_steps": 11890,
+      "executed_steps": 56,
+      "undiscounted_return": 2.4580917609855533,
+      "maximum_full_clip_return": 1189.0,
+      "normalized_return": 0.0020673606063797757,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 56,
+      "metadata": {
+        "clip_index": 22,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.44464111402462786,
+          "body_position_rmse_m": 0.32005421540154494,
+          "root_position_rmse_m": 0.2653471209100487,
+          "root_orientation_rmse_rad": 0.3307761523228608
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "run1_subject5",
+      "expected_steps": 11890,
+      "executed_steps": 43,
+      "undiscounted_return": 1.6973714930936694,
+      "maximum_full_clip_return": 1189.0,
+      "normalized_return": 0.0014275622313655756,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 43,
+      "metadata": {
+        "clip_index": 23,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.4748369905111057,
+          "body_position_rmse_m": 0.3308058467376274,
+          "root_position_rmse_m": 0.2359791960200604,
+          "root_orientation_rmse_rad": 0.34075553871922987
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "run2_subject1",
+      "expected_steps": 12240,
+      "executed_steps": 44,
+      "undiscounted_return": 1.7639233535155654,
+      "maximum_full_clip_return": 1224.0,
+      "normalized_return": 0.0014411138509114096,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 44,
+      "metadata": {
+        "clip_index": 24,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.48264086482452845,
+          "body_position_rmse_m": 0.3117738045685096,
+          "root_position_rmse_m": 0.2342324887338418,
+          "root_orientation_rmse_rad": 0.39772464857529566
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "run2_subject4",
+      "expected_steps": 12240,
+      "executed_steps": 53,
+      "undiscounted_return": 2.2359772846102715,
+      "maximum_full_clip_return": 1224.0,
+      "normalized_return": 0.0018267788272959733,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 53,
+      "metadata": {
+        "clip_index": 25,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.500732039334357,
+          "body_position_rmse_m": 0.33332983772072744,
+          "root_position_rmse_m": 0.24726487889020116,
+          "root_orientation_rmse_rad": 0.34304637092191453
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "sprint1_subject2",
+      "expected_steps": 13655,
+      "executed_steps": 47,
+      "undiscounted_return": 2.0018987711519003,
+      "maximum_full_clip_return": 1365.5,
+      "normalized_return": 0.0014660554896755037,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 47,
+      "metadata": {
+        "clip_index": 26,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.45824026484690594,
+          "body_position_rmse_m": 0.3156205425929441,
+          "root_position_rmse_m": 0.24750879566799333,
+          "root_orientation_rmse_rad": 0.3058915876425757
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "sprint1_subject4",
+      "expected_steps": 13655,
+      "executed_steps": 42,
+      "undiscounted_return": 1.5269026020541787,
+      "maximum_full_clip_return": 1365.5,
+      "normalized_return": 0.0011182003676705812,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 42,
+      "metadata": {
+        "clip_index": 27,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.5115725126328604,
+          "body_position_rmse_m": 0.34470243085980873,
+          "root_position_rmse_m": 0.2361988335267523,
+          "root_orientation_rmse_rad": 0.41071775953135214
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "walk1_subject1",
+      "expected_steps": 13065,
+      "executed_steps": 45,
+      "undiscounted_return": 1.7740048849955201,
+      "maximum_full_clip_return": 1306.5,
+      "normalized_return": 0.0013578299923425335,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 45,
+      "metadata": {
+        "clip_index": 28,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.48736851089126904,
+          "body_position_rmse_m": 0.33180280751498226,
+          "root_position_rmse_m": 0.24006637224044577,
+          "root_orientation_rmse_rad": 0.33440754903956843
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "walk1_subject2",
+      "expected_steps": 13065,
+      "executed_steps": 48,
+      "undiscounted_return": 2.0069708451628685,
+      "maximum_full_clip_return": 1306.5,
+      "normalized_return": 0.0015361430119884183,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 48,
+      "metadata": {
+        "clip_index": 29,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.4447631263693611,
+          "body_position_rmse_m": 0.3213177252880357,
+          "root_position_rmse_m": 0.24883619744807714,
+          "root_orientation_rmse_rad": 0.3375466302360504
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "walk1_subject5",
+      "expected_steps": 13065,
+      "executed_steps": 42,
+      "undiscounted_return": 1.6615697033703327,
+      "maximum_full_clip_return": 1306.5,
+      "normalized_return": 0.0012717716826408977,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 42,
+      "metadata": {
+        "clip_index": 30,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.4756048619420587,
+          "body_position_rmse_m": 0.32557428083424816,
+          "root_position_rmse_m": 0.2299876303084419,
+          "root_orientation_rmse_rad": 0.31804388843121817
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "walk2_subject1",
+      "expected_steps": 11908,
+      "executed_steps": 42,
+      "undiscounted_return": 1.5871850475668907,
+      "maximum_full_clip_return": 1190.8,
+      "normalized_return": 0.0013328728985277888,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 42,
+      "metadata": {
+        "clip_index": 31,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.47037907459494643,
+          "body_position_rmse_m": 0.3172883458482147,
+          "root_position_rmse_m": 0.2427032703070985,
+          "root_orientation_rmse_rad": 0.4569240584807637
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "walk2_subject3",
+      "expected_steps": 11908,
+      "executed_steps": 42,
+      "undiscounted_return": 1.6045692069455981,
+      "maximum_full_clip_return": 1190.8,
+      "normalized_return": 0.00134747162155324,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 42,
+      "metadata": {
+        "clip_index": 32,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.4772306153088286,
+          "body_position_rmse_m": 0.32137728674994237,
+          "root_position_rmse_m": 0.23613048636283207,
+          "root_orientation_rmse_rad": 0.39747116516142206
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "walk2_subject4",
+      "expected_steps": 11908,
+      "executed_steps": 45,
+      "undiscounted_return": 1.7259717211127281,
+      "maximum_full_clip_return": 1190.8,
+      "normalized_return": 0.0014494220029498894,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 45,
+      "metadata": {
+        "clip_index": 33,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.5120540401472992,
+          "body_position_rmse_m": 0.336871759868308,
+          "root_position_rmse_m": 0.23499601250747315,
+          "root_orientation_rmse_rad": 0.35616312066131317
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "walk3_subject1",
+      "expected_steps": 12330,
+      "executed_steps": 43,
+      "undiscounted_return": 1.7848074873909354,
+      "maximum_full_clip_return": 1233.0,
+      "normalized_return": 0.0014475324309739946,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 43,
+      "metadata": {
+        "clip_index": 34,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.45755797231872913,
+          "body_position_rmse_m": 0.29724788427045884,
+          "root_position_rmse_m": 0.23951847005382423,
+          "root_orientation_rmse_rad": 0.40154852105692646
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "walk3_subject2",
+      "expected_steps": 12330,
+      "executed_steps": 53,
+      "undiscounted_return": 2.2578283650800586,
+      "maximum_full_clip_return": 1233.0,
+      "normalized_return": 0.0018311665572425455,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 53,
+      "metadata": {
+        "clip_index": 35,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.46383030130128794,
+          "body_position_rmse_m": 0.3302248583097252,
+          "root_position_rmse_m": 0.27550757282856086,
+          "root_orientation_rmse_rad": 0.34936616552039146
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "walk3_subject3",
+      "expected_steps": 12330,
+      "executed_steps": 41,
+      "undiscounted_return": 1.4590880144387484,
+      "maximum_full_clip_return": 1233.0,
+      "normalized_return": 0.0011833641641838997,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 41,
+      "metadata": {
+        "clip_index": 36,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.5012048546910146,
+          "body_position_rmse_m": 0.33691033320014363,
+          "root_position_rmse_m": 0.24328064667705943,
+          "root_orientation_rmse_rad": 0.4283033222568115
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "walk3_subject4",
+      "expected_steps": 12330,
+      "executed_steps": 44,
+      "undiscounted_return": 1.6238173097372055,
+      "maximum_full_clip_return": 1233.0,
+      "normalized_return": 0.0013169645658858114,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 44,
+      "metadata": {
+        "clip_index": 37,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.5180155457442587,
+          "body_position_rmse_m": 0.34287473818719433,
+          "root_position_rmse_m": 0.24093164914142778,
+          "root_orientation_rmse_rad": 0.3891985239036969
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "walk3_subject5",
+      "expected_steps": 12330,
+      "executed_steps": 42,
+      "undiscounted_return": 1.663785750977695,
+      "maximum_full_clip_return": 1233.0,
+      "normalized_return": 0.0013493801711092416,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 42,
+      "metadata": {
+        "clip_index": 38,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.48621331932084566,
+          "body_position_rmse_m": 0.32671896053972427,
+          "root_position_rmse_m": 0.22710624766418924,
+          "root_orientation_rmse_rad": 0.3182726637374476
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    },
+    {
+      "clip_id": "walk4_subject1",
+      "expected_steps": 8195,
+      "executed_steps": 43,
+      "undiscounted_return": 1.738439884968102,
+      "maximum_full_clip_return": 819.5,
+      "normalized_return": 0.002121342141510802,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": 43,
+      "metadata": {
+        "clip_index": 39,
+        "start_frame": 0
+      },
+      "strict_tracking": {
+        "rmse": {
+          "joint_rmse_rad": 0.45873342307238774,
+          "body_position_rmse_m": 0.3070043370276064,
+          "root_position_rmse_m": 0.23564720822376517,
+          "root_orientation_rmse_rad": 0.4159779342813455
+        },
+        "limits": {
+          "joint_rmse_rad": 0.03,
+          "body_position_rmse_m": 0.05,
+          "root_position_rmse_m": 0.05,
+          "root_orientation_rmse_rad": 0.1
+        },
+        "passed": false
+      }
+    }
+  ],
+  "evaluation_simulated_physical_steps": 1764,
+  "catalog_clip_count": 40,
+  "full_catalog_evaluated": true,
+  "checkpoint_sha256": "a47699d7fdda55f829d83fde443522e25f39ed0711a26856d085c321193b72f3",
+  "identity": {
+    "scene": "/Users/kq/Workspace/moonrobo/target/learning/g1-aligned-data/g1_description/scene.xml",
+    "scene_sha256": "5230533e1aea5593de5d57146412cb4ae62ca356eef2bbee63224a165d0ce699",
+    "motions": [
+      {
+        "name": "dance1_subject1.csv",
+        "sha256": "e2a369e92e5ad076c5acffff7bce53157a0e6cd9e7e9f6a08dadfb1eb2928d8f"
+      },
+      {
+        "name": "dance1_subject2.csv",
+        "sha256": "3c2d37391ab08af18224f7a63ea55f1cd83480bdec779c320acb4d0b3062633e"
+      },
+      {
+        "name": "dance1_subject3.csv",
+        "sha256": "983ab290f7ac70fcd4baa56ea5321bc48522f613980986e4a0a83c884b940884"
+      },
+      {
+        "name": "dance2_subject1.csv",
+        "sha256": "f8611569a28fff323577ccb53021b0b189114510a284f76b234fc6e0e9f089e1"
+      },
+      {
+        "name": "dance2_subject2.csv",
+        "sha256": "85af86f623b3f7cf329bed84088382989f11df11025d305ad5aa1600e8f6828a"
+      },
+      {
+        "name": "dance2_subject3.csv",
+        "sha256": "487bcfa3710811acf6fcb2b6c916a79cec8e84fb5494b9b04361c0800852d83a"
+      },
+      {
+        "name": "dance2_subject4.csv",
+        "sha256": "e057410a0e7ec0618f58a5d5eceafe686ca292c9ad4dd3c4068eaad15283a46f"
+      },
+      {
+        "name": "dance2_subject5.csv",
+        "sha256": "2d10031bb293d20ccf6fd8aa76e00d4a5d8dc92cba5f59773d48cc9c8b25637f"
+      },
+      {
+        "name": "fallAndGetUp1_subject1.csv",
+        "sha256": "97e98a9cac5150917bc5a2ca3517759a3f3c380582cde5e92ad663c1e0553e12"
+      },
+      {
+        "name": "fallAndGetUp1_subject4.csv",
+        "sha256": "5e9cf9acddc62a8646151567fffac09c7e088186d87a9a8543743cac517ddf0b"
+      },
+      {
+        "name": "fallAndGetUp1_subject5.csv",
+        "sha256": "55a22ca723f26170aae8529ccb26dbda9bf2cb816b4f29eed3c57260dadb05ca"
+      },
+      {
+        "name": "fallAndGetUp2_subject2.csv",
+        "sha256": "49ae9726ae176b10b1213b441535946ffcca93586e1091e8398e239f4a049a47"
+      },
+      {
+        "name": "fallAndGetUp2_subject3.csv",
+        "sha256": "fa6e33725a450789160c8f3220b0a5e9001798f023fd14e3ff6c230a0829d75d"
+      },
+      {
+        "name": "fallAndGetUp3_subject1.csv",
+        "sha256": "fc00701411a270a9ab61c321ba836ba36437c61630c65f8fe276ac851f23ccd7"
+      },
+      {
+        "name": "fight1_subject2.csv",
+        "sha256": "c9ae5b9d90258061dfc79f617eaded73f2dde581fe37ac2d8e6b229c1a4a0ecb"
+      },
+      {
+        "name": "fight1_subject3.csv",
+        "sha256": "013b7219ddbbb37d17483d2bd0c28ae3d4307c2fec6d4180feed27c65d2acfcd"
+      },
+      {
+        "name": "fight1_subject5.csv",
+        "sha256": "d1490265b7b8ee5ac488853a3933ebdaee8ba6c9ecb5ef300146330b51b8c0dc"
+      },
+      {
+        "name": "fightAndSports1_subject1.csv",
+        "sha256": "076c2614df1a155e52c2b14074da8aa3b209176d930d2e3ffd059a9e9847fdc2"
+      },
+      {
+        "name": "fightAndSports1_subject4.csv",
+        "sha256": "83e2f3ec77ab9d3edc43c73e1894b0be2d9d0b2361098294bb178ab5cf32a1d9"
+      },
+      {
+        "name": "jumps1_subject1.csv",
+        "sha256": "3f55c1a0f87564044a71817d62dc2a40aa76332aa1cab3f1c817333a197c78c2"
+      },
+      {
+        "name": "jumps1_subject2.csv",
+        "sha256": "fde765a738e3aa586be3694163795502d4dc932757178956f4512e7c9d317a58"
+      },
+      {
+        "name": "jumps1_subject5.csv",
+        "sha256": "2f678d598faa9746aff778e92518970f51f0b1e08a10f05d0423a7cda3b9183c"
+      },
+      {
+        "name": "run1_subject2.csv",
+        "sha256": "ec02af4447a62214a6fec6afff60c75d0ecc8f80f8fb45e3cd4119fed9ceac8d"
+      },
+      {
+        "name": "run1_subject5.csv",
+        "sha256": "eacc38d7d6f5d7f32bfefcdf5d91510fea5f815000be870f91cc6e3483a126f6"
+      },
+      {
+        "name": "run2_subject1.csv",
+        "sha256": "ae64767c4b4e8f59578c22c5848cefc569923fea8bd3755c8dfb02b5313773da"
+      },
+      {
+        "name": "run2_subject4.csv",
+        "sha256": "2f0331426b74be03e87a2364733f8bf3262debdea54ab2c5059c2b707cff06f7"
+      },
+      {
+        "name": "sprint1_subject2.csv",
+        "sha256": "7babbd9d0a3cebf040709cb75fbf4268e925e337a2d44600dcce3d3b2d24a818"
+      },
+      {
+        "name": "sprint1_subject4.csv",
+        "sha256": "96d207b15323ef823274aa73ea1c2aaea7e98b4fe0f6de217332763bdf04ce00"
+      },
+      {
+        "name": "walk1_subject1.csv",
+        "sha256": "68c7887438e94f1f3d9ebacd3a8ce59251a22c7b05129a0f5d7cacaedc48c28d"
+      },
+      {
+        "name": "walk1_subject2.csv",
+        "sha256": "f8e6ccd5df574dcc5343a0a83d12efddfb5b34578b8b2f00582cb8098ed7fffc"
+      },
+      {
+        "name": "walk1_subject5.csv",
+        "sha256": "5421216dfbd2f16a90b5a7a52d4530b6269f7f9407f7ccfd09b5e5d3a72117af"
+      },
+      {
+        "name": "walk2_subject1.csv",
+        "sha256": "51cf310f14ecbb8be1f41ea09345df0c89024ff884fb9ab881cac339f820c787"
+      },
+      {
+        "name": "walk2_subject3.csv",
+        "sha256": "43a4342a9534ebb49e0dd9ef11ff40bf8a11d4925dac86352ebc7e7ae1220644"
+      },
+      {
+        "name": "walk2_subject4.csv",
+        "sha256": "d8e8d0383a64f0277218c0c490d55e4fcc20bd14776c0c8772f38a0cd4b88679"
+      },
+      {
+        "name": "walk3_subject1.csv",
+        "sha256": "22ab870d9957a62c1dfe3c1ec0a8a9af84c6c965065fff6fc936c3fac21d16eb"
+      },
+      {
+        "name": "walk3_subject2.csv",
+        "sha256": "55e8b8fe0e6a9a62b1f437985c4456055d750c75f46a17adbcbe3392fd33c674"
+      },
+      {
+        "name": "walk3_subject3.csv",
+        "sha256": "2819b75eceef11856e9c3e7aea931eafcd03dddb0d5c1f68353ba0b3dd9fc574"
+      },
+      {
+        "name": "walk3_subject4.csv",
+        "sha256": "11a79dd8c534a562b99abdb42a221064b2b2166948d088f7ca9b63ac13f25368"
+      },
+      {
+        "name": "walk3_subject5.csv",
+        "sha256": "2f2878a45d6345d78d5f7a1d35ab05cc96cf5d22b1be822bb4b07eab99096b85"
+      },
+      {
+        "name": "walk4_subject1.csv",
+        "sha256": "03fe681190873e70d2b5635dc35aa228084136fcd61f1a0dcfcd6c25e12cdbaa"
+      }
+    ],
+    "backend": "mujoco",
+    "device": "cpu",
+    "observation_mode": "smc",
+    "physics_substep_seconds": 0.005,
+    "context_resampling": "environment",
+    "self_collisions": false
+  }
+}

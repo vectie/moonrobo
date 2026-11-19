@@ -1,0 +1,70 @@
+{
+  "actor_sha256": "1fb12d353b0187efed1d9a2984c8a7790a5277b91e29f339f112571a44ff5a60",
+  "source_checkpoint_sha256": "847e3d4b090c021455d2317f589e6da80c87a8a3336d498f73af8105dc664562",
+  "clips": [
+    {
+      "id": "7k-stoop-calibrated",
+      "title": "向右俯身",
+      "kind": "policy-rollout",
+      "checkpoint": 7000,
+      "file": "panel-7000-anatomical/7k-stoop-calibrated.f32",
+      "sha256": "f8febcd9445fa44a9df514fcc99b22f9fbe60a1f2df4735da81be5c05fc1fd3d",
+      "width": 30,
+      "frames": 744,
+      "fps": 50,
+      "clip_id": "221130/inj_torso_stoop_down_R_002__A082",
+      "normalized_return": 0.5179735617173383,
+      "reference_sha256": "6dc99dbef4497df2e02909ccb5e7336e3fabffe0a1fb92d173f92449ad6fa183",
+      "completed": true,
+      "expected_steps": 743
+    },
+    {
+      "id": "7k-horse-step-calibrated",
+      "title": "马步舞",
+      "kind": "policy-rollout",
+      "checkpoint": 7000,
+      "file": "panel-7000-anatomical/7k-horse-step-calibrated.f32",
+      "sha256": "a83687219158c1e81df8e7d7d2c7a1f87721d767799eef9a8c55a964d5add5e4",
+      "width": 30,
+      "frames": 452,
+      "fps": 50,
+      "clip_id": "230411/dance_western_horse_step_with_leg_undercut_R_002__A306_M",
+      "normalized_return": 0.5949478533993142,
+      "reference_sha256": "03a4d8737cf4528d2d502b332675eb0c4294f6e6947c9ee0b448434115bd8258",
+      "completed": true,
+      "expected_steps": 451
+    },
+    {
+      "id": "7k-turn-calibrated",
+      "title": "舞步转身",
+      "kind": "policy-rollout",
+      "checkpoint": 7000,
+      "file": "panel-7000-anatomical/7k-turn-calibrated.f32",
+      "sha256": "f30b597ad25ba0b5bef279b90037a49811fd6b78a90969a81b3710e78a1058ed",
+      "width": 30,
+      "frames": 498,
+      "fps": 50,
+      "clip_id": "230414/dance_basic_turn_v1_180_R_loop_002__A323",
+      "normalized_return": 0.3521288047272458,
+      "reference_sha256": "7b18072f3b3c444898eb89a9c855d25c2589a1c646ac0d48fd4591dde18de02f",
+      "completed": false,
+      "expected_steps": 575
+    },
+    {
+      "id": "7k-lift-calibrated",
+      "title": "双手前举",
+      "kind": "policy-rollout",
+      "checkpoint": 7000,
+      "file": "panel-7000-anatomical/7k-lift-calibrated.f32",
+      "sha256": "d4db42bce8f01a245e49e5357027f930da2c1da5bdc1d47bb781bc0ac953ba31",
+      "width": 30,
+      "frames": 574,
+      "fps": 50,
+      "clip_id": "231120/big_light_two_hands_behind_high_to_front_high_R_001__A526",
+      "normalized_return": 0.5468420127204358,
+      "reference_sha256": "2212e627c29a2be3dcead26ebc3cac129365efb7aac0bbec1d2bd9e5f07199bf",
+      "completed": true,
+      "expected_steps": 573
+    }
+  ]
+}

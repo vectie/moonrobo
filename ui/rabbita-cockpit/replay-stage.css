@@ -1,0 +1,115 @@
+/* Presentation-first replay: one white stage and one compact transport. */
+.app-shell:has(.view-data) .cockpit-header {
+  display: grid; grid-template-columns: auto 1fr auto auto; align-items: center;
+  max-width: 1160px; width: calc(100% - 32px); min-height: 56px;
+  margin: 8px auto 0; padding: 6px 14px; gap: 12px; top: 8px;
+  border: 1px solid #e9e9eb; border-radius: 20px;
+  background: rgb(255 255 255 / 95%); box-shadow: 0 4px 24px #20212405;
+}
+.app-shell:has(.view-data) .cockpit-header-inner { display: contents; }
+.app-shell:has(.view-data) .cockpit-identity { grid-column: 1; grid-row: 1; }
+.app-shell:has(.view-data) .cockpit-identity h1 { font-size: 19px; }
+.app-shell:has(.view-data) :is(.brand-mark, .robot-identity) { display: none; }
+.app-shell:has(.view-data) .cockpit-nav { grid-column: 2; grid-row: 1; padding: 0; width: auto; gap: 2px; justify-content: center; }
+.app-shell:has(.view-data) .cockpit-tab { min-width: 44px; min-height: 40px; padding: 6px 12px; border: 0; border-radius: 20px; font-size: 12px; }
+.app-shell:has(.view-data) .cockpit-tab.active { background: #f2f2f4; }
+.app-shell:has(.view-data) .cockpit-tab .robo-glyph { width: 17px; height: 17px; flex-basis: 17px; }
+.app-shell:has(.view-data) .cockpit-health { grid-column: 3; grid-row: 1; gap: 6px; }
+.app-shell:has(.view-data) .cockpit-health .health-indicator { display: none; }
+.app-shell:has(.view-data) .cockpit-health .badge { border: 0; background: transparent; padding: 0; }
+.app-shell:has(.view-data) .cockpit-global-actions { grid-column: 4; grid-row: 1; display: flex; gap: 4px; }
+.app-shell:has(.view-data) .cockpit-global-actions .header-action { min-width: 40px; min-height: 40px; border: 0; border-radius: 50%; padding: 8px; }
+.app-shell:has(.view-data) .header-action.emergency span:not(.robo-glyph) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.app-shell:has(.view-data) .header-action.emergency { background: #fff7f5; }
+.app-shell:has(.view-data) .cockpit-header > .intent-status { grid-column: 1/-1; margin: 0; }
+.view-data.cockpit-main { padding-top: 12px; }
+.view-data > .workspace-tabs {
+  position: sticky; top: var(--cockpit-header-edge, 80px); z-index: 18;
+  width: fit-content; margin: 0 auto 12px; min-height: 48px;
+  background: rgb(245 245 247 / 96%); backdrop-filter: blur(16px);
+  box-shadow: 0 0 0 4px #ffffffa6;
+}
+.view-data > .workspace-tabs .workspace-tab { min-height: 40px; padding-inline: 20px; }
+.view-data > .workspace-tabs .workspace-tab.active { background: #fff; }
+.view-data .workspace-content { scroll-margin-top: calc(var(--cockpit-header-edge, 80px) + 60px); }
+
+#learning-workspace[data-section="replay"] > .lw-status {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%);
+}
+#learning-workspace[data-section="replay"] > .lw-status:is([data-error="true"], [data-loading="true"]) { position: static; width: auto; height: auto; clip-path: none; margin: 8px 0; }
+#lw-replay > :is(.lw-section-heading, .lw-note) { display: none; }
+#lw-player .learning-replay { border: 0; border-radius: 0; background: white; }
+#lw-player .lr-content { padding: 0; }
+#lw-player .lr-content .lr-selectors { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; align-items: center; margin-bottom: 6px; }
+#lw-player .lr-selectors > .lr-experiment-field, #lw-player #lr-refresh { display: none; }
+#lw-player .lr-selectors > .lr-action-field { display: block; }
+#lw-player .lr-selectors .lw-context { display: grid; grid-template-columns: minmax(0,1fr) 40px; padding: 0; margin: 0; background: none; border-radius: 0; gap: 4px; }
+#lw-player .lr-selectors label, #lw-player .lr-speed, #lw-player .lr-timeline-heading label { font-size: 0; }
+#lw-player .lr-selectors label, #lw-player .lr-timeline-heading label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+#lw-player .lr-selectors :is(select, #lw-experiment) { display: block; width: 100%; margin: 0; min-height: 44px; padding: 8px 34px 8px 16px; font-size: 13px; font-weight: 500; border: 0; border-radius: 22px; background-color: #f5f5f7; }
+#lw-player #lw-refresh { width: 40px; min-width: 40px; min-height: 40px; padding: 10px; border: 0; }
+#lw-player .lr-status { margin: 12px 0; font-size: 13px; color: var(--muted); }
+#lw-player .learning-replay[data-error="false"]:has(#lr-player:not([hidden])) .lr-status {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%);
+}
+#lw-player .learning-replay[data-error="true"] .lr-status { color: #a14030; }
+#lw-player .lr-stage { position: relative; height: var(--replay-stage-height, calc(100svh - 290px)); min-height: 160px; background: #fff; }
+#lw-player .lr-viewport { position: absolute; inset: 0; height: 100%; min-height: 0; border: 0; border-radius: 16px; background: #fff; }
+#lw-player .lr-reference-toggle { position: absolute; top: 10px; right: 12px; display: inline-flex; gap: 7px; min-height: 36px; padding: 4px 12px; font-size: 12px; border-radius: 18px; background: #f5f5f7e6; color: #686970; cursor: pointer; }
+#lw-player .lr-reference-toggle input { width: 15px; height: 15px; min-height: 15px; accent-color: #2867d8; }
+#lw-player .lr-reference-toggle:has(input:checked) { color: #8f5909; background: #fff6e8; }
+#lw-player .lr-render-status, #lw-player .lr-track-status { position: absolute; bottom: 8px; left: 14px; max-width: calc(100% - 28px); margin: 0; padding: 5px 9px; border-radius: 8px; background: #fffffff0; font-size: 12px; }
+#lw-player .lr-render-status:empty, #lw-player .lr-track-status:empty { display: none; }
+#lw-player .lr-render-status[data-state="ready"] { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
+#lw-player .lr-render-status:is([data-state="error"], [data-state="partial"]) { color: #a14030; bottom: 38px; }
+#lw-player .lr-dock { display: grid; grid-template-columns: minmax(0,1fr) auto; column-gap: 14px; align-items: center; padding: 8px 16px 4px; border-radius: 24px; background: #f5f5f7; }
+#lw-player .lr-controls { grid-column: 1/-1; display: flex; justify-content: center; align-items: center; flex-wrap: nowrap; gap: 8px; margin: 0; }
+#lw-player .lr-controls button { display: grid; place-items: center; width: 40px; min-width: 40px; min-height: 40px; padding: 8px; border: 0; border-radius: 50%; background: transparent; font-size: 0; flex: 0 0 auto; }
+#lw-player .lr-controls button::before { content: ''; display: block; width: 20px; height: 20px; background: currentColor; mask: var(--transport-icon) center/20px no-repeat; -webkit-mask: var(--transport-icon) center/20px no-repeat; }
+#learning-workspace #lr-play { background: #2867d8; border-color: #2867d8; color: #fff; min-width: 44px; width: 44px; min-height: 44px; }
+#lw-player #lr-play { --transport-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath d='M7 4v16l13-8z'/%3E%3C/svg%3E"); }
+#lw-player #lr-play[aria-pressed="true"] { --transport-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Crect x='5' y='4' width='5' height='16' rx='1'/%3E%3Crect x='14' y='4' width='5' height='16' rx='1'/%3E%3C/svg%3E"); }
+#lw-player #lr-prev { --transport-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath d='M6 4h2v16H6zm13 0v16L9 12z'/%3E%3C/svg%3E"); }
+#lw-player #lr-next { --transport-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath d='M16 4h2v16h-2zM5 4l10 8-10 8z'/%3E%3C/svg%3E"); }
+#lw-player #lr-restart { --transport-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9a8 8 0 1 1 0 7M4 3v6h6'/%3E%3C/svg%3E"); }
+#lw-player #lr-fit { --transport-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5'/%3E%3C/svg%3E"); }
+#lw-player .lr-speed { display: inline-flex; margin: 0; gap: 0; }
+#lw-player #lr-speed { min-height: 40px; padding: 6px 8px; width: 70px; border: 0; background: transparent; font-size: 13px; }
+#lw-player .lr-timeline-heading { grid-column: 2; grid-row: 2; display: block; font-size: 11px; font-variant-numeric: tabular-nums; color: #686970; }
+#lw-player #lr-time { grid-column: 1; grid-row: 2; min-height: 44px; height: 44px; margin: 0; accent-color: #2867d8; }
+#lw-player .lr-details { margin-top: 18px; border-top: 1px solid #e9e9eb; color: var(--muted); font-size: 12px; }
+#lw-player .lr-details > summary { padding: 12px 0; min-height: 44px; cursor: pointer; }
+/* The shared language widget supplies inline fixed positioning. Keep the
+   control in normal document flow so it cannot cover the replay timeline. */
+body:has(.view-data) #moonsuite-language { position: static !important; display: flex; width: max-content; margin: 0 24px 20px auto; z-index: auto !important; box-shadow: none !important; }
+
+@media(max-width:1000px) {
+  .app-shell:has(.view-data) .cockpit-tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .app-shell:has(.view-data) .cockpit-tab { padding: 6px 10px; }
+}
+@media(max-width:620px) {
+  .app-shell:has(.view-data) .cockpit-header { width: calc(100% - 24px); grid-template-columns: 1fr auto auto; gap: 2px 8px; padding: 4px 10px; border-radius: 18px; }
+  .app-shell:has(.view-data) .cockpit-identity h1 { font-size: 17px; }
+  .app-shell:has(.view-data) .cockpit-nav { grid-column: 1/-1; grid-row: 2; justify-content: space-between; width: 100%; }
+  .app-shell:has(.view-data) .cockpit-tab { min-height: 34px; flex: 1; padding-inline: 6px; }
+  .app-shell:has(.view-data) .cockpit-tab-label { position: static; width: auto; height: auto; clip-path: none; font-size: 11px; }
+  .app-shell:has(.view-data) .cockpit-tab .robo-glyph { display: none; }
+  .app-shell:has(.view-data) .cockpit-health { grid-column: 2; }
+  .app-shell:has(.view-data) .cockpit-global-actions { grid-column: 3; }
+  .app-shell:has(.view-data) .cockpit-global-actions .header-action { min-height: 36px; min-width: 36px; }
+  .view-data.cockpit-main { padding: 10px 12px 36px; }
+  .view-data > .workspace-tabs { width: 100%; margin-bottom: 8px; min-height: 44px; }
+  .view-data > .workspace-tabs .workspace-tab { min-height: 36px; padding: 6px 10px; font-size: 12px; }
+  #lw-player .lr-content .lr-selectors { gap: 6px; }
+  #lw-player .lr-selectors :is(select, #lw-experiment) { font-size: 12px; padding-left: 12px; padding-right: 20px; }
+  #lw-player .lr-dock { padding: 6px 10px 2px; border-radius: 22px; column-gap: 8px; }
+  #lw-player .lr-controls { gap: 4px; }
+  #lw-player .lr-controls button { width: 40px; min-width: 40px; }
+  #lw-player #lr-speed { width: 62px; padding: 6px 4px; }
+  #lw-player .lr-timeline-heading { font-size: 10px; }
+  #lw-player .lr-reference-toggle { top: 8px; right: 6px; }
+}
+@media(prefers-reduced-motion:reduce) { .view-data > .workspace-tabs { scroll-behavior: auto; } }
+#lw-player .lr-controls button, #lw-player #lr-speed { min-width: 44px; min-height: 44px; }
+.app-shell:has(.view-data) .cockpit-tab, .app-shell:has(.view-data) .cockpit-global-actions .header-action, .view-data > .workspace-tabs .workspace-tab { min-height: 44px; }

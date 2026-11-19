@@ -1,0 +1,16 @@
+{
+  "scene_sha256": "b9f8b0e0cbfa4a82c125ac330b38e1a8bf4c825252caf2c3d0dffe678ca5f7af",
+  "scene_assets_sha256": "fc49c7718967b5a595d581a54c1870f22a94b5c71bdcad79161dee149b0b0f3d",
+  "manifest_sha256": "64c21768fd7f2fad74d06153b1ada1faa958520abb8b234baa29d455572eb383",
+  "early": {
+    "iteration": 4,
+    "policy": "a044223b74f03001ffdeef2d14b5aa1ba3c50f82be65a9e2b4299266a3bd4ab0",
+    "state": "d7f0f0ec5703d3d7f6d56bb11b7768aab0bde8888049d323ed821fbc40189e96"
+  },
+  "final": {
+    "iteration": 14000,
+    "policy": "5888458a564ba6b9f6346b2dbdf940856850af5f773b5d24c5ebf346d20e9017",
+    "world": "0058451becdec01cb335394cfd17bc6f3c7e4559c23c5191cbb7f8ae60809248",
+    "state": "ed0a8b5d30fb2e97e6877c55c888227491caa00d7cce2c62b27ef854f2ab11b1"
+  }
+}

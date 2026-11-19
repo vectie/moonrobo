@@ -1,6 +1,7 @@
 // Inert digital evidence only. This module never calls a runtime, provider,
 // physical-command, retry, or Book acknowledgement endpoint.
 import { RETAINED_TRIAL_PANEL, mountRetainedTrials } from './digital-trial-catalogue.js'
+import { toolTabs, selectToolTab } from './tool-tabs.js'
 const API = '/api/moonrobo/digital-trials'
 const STATES = new Set(['digital-ready', 'blocked', 'unknown'])
 
@@ -57,14 +58,16 @@ export function downloadTrialExport(payload, trialId, document = globalThis.docu
 
 const PANEL = `
   <header class="digital-trials-heading">
-    <div><p class="eyebrow">MoonRobo / MoonMoon</p><h2 id="digital-trials-title">Digital trial inspection</h2></div>
-    <button id="dt-close" type="button" aria-label="Close digital trial inspection">Close</button>
+    <div><h2 id="digital-trials-title">Digital trials</h2></div>
+    <button id="dt-close" class="dialog-close" type="button" aria-label="Close digital trial inspection"><span class="close-mark" aria-hidden="true">×</span></button>
   </header>
-  <p class="digital-trials-boundary">Digital evidence only. Local physical authority: <strong>false</strong>. No robot execution or physical approval is available here.</p>
+  <p class="digital-trials-boundary">Simulation records · no robot control</p>
   <p id="dt-status" role="status" aria-live="polite">No trial loaded. Choose your MoonMoon files or re-open an existing trial.</p>
-  ${RETAINED_TRIAL_PANEL}
+  <div data-tool-workspace>
+  ${toolTabs('dt', [['import', 'Import', 'data'], ['inspect', 'Results', 'observe'], ['review', 'Review', 'shield'], ['compare', 'Compare', 'flask'], ['export', 'Export', 'data']])}
+  <div id="dt-panel-compare" role="tabpanel" aria-labelledby="dt-tab-compare" tabindex="0" hidden>${RETAINED_TRIAL_PANEL}</div>
   <div class="digital-trials-grid">
-    <section aria-labelledby="dt-import-title">
+    <section id="dt-panel-import" role="tabpanel" aria-labelledby="dt-tab-import" tabindex="0">
       <h3 id="dt-import-title">1. Import or re-open</h3>
       <label for="dt-trial-id">Trial ID</label>
       <input id="dt-trial-id" type="text" autocomplete="off" spellcheck="false" />
@@ -82,16 +85,15 @@ const PANEL = `
         <button id="dt-reopen" type="button">Re-open trial</button>
       </div>
     </section>
-    <section aria-labelledby="dt-inspection-title">
+    <section id="dt-panel-inspect" role="tabpanel" aria-labelledby="dt-tab-inspect" tabindex="0" hidden>
       <h3 id="dt-inspection-title">2. Inspect evidence</h3>
       <p id="dt-state" class="digital-trials-state" data-state="unknown">Digital-only state: unknown</p>
       <p id="dt-evidence-state">Digital result: unknown · binding: unknown · import acknowledgement: unknown</p>
       <p id="dt-revision">Revision: unavailable</p>
       <p id="dt-calibration" class="digital-trials-warning">Calibration evidence is absent or unqualified until inspected. Digital readiness does not qualify physical calibration.</p>
-      <p class="digital-trials-help">The complete host record and view below include evidence, calibration warnings, attempt history, and review notes. They do not grant physical authority.</p>
-      <pre id="dt-inspection" tabindex="0" aria-label="Digital trial host record">No host record loaded.</pre>
+      <details><summary>Record details</summary><pre id="dt-inspection" tabindex="0" aria-label="Digital trial host record">No host record loaded.</pre></details>
     </section>
-    <section aria-labelledby="dt-event-title">
+    <section id="dt-panel-review" role="tabpanel" aria-labelledby="dt-tab-review" tabindex="0" hidden>
       <h3 id="dt-event-title">3. Record an inert event</h3>
       <label for="dt-event-id">Unique event ID</label>
       <input id="dt-event-id" type="text" autocomplete="off" spellcheck="false" />
@@ -100,6 +102,7 @@ const PANEL = `
       <label for="dt-note">Event explanation or review note (required for every event)</label>
       <textarea id="dt-note" rows="3"></textarea>
       <p class="digital-trials-help">Every event uses the loaded revision. Nothing retries automatically. If a request has an uncertain outcome, re-open the trial before taking another action.</p>
+      <details><summary>Reconcile an interrupted import</summary>
       <button id="dt-lost-ack" type="button">Record lost import acknowledgement</button>
       <p class="digital-trials-help">This records only loss of an inert import acknowledgement. It does not simulate a robot command, dispatch, or retry.</p>
       <label for="dt-proof-file">Manual reconciliation: exact frozen result file</label>
@@ -107,16 +110,18 @@ const PANEL = `
       <small id="dt-proof-file-status">No proof chosen</small>
       <p class="digital-trials-help">For an unknown import acknowledgement only: select the same frozen result bytes from this attempt and supply a reviewer name and note. Reconciliation cannot start a new attempt or execute anything.</p>
       <button id="dt-reconcile" type="button">Reconcile this attempt</button>
+      </details>
       <button id="dt-review" type="button">Record named review</button>
       <p class="digital-trials-help">A review is an attributed note only. It does not grant execution, calibration, or physical authority.</p>
     </section>
-    <section aria-labelledby="dt-export-title">
+    <section id="dt-panel-export" role="tabpanel" aria-labelledby="dt-tab-export" tabindex="0" hidden>
       <h3 id="dt-export-title">4. Export for Book retention</h3>
       <p>After a failed digital result or inert acknowledgement-loss incident, record a named review of the latest revision, then download the host export as JSON for later Book retention.</p>
       <button id="dt-export" type="button">Download pending Book export</button>
       <p id="dt-export-status" class="digital-trials-warning">Book retention is pending. A download is not a Book acknowledgement.</p>
-      <pre id="dt-export-preview" tabindex="0" aria-label="Pending Book export">No export requested.</pre>
+      <details><summary>Export details</summary><pre id="dt-export-preview" tabindex="0" aria-label="Pending Book export">No export requested.</pre></details>
     </section>
+  </div>
   </div>`
 
 export function mountDigitalTrials({
@@ -302,6 +307,7 @@ export function mountDigitalTrials({
     if (!sessionId) throw new Error('Enter the MoonMoon session ID.')
     if (!files.dossier || !files.result) throw new Error('Choose both the exact dossier envelope and digital result files.')
     await mutate(id, '/import', { trial_id: id, session_id: sessionId, dossier_text: files.dossier, result_text: files.result })
+    selectToolTab(root, 'dt-panel-inspect')
     message('Digital evidence imported. Inspect the state and warnings; physical authority remains false.')
   }))
   const reopen = async (id, stillCurrent = () => true, replaceDraft = false) => {
@@ -326,8 +332,9 @@ export function mountDigitalTrials({
       fields['session-id'].value = verified.record.import_request.session_id || ''
     }
     display(payload, id)
-    fields['trial-id'].scrollIntoView?.({ block: 'center' })
-    fields['trial-id'].focus?.()
+    selectToolTab(root, 'dt-panel-review')
+    fields.reviewer.scrollIntoView?.({ block: 'center' })
+    fields.reviewer.focus?.()
     uncertainTrials.delete(id)
     message(inspection.acknowledgementState === 'unknown'
       ? 'Re-opened with an unknown import acknowledgement. Reconcile the same attempt with manual proof; nothing retries automatically.'

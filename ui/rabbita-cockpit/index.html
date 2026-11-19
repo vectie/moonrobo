@@ -4,18 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MoonRobo Cockpit</title>
+    <script src="/theme.js"></script>
   </head>
   <body>
     <div id="app"></div>
-    <button class="telemetry-review-launcher" id="telemetry-review-open" type="button" aria-haspopup="dialog" aria-controls="telemetry-review-dialog">Review historical telemetry</button>
+    <div id="learning-workspace-parking" hidden></div>
+    <button hidden id="telemetry-review-open" type="button" aria-haspopup="dialog" aria-controls="telemetry-review-dialog">Telemetry replay</button>
     <dialog id="telemetry-review-dialog" class="digital-trials-dialog" aria-labelledby="telemetry-review-title">
       <div id="telemetry-review-panel"></div>
     </dialog>
-    <button class="design-workbench-launcher" id="design-workbench-open" type="button" aria-haspopup="dialog" aria-controls="design-workbench-dialog">Design a digital robot</button>
+    <button hidden id="design-workbench-open" type="button" aria-haspopup="dialog" aria-controls="design-workbench-dialog">Robot designer</button>
     <dialog id="design-workbench-dialog" class="digital-trials-dialog" aria-labelledby="design-workbench-title">
       <div id="design-workbench-panel"></div>
     </dialog>
-    <button class="digital-trials-launcher" id="digital-trials-open" type="button" aria-haspopup="dialog" aria-controls="digital-trials-dialog">Digital trials · inspection only</button>
+    <button hidden id="digital-trials-open" type="button" aria-haspopup="dialog" aria-controls="digital-trials-dialog">Digital trials</button>
     <dialog id="digital-trials-dialog" class="digital-trials-dialog" aria-labelledby="digital-trials-title">
       <div id="digital-trials-panel"></div>
     </dialog>

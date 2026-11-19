@@ -1,0 +1,79 @@
+{
+  "motion": "dance/J_ShortDance14_Disco",
+  "method": "MuJoCo Python bindings, mj_forward, maximum active depth for unordered body pair",
+  "mujoco": "3.15.0",
+  "bodies": [
+    "l_arm_elbow_yaw_link",
+    "r_arm_elbow_pitch_link"
+  ],
+  "scene_sha256": "e82d81514ff228cfa5bcc17fca6b57d645ec0871c644a8ded6eb2aaa5b5c9747",
+  "panel_sha256": "c82ae0092b35f34a5858605c724637f49d3a7854d894d0faf373011ccceafc90",
+  "checks": {
+    "original": {
+      "reference_sha256": "2c91f432351a0ff73c50a62108f8bae448fc8634cba92b7abbd9e63e3ab9e80d",
+      "recorded_pose_sha256": "5e5e950359c1f1468af15dc898fe5e001dfd52f8458fdf4f5e7fa48564faef2c",
+      "reference": {
+        "frame_499_m": 0.0,
+        "peak_m": 0.0,
+        "frames_over_20mm": [],
+        "frames": 715
+      },
+      "recorded_pose": {
+        "frame_499_m": 0.0,
+        "peak_m": 0.0,
+        "frames_over_20mm": [],
+        "frames": 715
+      }
+    },
+    "arms-only": {
+      "reference_sha256": "cbff130c7db1ec0d8a2f8e7d5e25f27f7e2a0ded967c9330ece9068b81eb2d59",
+      "recorded_pose_sha256": "df1e9a545c68433fa1d87ec333794ef3d248e4ce339463aa0fba2675d3916a80",
+      "reference": {
+        "frame_499_m": 0.07220424633166296,
+        "peak_m": 0.07220424633166296,
+        "frames_over_20mm": [
+          499
+        ],
+        "frames": 715
+      },
+      "recorded_pose": {
+        "frame_499_m": 0.0,
+        "peak_m": 0.0,
+        "frames_over_20mm": [],
+        "frames": 715
+      }
+    },
+    "aggregate-guard": {
+      "reference_sha256": "a056ac89e8b66a4e636b35f226f6fd37c722eaef17ca550684f008ec0c28c3b9",
+      "recorded_pose_sha256": "0782ff8bace834098531f79857f43654b3c1d0a046f688657a52091c222601dc",
+      "reference": {
+        "frame_499_m": 0.004762252044716835,
+        "peak_m": 0.004762252044716835,
+        "frames_over_20mm": [],
+        "frames": 715
+      },
+      "recorded_pose": {
+        "frame_499_m": 0.0,
+        "peak_m": 0.0,
+        "frames_over_20mm": [],
+        "frames": 715
+      }
+    },
+    "arms-guarded": {
+      "reference_sha256": "4d7960f087a109ed060562019f8dcc136a890ef2a697c3b3ee0b6db7cd1b983c",
+      "recorded_pose_sha256": "dd089c089767ffb3e67d9029d9b574eede8df3c4a7a5a66f0384b7269a005942",
+      "reference": {
+        "frame_499_m": 0.0,
+        "peak_m": 0.0,
+        "frames_over_20mm": [],
+        "frames": 715
+      },
+      "recorded_pose": {
+        "frame_499_m": 0.0,
+        "peak_m": 0.0,
+        "frames_over_20mm": [],
+        "frames": 715
+      }
+    }
+  }
+}

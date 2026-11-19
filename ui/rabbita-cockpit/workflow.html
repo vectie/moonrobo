@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fff"><title>动作差距分析 · MoonRobo</title>
+  <link rel="icon" href="data:,"><link rel="stylesheet" href="./heldout/workflow.css">
+</head>
+<body>
+  <a class="skip" href="#main">跳至分析</a>
+  <header class="topbar"><a class="brand" href="./compare.html">MoonRobo</a><nav aria-label="评测"><a id="replay-link" href="./compare.html">双机回放</a><a aria-current="page" href="./workflow.html">差距分析</a></nav></header>
+  <main id="main">
+    <div class="intro-row"><div><h1>差距从哪里开始？</h1><p>Unitree G1 与 Noetix E1 · 40 条留出动作 · MuJoCo 实测</p></div>
+      <label class="picker">查看动作<select id="motion" disabled><option>载入动作…</option></select></label></div>
+    <p id="notice" role="status"></p>
+    <div id="analysis" hidden>
+      <section class="panel-overview" aria-labelledby="overview-title">
+        <h2 id="overview-title">40 条动作平均</h2>
+        <div class="tiles" id="overview"></div>
+      </section>
+      <section class="wf-section" aria-labelledby="flow-title">
+        <div class="head"><h2 id="flow-title">动作流程</h2><span id="motion-label"></span></div>
+        <ol class="flow" id="stages"></ol>
+      </section>
+      <section class="wf-section chart-section" aria-labelledby="time-title">
+        <div class="head"><h2 id="time-title">差距随时间变化</h2><label>指标 <select id="metric"><option value="return">累计归一化回报</option><option value="height">根部高度误差（m）</option><option value="tilt">竖直分量误差 |ΔRzz|</option></select></label></div>
+        <div class="legend"><span class="key g">G1</span><span class="key e">E1</span><span class="key stop">共同执行结束</span></div>
+        <svg id="plot" viewBox="0 0 860 190" preserveAspectRatio="none" role="img" aria-labelledby="plot-caption"></svg>
+        <p id="plot-caption"></p>
+        <label class="scrub">查看时刻 <input type="range" id="frame" min="0" step="1" value="0"></label>
+        <div class="readouts"><output id="reading"></output><div><button id="peak">分差变化最大的一秒</button><button id="jump">共同执行结束</button><a class="replay" id="frame-link" href="./compare.html">回放这一帧 ↗</a></div></div>
+      </section>
+      <div class="details-grid">
+        <section class="wf-section" aria-labelledby="terms-title"><div class="head"><h2 id="terms-title">共同执行段的奖励差</h2><label>范围 <select id="terms-scope"><option value="clip">所选动作</option><option value="all">40 条平均</option><option value="window">分差变化最大的一秒</option></select></label></div>
+          <a class="replay" id="orientation-link" href="./orientation.html">按部位查看朝向分差与对照实验 →</a><p id="term-caption"></p>
+          <table><thead><tr><th>奖励项</th><th>G1</th><th>E1</th><th>G1 − E1</th></tr></thead><tbody id="terms"></tbody></table>
+        </section>
+        <section class="wf-section" aria-labelledby="stop-title"><h2 id="stop-title">终止判据</h2>
+          <p>每步将机器人与各自参考对照。高度误差超过 0.25 m，或竖直分量误差超过 0.8 时终止。</p>
+          <div id="stops"></div>
+          <details><summary>数据与解释范围</summary><p>两台均从第 0 帧运行，策略各冻结在 14k。每条动作等权。逐步奖励、姿态和终止帧已与原评测核对。几何误差与回报使用不同单位。两种机体、训练集和策略同时变化，单项因果影响需要额外的对照实验。</p><a href="./heldout/workflow/manifest.json">下载逐动作指标与数据索引</a></details>
+        </section>
+      </div>
+      <details class="motion-list"><summary>横向对照全部 40 条动作</summary>
+        <table><caption>按整段回报差从大到小排序，点击动作查看流程</caption>
+          <thead><tr><th>动作</th><th>E1 拟合 RMS</th><th>共同执行差</th><th>停止后差</th><th>总差</th></tr></thead>
+          <tbody id="ranking"></tbody></table>
+      </details>
+    </div>
+  </main><script type="module" src="./heldout/workflow.js"></script>
+</body></html>

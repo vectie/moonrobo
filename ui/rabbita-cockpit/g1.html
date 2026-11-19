@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta
+      name="description"
+      content="Watch and run MoonRobo’s trained G1 policy and world model, and explore the results of 40 complete motion trials."
+    />
+    <title>MoonRobo · Whole-body motion</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./g1/site.css" />
+    <script>
+      if (new URLSearchParams(location.search).get("view") === "demo")
+        document.documentElement.classList.add("demo-only");
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="topbar">
+      <a class="brand" href="#main">MoonRobo</a>
+      <nav aria-label="Project">
+        <a class="nav-paper" href="./e1.html">E1</a>
+        <a href="./compare.html?motion=M_Move3">Compare motions</a>
+        <details id="explore">
+          <summary>Explore</summary>
+          <div class="nav-menu">
+            <a href="#highlights">Highlights</a><a href="#compute">Compute</a
+            ><a href="#lab">Web demo</a><a href="#method">How it works</a
+            ><a href="#films">World-model prediction</a
+            ><a href="#motion-study">G1 in motion</a
+            ><a href="#results">Failed motions</a><a href="#faq">Questions</a
+            ><a href="#paper">Paper and results</a>
+          </div>
+        </details>
+        <a class="nav-paper" href="#paper">Paper</a
+        ><a class="blue" href="#lab">Try it</a>
+      </nav>
+    </header>
+    <main id="main">
+      <section class="hero" aria-labelledby="title">
+        <div class="hero-type">
+          <p class="eyebrow">MoonRobo</p>
+          <h1 id="title">Whole-body motion.<br />One world model.</h1>
+          <p class="intro">
+            A humanoid motion policy trained in imagination on one DGX Spark.
+          </p>
+        </div>
+        <div class="hero-screen">
+          <video
+            id="hero-film"
+            muted
+            loop
+            playsinline
+            preload="none"
+            poster="./g1/studio-jump.jpg"
+            aria-label="Our final G1 policy performing a high jump in MuJoCo"
+          >
+            <source src="./g1/studio-jump.mp4" type="video/mp4" /></video
+          ><button id="hero-play" class="round" aria-label="Play hero film">
+            <span aria-hidden="true">▶</span>
+          </button>
+        </div>
+        <div class="hero-note">
+          <div>
+            <strong>1 GPU · 38 of 40 motions completed.</strong
+            ><span>Final G1 policy in native APIC simulation.</span>
+          </div>
+          <a class="blue" href="#results">Results</a>
+        </div>
+      </section>
+
+      <section id="highlights" class="band soft">
+        <div class="wide strip-head">
+          <h2>Run highlights.</h2>
+          <a href="#motion-study"
+            >Watch the film <span aria-hidden="true">⊙</span></a
+          >
+        </div>
+        <div
+          class="reel"
+          id="reel"
+          tabindex="0"
+          aria-label="Training highlights, scroll horizontally"
+        >
+          <article>
+            <h3>
+              256 simulated environments.<br />One GPU trains both learners.
+            </h3>
+            <img
+              loading="lazy"
+              src="./g1/environments.svg"
+              alt="A perspective grid of 256 simulated environments, eight rows by 32 columns"
+            />
+          </article>
+          <article>
+            <h3>
+              38 of 40 motions completed.<br />One policy for the whole panel.
+            </h3>
+            <img
+              loading="lazy"
+              src="./g1/studio-dance.jpg"
+              alt="Our final policy tracking a dance motion"
+            />
+          </article>
+          <article>
+            <h3>
+              One motion, two checkpoints.<br />Watch what the policy learned.
+            </h3>
+            <img
+              loading="lazy"
+              src="./g1/studio-jog.jpg"
+              alt="Final policy tracking the sideways jog"
+            />
+          </article>
+        </div>
+        <div class="reel-nav" role="group" aria-label="Select a highlight">
+          <button aria-label="Highlight 1" aria-pressed="true"></button
+          ><button aria-label="Highlight 2" aria-pressed="false"></button
+          ><button aria-label="Highlight 3" aria-pressed="false"></button>
+        </div>
+      </section>
+
+      <section id="compute" class="band">
+        <div class="section-title">
+          <p class="eyebrow">Compute</p>
+          <h2>One Spark.<br />Two learners.</h2>
+          <p>
+            One GB10 trained the world model and policy on 137,289 motions from
+            the BONES-SEED G1 training catalog.
+          </p>
+        </div>
+        <figure class="wide compute-art">
+          <img
+            src="./g1/spark.svg"
+            loading="lazy"
+            alt="Single-node DGX Spark training setup"
+          />
+          <figcaption>1 × NVIDIA GB10 <span>·</span> BF16 training</figcaption>
+        </figure>
+        <div class="narrow compute-report">
+          <h3>Return on the same 40 motions</h3>
+          <p>
+            Both checkpoints start each motion at frame zero in native APIC
+            physics.
+          </p>
+          <figure id="returns-figure" hidden>
+            <figcaption>
+              Normalized return per motion <span>● Iteration 4</span>
+              <span>● Iteration 14,000</span>
+            </figcaption>
+            <svg
+              id="returns-plot"
+              viewBox="0 0 750 224"
+              role="img"
+              aria-label="Paired motion returns. The final checkpoint scores higher on all 40 motions."
+            ></svg>
+            <label
+              >Inspect motion
+              <input
+                type="range"
+                id="inspect-return"
+                min="1"
+                max="40"
+                value="1"
+            /></label>
+            <output id="return-detail" for="inspect-return"></output>
+          </figure>
+          <p>Mean across the fixed panel</p>
+          <div class="measure">
+            <span>Iteration 4</span>
+            <div><i style="width: 10.0473%"></i></div>
+            <b>0.1005</b>
+          </div>
+          <div class="measure final">
+            <span>Iteration 14,000</span>
+            <div><i style="width: 86.3584%"></i></div>
+            <b>0.8636</b>
+          </div>
+        </div>
+      </section>
+
+      <section id="lab" class="band">
+        <div class="section-title">
+          <p class="eyebrow">Web demo</p>
+          <h2>Run our G1 policy<br />in your browser.</h2>
+          <p>Choose a motion and a checkpoint, then push the robot.</p>
+          <a href="./g1.html?view=demo" target="_blank" rel="noopener"
+            >Open the demo in a new tab ›</a
+          >
+        </div>
+        <div class="lab wide" id="lab-shell">
+          <div id="stage" class="stage">
+            <canvas
+              id="scene"
+              tabindex="0"
+              aria-label="Interactive G1 simulation. Drag to orbit; use the Push button to disturb the robot."
+            ></canvas>
+            <div id="poster">
+              <img src="./g1/scene-poster.jpg" loading="lazy" alt="" /><button
+                class="start"
+                id="start"
+              >
+                Start the demo <span aria-hidden="true">▶</span>
+              </button>
+            </div>
+            <div class="stage-hud" id="legend" hidden>
+              <strong>Live imagination</strong>
+              <div
+                class="lane-switch"
+                role="group"
+                aria-label="Visible trajectory"
+              >
+                <button data-lane="world" aria-pressed="true">
+                  World model</button
+                ><button data-lane="goal" aria-pressed="false">Goal</button
+                ><button data-lane="physics" aria-pressed="false">
+                  MuJoCo
+                </button>
+              </div>
+              <div class="telemetry">
+                <span id="step-count">Step 0 since reset</span>
+              </div>
+            </div>
+            <a class="lab-home" href="./g1.html#lab">‹ MoonRobo</a>
+            <div id="stage-info" role="status"></div>
+          </div>
+          <fieldset id="settings" disabled hidden>
+            <legend class="sr">Simulation controls</legend>
+            <div class="dock">
+              <button id="reset" aria-label="Reset motion" title="Reset motion">
+                ↺</button
+              ><button
+                id="play"
+                aria-label="Pause simulation"
+                title="Play or pause (Space)"
+              >
+                Ⅱ</button
+              ><button
+                id="options-open"
+                aria-label="Simulation settings"
+                aria-expanded="false"
+                aria-controls="lab-options"
+                title="Experiments and settings"
+              >
+                ⚙
+              </button>
+              <label class="toggle"
+                >Policy <input id="power" type="checkbox" checked
+              /></label>
+              <label class="slider"
+                >Action noise <output id="noise-out">0.00</output
+                ><input
+                  id="noise"
+                  type="range"
+                  min="0"
+                  max=".25"
+                  step=".01"
+                  value="0"
+              /></label>
+              <label class="slider"
+                >Friction
+                <output id="mu-out" title="Friction coefficient 1.00"
+                  >50%</output
+                ><input
+                  id="mu"
+                  type="range"
+                  min=".1"
+                  max="1.9"
+                  step=".05"
+                  value="1"
+              /></label>
+              <button
+                class="drawer-tab"
+                id="motions-open"
+                aria-controls="motions-drawer"
+                aria-expanded="false"
+              >
+                <span aria-hidden="true">☰</span
+                ><span id="motion-title">Motions</span>
+              </button>
+            </div>
+
+            <div
+              class="drawer picker"
+              id="motions-drawer"
+              aria-label="Motion library"
+              hidden
+            >
+              <label class="picker-filter"
+                ><span aria-hidden="true">⌕</span
+                ><input
+                  id="motion-search"
+                  type="search"
+                  placeholder="Filter motions"
+                  aria-label="Filter motions and experiments"
+              /></label>
+              <div id="motion-folders"></div>
+              <small class="picker-foot" id="library-size"></small>
+            </div>
+            <div
+              class="drawer settings-panel"
+              id="lab-options"
+              aria-label="Experiment settings"
+              hidden
+            >
+              <strong>Experiment settings</strong>
+              <label
+                >Checkpoint<select id="policy">
+                  <option value="final">Iteration 14,000</option>
+                  <option value="early">Iteration 4</option>
+                </select></label
+              >
+              <label class="toggle"
+                >World prediction<input id="prediction" type="checkbox" checked
+              /></label>
+              <label class="toggle"
+                >Side-by-side view<input id="split-view" type="checkbox"
+              /></label>
+              <label class="toggle"
+                >Replay after termination<input
+                  id="repeat"
+                  type="checkbox"
+                  checked
+              /></label>
+              <div class="tools">
+                <button id="step">Step</button
+                ><button id="push">Push robot</button
+                ><button id="stop-lab">Close simulation</button>
+              </div>
+              <div class="telemetry">
+                <span id="clock">0.00 s</span><span id="drift">Δ root —</span>
+              </div>
+            </div>
+          </fieldset>
+        </div>
+        <p class="caption">
+          Toggle MuJoCo to compare the solid simulated body with the translucent
+          blue world-model prediction. Goal adds the reference pose in gray.
+        </p>
+      </section>
+
+      <section id="method" class="band soft">
+        <div class="section-title">
+          <p class="eyebrow">How it works</p>
+          <h2>Two models.<br />One training loop.</h2>
+          <p>
+            The simulator provides experience. The world model supplies the
+            gradients that train the policy.
+          </p>
+        </div>
+        <div class="loop narrow">
+          <p class="feedback">Updated policy returns to the simulator</p>
+          <ol>
+            <li>
+              <small>01 / Physics</small>
+              <h3>Collect</h3>
+              <p>256 simulated G1 environments send transitions to replay.</p>
+            </li>
+            <li>
+              <small>02 / Dynamics</small>
+              <h3>Fit</h3>
+              <p>The world model learns to predict eight consecutive steps.</p>
+            </li>
+            <li>
+              <small>03 / Control</small>
+              <h3>Imagine</h3>
+              <p>
+                The actor follows 32 predicted steps and a critic tail value.
+              </p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="band" id="films">
+        <div class="wide">
+          <h2 class="section-lead">Inside a rollout.</h2>
+          <div class="look">
+            <div class="scenarios">
+              <p class="eyebrow">World-model prediction</p>
+              <h3>Change the conditions.</h3>
+              <p>
+                Compare the reference, the simulated robot and the learned
+                prediction. Try each setting in the live model.
+              </p>
+              <div class="preset-list">
+                <button data-preset="nominal">Policy on <span>›</span></button
+                ><button data-preset="off">Policy off <span>›</span></button
+                ><button data-preset="slip">
+                  Slippery floor <span>›</span>
+                </button>
+              </div>
+            </div>
+            <div>
+              <video
+                id="film"
+                controls
+                playsinline
+                preload="none"
+                poster="./g1/jog.webp"
+                src="./g1/jog.mp4"
+                aria-label="Recorded MoonRobo three-trajectory comparison"
+              ></video>
+              <div class="seg" role="group" aria-label="Choose a recording">
+                <button data-film="jog" aria-pressed="true">Final jog</button
+                ><button data-film="early" aria-pressed="false">
+                  Early jog</button
+                ><button data-film="turn" aria-pressed="false">
+                  360° turn
+                </button>
+              </div>
+              <strong id="film-title">Sideways jog · iteration 14,000</strong>
+              <p id="film-detail">
+                All 167 steps completed. Green: reference. Ivory: MuJoCo.
+                Copper: world model.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="motion-study" class="band">
+        <div class="section-title">
+          <p class="eyebrow">Unitree G1 · simulation</p>
+          <h2>Trained in imagination.<br />Moving in MuJoCo.</h2>
+          <p>
+            Watch a BONES-SEED hip-hop motion performed by the final policy.
+            This is a simulated rollout.
+          </p>
+        </div>
+        <video
+          class="wide cinema"
+          controls
+          playsinline
+          preload="none"
+          poster="./g1/studio-dance.jpg"
+          src="./g1/studio-dance.mp4"
+          aria-label="MoonRobo G1 dancing in browser physics"
+        ></video>
+      </section>
+
+      <section id="results" class="band soft">
+        <div class="section-title">
+          <p class="eyebrow">Failed motions</p>
+          <h2>From 39 to 2.</h2>
+          <p>
+            The early policy finished one of 40 motions. After 14,000 iterations
+            the same robot finished 38, under the same native APIC protocol.
+          </p>
+        </div>
+        <div class="narrow">
+          <h3 class="paired-title">The same sideways jog, before and after.</h3>
+          <div class="paired-action">
+            <button class="pill" id="paired-play">
+              Play both from the start ▷
+            </button>
+          </div>
+          <div class="paired">
+            <figure>
+              <video
+                controls
+                playsinline
+                preload="none"
+                poster="./g1/studio-early.jpg"
+                src="./g1/studio-early.mp4"
+                aria-label="Early G1 policy jog"
+              ></video>
+              <figcaption>
+                <b>Iteration 4</b> · Browser termination at step 41
+              </figcaption>
+            </figure>
+            <figure>
+              <video
+                controls
+                playsinline
+                preload="none"
+                poster="./g1/studio-jog.jpg"
+                src="./g1/studio-jog.mp4"
+                aria-label="Final G1 policy jog"
+              ></video>
+              <figcaption>
+                <b>Iteration 14,000</b> · Browser completed all 167 steps
+              </figcaption>
+            </figure>
+          </div>
+          <h3 class="table-title">Full native motion panel</h3>
+          <div class="filters">
+            <label
+              >Find a motion<input
+                id="search"
+                type="search"
+                placeholder="Search motion name" /></label
+            ><label
+              >Result<select id="filter">
+                <option value="all">All 40 motions</option>
+                <option value="fail">Final failures</option>
+                <option value="pass">Completed</option>
+              </select></label
+            ><a href="./g1/panel.json" download>Download results ↓</a>
+          </div>
+          <div
+            class="table-scroll"
+            tabindex="0"
+            aria-label="Per-motion results"
+          >
+            <table>
+              <caption id="count">
+                Loading motion results…
+              </caption>
+              <thead>
+                <tr>
+                  <th>Motion</th>
+                  <th>Early return</th>
+                  <th>Final return</th>
+                  <th>Final steps</th>
+                  <th>Explore</th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+          <p class="footnote">
+            These are training-catalog motions. Completion measures coverage of
+            this panel.
+          </p>
+        </div>
+      </section>
+
+      <section class="band">
+        <div class="narrow">
+          <h2 class="section-lead">Solver comparison.</h2>
+          <div class="compare">
+            <div>
+              <h3>Native APIC</h3>
+              <p>DGX Spark evaluation</p>
+              <strong>38 / 40</strong> completed
+            </div>
+            <div>
+              <h3>Browser MuJoCo</h3>
+              <p>Same final weights</p>
+              <strong>37 / 40</strong> completed
+            </div>
+          </div>
+          <p class="footnote">
+            Both solvers agreed on 39 outcomes. Wave-and-jog ended at 254 of 387
+            steps in the browser and completed in APIC.
+            <a href="./g1/physics-comparison.json" download
+              >Compare the motions ›</a
+            >
+          </p>
+        </div>
+      </section>
+
+      <section class="band soft" id="faq">
+        <div class="wide">
+          <h2 class="section-lead">About this run.</h2>
+          <div class="expand-row">
+            <button id="expand">Expand all ⌄</button>
+          </div>
+          <details class="qa">
+            <summary>What counts as a failure?</summary>
+            <p>
+              A root height deviation above 0.25 m or an upright-axis deviation
+              above 0.8 ends a rollout. The return denominator still uses the
+              planned full duration.
+            </p>
+          </details>
+          <details class="qa">
+            <summary>Which motions were tested?</summary>
+            <p>
+              Both checkpoints started at frame zero on the same 40 preselected
+              motions from the BONES-SEED training catalog.
+            </p>
+          </details>
+          <details class="qa">
+            <summary>Which model is running here?</summary>
+            <p>
+              The default policy and world model are MoonRobo’s iteration-14,000
+              BF16 exports. Switching to iteration 4 replaces the policy; the
+              learned dynamics stay at iteration 14,000.
+            </p>
+          </details>
+          <details class="qa">
+            <summary>Why can the live result differ?</summary>
+            <p>
+              MuJoCo WASM and native APIC use different physics implementations.
+              Browser arithmetic and pushes can also change the trajectory.
+            </p>
+          </details>
+          <details class="qa">
+            <summary>Has this policy run on a physical robot?</summary>
+            <p>
+              We evaluated the 29-joint G1 in simulation. Physical G1 and the
+              24-motor Noetix E1 have not been validated with this checkpoint.
+            </p>
+          </details>
+        </div>
+      </section>
+      <section id="paper" class="band">
+        <div class="citation">
+          <p class="eyebrow">Paper and results</p>
+          <h2>SuperMimic</h2>
+          <p>
+            The original research on humanoid whole-body control with a
+            differentiable world model.
+          </p>
+          <div class="links">
+            <a class="blue" href="https://arxiv.org/abs/2610.28480">Paper</a
+            ><a class="pill" href="https://supermimic.github.io/"
+              >Research site ↗</a
+            >
+          </div>
+          <hr />
+          <p>MoonRobo’s independent G1 implementation</p>
+          <a href="./results.html">Cockpit results ›</a> ·
+          <a href="./g1/checkpoints.json">Checkpoint identities ›</a>
+        </div>
+      </section>
+    </main>
+    <footer>
+      MoonRobo · G1 motion learning <a href="#main">Back to top ↑</a>
+    </footer>
+    <script type="module" src="./g1/page.js"></script>
+  </body>
+</html>

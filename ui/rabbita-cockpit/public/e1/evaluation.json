@@ -1,0 +1,84 @@
+{
+  "format": "moonrobo.supermimic-full-clip-evaluation.v1",
+  "protocol": {
+    "start_frame": 0,
+    "requested_horizon": "entire clip, no episode time limit",
+    "failure": "hard reference-relative training termination",
+    "normalization": "sum reward / ((frame_count - 1) * max_step_reward)",
+    "max_step_reward": 0.1,
+    "aggregation": "equal clip mean; separate frame-weighted mean",
+    "strict_tracking_is_separate": true,
+    "physical_settings": {
+      "robot": "noetix-e1-23-lab-v1",
+      "split": "validation",
+      "backend": "native-mujoco"
+    }
+  },
+  "n_clips": 2,
+  "norm_return": 0.013204368615178104,
+  "norm_return_framew": 0.013478325711130501,
+  "n_failed": 2,
+  "failed": [
+    "135_02",
+    "02_boxing"
+  ],
+  "n_completed": 0,
+  "incomplete_protocol_clips": [],
+  "missing_clips": [],
+  "unexpected_clips": [],
+  "benchmark_complete": true,
+  "evaluation_physical_steps": 78,
+  "evaluation_simulated_physical_steps": 78,
+  "catalog_clip_count": 2,
+  "full_catalog_evaluated": true,
+  "strict_tracking": {
+    "evaluated_clips": 0,
+    "passed_clips": 0,
+    "all_passed": false,
+    "interpretation": "additional engineering gate; not the paper's failure count"
+  },
+  "per_clip": [
+    {
+      "clip_id": "135_02",
+      "expected_steps": 2159,
+      "executed_steps": 52,
+      "undiscounted_return": 2.9355621575561077,
+      "maximum_full_clip_return": 215.9,
+      "normalized_return": 0.013596860387013004,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": [
+        52
+      ],
+      "metadata": {
+        "clip_index": 0,
+        "start_frame": 0
+      }
+    },
+    {
+      "clip_id": "02_boxing",
+      "expected_steps": 384,
+      "executed_steps": 26,
+      "undiscounted_return": 0.49197607078437916,
+      "maximum_full_clip_return": 38.400000000000006,
+      "normalized_return": 0.012811876843343206,
+      "failed": true,
+      "completed_full_duration": false,
+      "protocol_complete": true,
+      "termination_frame": [
+        26
+      ],
+      "metadata": {
+        "clip_index": 1,
+        "start_frame": 0
+      }
+    }
+  ],
+  "actor_archive_sha256": "24e5c6e408c069737bfcaef06c11746a544872ed99fda5d3d02a49f5fa5f5269",
+  "actor_metadata_sha256": "eb319766e3e745aebd96e847004201da72e6e4d46ef3a0dbf3b4c82d8de70d5c",
+  "tensor_library_sha256": "b08818ec2316e96f30fc7cbfcb80d5b16eed5d557d986f1edaf3597d8dda2da7",
+  "mujoco_library_sha256": "76845f2712200efaa5a38da7a004e944ecdb7397c41fd8b8ea7684a82d3e4bd0",
+  "split": "validation",
+  "generalization_scope": "separate source files; subject/action independence not established"
+}

@@ -15,7 +15,7 @@ fn operator_flow_blocked(model : AppModel) -> Bool {
 }
 
 ///|
-fn operator_flow_stage(model : AppModel) -> Int {
+fn operator_flow_stage(model : AppModel) -> Int32 {
   if operator_flow_blocked(model) {
     1
   } else if model.walk_executed {
@@ -33,10 +33,10 @@ fn operator_flow_stage(model : AppModel) -> Int {
 
 ///|
 fn operator_flow_step(
-  number : Int,
+  number : Int32,
   label : String,
   glyph : String,
-  current : Int,
+  current : Int32,
   blocked : Bool,
 ) -> Html {
   let state = if number < current {
@@ -53,6 +53,7 @@ fn operator_flow_step(
     @html.div([
       @html.span(label),
       @html.small(
+        class="visually-hidden",
         match state {
           "complete" => "Done"
           "blocked" => "Blocked"
@@ -68,7 +69,7 @@ fn operator_flow_step(
 fn operator_flow_action(
   dispatch : @rabbita.Emit[Msg],
   model : AppModel,
-  stage : Int,
+  stage : Int32,
 ) -> Html {
   let loading = model.loading ||
     model.evaluating ||
@@ -77,16 +78,16 @@ fn operator_flow_action(
     model.executing
   let (label, glyph, message, danger) = if model.error is Some(_) ||
     model.snapshot.bridge.telemetry_stale {
-    ("Refresh evidence", "refresh", RefreshSnapshot, false)
+    ("Reconnect", "refresh", RefreshSnapshot, false)
   } else if model.snapshot.read_only {
-    ("Open diagnostics", "diagnostics", SelectCockpitView("diagnostics"), false)
+    ("Check connection", "connection", SelectCockpitView("diagnostics"), false)
   } else {
     match stage {
-      2 => ("Evaluate command", "shield", EvaluateWalk, false)
-      3 => ("Run dry-run", "flask", CollectDryRun, false)
-      4 => ("Record approval", "approve", ApproveWalk, false)
-      5 => ("Execute approved command", "execute", ExecuteWalk, true)
-      _ => ("Evaluate next command", "refresh", EvaluateWalk, false)
+      2 => ("Check command", "shield", EvaluateWalk, false)
+      3 => ("Dry run", "flask", CollectDryRun, false)
+      4 => ("Approve command", "approve", ApproveWalk, false)
+      5 => ("Execute command", "execute", ExecuteWalk, true)
+      _ => ("Check next command", "refresh", EvaluateWalk, false)
     }
   }
   @html.button(
@@ -105,23 +106,20 @@ fn operator_flow_action(
 }
 
 ///|
-fn operator_flow_copy(model : AppModel, stage : Int) -> String {
+fn operator_flow_copy(model : AppModel, stage : Int32) -> String {
   if model.error is Some(_) {
-    "A request failed closed. Refresh current evidence before deciding whether a new attempt is safe."
+    "Connection unavailable. Reconnect to continue."
   } else if model.snapshot.bridge.telemetry_stale {
-    "Telemetry is stale. Physical effects stay unavailable until evidence is current."
+    "Telemetry is out of date. Refresh before continuing."
   } else if model.snapshot.read_only {
-    "This cockpit is read-only. Inspect diagnostics; do not infer physical authority from the preview."
+    "Read-only mode. Check the connection to enable control."
   } else {
     match stage {
-      2 => "Evaluate the bounded command against current safety policy."
-      3 =>
-        "Collect dry-run evidence before asking a person to approve an effect."
-      4 => "Bind named approval to the exact dry-run receipt."
-      5 =>
-        "Approval exists. Execution remains an explicit consequential action."
-      _ =>
-        "Execution is recorded. Editing the command clears prior dry-run and approval evidence."
+      2 => "Set your motion, then check the command."
+      3 => "Preview the command with a dry run."
+      4 => "Review the dry run, then approve this command."
+      5 => "Ready to execute. This will move the robot."
+      _ => "Command recorded. Edit the motion to start again."
     }
   }
 }
@@ -143,49 +141,50 @@ fn render_operator_flow(
     [
       @html.div(class="operator-flow-head", [
         @html.div([
-          @html.p(class="eyebrow", "Your outcome"),
-          @html.h2("Run one reviewed robot command"),
+          @html.h2(
+            if blocked {
+              "Connect to begin"
+            } else if model.walk_executed {
+              "Command complete"
+            } else {
+              "Ready for your next move"
+            },
+          ),
           @html.p(class="operator-flow-copy", operator_flow_copy(model, stage)),
         ]),
         @html.div(class="operator-flow-next", [
-          @html.small(
-            if blocked {
-              "SAFE RECOVERY"
-            } else {
-              "NEXT SAFE ACTION"
-            },
-          ),
           operator_flow_action(dispatch, model, stage),
         ]),
       ]),
       @html.div(class="operator-flow-rail", [
-        operator_flow_step(1, "Evidence", "observe", stage, blocked),
-        operator_flow_step(2, "Evaluate", "shield", stage, blocked),
+        operator_flow_step(1, "Connect", "connection", stage, blocked),
+        operator_flow_step(2, "Check", "shield", stage, blocked),
         operator_flow_step(3, "Dry-run", "flask", stage, blocked),
         operator_flow_step(4, "Approve", "approve", stage, blocked),
         operator_flow_step(5, "Execute", "execute", stage, blocked),
       ]),
-      @html.div(
-        class=if blocked {
-          "operator-flow-result is-denied"
-        } else {
-          "operator-flow-result"
-        },
-        attrs=@html.Attrs::build().role("status").aria_live("polite"),
-        [
-          @html.strong(
-            if blocked {
-              "Physical effect denied"
-            } else if model.walk_executed {
-              "Execution recorded"
-            } else {
-              "Current result"
-            },
-          ),
-          @html.span(result),
-          @html.small("MoonRobo safety gate owns the physical-effect boundary"),
-        ],
-      ),
+      disclosure("Command status", [
+        @html.div(
+          class=if blocked {
+            "operator-flow-result is-denied"
+          } else {
+            "operator-flow-result"
+          },
+          attrs=@html.Attrs::build().role("status").aria_live("polite"),
+          [
+            @html.strong(
+              if blocked {
+                "Physical effect denied"
+              } else if model.walk_executed {
+                "Execution recorded"
+              } else {
+                "Current result"
+              },
+            ),
+            @html.span(result),
+          ],
+        ),
+      ]),
     ],
   )
 }

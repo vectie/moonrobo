@@ -1,0 +1,38 @@
+{
+  "gate_passed": true,
+  "iteration": 2,
+  "counters": {
+    "physical_transitions": "10752",
+    "imagined_transitions": "32768",
+    "actor_updates": "2",
+    "model_updates": "20",
+    "critic_updates": "40",
+    "model_fit_transition_slots": "40960"
+  },
+  "train_clips": 5,
+  "validation_clips": 1,
+  "train_completed": 0,
+  "validation_completed": 0,
+  "train_normalized_return": 0.02977815601005654,
+  "validation_normalized_return": 0.010483936188956924,
+  "memory_admission": {
+    "format": "moonrobo.e1-eager-memory-admission.v1",
+    "estimated_peak_bytes": "10267132032",
+    "limiting_available_bytes": "107178258432",
+    "admission_percent": 65,
+    "budget_bytes": "69665867960",
+    "accepted": true,
+    "scope": "conservative eager envelope including reference expansion, replay, optimizer/archive copies and BPTT; not a measured peak or OOM guarantee"
+  },
+  "cuda_memory": {
+    "device": 0,
+    "synchronized": true,
+    "allocated_current_bytes": "276420608",
+    "allocated_peak_bytes": "682162176",
+    "reserved_current_bytes": "912261120",
+    "reserved_peak_bytes": "912261120",
+    "cuda_free_bytes": "51542134784",
+    "cuda_total_bytes": "130661138432"
+  },
+  "scope": "software/update/evaluation gate; full-motion completion is measured separately from protocol coverage"
+}

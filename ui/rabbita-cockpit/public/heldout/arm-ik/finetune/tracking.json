@@ -1,0 +1,360 @@
+{
+  "panel_sha256": "c82ae0092b35f34a5858605c724637f49d3a7854d894d0faf373011ccceafc90",
+  "actor_sha256": [
+    "fd2104e257635ef824efb92b1816d8d7159a550b0f2f10fa64b7ed329c2ba8c3",
+    "cb19cb882ee07c1a3c63c0b60ec3385bed4d2d7496bad3026457c492852269ba"
+  ],
+  "common_steps": 58558,
+  "order": [
+    "frozen_14k",
+    "fine_tuned"
+  ],
+  "right_shoulder_tracking_rmse_deg": [
+    32.65650129461345,
+    34.02974861331548
+  ],
+  "foot_stance_common": [
+    {
+      "samples": 72818,
+      "touching": 66643,
+      "near": 68502,
+      "lifted": 824,
+      "peak_penetration_m": 0.025374697368350102,
+      "squared_depth": 0.1456500319937443,
+      "slip_samples": 66162,
+      "slip_distance_m": 36.37033362485648
+    },
+    {
+      "samples": 72818,
+      "touching": 65816,
+      "near": 67731,
+      "lifted": 1167,
+      "peak_penetration_m": 0.0283400382287676,
+      "squared_depth": 0.1614638066618036,
+      "slip_samples": 65341,
+      "slip_distance_m": 35.980291272298516
+    }
+  ],
+  "per_clip": [
+    {
+      "id": "dance/B_DadDance",
+      "common_steps": 2090,
+      "right_shoulder_tracking_rmse_deg": [
+        11.655468861111103,
+        12.105579789138325
+      ]
+    },
+    {
+      "id": "dance/B_LongDance",
+      "common_steps": 3205,
+      "right_shoulder_tracking_rmse_deg": [
+        68.58356270255464,
+        68.79791354907677
+      ]
+    },
+    {
+      "id": "dance/B_SpiralDance",
+      "common_steps": 2389,
+      "right_shoulder_tracking_rmse_deg": [
+        25.573620524848756,
+        26.64372033339895
+      ]
+    },
+    {
+      "id": "dance/B_StretchDance",
+      "common_steps": 2154,
+      "right_shoulder_tracking_rmse_deg": [
+        25.88069158940197,
+        26.12395196969073
+      ]
+    },
+    {
+      "id": "dance/J_Dance0_StepTouch",
+      "common_steps": 1623,
+      "right_shoulder_tracking_rmse_deg": [
+        21.74307763088766,
+        22.552481535063624
+      ]
+    },
+    {
+      "id": "dance/J_Dance11_Gnarly",
+      "common_steps": 2256,
+      "right_shoulder_tracking_rmse_deg": [
+        59.57615679637592,
+        60.46335356762927
+      ]
+    },
+    {
+      "id": "dance/J_Dance12_LushLife",
+      "common_steps": 1391,
+      "right_shoulder_tracking_rmse_deg": [
+        29.35735679008011,
+        35.09462239977555
+      ]
+    },
+    {
+      "id": "dance/J_Dance17_Shuffle",
+      "common_steps": 1600,
+      "right_shoulder_tracking_rmse_deg": [
+        21.851960725182337,
+        24.165281185375015
+      ]
+    },
+    {
+      "id": "dance/J_Dance18_TikTok",
+      "common_steps": 896,
+      "right_shoulder_tracking_rmse_deg": [
+        22.395858001229595,
+        26.120127493174895
+      ]
+    },
+    {
+      "id": "dance/J_Dance19_LetsGO",
+      "common_steps": 1241,
+      "right_shoulder_tracking_rmse_deg": [
+        24.331747813965393,
+        25.086981248535526
+      ]
+    },
+    {
+      "id": "dance/J_Dance1_Modern",
+      "common_steps": 1023,
+      "right_shoulder_tracking_rmse_deg": [
+        27.013624551900204,
+        30.23085742203579
+      ]
+    },
+    {
+      "id": "dance/J_Dance20_DWG",
+      "common_steps": 780,
+      "right_shoulder_tracking_rmse_deg": [
+        23.511623568878264,
+        26.619232824793098
+      ]
+    },
+    {
+      "id": "dance/J_Dance22_Thrilling",
+      "common_steps": 1348,
+      "right_shoulder_tracking_rmse_deg": [
+        31.269140653844474,
+        34.03657130895699
+      ]
+    },
+    {
+      "id": "dance/J_Dance23_MidnightSun",
+      "common_steps": 2428,
+      "right_shoulder_tracking_rmse_deg": [
+        52.6690956280877,
+        53.20101109909073
+      ]
+    },
+    {
+      "id": "dance/J_Dance3_Woah",
+      "common_steps": 1499,
+      "right_shoulder_tracking_rmse_deg": [
+        33.531262151041226,
+        36.061201869932255
+      ]
+    },
+    {
+      "id": "dance/J_Dance4_Broadway",
+      "common_steps": 1396,
+      "right_shoulder_tracking_rmse_deg": [
+        25.67141958150765,
+        35.23173453154169
+      ]
+    },
+    {
+      "id": "dance/J_Dance5_Hype",
+      "common_steps": 1579,
+      "right_shoulder_tracking_rmse_deg": [
+        62.6127230609103,
+        64.54083203677216
+      ]
+    },
+    {
+      "id": "dance/J_Dance8_WestCoast",
+      "common_steps": 1995,
+      "right_shoulder_tracking_rmse_deg": [
+        23.313043374522376,
+        24.468060682586913
+      ]
+    },
+    {
+      "id": "dance/J_ShortDance14_Disco",
+      "common_steps": 714,
+      "right_shoulder_tracking_rmse_deg": [
+        24.12037704945901,
+        26.43834576740144
+      ]
+    },
+    {
+      "id": "dance/J_ShortDance16_JazzWalk",
+      "common_steps": 530,
+      "right_shoulder_tracking_rmse_deg": [
+        19.387485170823137,
+        18.36228029044624
+      ]
+    },
+    {
+      "id": "karate/B_AttackKarate",
+      "common_steps": 2358,
+      "right_shoulder_tracking_rmse_deg": [
+        54.385214721806456,
+        51.38409086809709
+      ]
+    },
+    {
+      "id": "karate/B_BowKarate",
+      "common_steps": 1877,
+      "right_shoulder_tracking_rmse_deg": [
+        41.23301281659681,
+        42.76188476577688
+      ]
+    },
+    {
+      "id": "karate/B_ChopsKarate",
+      "common_steps": 2632,
+      "right_shoulder_tracking_rmse_deg": [
+        15.30214128681063,
+        15.587907124446518
+      ]
+    },
+    {
+      "id": "karate/B_CrazyChopsKarate",
+      "common_steps": 1209,
+      "right_shoulder_tracking_rmse_deg": [
+        21.089840652412942,
+        22.56340307911882
+      ]
+    },
+    {
+      "id": "karate/B_ForwardKarate",
+      "common_steps": 1815,
+      "right_shoulder_tracking_rmse_deg": [
+        23.073590339495112,
+        24.58671137229637
+      ]
+    },
+    {
+      "id": "karate/B_LongKarate",
+      "common_steps": 2400,
+      "right_shoulder_tracking_rmse_deg": [
+        15.984009661894047,
+        16.621314713174023
+      ]
+    },
+    {
+      "id": "karate/B_SpinKarate",
+      "common_steps": 1282,
+      "right_shoulder_tracking_rmse_deg": [
+        27.93951577875588,
+        28.426322743783874
+      ]
+    },
+    {
+      "id": "karate/M_Move1",
+      "common_steps": 1557,
+      "right_shoulder_tracking_rmse_deg": [
+        20.071958745122927,
+        20.25872583284043
+      ]
+    },
+    {
+      "id": "karate/M_Move17",
+      "common_steps": 1330,
+      "right_shoulder_tracking_rmse_deg": [
+        78.14489792709131,
+        79.65136149213008
+      ]
+    },
+    {
+      "id": "karate/M_Move19",
+      "common_steps": 842,
+      "right_shoulder_tracking_rmse_deg": [
+        21.51073680321388,
+        22.74684203126257
+      ]
+    },
+    {
+      "id": "karate/M_Move2",
+      "common_steps": 1821,
+      "right_shoulder_tracking_rmse_deg": [
+        21.956552557296668,
+        22.119957553504374
+      ]
+    },
+    {
+      "id": "karate/M_Move3",
+      "common_steps": 624,
+      "right_shoulder_tracking_rmse_deg": [
+        18.807253487164925,
+        18.638946637449134
+      ]
+    },
+    {
+      "id": "karate/M_Move5",
+      "common_steps": 1798,
+      "right_shoulder_tracking_rmse_deg": [
+        19.001911660738678,
+        21.72924937320955
+      ]
+    },
+    {
+      "id": "karate/M_Move6",
+      "common_steps": 1780,
+      "right_shoulder_tracking_rmse_deg": [
+        19.32216343908063,
+        20.511639663185992
+      ]
+    },
+    {
+      "id": "karate/M_Move7",
+      "common_steps": 1190,
+      "right_shoulder_tracking_rmse_deg": [
+        19.032441294577353,
+        21.48020370027876
+      ]
+    },
+    {
+      "id": "karate/M_Move8",
+      "common_steps": 376,
+      "right_shoulder_tracking_rmse_deg": [
+        24.891761559021138,
+        28.27693622557716
+      ]
+    },
+    {
+      "id": "karate/M_ShortMove12",
+      "common_steps": 388,
+      "right_shoulder_tracking_rmse_deg": [
+        14.490389446097346,
+        14.363711840785502
+      ]
+    },
+    {
+      "id": "karate/M_ShortMove13",
+      "common_steps": 448,
+      "right_shoulder_tracking_rmse_deg": [
+        18.53825100009785,
+        18.75195950857608
+      ]
+    },
+    {
+      "id": "karate/M_ShortMove14",
+      "common_steps": 326,
+      "right_shoulder_tracking_rmse_deg": [
+        17.950088983139498,
+        20.85391744939317
+      ]
+    },
+    {
+      "id": "karate/M_ShortMove16",
+      "common_steps": 368,
+      "right_shoulder_tracking_rmse_deg": [
+        22.243677713523294,
+        25.268113174514966
+      ]
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+@import url("./site.css");
+#main { margin-top:34px; }
+.intro-row { align-items:center; }
+.intro-row h1 { font-size:clamp(30px,4vw,49px); }
+.wf-section, .panel-overview { margin-top:24px; }
+.panel-overview { background:#edf4f2; padding:19px 22px 21px; border-radius:14px; }
+#analysis h2 { font-size:22px; letter-spacing:-.025em; }
+.tiles { display:grid; grid-template-columns:1.16fr 1fr 1fr; margin-top:13px; gap:16px; }
+.tile { display:flex; flex-direction:column; gap:2px; }
+.tile strong { font:650 clamp(22px,3vw,35px)/1.2 "Inter Tight",Inter,sans-serif; font-variant-numeric:tabular-nums; color:var(--teal); }
+.tile small,.tile span { font-size:13px; color:#354d48; }
+.tile span { font-weight:650; }
+.head,.readouts { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+.head > span,.head label { color:#505e60; font-size:14px; }
+.flow { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); list-style:none; margin:13px 0 0; padding:0; border-block:1px solid #ccd7d4; }
+.flow li { padding:15px 14px; border-left:1px solid #d9dfde; }
+.flow li:first-child { border-left:none; padding-left:0; }
+.flow h3,.outcome h3 { margin:0 0 8px; font-weight:650; font-size:15px; }
+.flow h3 span { color:var(--teal); margin-right:5px; }
+.flow p,.wf-section p,.outcome { font-size:14px; color:#485558; line-height:1.55; }
+.flow b { display:block; color:#243331; margin:0 0 4px; font-size:15px; }
+.chart-section { border:1px solid #d1dad8; border-radius:16px; padding:19px 22px 16px; }
+.legend,.readouts > div { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.legend { margin:10px 0 0; color:#455; font-size:12px; }
+.key:before { content:""; width:20px; display:inline-block; vertical-align:middle; margin-right:6px; border-top:3px solid var(--teal); }
+.key.e:before { border-top:3px dashed var(--rust); }.key.stop:before { width:8px; border-top:2px dotted #555; }
+#plot { display:block; width:100%; height:195px; overflow:visible; }
+#plot text { font-family:Inter,sans-serif; fill:#48565a; font-size:12px; }
+#plot-caption { font-size:13px; color:#4a5c59; }
+.scrub { display:flex; align-items:center; gap:10px; font-size:13px; color:#42514f; margin:4px 0; }
+.scrub input { flex:1; min-width:0; height:30px; accent-color:var(--teal); }
+.readouts { font-size:14px; font-variant-numeric:tabular-nums; font-weight:550; }
+.readouts button,.replay { min-height:36px; display:inline-flex; align-items:center; color:var(--teal); font-size:14px; text-decoration:underline; padding:3px; }
+.details-grid { display:grid; grid-template-columns:1.18fr 1fr; gap:32px; margin:30px 0 50px; }
+.details-grid .wf-section { margin:0; }
+.details-grid p { margin:9px 0; } table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; font-size:13px; } th,td { text-align:right; padding:6px 2px; border-bottom:1px solid #dce3e1; } th:first-child { text-align:left; } tbody th { font-weight:500; } td:last-child { font-weight:650; }
+.outcome { padding:10px 0; border-bottom:1px solid #dce3e1; }.outcome h3 { margin:0; color:#233c36; }.outcome p { margin:2px 0; }
+details { margin:12px 0; font-size:14px; } summary { cursor:pointer; font-weight:600; } details a { text-decoration:underline; color:var(--teal); }
+@media(max-width:760px){ .flow { grid-template-columns:1fr 1fr; } .flow li:nth-child(3){ border-left:0; padding-left:0; } .flow li:nth-child(n+3){border-top:1px solid #d9dfde;} .details-grid{grid-template-columns:1fr;} }
+@media(max-width:550px){ #main{width:93%; margin-top:20px;} .panel-overview,.chart-section{padding:12px;} .tiles{gap:8px;} .tile small,.tile span{font-size:12px;} #plot{height:180px;} .head label select{font-size:13px;} .readouts {gap:4px;} .intro-row{align-items:stretch;} .flow li{padding:10px 8px;} .topbar nav a{padding:6px 9px;} }
+
+.overview-note { margin-top:12px; font-size:12px; color:#495b56; }
+
+.motion-list{border-top:1px solid #ccd7d4;padding:14px 0;margin:0 0 40px;} .motion-list caption{text-align:left;color:#485558;margin:15px 0 5px;} .motion-list td{white-space:nowrap;} .motion-list th a{overflow-wrap:anywhere;}
+@media(max-width:550px){.motion-list table{font-size:11px;}.motion-list table th{word-break:normal;}}

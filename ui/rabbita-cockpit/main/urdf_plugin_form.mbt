@@ -39,7 +39,7 @@ fn plugin_parameters_from_extension(
             } else {
               match after_open.split_once("</\{name}>") {
                 Some((value, rest)) => {
-                  parameters.push({ name, value: value.trim().to_owned() })
+                  parameters.push({ name, value: value.trim().to_owned(), })
                   remaining = rest.to_owned()
                 }
                 None => remaining = ""
@@ -57,14 +57,14 @@ fn plugin_parameters_from_extension(
 ///|
 fn update_plugin_parameter_name(
   parameters : Array[UrdfEditorPluginParameterForm],
-  target_index : Int,
+  target_index : Int32,
   value : String,
 ) -> Array[UrdfEditorPluginParameterForm] {
   let next : Array[UrdfEditorPluginParameterForm] = []
   for index in 0..<parameters.length() {
     let parameter = parameters[index]
     if index == target_index {
-      next.push({ ..parameter, name: value })
+      next.push({ ..parameter, name: value, })
     } else {
       next.push(parameter)
     }
@@ -75,7 +75,7 @@ fn update_plugin_parameter_name(
 ///|
 fn update_plugin_parameter_value(
   parameters : Array[UrdfEditorPluginParameterForm],
-  target_index : Int,
+  target_index : Int32,
   value : String,
 ) -> Array[UrdfEditorPluginParameterForm] {
   let next : Array[UrdfEditorPluginParameterForm] = []
@@ -93,7 +93,7 @@ fn update_plugin_parameter_value(
 ///|
 fn remove_plugin_parameter(
   parameters : Array[UrdfEditorPluginParameterForm],
-  target_index : Int,
+  target_index : Int32,
 ) -> Array[UrdfEditorPluginParameterForm] {
   let next : Array[UrdfEditorPluginParameterForm] = []
   for index in 0..<parameters.length() {
@@ -112,7 +112,7 @@ fn append_plugin_parameter(
   for parameter in parameters {
     next.push(parameter)
   }
-  next.push({ name: "", value: "" })
+  next.push({ name: "", value: "", })
   next
 }
 
@@ -145,7 +145,7 @@ fn plugin_parameters_from_single_fields(
   if name.trim() == "" && value.trim() == "" {
     []
   } else {
-    [{ name, value }]
+    [{ name, value, }]
   }
 }
 
@@ -221,7 +221,7 @@ fn plugin_parameter_schema_for_name(
 fn plugin_parameter_form_index(
   parameters : Array[UrdfEditorPluginParameterForm],
   name : String,
-) -> Int? {
+) -> Int32? {
   for index in 0..<parameters.length() {
     if parameters[index].name == name {
       return Some(index)
@@ -245,7 +245,7 @@ fn plugin_parameter_patches_from_form(
   let patches : Array[@urdf_editor.UrdfPluginParameterPatch] = []
   for parameter in parameters {
     if parameter.name.trim() != "" {
-      patches.push({ name: parameter.name, value: parameter.value })
+      patches.push({ name: parameter.name, value: parameter.value, })
     }
   }
   patches

@@ -1,0 +1,742 @@
+{
+  "actor_sha256": {
+    "baseline": "fd2104e257635ef824efb92b1816d8d7159a550b0f2f10fa64b7ed329c2ba8c3",
+    "candidate": "cb19cb882ee07c1a3c63c0b60ec3385bed4d2d7496bad3026457c492852269ba"
+  },
+  "development40": {
+    "motions": 40,
+    "baseline_mean_return": 0.6774316924293095,
+    "candidate_mean_return": 0.6868655656700563,
+    "paired_return_delta": 0.009433873240746848,
+    "baseline_completed": 36,
+    "candidate_completed": 37,
+    "gained": [
+      "dance/J_Dance1_Modern",
+      "karate/M_Move3"
+    ],
+    "lost": [
+      "dance/B_LongDance"
+    ]
+  },
+  "fresh21": {
+    "motions": 21,
+    "baseline_mean_return": 0.7195127968371692,
+    "candidate_mean_return": 0.7093838587213548,
+    "paired_return_delta": -0.01012893811581439,
+    "baseline_completed": 19,
+    "candidate_completed": 18,
+    "gained": [],
+    "lost": [
+      "dance/J_Dance2_Salsa"
+    ]
+  },
+  "fresh_by_category": {
+    "bonus": {
+      "motions": 6,
+      "baseline_mean_return": 0.8216123728540706,
+      "candidate_mean_return": 0.8164552346028616,
+      "paired_return_delta": -0.005157138251209004,
+      "baseline_completed": 6,
+      "candidate_completed": 6,
+      "gained": [],
+      "lost": []
+    },
+    "dance": {
+      "motions": 8,
+      "baseline_mean_return": 0.7434253268280422,
+      "candidate_mean_return": 0.7288669410419567,
+      "paired_return_delta": -0.014558385786085482,
+      "baseline_completed": 7,
+      "candidate_completed": 6,
+      "gained": [],
+      "lost": [
+        "dance/J_Dance2_Salsa"
+      ]
+    },
+    "karate": {
+      "motions": 7,
+      "baseline_mean_return": 0.6046702688331133,
+      "candidate_mean_return": 0.595342013885089,
+      "paired_return_delta": -0.00932825494802425,
+      "baseline_completed": 6,
+      "candidate_completed": 6,
+      "gained": [],
+      "lost": []
+    }
+  },
+  "development_motions": [
+    {
+      "motion": "dance/B_DadDance",
+      "reference_sha256": "9ce5424d4d18b4926d205153ccdbe450f53acc10c5922325f851d02573db14bd",
+      "expected_steps": 2090,
+      "baseline_steps": 2090,
+      "candidate_steps": 2090,
+      "baseline_return": 0.8593683186269627,
+      "candidate_return": 0.8537171529914725,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/B_LongDance",
+      "reference_sha256": "77a093063431cae6f2a4f6ab9eed650af7198bad1fec6199e3bc4128f928e30d",
+      "expected_steps": 5971,
+      "baseline_steps": 5971,
+      "candidate_steps": 3205,
+      "baseline_return": 0.6568204297440114,
+      "candidate_return": 0.3238118296300394,
+      "baseline_completed": true,
+      "candidate_completed": false
+    },
+    {
+      "motion": "dance/B_SpiralDance",
+      "reference_sha256": "7b431244f3a50306c8a23d12066693a3d0edd0b63481931ef247903581b587d7",
+      "expected_steps": 2389,
+      "baseline_steps": 2389,
+      "candidate_steps": 2389,
+      "baseline_return": 0.7708370025773047,
+      "candidate_return": 0.7672338210099752,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/B_StretchDance",
+      "reference_sha256": "e54967c19c98628497d637b89ae5e5a8be0f0c9590b871e2eee1f2e0f7aa7742",
+      "expected_steps": 2154,
+      "baseline_steps": 2154,
+      "candidate_steps": 2154,
+      "baseline_return": 0.7280328201426147,
+      "candidate_return": 0.7385389800806748,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance0_StepTouch",
+      "reference_sha256": "7947645606fcb5693e2749d425ce46eddb986c6c2c2f7d9a93930e9d2fbee712",
+      "expected_steps": 1623,
+      "baseline_steps": 1623,
+      "candidate_steps": 1623,
+      "baseline_return": 0.7268808148201265,
+      "candidate_return": 0.7335884151386648,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance11_Gnarly",
+      "reference_sha256": "a59ad209cb7528b8db018759ee1d6a82ea5d3343b1a427510c156cc913ad2f9e",
+      "expected_steps": 2256,
+      "baseline_steps": 2256,
+      "candidate_steps": 2256,
+      "baseline_return": 0.6876116010080588,
+      "candidate_return": 0.7055051103893906,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance12_LushLife",
+      "reference_sha256": "66d3ee78d3d26ce8fa624a35dd166168e03f10f01816c1ae81bc853f8e663faa",
+      "expected_steps": 1779,
+      "baseline_steps": 1391,
+      "candidate_steps": 1402,
+      "baseline_return": 0.5328740869541474,
+      "candidate_return": 0.5175200002939767,
+      "baseline_completed": false,
+      "candidate_completed": false
+    },
+    {
+      "motion": "dance/J_Dance17_Shuffle",
+      "reference_sha256": "85b0d0f3752e1f21b7968e92006a003b7c5fc3a0a13aa17096cbe08b2ebad0bb",
+      "expected_steps": 1600,
+      "baseline_steps": 1600,
+      "candidate_steps": 1600,
+      "baseline_return": 0.6776779171925805,
+      "candidate_return": 0.6412192742239705,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance18_TikTok",
+      "reference_sha256": "680c256764112f5af250356614c85cae0e0ab5fcc36fb8fbaa6c5fafe9395f2f",
+      "expected_steps": 896,
+      "baseline_steps": 896,
+      "candidate_steps": 896,
+      "baseline_return": 0.6797427234195949,
+      "candidate_return": 0.6936026547472434,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance19_LetsGO",
+      "reference_sha256": "3b20ee941bafea9b88143efec25442c91e7d967ec49113ee53bceb2b1d0faa90",
+      "expected_steps": 1241,
+      "baseline_steps": 1241,
+      "candidate_steps": 1241,
+      "baseline_return": 0.7372887508687007,
+      "candidate_return": 0.7546858259772697,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance1_Modern",
+      "reference_sha256": "db52ca1090565b18fda972e698845bb126898e1b9f1c4620831dbfc2dad46769",
+      "expected_steps": 1886,
+      "baseline_steps": 1023,
+      "candidate_steps": 1886,
+      "baseline_return": 0.41894134706462477,
+      "candidate_return": 0.7085566961798531,
+      "baseline_completed": false,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance20_DWG",
+      "reference_sha256": "75e0ce89b0834f83bb49cc005bd207e9c471d76a80565487fe6dc2e791aab6a7",
+      "expected_steps": 780,
+      "baseline_steps": 780,
+      "candidate_steps": 780,
+      "baseline_return": 0.8365876765346919,
+      "candidate_return": 0.8353766320526292,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance22_Thrilling",
+      "reference_sha256": "9e18c40e7ec0671ea0f420bae2e2afdd726afea15a748f1b0ad88983a306166e",
+      "expected_steps": 1348,
+      "baseline_steps": 1348,
+      "candidate_steps": 1348,
+      "baseline_return": 0.7194305196268973,
+      "candidate_return": 0.725144535298214,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance23_MidnightSun",
+      "reference_sha256": "6e2d4ca04472a814a6b3b47e97a9a09cd6c41451e773d2ed5424dd372a7fba25",
+      "expected_steps": 2428,
+      "baseline_steps": 2428,
+      "candidate_steps": 2428,
+      "baseline_return": 0.7025675700717567,
+      "candidate_return": 0.7064984474560615,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance3_Woah",
+      "reference_sha256": "30bfbde5d15285a0c38f1992f9b9f64a405686299a0c084325cf4f4b343313de",
+      "expected_steps": 1499,
+      "baseline_steps": 1499,
+      "candidate_steps": 1499,
+      "baseline_return": 0.793038353540006,
+      "candidate_return": 0.7672989383872743,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance4_Broadway",
+      "reference_sha256": "2a69bccfe95843ab895c28f2aca7da105e037cc7440ca8f8a64f5b6227f5ec7b",
+      "expected_steps": 1396,
+      "baseline_steps": 1396,
+      "candidate_steps": 1396,
+      "baseline_return": 0.6939931540142232,
+      "candidate_return": 0.6871813504166464,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance5_Hype",
+      "reference_sha256": "76c1e150a86f0deeadd62da8e97fc56817bb45f54f99f9e6b94139a338e7ef5d",
+      "expected_steps": 1579,
+      "baseline_steps": 1579,
+      "candidate_steps": 1579,
+      "baseline_return": 0.5147571275035839,
+      "candidate_return": 0.5028587220378374,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance8_WestCoast",
+      "reference_sha256": "efe9c9989bd9b0b922d3676ebf01996a6f28d615744ed1a9a6f99f4851692bcb",
+      "expected_steps": 1995,
+      "baseline_steps": 1995,
+      "candidate_steps": 1995,
+      "baseline_return": 0.7153970279447112,
+      "candidate_return": 0.7175796684310737,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_ShortDance14_Disco",
+      "reference_sha256": "4d7960f087a109ed060562019f8dcc136a890ef2a697c3b3ee0b6db7cd1b983c",
+      "expected_steps": 714,
+      "baseline_steps": 714,
+      "candidate_steps": 714,
+      "baseline_return": 0.6595379315217522,
+      "candidate_return": 0.6583813214764163,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_ShortDance16_JazzWalk",
+      "reference_sha256": "052ca2bf2736383412bb29ffc39ffca60e0385c68a65ed979c382806fb41cb9a",
+      "expected_steps": 530,
+      "baseline_steps": 530,
+      "candidate_steps": 530,
+      "baseline_return": 0.748919784942116,
+      "candidate_return": 0.7222326021538791,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/B_AttackKarate",
+      "reference_sha256": "c03e5e068602699664444f216fd16cf2d50a94ecdb354fe3ac2cbb7851511ab6",
+      "expected_steps": 2358,
+      "baseline_steps": 2358,
+      "candidate_steps": 2358,
+      "baseline_return": 0.6144622368958709,
+      "candidate_return": 0.6383578308828689,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/B_BowKarate",
+      "reference_sha256": "6932efc382fadd745df589f836afdf9d3bce435d2c4e69b26aeba1fe75ac8574",
+      "expected_steps": 1877,
+      "baseline_steps": 1877,
+      "candidate_steps": 1877,
+      "baseline_return": 0.740516571489458,
+      "candidate_return": 0.7594239921612077,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/B_ChopsKarate",
+      "reference_sha256": "e9eb4a63280f06bb118a13f6e673b180cfa86fb87a283df57464e9a9813e6e23",
+      "expected_steps": 2632,
+      "baseline_steps": 2632,
+      "candidate_steps": 2632,
+      "baseline_return": 0.6867870021872693,
+      "candidate_return": 0.6868716184112361,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/B_CrazyChopsKarate",
+      "reference_sha256": "29e1c88bb9fcaafbc4a98aa91557d065990b3d5554265c71656fe6a9abe5c412",
+      "expected_steps": 1209,
+      "baseline_steps": 1209,
+      "candidate_steps": 1209,
+      "baseline_return": 0.6738219473816419,
+      "candidate_return": 0.6694975324187107,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/B_ForwardKarate",
+      "reference_sha256": "4f60ac5915fe50c0d282e2da33aeabbf5057bbd4fbc2581e8f05822c9abf874d",
+      "expected_steps": 1815,
+      "baseline_steps": 1815,
+      "candidate_steps": 1815,
+      "baseline_return": 0.7502774624939891,
+      "candidate_return": 0.755698050574719,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/B_LongKarate",
+      "reference_sha256": "b3b1d166c1e7179055e3be924d04de6193d7b0560e8d5ada2b798e9244fb86c3",
+      "expected_steps": 2400,
+      "baseline_steps": 2400,
+      "candidate_steps": 2400,
+      "baseline_return": 0.6974585977758304,
+      "candidate_return": 0.6970027307605782,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/B_SpinKarate",
+      "reference_sha256": "99fda698461c0188745e3bbb7e2bb24bfcfae83fd99e466fc8f838d994492f47",
+      "expected_steps": 1282,
+      "baseline_steps": 1282,
+      "candidate_steps": 1282,
+      "baseline_return": 0.6845013346645862,
+      "candidate_return": 0.6860892192040321,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_Move1",
+      "reference_sha256": "3cff539f8768d1a1080607a62a324f799f92b5a6344e58a6a4f4039705ac1105",
+      "expected_steps": 1557,
+      "baseline_steps": 1557,
+      "candidate_steps": 1557,
+      "baseline_return": 0.6980037113663924,
+      "candidate_return": 0.7109554125729579,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_Move17",
+      "reference_sha256": "c61925a23b5f4edebcb06788d4997ae0c7a4eb539c92f6cb8b36d2693063bc33",
+      "expected_steps": 1330,
+      "baseline_steps": 1330,
+      "candidate_steps": 1330,
+      "baseline_return": 0.6548843831628852,
+      "candidate_return": 0.6490460165466284,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_Move19",
+      "reference_sha256": "a20a2ebe144cd8b1ea09b83a37c30e27f63e388c0948fe1e28eb96f8a141ec23",
+      "expected_steps": 842,
+      "baseline_steps": 842,
+      "candidate_steps": 842,
+      "baseline_return": 0.8167094911315578,
+      "candidate_return": 0.8090263499176633,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_Move2",
+      "reference_sha256": "787c5aeef3a198e60669b728b649a3809268cc9d4736aca1a00b1e4a05cab0d6",
+      "expected_steps": 1821,
+      "baseline_steps": 1821,
+      "candidate_steps": 1821,
+      "baseline_return": 0.7171778332644981,
+      "candidate_return": 0.7156607748070297,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_Move3",
+      "reference_sha256": "0863607efbb4f9c60cfa8251de503e107c133e4ba3f0699100b1e0f9c7969b0f",
+      "expected_steps": 1597,
+      "baseline_steps": 624,
+      "candidate_steps": 1597,
+      "baseline_return": 0.24683526245168602,
+      "candidate_return": 0.6545512382519248,
+      "baseline_completed": false,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_Move5",
+      "reference_sha256": "1c8fa6e39b5d3ddd55028a4da7ee8720d60c285576555b39cce06e901bd81a7f",
+      "expected_steps": 1798,
+      "baseline_steps": 1798,
+      "candidate_steps": 1798,
+      "baseline_return": 0.6873406467583487,
+      "candidate_return": 0.6786914817738514,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_Move6",
+      "reference_sha256": "d43f67c6fc6cb62608fb46962653a8d33980dbe46391e1efc881355454773f55",
+      "expected_steps": 1780,
+      "baseline_steps": 1780,
+      "candidate_steps": 1780,
+      "baseline_return": 0.6865786951923698,
+      "candidate_return": 0.7035989831339413,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_Move7",
+      "reference_sha256": "c07b11c7051dc41a974f51226b0c105c856c2a15d8495818412b437d365d276a",
+      "expected_steps": 1190,
+      "baseline_steps": 1190,
+      "candidate_steps": 1190,
+      "baseline_return": 0.7024284037464072,
+      "candidate_return": 0.6917719277622857,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_Move8",
+      "reference_sha256": "296b74a07d5f85a598a99cac9fb643a90cc04af5b339e62f97ce635d8d419bf5",
+      "expected_steps": 701,
+      "baseline_steps": 388,
+      "candidate_steps": 376,
+      "baseline_return": 0.24237165144077802,
+      "candidate_return": 0.23073167892629406,
+      "baseline_completed": false,
+      "candidate_completed": false
+    },
+    {
+      "motion": "karate/M_ShortMove12",
+      "reference_sha256": "dbb28626354c7f646140ab0066b24a6a2a98d35fe88b387d6b631d93b7c4a4c7",
+      "expected_steps": 388,
+      "baseline_steps": 388,
+      "candidate_steps": 388,
+      "baseline_return": 0.7945274435438725,
+      "candidate_return": 0.8136192143808856,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_ShortMove13",
+      "reference_sha256": "e42d2875b492e5d32cebd6b5dfff6d04a2ed0891ed375dcc4617725e0327f281",
+      "expected_steps": 448,
+      "baseline_steps": 448,
+      "candidate_steps": 448,
+      "baseline_return": 0.6902711371763997,
+      "candidate_return": 0.7100959613868156,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_ShortMove14",
+      "reference_sha256": "23d708482c0a19d734ecffc1f561671d7b4d3d5822e6c415ff9befb02d8b7fbd",
+      "expected_steps": 326,
+      "baseline_steps": 326,
+      "candidate_steps": 326,
+      "baseline_return": 0.8563150839541495,
+      "candidate_return": 0.8564438282034159,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_ShortMove16",
+      "reference_sha256": "45f78486df06f362eb3f233517397fc4f709d034570948f42dff0465f7fba9a7",
+      "expected_steps": 368,
+      "baseline_steps": 368,
+      "candidate_steps": 368,
+      "baseline_return": 0.5956938429759229,
+      "candidate_return": 0.5969568063526456,
+      "baseline_completed": true,
+      "candidate_completed": true
+    }
+  ],
+  "fresh_motions": [
+    {
+      "motion": "bonus/V_PullOver",
+      "reference_sha256": "9130699424ab067bd0f7673eed144eb43d8dbda2b36e7b6eefc5d460b540c81b",
+      "expected_steps": 2125,
+      "baseline_steps": 2125,
+      "candidate_steps": 2125,
+      "baseline_return": 0.6697722602082999,
+      "candidate_return": 0.6563412884994599,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "bonus/V_Rocamena",
+      "reference_sha256": "ddb97e03559da7b0cf195c89551ab28a9b518b76c729e52971d6e95526aff9c3",
+      "expected_steps": 473,
+      "baseline_steps": 473,
+      "candidate_steps": 473,
+      "baseline_return": 0.914398691971931,
+      "candidate_return": 0.9107176175543578,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "bonus/B_Fence1",
+      "reference_sha256": "8adbbf210d1f5d5e2fb68a1cbb343d43ec371fa697c1f38b6e351060ecc219e2",
+      "expected_steps": 1349,
+      "baseline_steps": 1349,
+      "candidate_steps": 1349,
+      "baseline_return": 0.8941945168611799,
+      "candidate_return": 0.8929999570021252,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "bonus/B_Fence2",
+      "reference_sha256": "cf8a189fa7f0a9b3d059b232be8ccde255f0c09e4d3939fc7c3414bc21fa13f8",
+      "expected_steps": 530,
+      "baseline_steps": 530,
+      "candidate_steps": 530,
+      "baseline_return": 0.6570857579994938,
+      "candidate_return": 0.6570224199224243,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "bonus/B_HandsChop",
+      "reference_sha256": "36653b7445c5ddb8e35fdbda4a12f4666844ddc58d10db36c8798d909dd882ae",
+      "expected_steps": 1470,
+      "baseline_steps": 1470,
+      "candidate_steps": 1470,
+      "baseline_return": 0.932288013983333,
+      "candidate_return": 0.9277622073225467,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "bonus/B_HandsUp",
+      "reference_sha256": "1c942ce5768383045a7b0ba4eea2b1d57705c47215cd26393fe45f79752d5278",
+      "expected_steps": 367,
+      "baseline_steps": 367,
+      "candidate_steps": 367,
+      "baseline_return": 0.8619349961001859,
+      "candidate_return": 0.8538879173162562,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/B_WiggleDance",
+      "reference_sha256": "59d17cee0cefdd974e5da419b92f24fd8b15f693fe3a801f809149214c484fdf",
+      "expected_steps": 1863,
+      "baseline_steps": 1863,
+      "candidate_steps": 1863,
+      "baseline_return": 0.9255998174919889,
+      "candidate_return": 0.930640807695292,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance21_Blunt",
+      "reference_sha256": "942a0ebdf2b3df72034e1ce856bd465d0de4742ba67e48f025b901d86403a832",
+      "expected_steps": 1436,
+      "baseline_steps": 1436,
+      "candidate_steps": 1436,
+      "baseline_return": 0.7910236339548122,
+      "candidate_return": 0.7781259991215462,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance2_Salsa",
+      "reference_sha256": "0029b1be8cdb41985532a8548460f914eed8adcf08afd7b0070300d8d93393af",
+      "expected_steps": 1791,
+      "baseline_steps": 1791,
+      "candidate_steps": 1440,
+      "baseline_return": 0.639810024112874,
+      "candidate_return": 0.5073426728796915,
+      "baseline_completed": true,
+      "candidate_completed": false
+    },
+    {
+      "motion": "dance/J_Dance6_Sassy",
+      "reference_sha256": "a797c3beb2c7aee4928abbb1c9a6bdb0529cd6a264a33f393fdc416eb4a5dab6",
+      "expected_steps": 1594,
+      "baseline_steps": 1594,
+      "candidate_steps": 1594,
+      "baseline_return": 0.7703135355134819,
+      "candidate_return": 0.7762982813560355,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance7_Party",
+      "reference_sha256": "6345ecaa253b6080ea7f707510c08b4b453949028470dca42705d4a68da4618b",
+      "expected_steps": 2310,
+      "baseline_steps": 2310,
+      "candidate_steps": 2310,
+      "baseline_return": 0.7687041298621774,
+      "candidate_return": 0.7651248901524341,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_Dance9_PeaceMaker",
+      "reference_sha256": "c54d5b74eef2f3d059c409a9c3e6052e8fa7de9f86ed5e702141103382699a6a",
+      "expected_steps": 2916,
+      "baseline_steps": 2199,
+      "candidate_steps": 2238,
+      "baseline_return": 0.490376194433208,
+      "candidate_return": 0.48243411565718314,
+      "baseline_completed": false,
+      "candidate_completed": false
+    },
+    {
+      "motion": "dance/J_ShortDance13_SingleLadies",
+      "reference_sha256": "c32f6b22ef71fc672e5a666f19c08f7f77f083d3bcdfb2a1ae7d80f66c52d64f",
+      "expected_steps": 700,
+      "baseline_steps": 700,
+      "candidate_steps": 700,
+      "baseline_return": 0.8779163721134985,
+      "candidate_return": 0.8778768246359272,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "dance/J_ShortDance15_Nineties",
+      "reference_sha256": "5b127294bd04516575d58ba0bff313c4394e5a2ac2d0ce668346325689c0d8a8",
+      "expected_steps": 655,
+      "baseline_steps": 655,
+      "candidate_steps": 655,
+      "baseline_return": 0.683658907142297,
+      "candidate_return": 0.7130919368375436,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_Move10",
+      "reference_sha256": "b643df516232c91fc0c639723c8c99029935862ffc83504fcec526cb358fcc4a",
+      "expected_steps": 1525,
+      "baseline_steps": 350,
+      "candidate_steps": 346,
+      "baseline_return": 0.14914677311193417,
+      "candidate_return": 0.14854848038595447,
+      "baseline_completed": false,
+      "candidate_completed": false
+    },
+    {
+      "motion": "karate/M_Move11",
+      "reference_sha256": "aaf13c69c260278f2162330f6c8d17bbc00cea63ad7cb419138f71696db80607",
+      "expected_steps": 829,
+      "baseline_steps": 829,
+      "candidate_steps": 829,
+      "baseline_return": 0.4768709083349708,
+      "candidate_return": 0.4286914054813527,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_Move18",
+      "reference_sha256": "05e1cd5649cc6d6799ef2ae707fa73859922c60ccc61310365333ef178f5b391",
+      "expected_steps": 835,
+      "baseline_steps": 835,
+      "candidate_steps": 835,
+      "baseline_return": 0.7785733517950797,
+      "candidate_return": 0.7809884760015332,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_Move20",
+      "reference_sha256": "cedca7b01a458e0e39aa6cbd8fa368ffae51f98ccd4816a8d6edbc579af7a5cc",
+      "expected_steps": 1177,
+      "baseline_steps": 1177,
+      "candidate_steps": 1177,
+      "baseline_return": 0.780289553700446,
+      "candidate_return": 0.7648789739565318,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_Move4",
+      "reference_sha256": "9c2f325923dd3813b2562130f7024f367a21aed36c8238ec54bbc0fb5d952e6d",
+      "expected_steps": 1461,
+      "baseline_steps": 1461,
+      "candidate_steps": 1461,
+      "baseline_return": 0.6286278613035794,
+      "candidate_return": 0.6338271491597847,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_Move9",
+      "reference_sha256": "ff9e886b144b8f736c3805fb05614d43b2d843594ac916ed945423979a29a39f",
+      "expected_steps": 1364,
+      "baseline_steps": 1364,
+      "candidate_steps": 1364,
+      "baseline_return": 0.6847394491323893,
+      "candidate_return": 0.6823466553958433,
+      "baseline_completed": true,
+      "candidate_completed": true
+    },
+    {
+      "motion": "karate/M_ShortMove15",
+      "reference_sha256": "a1538a4abda731cee5c3f33466ae9df0dcd15d81223797819967a2111ea1144e",
+      "expected_steps": 339,
+      "baseline_steps": 339,
+      "candidate_steps": 339,
+      "baseline_return": 0.7344439844533933,
+      "candidate_return": 0.7281129568146232,
+      "baseline_completed": true,
+      "candidate_completed": true
+    }
+  ]
+}

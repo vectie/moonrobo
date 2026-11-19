@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff"><title>Motion comparison · MoonRobo</title>
+  <link rel="icon" href="data:,"><link rel="stylesheet" href="./heldout/site.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to playback</a>
+  <header class="topbar"><a class="brand" href="./g1.html">MoonRobo</a>
+    <nav aria-label="Project"><a href="./g1.html">G1</a><a href="./e1.html">E1</a><a aria-current="page" href="./compare.html">Compare motions</a><a id="workflow-link" href="./workflow.html" lang="zh-CN">差距分析</a></nav>
+  </header>
+  <main id="main">
+    <div class="intro-row"><div><h1>Motion comparison</h1><p id="replay-protocol">40 held-out motions · 14k policies · MuJoCo replay</p></div>
+      <label class="picker">Motion<select id="motion" disabled><option>Loading motions…</option></select></label>
+    </div>
+    <div class="lanes" aria-label="Synchronized policy rollouts">
+      <section class="lane g1" aria-labelledby="g1-title">
+        <div class="lane-head"><div><h2 id="g1-title">Unitree G1</h2><p id="g1-end"></p></div><div class="score"><span title="Full-motion normalized return">Return</span><strong id="g1-score">—</strong></div></div>
+        <canvas id="g1-canvas" tabindex="0" aria-label="Recorded Unitree G1 pose, drag to orbit"></canvas>
+        <div class="lane-foot"><span id="g1-state">Loading</span><span id="g1-step"></span></div>
+      </section>
+      <section class="lane e1" aria-labelledby="e1-title">
+        <div class="lane-head"><div><h2 id="e1-title">Noetix E1</h2><p id="e1-end"></p><a id="alternate-e1" href="?e1=arms-guarded">View geometry-checked E1</a></div><div class="score"><span title="Full-motion normalized return">Return</span><strong id="e1-score">—</strong></div></div>
+        <canvas id="e1-canvas" tabindex="0" aria-label="Recorded Noetix E1 pose, drag to orbit"></canvas>
+        <div class="lane-foot"><span id="e1-state">Loading</span><span id="e1-step"></span></div>
+      </section>
+    </div>
+    <div class="transport">
+      <div class="controls"><button class="play" id="play" disabled>Play</button>
+        <output id="clock" aria-live="off">0.00 s</output>
+        <div class="options"><label>Speed<select id="speed"><option value=".25">0.25×</option><option value=".5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
+        <label>View<select id="view"><option value="perspective">Perspective</option><option value="front">Front</option><option value="side">Side</option></select></label></div>
+      </div>
+      <div class="scrubber"><input id="timeline" type="range" min="0" max="1" value="0" step="1" aria-label="Shared motion timeline" disabled><div id="markers" aria-hidden="true"></div></div>
+      <div id="ends" aria-label="Jump to a final recorded frame"></div>
+    </div>
+    <p id="notice" role="status"></p>
+    <footer>Returns are normalized over the full motion. Each robot holds its last recorded pose when it stops.
+      <div>Motion source: <a href="https://huggingface.co/datasets/exptech/g1-moves/tree/895d064b2385725e6aabf540461c219afc3e0916">G1 Moves · Experiential Technologies</a> · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. E1 uses a calibrated retarget. <a id="orientation-link" href="./orientation.html" lang="zh-CN">逐帧查看身体朝向</a> · <a id="study-link" href="./arm-ik.html" lang="zh-CN">E1 肩肘重定向对照</a>
+      <a href="./heldout/g1-model/UNITREE-LICENSE.txt">G1 model license</a> · <a href="./e1/assets/NOETIX-LICENSE.txt">E1 model license</a></div>
+    </footer>
+  </main>
+  <script type="module" src="./heldout/page.js"></script>
+</body>
+</html>

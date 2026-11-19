@@ -1,0 +1,650 @@
+{
+  "format": "moonrobo.orientation-source-controls.v1",
+  "controls_sha256": "a59b02c28c009bdb24bd3c471daaf637c9c51fa94b0bcef4a3adbecb0994623f",
+  "geometry_sha256": "e9e9086ea3578d3fe660f17a9f7edb4cef8ce3a15a995993045816f06274f61f",
+  "scene_sha256": "e82d81514ff228cfa5bcc17fca6b57d645ec0871c644a8ded6eb2aaa5b5c9747",
+  "max_body_angle_discrepancy_rad": 1.0536712127723512e-7,
+  "generator_sha256": "0987270c7d55f56e69e016e00e972bce9080b0d5527b762653fb6033696a0a00",
+  "clips": [
+    {
+      "id": "dance/B_DadDance",
+      "source_scores": [
+        0.014405539783937925,
+        0.0693060507315944,
+        0.006479454540929205,
+        0.08508330360398307
+      ],
+      "pose_sha256": [
+        "56952aaebbf62116c8b59026a119304cbef53fdeb2438fd7be4af67b95d6fba5",
+        "55fd9814dfad0a0f3f524e025865aebd65b71de1a4f9f6b7beb900e844ff20c4",
+        "86a555bfe3e94f3a3c3a41ba2fef0bf6b9f017d34a56969359b8250212ecf66e",
+        "9540af1a78d530b32b5feae2a52bd6fa6a74869f0d994feba531f2bcc48938a2"
+      ],
+      "common": 1794
+    },
+    {
+      "id": "dance/B_LongDance",
+      "source_scores": [
+        0.002249691367119186,
+        0.021047174840819024,
+        0.0012460038140755414,
+        0.01805769173259106
+      ],
+      "pose_sha256": [
+        "a1598190dfa81f8c04836e29b4eb852cf9f86ab007827b339b2b8dd9116ef9d9",
+        "306b26339a36930e2d8cb4e971e1cc188e111a1ce72fdb4f51e7b206a385c9c8",
+        "e2d3013124d64772afc8ccc8d59193fd705dec670b1f367a426ed1bb042e1444",
+        "d1e0b394e61aafbebbf70645a5fcda6af0e768eceac19d107f2e7e5ac1ad6c0c"
+      ],
+      "common": 2028
+    },
+    {
+      "id": "dance/B_SpiralDance",
+      "source_scores": [
+        0.00547284562233043,
+        0.056116372318837614,
+        0.004641580463143483,
+        0.06323873714035622
+      ],
+      "pose_sha256": [
+        "0284ca9b6b566125ce8cb9f973aa8ee8f57de1666bce9ebdb7c1db31a094005e",
+        "7c604cee281345a792f3dbb91e58204c36afbb952c014944043785b15aab595e",
+        "a6e096a0b9db367b1955f9f30b753f201ade585762d9b260a17cb07ba4280da0",
+        "f38899f1fe9641b2e030b8ad769bd64a57fa357d18662eac9d522872eea6f206"
+      ],
+      "common": 2389
+    },
+    {
+      "id": "dance/B_StretchDance",
+      "source_scores": [
+        0.004583715037163756,
+        0.03951643532219707,
+        0.003061943717305989,
+        0.04335194393621513
+      ],
+      "pose_sha256": [
+        "7527507d73fa5d634602b72ea792f59072774d7037950db664cd1414cf1d00cf",
+        "3ce1c39dca93d9e5932d7d38f120fc467ce88568c0ed856b80d6937c1072d4be",
+        "1cfd9af888c79f60e4e7992c8c51a7b98b6361e54f1822668a6dddb161b39c52",
+        "3e34a70187f0d7e33e5af153cc739c4d3eb41d1f7b849a6a52a702ca9d3f3563"
+      ],
+      "common": 1066
+    },
+    {
+      "id": "dance/J_Dance0_StepTouch",
+      "source_scores": [
+        0.05031611372395814,
+        0.0303506417299502,
+        0.019370697338191356,
+        0.027734668902626686
+      ],
+      "pose_sha256": [
+        "a006f54c0c752e53d237d351bdee5788f998ab52e1d659f4dcfb35dc4df575d0",
+        "1f0bd2fbe42d7a8ec3e272f7baf1840674a91bfd3403ad236077afa5571ce1b6",
+        "b93e41ac4c1a8bbfdb3619df2c1d3f932bf691fa88236465ca186022b977ca83",
+        "79beb71e6e2ac409b11dbf20bf8f28d480fb717d7debd7ccf3ab3a32183a072c"
+      ],
+      "common": 1623
+    },
+    {
+      "id": "dance/J_Dance11_Gnarly",
+      "source_scores": [
+        0.003247476707774238,
+        0.025094895699936826,
+        0.0016650504364914469,
+        0.017219682759288136
+      ],
+      "pose_sha256": [
+        "e52b1f3c902dd1d20e37a65ae09af22295188052cd804bb88d8d939a001c176e",
+        "de8550d45196b1bde51ecb3198869271ee5c21c99042efa863aa671508505c34",
+        "e7cd7092b3caa301fcbaff97bd6b5cc844c7eb04613e6f2067d4aa6bdec84cbf",
+        "ecc5d16b17534bcc5dffe1592d4923e9fca1b010cff1ded9b1bd588063bafe0d"
+      ],
+      "common": 2256
+    },
+    {
+      "id": "dance/J_Dance12_LushLife",
+      "source_scores": [
+        0.013041646724327944,
+        0.013768792529245216,
+        0.009763922175201197,
+        0.01425672647118625
+      ],
+      "pose_sha256": [
+        "04efe6f1497541dde7509f6b4bbe4416fde57f3d3742267a8622e45d71da7413",
+        "a1fc53ff00d51e3ab695d28e4f28d13dd09fcb7b2d6386b07a75e6a0ea713008",
+        "d6c0c87ba6f0e4407c48da2deefd3f1c01f50dd6e9ee6cd2dbed536bf4f8eb51",
+        "a64b74f212f582d08da98b6aef6eb1b614af60970be2cf71957b6e3baae899cc"
+      ],
+      "common": 1386
+    },
+    {
+      "id": "dance/J_Dance17_Shuffle",
+      "source_scores": [
+        0.018781590081605137,
+        0.012235763396298008,
+        0.01577310774888419,
+        0.012148234647632419
+      ],
+      "pose_sha256": [
+        "3d7b3b0320744f578189c35c7260e7fc6050d5f2dbd60f0abedaae04b0e57948",
+        "c0b693863b56f442c242f6822453f618cba0460795fef55329ce870a73fb34d9",
+        "ce10f239900ebe62d07c38b848e079ea3b8ae2997198b7f32cc472b8994678c1",
+        "9cd3970676f1708b14daa56d140176b1867ed8105b71ce9bf963e56ead9fb7ab"
+      ],
+      "common": 1074
+    },
+    {
+      "id": "dance/J_Dance18_TikTok",
+      "source_scores": [
+        0.030450045540393555,
+        0.03407932877389458,
+        0.024294475862107777,
+        0.030536616103044985
+      ],
+      "pose_sha256": [
+        "6dfebb81b944429dcb977bc47012beadb6e66424c0c8f776d2d2f20be1b3c097",
+        "037da2717885275e80dfc4c94e22a92bcf65010d898ef82636d48ef0def99048",
+        "0427b22831607e3644e00e7328ceb523e4bd4775e05152a3fb465b63df8aebe0",
+        "9009ac4d04cf04386d78cf64177190aa02e6f51402af3cf450d9a1adc22ed967"
+      ],
+      "common": 896
+    },
+    {
+      "id": "dance/J_Dance19_LetsGO",
+      "source_scores": [
+        0.01082655642831888,
+        0.04156119386814461,
+        0.006969844788113125,
+        0.04209795549537623
+      ],
+      "pose_sha256": [
+        "8cc00ed6c647b033b10e9753f6d47870e5b7643ed32d78d7599fbc5bd1a8080f",
+        "7ffe294817606ebeca83825b5c3c38597b99750b4d53900be16d4214b348765f",
+        "db8b0873e5f6e4afb7b06307c830c953aa95bdc3e23260ad82c027fb61904e6d",
+        "f259f54fda50801682ed38b7df71f36643d8f9149c7342a66a3b24a44fd28ab2"
+      ],
+      "common": 910
+    },
+    {
+      "id": "dance/J_Dance1_Modern",
+      "source_scores": [
+        0.0038913999367854108,
+        0.01855906976335682,
+        0.0023288790911535464,
+        0.01712352623855506
+      ],
+      "pose_sha256": [
+        "6b4be79a13b453615f7dce04ab72c6a8fdc5ad8cc1f6f54a0fea51412d652fb5",
+        "dfc1647fb31d8434fe1b1a43179c383f173a1af57cbe37c108bf23a38ddde520",
+        "9ccc085d39775c09e16b294cbba35b1e85e3911403f18a632616fb33f2f91f80",
+        "d0076015a64241ad9c26a62d3671a865330cc98ddeb4afd2fd9a65a8268d9fca"
+      ],
+      "common": 813
+    },
+    {
+      "id": "dance/J_Dance20_DWG",
+      "source_scores": [
+        0.02323485716913095,
+        0.030509780362920846,
+        0.021914927181020588,
+        0.033427887744411314
+      ],
+      "pose_sha256": [
+        "687a01dc22609df9b1efe4c403e6b6db13b5964a4d00aac0a6f5a6ae8ed781c6",
+        "fa104fe74446bf9a713b64a0df8dfbbe08331a52ab79d514b4cdacc70be7982d",
+        "5ef125de881f6a2e247f86434176fc6bbfcd2d8443db805be402f028c961d4da",
+        "462bc14a34b3ab617539da8e4ce2473f5f2da54abe977f30d09450d371d1decf"
+      ],
+      "common": 780
+    },
+    {
+      "id": "dance/J_Dance22_Thrilling",
+      "source_scores": [
+        0.02465190311213279,
+        0.03378083762875154,
+        0.017233044965759874,
+        0.034207178658227956
+      ],
+      "pose_sha256": [
+        "dc131dfc604519608ececbf186a5eded995ff8748f95f413322b66888c20b61b",
+        "e59260b1c7382f010e849dbe374bc515ba6bfb543ce1eb098f5ee619ef1ca0ce",
+        "5ea8c6fa7966e00b56a4e22ea31b6a8c84a1bdf3bf737a04c135f68df3e797b4",
+        "efd19b217fb169a43faf09df584e84e48a4885ba6977c12215f43fa9dd75d006"
+      ],
+      "common": 1348
+    },
+    {
+      "id": "dance/J_Dance23_MidnightSun",
+      "source_scores": [
+        0.004764780063921389,
+        0.05073261432159654,
+        0.004107679270900265,
+        0.05731003888227402
+      ],
+      "pose_sha256": [
+        "4743fcae4b5c2a2b7bba545546a7a49aacb731526658aa6dfc4cbe914ef5708c",
+        "15594dddbd589760df258466990fdf6c194e05409aa042959d78cbc80d3d4561",
+        "61c9a3448a4139008cd4caf98c66a6e1f9bd6432a853bae10c97f9df9bb2cfb3",
+        "1f3e7e6f5e94583e6ec9dfcbb11e5bdc9c75a24dff339cabe1d024f6a00f5b26"
+      ],
+      "common": 2428
+    },
+    {
+      "id": "dance/J_Dance3_Woah",
+      "source_scores": [
+        0.01467949265659573,
+        0.024108595257961454,
+        0.011842380010029968,
+        0.018272188354253715
+      ],
+      "pose_sha256": [
+        "0bd7e1acfca1467bc74add583af0e7974f889a9ca386c3c1d9efe51c74ad235a",
+        "ea4ea97dfa8a3fc555e119661fb5db5a431707e22688e3b58a5d4d8d9baf4506",
+        "52834011fb7e7990705ab23f5a9b4733b459ea90a3c609664146206e7e5aa9d2",
+        "cade994aa7e933dd91a17e2c5dc81e082a2bf086fe63e70a59eee31b940308de"
+      ],
+      "common": 1499
+    },
+    {
+      "id": "dance/J_Dance4_Broadway",
+      "source_scores": [
+        0.009186506381494788,
+        0.02104861222261602,
+        0.008042849545075781,
+        0.022945535718605303
+      ],
+      "pose_sha256": [
+        "4dd12f11de56156eb44249e7c219450bfadff7a7c7ae94636a78654c5af56fe8",
+        "4097f88b759265a90692338716aa23612743d2b605319c8304a4a5119085ba8f",
+        "3d103e90883b373546d01bb4417ca32fb25811fe55a9f9cf7d49ac2d23ced0bd",
+        "875e46494ae76d8db3a19c0d54a3b78df721a017a831997ecf751e052bb488cd"
+      ],
+      "common": 1396
+    },
+    {
+      "id": "dance/J_Dance5_Hype",
+      "source_scores": [
+        0.006244669318067121,
+        0.01679695386001961,
+        0.004670430343186216,
+        0.018939874440564792
+      ],
+      "pose_sha256": [
+        "ccd5acfbe4fdfb053bcc2065325e43c58483ce6a5c91e00c4b9992359e520e3c",
+        "71ac358241f8bd71e8117b55f2f13de891c554fcf7b3bf6f4504ab6a002e77e4",
+        "331bbf602c4ca749e15234790e7b09c2f80fbb01b4d996420e23329668a3afd1",
+        "f872bb75cbdad69a1c259b3a481c65312adf51e3f25a290b364975a518f5ca0e"
+      ],
+      "common": 766
+    },
+    {
+      "id": "dance/J_Dance8_WestCoast",
+      "source_scores": [
+        0.006770421286357628,
+        0.04758533832443234,
+        0.005172515183020983,
+        0.048802216188399736
+      ],
+      "pose_sha256": [
+        "01173de470461529680014d91d765ee9cde684d7b229e34a02bd6becb200ccbb",
+        "1678e49a7f933ffd6ae80509060afe67ca61feeb0a22f2a8a99e947ed9dbfef5",
+        "6b796cabd40cb05f1868fe6af3af082bd1f498b99af4ebb973b4d15885d88fd5",
+        "6a0cf985da5bf34fe6d521d2e1a1bcd8bc2f3dafc5c14fb9c5f30461d43de536"
+      ],
+      "common": 1478
+    },
+    {
+      "id": "dance/J_ShortDance14_Disco",
+      "source_scores": [
+        0.021944696756550634,
+        0.006686905671918017,
+        0.017705711938795197,
+        0.006832540051722903
+      ],
+      "pose_sha256": [
+        "1b63268082fe156a4b6098548cd469bbc7904299ef044e59900b14bfca003782",
+        "90576a9da3f7d27943a92636d33145688a2a16549e35fae7870be4d75019e4c2",
+        "a1d57928948a5123c864f70fc7ccab17fb3772fabc689efda553439b595d4f61",
+        "5e5e950359c1f1468af15dc898fe5e001dfd52f8458fdf4f5e7fa48564faef2c"
+      ],
+      "common": 714
+    },
+    {
+      "id": "dance/J_ShortDance16_JazzWalk",
+      "source_scores": [
+        0.03392232968654395,
+        0.06040938622790913,
+        0.02739199912330893,
+        0.06691983563439959
+      ],
+      "pose_sha256": [
+        "69018cfaf54a666255fdece4c961c89126bfd8a0580fb2c4467ce36dbc49523d",
+        "8228baa342d683f601695d26efe17bee6871da66542fc5abb4a35d53c5c4d2c3",
+        "fde326a6a86aaee157e86f0c79a26f543369147ea3e75c117d724be07f4a6748",
+        "8e93a09e35a72f595ae0e5349b66b8d3bb9d989695215af0ae2d0580ac10677a"
+      ],
+      "common": 530
+    },
+    {
+      "id": "karate/B_AttackKarate",
+      "source_scores": [
+        0.00817587513858659,
+        0.016286893175973434,
+        0.008317995748310311,
+        0.01409865894840807
+      ],
+      "pose_sha256": [
+        "2e1dd978abcf69d7ac90cb6fd78998e32785286eae06da823ed9d4ce176dbdb9",
+        "964780137204b292615081b9d2b0928017d333f5fc704348e0ccceddf9d51c63",
+        "26c87e2451d1c0e3d4f8f7208cf7533242b3efbff650447d80674cdd7f6cfd17",
+        "aee569e3d95a220c38ebe1bf03bc6e9fddad1044ad707727899529a297ce64f7"
+      ],
+      "common": 1204
+    },
+    {
+      "id": "karate/B_BowKarate",
+      "source_scores": [
+        0.009223611648404816,
+        0.027977312118922626,
+        0.008774933126432252,
+        0.027891200427464527
+      ],
+      "pose_sha256": [
+        "7339343d657e1c59916bfe3d36e8e9fe87f497d74e4299f9acf0fa5c59c49f29",
+        "5d35bde2fd125ec9538105c91b05f8efd6190d481a73d53d9e38d0db0ae5d6a8",
+        "d2bcba53196a99273726cff8071ffbf4efb457aa61c0082d18638de4e4ec0365",
+        "39ca130dfa72044b8af3b0b68ef980f2d2f4208611a5c2f46f9e4fd79d2c6015"
+      ],
+      "common": 1224
+    },
+    {
+      "id": "karate/B_ChopsKarate",
+      "source_scores": [
+        0.010287622011108784,
+        0.045791431439874346,
+        0.009029508522164813,
+        0.05036886115816474
+      ],
+      "pose_sha256": [
+        "51422cd7faafe1d3022881ebf2a244f9353216f80b4ab2f0c8aa7817a7fd8714",
+        "ae6d1d695a61891c86c46fd2a64941f7fc5559427ac815c3cb52d80b45cb8f3c",
+        "d19e1ed14af15b10ee1517b64a171ca34f212a1f0beb86768c7095bacc65e6c0",
+        "7ed378b92678317a4d7966425806813f96164c9b2acd0074ec246acc8b06f51b"
+      ],
+      "common": 1318
+    },
+    {
+      "id": "karate/B_CrazyChopsKarate",
+      "source_scores": [
+        0.003118488504326626,
+        0.008330795974182235,
+        0.0027504943919740617,
+        0.007821216059017096
+      ],
+      "pose_sha256": [
+        "f196d8d6a21b72badddeddb2edc47e444d2840a362fed9f0ef3e2e48bf162f42",
+        "cd6ab1f982133583b29c21b5a4281113952c23d570b64c1178f92205528c0b79",
+        "43b374b950bcf616ef15f9ba69e451ad9aefb5a13573b76d0a3c47a8e4a08012",
+        "4496f4eb853c836441714e78dcac2b5d3f7c7e0c6084b54157cfed7be3b3fd75"
+      ],
+      "common": 1134
+    },
+    {
+      "id": "karate/B_ForwardKarate",
+      "source_scores": [
+        0.005493179106744058,
+        0.03400835785088964,
+        0.00341285575213189,
+        0.03913580485428324
+      ],
+      "pose_sha256": [
+        "6099418ce82c75c483c6b1b0658c30f33f119189fc05ebaff396931c6c0e536c",
+        "9c5d36ac8dfca7a1758334a1aaa68b197fc0aa38f9daf244f80c7dc1e2039fa1",
+        "c5c901bb5b843fb6a8f01051b8b8b8bfa9353cac3731518922d12337bd435459",
+        "62c34b48634e2ee2314f9c7e1bbf806b4dc955b5f3afb58ac7c754853d386417"
+      ],
+      "common": 1815
+    },
+    {
+      "id": "karate/B_LongKarate",
+      "source_scores": [
+        0.003138151707646235,
+        0.013673336864744708,
+        0.002676468643863425,
+        0.014789578289868972
+      ],
+      "pose_sha256": [
+        "f975efcd57e303b56f129d04b033e9faaef3e71339af9fe1b8a1d46861b18d52",
+        "4e86c8f0bc91505f6b4e22234a253d8972e6b0598b4d7c35e54a32cbffc8eddb",
+        "fd8317f53abd48be29bb777b4898d7571974ee187c77755cd3dd92e2fb3a5f05",
+        "db5e28fa6a31e4ac2ee898ec09634626dccca738489110849fc86e2d73c02098"
+      ],
+      "common": 317
+    },
+    {
+      "id": "karate/B_SpinKarate",
+      "source_scores": [
+        0.006518100479880133,
+        0.02527817356304523,
+        0.006514509654004584,
+        0.030738448430968256
+      ],
+      "pose_sha256": [
+        "d92e454ba704b12b24af6a18794021c10b6f00ffd71d44692c0218dc0d5372c2",
+        "5c427007586e98f98382f1179d7eed9a41b66cd0e04f250a92b470e1747e1669",
+        "1c0b1aec1466b9fad755db48781d3cd2d4566604ed29183b85e0342d279a5b18",
+        "cc772147e4e44a3a5f55abf2b68d3880092924c632fcde52fdef0dc7502f5932"
+      ],
+      "common": 978
+    },
+    {
+      "id": "karate/M_Move1",
+      "source_scores": [
+        0.004241521195701504,
+        0.02603974746983441,
+        0.004784311776524681,
+        0.025347894594863474
+      ],
+      "pose_sha256": [
+        "79862a76d422e4aa71896ef707861d0c0a6a4c03f73247de68baa688e29014fa",
+        "744e72f2244efa8bbf952014c5fb2d32e211ce0e5080866e296e300da1b66e22",
+        "e3319ca04b86d386321e02f1016914de1a9426500c818a639665c96d1d9d9267",
+        "86e52230bef878ea977d5d7e99d48e80ffc29afe864e8290a29d2c26ab17c182"
+      ],
+      "common": 1557
+    },
+    {
+      "id": "karate/M_Move17",
+      "source_scores": [
+        0.007188028482313648,
+        0.02852807967815906,
+        0.006238652369288167,
+        0.024185909339742424
+      ],
+      "pose_sha256": [
+        "bbca2553b4378baf86a59ebb258aad3036d5fd4b37e94d0402da1e21efd268ef",
+        "c05a673b437eff6fda362b904e21f6ec38e339b5d719f9d9ced248a7eb5f2578",
+        "cbcaafd599bbc6eb5bee4a098af05eaa1f87e996cafb48410d6bb97439c1b551",
+        "7f6b6d3f4a4dc859fe58d49def98a3539cdbcc25fedc1a3b0f46c19809d86168"
+      ],
+      "common": 1330
+    },
+    {
+      "id": "karate/M_Move19",
+      "source_scores": [
+        0.0111971192312011,
+        0.06831445795411598,
+        0.004874153434628658,
+        0.07185998864963318
+      ],
+      "pose_sha256": [
+        "ad50845177be09d3d0e063b2c67642d0bff3ca7f4123af5e0adc4a4792763a37",
+        "f3dd025603ee61785eb0e5fed561c5bb5c40ef8205cee355879cd385a5fd524c",
+        "490b3ab1d52333ea7b5bf26f1118838f7bb0fb8b4bf12efd324ca416e877fefd",
+        "f9a830f1cd0deaa4b1ac64ee6db2508b289088307e7b767e0509f80dc3b09e5a"
+      ],
+      "common": 842
+    },
+    {
+      "id": "karate/M_Move2",
+      "source_scores": [
+        0.008019235721152977,
+        0.04624533106649834,
+        0.005286418386899502,
+        0.045033804723062794
+      ],
+      "pose_sha256": [
+        "38d60e31b2ab83131f94021dae47a098ac24db946ae29202a6da3e14317675a7",
+        "d41996f0454242945b45046266460c11bee6dfb8665b80e792390913131bd532",
+        "b8b3044b4ef51d0561b9fa361d1194d558d1e1168e08d6c6b3924c14d22fcf1c",
+        "f83e8aa373bb53105491bdded7614fa72f04cb79e354fb6a614721b6a0b18519"
+      ],
+      "common": 1821
+    },
+    {
+      "id": "karate/M_Move3",
+      "source_scores": [
+        0.0026627671196643474,
+        0.013595333265127272,
+        0.0021747193661339446,
+        0.014825712739595907
+      ],
+      "pose_sha256": [
+        "2f4ffbcf89b1bff7bc7cde31353cec677a09ba4d6407a49ad8d7d521a1443514",
+        "049e276b144386e99eba155003475ac070d009b42588d47a0cbfea95ffae43ea",
+        "97c4e17452fdf8ba434b78f9ca101213b7cff3f86d6ab7fb6d2e4329358a9815",
+        "78ae04d684a44b30a7774dd76cd02b5c024124ae54a86a9da8b98e4456c832e3"
+      ],
+      "common": 544
+    },
+    {
+      "id": "karate/M_Move5",
+      "source_scores": [
+        0.005729330306956721,
+        0.028270734611151187,
+        0.005383224711640792,
+        0.028576539846038588
+      ],
+      "pose_sha256": [
+        "993aee3c53d16b123925d79c4681b39a1de1e673d2f1ea361701024465f191e2",
+        "4f0fdf744c668d78cf4fa86009e7ea2fa695133cd43c578ebf91aac6338e0a10",
+        "0f77cba9a8428c061827d64dc070b76379483a52b0575325cd3f0d253c8aec92",
+        "151a4f17c268a924a6798edb6a61712c98eb28f87ab66153f64441855d9fec62"
+      ],
+      "common": 835
+    },
+    {
+      "id": "karate/M_Move6",
+      "source_scores": [
+        0.005444481492590331,
+        0.03712068047474207,
+        0.0041609466616975175,
+        0.038014000815569306
+      ],
+      "pose_sha256": [
+        "891196e174e26501a5aa4ff67301bd9d8400aafe846d0c8cb564a1b89940f356",
+        "b0d69441302af05597eb558f7bcb1425b656cf4d8911997943bffce85b3f463b",
+        "95da618972bde536ecf022f6d940164c64aa3517128455775a1038c67da3c330",
+        "569af004a4884b674dddb34ebab843272c9a5d410f2c00c8e748e469068fe61b"
+      ],
+      "common": 1241
+    },
+    {
+      "id": "karate/M_Move7",
+      "source_scores": [
+        0.002667886431990172,
+        0.05967353351908646,
+        0.0022278048577336687,
+        0.0637975195680872
+      ],
+      "pose_sha256": [
+        "95b3d1820190519d511ca90819c981b9054d9f133b2ad3b8fd25908e5d9105cb",
+        "23ac0fc2e93cc39e8fbab313caabdde6577d87f213d87bf583c71e734b5a746d",
+        "bd87a06d301beeeaa75ae4505210e1d6c017dbba15b128001fd3b8d849a4779d",
+        "fa69cf1712ff6aa396e5fa72462a497af8ba7e0ddcaf217399c689487420e3a9"
+      ],
+      "common": 1190
+    },
+    {
+      "id": "karate/M_Move8",
+      "source_scores": [
+        0.004338197659575158,
+        0.02064710376578856,
+        0.003439287929822328,
+        0.023102221724497874
+      ],
+      "pose_sha256": [
+        "9e9757c5c75c90d870f38040b23391094447375318b22c7a46edc7cc947f7781",
+        "05e5b135e6264945404c434d3d789fa4dd129a17bc7d64362456ab690eadd6af",
+        "5094581e7dfa0554f8cb9deebdae97b2c3317ab545dc4e3565a6032710c3e1f8",
+        "1222832dfea71a050ab61d6602616e672ae6eb7cc2b3cad6a899a9850a0f5a58"
+      ],
+      "common": 319
+    },
+    {
+      "id": "karate/M_ShortMove12",
+      "source_scores": [
+        0.009038332524094172,
+        0.08694771134226056,
+        0.006047344223490256,
+        0.09175756541088663
+      ],
+      "pose_sha256": [
+        "ed5407af9bdcfac11e36d942bd59e0f137ef079b533b4d4126c1093e343ab4e8",
+        "6ea146f4ec6a722a11a0a4f707a5be4010970af730541c2d1c3d2ddbf29df011",
+        "7129f793ed2e2c9dfe5920ec1229ecbddc9d96f2f83c94d9792537fd8871413c",
+        "132cd89dbd6cce51dcb1c504260ef5a801ad83155b5ab84cfcd711ce667a79de"
+      ],
+      "common": 388
+    },
+    {
+      "id": "karate/M_ShortMove13",
+      "source_scores": [
+        0.016455584657399398,
+        0.050104536677346864,
+        0.008689005531409388,
+        0.05837703963829714
+      ],
+      "pose_sha256": [
+        "31bfa99ac307bc29676f0c0e4aabd713bb96aa44545f6fa50d4143b4cc75fee3",
+        "aa60a4936ef3a95cf7c8095d5fdf9828c0acc9212e569ad994549d5eb5934314",
+        "bd4d11df5eda829fd9ba7e48e3bfa297477fecb25543e7af11223319fe44185c",
+        "8c8d267bae91d77077bd8d178478cda853b437c480e78f74ce20f099931a5299"
+      ],
+      "common": 448
+    },
+    {
+      "id": "karate/M_ShortMove14",
+      "source_scores": [
+        0.015990156639020953,
+        0.08168904907481761,
+        0.01120527406324423,
+        0.10109555799687685
+      ],
+      "pose_sha256": [
+        "cb8fcb9eda9645b86f63d4336c725219ce2ff002980bf3f0d772f97515667f3a",
+        "32ab1f629d341823114b4b3e9ff7935fd90394dc85107845f0bfb7d07e889d41",
+        "78c24997cd63de59a66851c52e8e5ba79077db192c922ef798f23ff3bc28f1ab",
+        "81330c98e3f82888de747eadf8db869af59632be4f0f93484d125498f97bdb79"
+      ],
+      "common": 326
+    },
+    {
+      "id": "karate/M_ShortMove16",
+      "source_scores": [
+        0.0029771331787265013,
+        0.041765504326622835,
+        0.0021868407354641815,
+        0.048026360089443484
+      ],
+      "pose_sha256": [
+        "885ded2c12657db0b159c341f3e9223eaa574054ed79421e68ae8d5ebde375b6",
+        "5cbe6e80361f9987b1abc1914cc300eac3c99581d6131fac4ac86ffdb2c01899",
+        "b319fb5969c9513e5092206f7c2ea596ef2503e6842315d9fd6c4129d46d6335",
+        "e2547a444ef7d8118d7c8af5e7d618c06b7fefac56759e34f579d9412b62295f"
+      ],
+      "common": 368
+    }
+  ]
+}

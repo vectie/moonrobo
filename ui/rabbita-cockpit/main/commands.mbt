@@ -2331,8 +2331,8 @@ fn fetch_task_message_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 ///|
 fn command_result(
   message : String,
-  dry_run_receipt_id? : String = "",
-  approval_id? : String = "",
+  dry_run_receipt_id~ : String = "",
+  approval_id~ : String = "",
 ) -> CommandResult {
   { message, dry_run_receipt_id, approval_id, }
 }
@@ -2556,10 +2556,10 @@ fn task_message_result(
   memory_path : String,
   card_count : String,
   resident_availability : String,
-  inline_conversation? : TaskConversationResult? = None,
-  inline_loop_proof? : PlatformLoopProofResult? = None,
-  inline_live_readiness? : MoonroboLiveReadinessResult? = None,
-  inline_handoff? : RoboHandoffResult? = None,
+  inline_conversation~ : TaskConversationResult? = None,
+  inline_loop_proof~ : PlatformLoopProofResult? = None,
+  inline_live_readiness~ : MoonroboLiveReadinessResult? = None,
+  inline_handoff~ : RoboHandoffResult? = None,
 ) -> TaskMessageResult {
   {
     message: match inline_handoff {
@@ -2593,10 +2593,10 @@ fn moonclaw_context_result(
   summary : String,
   review_count : String,
   needs_human_count : String,
-  latest_review_id? : String = "-",
-  latest_review_summary? : String = "No review evidence queued",
-  next_label? : String = "-",
-  next_route? : String = "-",
+  latest_review_id~ : String = "-",
+  latest_review_summary~ : String = "No review evidence queued",
+  next_label~ : String = "-",
+  next_route~ : String = "-",
 ) -> MoonClawContextResult {
   {
     surface,
@@ -2619,10 +2619,10 @@ fn moonclaw_routine_run_result(
   plan_status : String,
   plan_owner : String,
   step_count : String,
-  next_kind? : String = "-",
-  next_route? : String = "-",
-  error_code? : String = "",
-  error_message? : String = "",
+  next_kind~ : String = "-",
+  next_route~ : String = "-",
+  error_code~ : String = "",
+  error_message~ : String = "",
 ) -> MoonClawRoutineRunResult {
   let message = if error_code == "" {
     "MoonClaw routine \{status}; run \{run_id} persisted at \{record_path}"
@@ -3093,8 +3093,8 @@ fn parse_moonclaw_context_payload(
 ///|
 fn parse_moonclaw_routine_run_record(
   json : Json,
-  error_code? : String = "",
-  error_message? : String = "",
+  error_code~ : String = "",
+  error_message~ : String = "",
 ) -> Result[MoonClawRoutineRunResult, String] {
   match json {
     {
@@ -3186,7 +3186,7 @@ fn parse_moonclaw_routine_run_payload(
 ///|
 fn walk_intent_body(
   model : AppModel,
-  receipt_id? : String = "receipt-cockpit-walk",
+  receipt_id~ : String = "receipt-cockpit-walk",
 ) -> Json {
   let snapshot = model.snapshot
   {
@@ -3236,7 +3236,7 @@ fn reviewed_intent_body(
 ///|
 fn active_intent_body(
   model : AppModel,
-  receipt_id? : String = "receipt-cockpit-walk",
+  receipt_id~ : String = "receipt-cockpit-walk",
 ) -> Json {
   match model.active_reviewed_intent {
     Some(draft) =>
@@ -3266,7 +3266,7 @@ fn intent_submission_action(url : String) -> String {
 }
 
 ///|
-fn observation_frame_count(model : AppModel) -> Int {
+fn observation_frame_count(model : AppModel) -> Int32 {
   let parsed = @string.parse_int(model.observation_frame_count) catch { _ => 3 }
   if parsed < 1 {
     1
@@ -3319,7 +3319,7 @@ fn optional_text(value : String) -> String? {
 }
 
 ///|
-fn optional_int(value : String) -> Int? {
+fn optional_int(value : String) -> Int32? {
   let trimmed = value.trim().to_owned()
   if trimmed == "" {
     None
@@ -3342,7 +3342,7 @@ fn optional_double(value : String) -> Double? {
 fn urdf_editor_edit_body(
   model : AppModel,
   save~ : Bool,
-  command_override? : String = "",
+  command_override~ : String = "",
 ) -> Json {
   let origin : @urdf_editor.UrdfOriginPatch = {
     xyz: model.urdf_editor_xyz,
@@ -3564,7 +3564,7 @@ fn submit_intent(
   dispatch : (Msg) -> Cmd,
   url : String,
   model : AppModel,
-  receipt_id? : String = "receipt-cockpit-walk",
+  receipt_id~ : String = "receipt-cockpit-walk",
 ) -> Cmd {
   match intent_submission_action(url) {
     "dry-run" =>

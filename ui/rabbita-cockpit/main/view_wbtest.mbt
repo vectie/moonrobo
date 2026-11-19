@@ -4058,7 +4058,7 @@ test "execution parser reports persisted task memory" {
 
 ///|
 #warnings("-alert_unstable")
-test "rendered task message panel includes persisted ledger" {
+test "task conversation and history preserve persisted records" {
   let model = {
     ..init_model(),
     focused_task_message_task_id: "message-render-ledger",
@@ -4123,7 +4123,12 @@ test "rendered task message panel includes persisted ledger" {
   let page = @rabbita.simple_cell(model~, update=(_ : Msg, model) => model, view=(
     emit,
     model,
-  ) => render_task_message(msg => emit(msg), model))
+  ) => {
+    div([
+      render_task_message(msg => emit(msg), model),
+      render_task_history(msg => emit(msg), model),
+    ])
+  })
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("message-render-ledger"), content="true")
   inspect(html.contains("You"), content="true")
@@ -4133,7 +4138,7 @@ test "rendered task message panel includes persisted ledger" {
   inspect(html.contains("task-message-row focused"), content="true")
   inspect(html.contains("inspect robot status"), content="true")
   inspect(html.contains("needs-evaluation"), content="true")
-  inspect(html.contains("Refresh Ledger"), content="true")
+  inspect(html.contains("Refresh"), content="true")
   inspect(html.contains("Evaluate"), content="true")
   inspect(html.contains("Open Message"), content="true")
 }
@@ -4195,16 +4200,47 @@ test "rendered cockpit exposes focused operator navigation" {
   inspect(html.contains("Operate"), content="true")
   inspect(html.contains("Robot"), content="true")
   inspect(html.contains("Tasks"), content="true")
-  inspect(html.contains("MoonData"), content="true")
-  inspect(html.contains("Diagnostics"), content="true")
+  inspect(html.contains("Data"), content="true")
+  inspect(html.contains("System"), content="true")
   inspect(html.contains("Safety Gate"), content="true")
   inspect(html.contains("Emergency Stop"), content="true")
   inspect(html.contains("Evaluate Walk"), content="true")
-  inspect(html.contains("receipt-cli-plan-walk"), content="true")
+  inspect(html.contains("receipt-cli-plan-walk"), content="false")
   inspect(html.contains("Platform Queue"), content="false")
   inspect(html.contains("Suite Status"), content="false")
-  inspect(html.contains("Run one reviewed robot command"), content="true")
-  inspect(html.contains("SAFE RECOVERY"), content="true")
+  inspect(html.contains("Connect to begin"), content="true")
+  assert_true(html.contains("Telemetry unavailable"))
+  assert_false(html.contains(">Connected<"))
+  inspect(html.contains("role=\"tablist\""), content="true")
+  inspect(html.contains("role=\"tabpanel\""), content="true")
+}
+
+///|
+#warnings("-alert_unstable")
+test "connection never presents an absent telemetry frame as fresh" {
+  let initial = init_model()
+  let model = {
+    ..initial,
+    last_source: "local host",
+    error: None,
+    runtime_supervisor_status: {
+      ..initial.runtime_supervisor_status,
+      ready: true,
+    },
+    snapshot: {
+      ..initial.snapshot,
+      telemetry: { ..initial.snapshot.telemetry, captured_at_ms: 0L, },
+      bridge: { ..initial.snapshot.bridge, telemetry_stale: false, },
+    },
+  }
+  let page = @rabbita.simple_cell(model~, update=(_ : Msg, model) => model, view=(
+    emit,
+    model,
+  ) => render_bridge(msg => emit(msg), model))
+  let html = @rabbita.render_to_string(page)
+  assert_true(html.contains("Telemetry unavailable"))
+  assert_false(html.contains("freshness ok"))
+  assert_false(html.contains(">0 ms<"))
 }
 
 ///|
@@ -4246,17 +4282,102 @@ test "editing a walk command invalidates earlier effect authority" {
 
 ///|
 #warnings("-alert_unstable")
-test "cockpit task view contains agent workflow without model editor" {
+test "cockpit task view focuses conversation and offers workflow tabs" {
   let model = { ..init_model(), active_view: "tasks", }
   let page = @rabbita.simple_cell(model~, update=(_ : Msg, model) => model, view=(
     emit,
     model,
   ) => render_app(msg => emit(msg), model))
   let html = @rabbita.render_to_string(page)
-  inspect(html.contains("Platform Queue"), content="true")
-  inspect(html.contains("Observation Run"), content="true")
-  inspect(html.contains("MoonClaw"), content="true")
+  inspect(html.contains("Ask Robo"), content="true")
+  inspect(html.contains("section-review"), content="true")
+  inspect(html.contains("section-history"), content="true")
+  inspect(html.contains("Platform Queue"), content="false")
+  inspect(html.contains("Observation Run"), content="false")
   inspect(html.contains("URDF Workspace"), content="false")
+}
+
+///|
+#warnings("-alert_unstable")
+test "task rejection remains visible outside technical details" {
+  let model = {
+    ..init_model(),
+    active_view: "tasks",
+    task_message_status: "Task message rejected: unsupported-message",
+  }
+  let page = @rabbita.simple_cell(model~, update=(_ : Msg, model) => model, view=(
+    emit,
+    model,
+  ) => render_app(msg => emit(msg), model))
+  let html = @rabbita.render_to_string(page)
+  assert_true(html.contains("role=\"alert\""))
+  assert_true(html.contains("Request could not be completed."))
+}
+
+///|
+#warnings("-alert_unstable")
+test "learning workflow uses inline experiment result and replay sections" {
+  let (_, data) = update(_ => @rabbita.none, SelectCockpitView("data"), {
+    ..init_model(),
+    robot_context: "g1-simulation",
+  })
+  assert_eq(data.data_section, "experiments")
+  for section in ["experiments", "results", "replay"] {
+    let (_, selected) = update(
+      _ => @rabbita.none,
+      SelectCockpitSection(section),
+      data,
+    )
+    let page = @rabbita.simple_cell(
+      model=selected,
+      update=(_ : Msg, model) => model,
+      view=(emit, model) => render_app(msg => emit(msg), model),
+    )
+    let html = @rabbita.render_to_string(page)
+    assert_true(html.contains("data-learning-section=\"\{section}\""))
+    assert_true(html.contains("learning-workspace-slot"))
+    assert_true(!html.contains("learning-experiments-dialog"))
+  }
+}
+
+///|
+test "workspace switching preserves position and unsent command values" {
+  let original = {
+    ..init_model(),
+    walk_x: "0.25",
+    task_message: "inspect the robot",
+  }
+  let (_, robot) = update(
+    _ => @rabbita.none,
+    SelectCockpitView("robot"),
+    original,
+  )
+  let (_, edit) = update(
+    _ => @rabbita.none,
+    SelectCockpitSection("edit"),
+    robot,
+  )
+  let (_, tasks) = update(_ => @rabbita.none, SelectCockpitView("tasks"), edit)
+  let (_, history) = update(
+    _ => @rabbita.none,
+    SelectCockpitSection("history"),
+    tasks,
+  )
+  let (_, returned) = update(
+    _ => @rabbita.none,
+    SelectCockpitView("robot"),
+    history,
+  )
+  assert_eq(cockpit_section(returned), "edit")
+  assert_eq(returned.tasks_section, "history")
+  assert_eq(returned.walk_x, "0.25")
+  assert_eq(returned.task_message, "inspect the robot")
+  let (_, invalid) = update(
+    _ => @rabbita.none,
+    SelectCockpitSection("history"),
+    returned,
+  )
+  assert_eq(cockpit_section(invalid), "edit")
 }
 
 ///|
