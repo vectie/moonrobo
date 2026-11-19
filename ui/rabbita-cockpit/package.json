@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev:e1-live": "vite --config vite.e1-live.config.js",
+    "build:e1-live": "vite build --config vite.e1-live.config.js",
+    "test:e1-live": "node --test e1/raised-drums.test.mjs e1/live-assets.test.mjs e1/live-server.test.mjs",
     "predev": "moon build --target js --debug && node prepare-rabbita-build.mjs debug",
     "dev": "vite --host 127.0.0.1 --port 5190",
     "prebuild": "moon build --target js --release && node prepare-rabbita-build.mjs release",

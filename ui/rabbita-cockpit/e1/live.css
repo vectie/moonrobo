@@ -1,0 +1,30 @@
+.live-lab {width:var(--wide);max-width:1280px;margin:clamp(30px,5vw,76px) auto 60px}
+.live-lab h1 {font-size:clamp(32px,4vw,56px);line-height:1.15;letter-spacing:-.055em}
+.live-lab .intro,.live-lab .caption,.pane-head span {color:#536368;line-height:1.55}
+.live-lab .intro {margin:.8rem 0 1.7rem}
+.pose-pair {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.pose-pair section,.transport {border:1px solid #dce3e2;border-radius:16px;overflow:hidden;background:white}
+.live-lab h2 {margin:0;font-size:clamp(16px,1.4vw,21px);letter-spacing:-.02em}
+.pane-head,.trace-head,.transport-actions {display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pane-head {padding:14px 18px}.pane-head span,.caption {font-size:13px}
+.pane-head h2 {flex-shrink:0;white-space:nowrap}
+.pane-head select {min-width:0;flex:1;max-width:100%;font:inherit;font-size:13px;color:#24483f;border:1px solid #bccbc7;border-radius:6px;background:white;padding:4px 6px}
+#link-state[data-live=true] {color:#006457;font-weight:650}
+.viewport {height:clamp(220px,33vh,425px);background:#f6f7f8;position:relative}
+.viewport canvas {width:100%;height:100%;touch-action:none;display:block}
+.viewport canvas[hidden],.overlay[hidden] {display:none}
+.overlay {position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:#49595e;pointer-events:none}
+.caption {padding:12px 18px;margin:0}
+.transport {margin-top:16px;padding:18px 22px}
+.trace-head output {font-variant-numeric:tabular-nums;font-weight:650;color:#006457}
+#trace {display:block;width:100%;height:96px}
+.preview-phase {font-size:14px;color:#43595a;margin:10px 0 8px}
+.trace-legend {display:flex;flex-wrap:wrap;gap:18px;font-size:13px;margin:0 0 6px}
+.legend-left {color:#006457}.legend-right {color:#315aa8}
+.trace-legend [hidden] {display:none}
+#scrub {width:100%;accent-color:#006f63;cursor:pointer;margin:4px 0 10px}
+.transport-actions {justify-content:flex-start;flex-wrap:wrap}.transport-actions output {margin-left:auto;font-size:14px;font-variant-numeric:tabular-nums}
+.transport-actions button {border:1px solid #a9b8b4;background:white;color:#24483f;border-radius:8px;min-height:44px;padding:0 15px;cursor:pointer;font:inherit}
+.transport-actions button:first-child {background:#006457;color:white;border-color:#006457}
+.live-lab :focus-visible {outline:3px solid #287baa;outline-offset:2px}
+@media(max-width:660px){.live-lab{width:94%}.pose-pair{gap:7px}.pane-head{display:block;padding:9px}.viewport{height:210px}.caption{padding:8px;font-size:12px}.pane-head span{font-size:12px}.transport{padding:14px}.live-lab .intro{font-size:14px}.trace-head{align-items:flex-start;flex-wrap:wrap}}

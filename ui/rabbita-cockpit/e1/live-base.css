@@ -1,0 +1,33 @@
+:root {
+  --ink: #1d1d1f;
+  --muted: #606067;
+  --line: #d5d5d8;
+  --blue: #006bcc;
+  --wide: min(87.5%, 1320px);
+  font: 17px/1.46 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  color: var(--ink);
+  background: #fff;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body, h1, h2, h3, p, figure { margin: 0; }
+body { padding-top: 64px; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button, select, input { font: inherit; color: inherit; }
+button, select { cursor: pointer; }
+button { border: 0; background: none; }
+[hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.topbar {
+  position: fixed; z-index: 10; inset: 7px 0 auto; margin: auto;
+  width: min(1028px, calc(100% - 14px)); height: 56px; padding: 0 10px 0 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  border: 1px solid #18181815; border-radius: 20px;
+  background: #ffffffec; backdrop-filter: blur(18px); box-shadow: 0 6px 28px #1212220d;
+}
+.brand { color: var(--ink); font-size: 20px; font-weight: 650; letter-spacing: -.018em; }
+nav { display: flex; gap: 8px; align-items: center; }
+nav > a { padding: 5px 14px; font-size: 13px; border: 1px solid #69696c; border-radius: 99px; color: var(--ink); }
+a:focus-visible { outline: 3px solid #287baa; outline-offset: 3px; }
+@media(max-width: 440px) { .topbar { padding-left: 12px; } nav > a { padding: 5px 9px; } }
