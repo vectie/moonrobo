@@ -1,0 +1,161 @@
+{
+  "format": "luna.products-publication.v1",
+  "recorded_date": "2026-11-19",
+  "repositories": [
+    {
+      "repository": "lunanexa",
+      "url": "https://github.com/vectie/lunanexa",
+      "branch": "main",
+      "local_head": "07d29c1aaae13b8751cce80010fc6bc5533bb28c",
+      "remote_main": "07d29c1aaae13b8751cce80010fc6bc5533bb28c",
+      "working_tree_clean": true,
+      "recent_commits": [
+        "07d29c1 docs(validation): record publication checks and their scope",
+        "ebb03b7 chore(operations): preserve deployment and recovery workflows",
+        "d4b7f0d feat(site): publish product and lead display surfaces",
+        "5317e9c feat(coursebook): add bilingual AI lectures and whiteboard studio",
+        "b78bd08 fix(video): preserve native frame transport and recovery",
+        "e8a4953 docs(platform): record deployment boundaries and runtime handoff",
+        "d255f4f Keep deployment actions visible and distinguish start from stop",
+        "6c2ea9f Fix portal session recovery and model deployment handoff",
+        "b0a7477 Record live stopped-service observation recovery",
+        "af0d23f Merge registration support with verified portal workflows",
+        "54b9ad7 Fix live portal workflow states and lease pagination",
+        "74c3f21 Support phone or email registration with acquisition attribution"
+      ]
+    },
+    {
+      "repository": "lunachip",
+      "url": "https://github.com/vectie/lunachip",
+      "branch": "main",
+      "local_head": "22eb47edffe44abeaf83e55205dd0d6948b6008a",
+      "remote_main": "22eb47edffe44abeaf83e55205dd0d6948b6008a",
+      "working_tree_clean": true,
+      "recent_commits": [
+        "22eb47e docs(fpga): record routed mapping attempt and format preparation script",
+        "db91192 docs(fpga): retain accepted owner120 measurements and mapping findings",
+        "bafac9d fix(fpga): retain source scheduler frequency in bank-map preparation",
+        "49db8c9 docs(validation): record full native publication results",
+        "69fd9d4 docs(fpga): publish target contracts and evidence ledger",
+        "8df6e9d chore(fpga): preserve synthesis and board qualification workflows",
+        "4eb1207 test(fpga): add board, memory and layer protocol validation",
+        "53aa254 feat(core): publish execution and FPGA model foundations",
+        "c223a39 Accept explicit L1666 S898 M99 latency proof with sealed evidence",
+        "8e3902f Select explicit command latency in the qualified arithmetic conjunction",
+        "7aa423b Plan explicit command latency on the qualified arithmetic model",
+        "db07639 Accept joint age-potential induction and seal exact preparation evidence"
+      ]
+    },
+    {
+      "repository": "lunaflux",
+      "url": "https://github.com/vectie/lunaflux",
+      "branch": "main",
+      "local_head": "d3a7d626e55d1497f74ebc301c177cc10f19d33a",
+      "remote_main": "d3a7d626e55d1497f74ebc301c177cc10f19d33a",
+      "working_tree_clean": true,
+      "recent_commits": [
+        "d3a7d626 docs(validation): record full native publication pass and remaining gates",
+        "0ad00f55 test(serving): wait for readiness before checking callback retirement",
+        "9c689000 chore(moonbit): format compatibility changes and refresh interfaces",
+        "f6887612 docs(runtime): record MiniCPM, FPGA and two-host integration status",
+        "e8a4c650 chore(interfaces): make configuration trait promotions explicit",
+        "8c8c338c chore(qualification): preserve model staging and comparison workflows",
+        "88e64e32 test(models): add upstream and multimodal qualification fixtures",
+        "f82ee6a5 feat(serving): extend native request and worker surfaces",
+        "7d89a2f8 feat(execution): publish typed kernel and device integration work",
+        "7132c60f feat(models): integrate MiniCPM and multimodal model adapters",
+        "3e029614 chore(moonbit): refresh compiler spelling and explicit trait methods",
+        "632c97b2 Record completed cold and warm two-rank traces and restored GLM"
+      ]
+    },
+    {
+      "repository": "lunakine",
+      "url": "https://github.com/vectie/lunakine",
+      "branch": "main",
+      "local_head": "d8f39a4564b136d69bbf6a58ec3426ccec9a2b6a",
+      "remote_main": "d8f39a4564b136d69bbf6a58ec3426ccec9a2b6a",
+      "working_tree_clean": true,
+      "recent_commits": [
+        "d8f39a4 Add AscendCL inference, native diagnostics and offline tools",
+        "eb67904 Add portable actor contracts and static ONNX export",
+        "cd523ab Initialize standalone actor runtime repository"
+      ]
+    },
+    {
+      "repository": "lunaflex",
+      "url": "https://github.com/vectie/lunaflex",
+      "branch": "main",
+      "local_head": "881ee3c6a096462e9028dd0eb1b33354e551f6cc",
+      "remote_main": "881ee3c6a096462e9028dd0eb1b33354e551f6cc",
+      "working_tree_clean": true,
+      "recent_commits": [
+        "881ee3c chore: format extracted core for the current MoonBit toolchain",
+        "c8c322f fix(readers): use current MoonBit integer parsing APIs",
+        "ae67878 Add runnable core smoke and consumer contract",
+        "f42f158 Extract LunaFlex inference core from LunaFlux"
+      ]
+    },
+    {
+      "repository": "lunarein",
+      "url": "https://github.com/vectie/lunarein",
+      "branch": "main",
+      "local_head": "6bb2ebea6225620f1e10892485780a0183c7b5e3",
+      "remote_main": "6bb2ebea6225620f1e10892485780a0183c7b5e3",
+      "working_tree_clean": true,
+      "recent_commits": [
+        "6bb2ebe Document architecture, phase gates and debt boundaries",
+        "496b7b3 Add bounded reinforcement learning coordination and adapters",
+        "5428d44 Initialize LunaRein contracts and versioned runtime protocols"
+      ]
+    },
+    {
+      "repository": "moonnum",
+      "url": "https://github.com/vectie/moonnum",
+      "branch": "main",
+      "local_head": "9a4d50cfefd1a0d83d834b07db3dfafbf0765b82",
+      "remote_main": "9a4d50cfefd1a0d83d834b07db3dfafbf0765b82",
+      "working_tree_clean": true,
+      "recent_commits": [
+        "9a4d50c Document numerical contracts and retain native regression coverage",
+        "92fbd42 Add geometry, typed tensors, solvers and explicit CBLAS backend",
+        "e6b5f8d Extract shared scalar numeric, AD and optimizer core"
+      ]
+    },
+    {
+      "repository": "moonphys",
+      "url": "https://github.com/vectie/moonphys",
+      "branch": "main",
+      "local_head": "be25aa3937c02ff2594101b297135b5cf50d5981",
+      "remote_main": "be25aa3937c02ff2594101b297135b5cf50d5981",
+      "working_tree_clean": true,
+      "recent_commits": [
+        "be25aa3 Preserve physics provenance, review contracts and validation scope",
+        "ce7258b Extract standalone portable physics and articulated dynamics"
+      ]
+    },
+    {
+      "repository": "moonlib",
+      "url": "https://github.com/vectie/moonlib",
+      "branch": "main",
+      "local_head": "f9cad489a323964711d2b28fd0c3c3b51b922619",
+      "remote_main": "f9cad489a323964711d2b28fd0c3c3b51b922619",
+      "working_tree_clean": true,
+      "recent_commits": [
+        "f9cad48 Use normalized basename for extension failure cases",
+        "89ec1eb Remove redundant basename view and record interrupted verification",
+        "1e0d2dd Record snapshot comparison cost regression and independent acceptance",
+        "be919a0 Record single-run small-skill historical bug acceptance",
+        "5545645 Preserve slash-only basename roots with measured MoonCode delivery",
+        "74ab34f Fix basename trailing separators with real MoonCode delivery",
+        "f2cfdd9 Fix dotfile suffix replacement and portable Native test fixtures",
+        "dc62810 Preserve APIs and output under current MoonBit strict dependency checks",
+        "6e606b0 Preserve derived layout methods explicitly for strict callers",
+        "6de9dc0 Keep path construction compatible with strict current callers",
+        "169d7c3 Keep path construction compatible with strict current callers",
+        "410ae0d Support current MoonBit formatting and public dependency manifests"
+      ]
+    }
+  ],
+  "publication": "All nine existing GitHub repositories; coherent commits, ordinary main pushes without force. MoonLib already clean/up-to-date, so no empty commit.",
+  "artifact_retention": "Ignored generated build caches, local weights and raw deployment captures were not published. Original histories, sealed evidence and numerical campaigns retained. LunaChip main required no LFS or rewrite; local Git bundle preserved."
+}
