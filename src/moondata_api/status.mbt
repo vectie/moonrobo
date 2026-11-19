@@ -4,46 +4,46 @@ pub(all) struct MoonDataStatus {
   catalog_path : String
   generated_at_ms : Int64
   ready : Bool
-  entry_count : Int
-  source_count : Int
-  capture_count : Int
-  dataset_count : Int
-  episode_count : Int
-  frame_count : Int
-  signal_count : Int
-  robot_model_count : Int
-  quality_count : Int
-  transform_count : Int
-  version_count : Int
-  curation_count : Int
-  annotation_count : Int
-  annotation_index_count : Int
-  replay_count : Int
-  export_count : Int
-  lineage_count : Int
-  validation_count : Int
-  handoff_count : Int
-  repair_count : Int
-  repair_receipt_count : Int
-  repair_work_count : Int
-  repair_open_count : Int
-  repair_applied_count : Int
-  repair_applied_unvalidated_count : Int
-  repair_failed_count : Int
-  repair_pending_count : Int
+  entry_count : Int32
+  source_count : Int32
+  capture_count : Int32
+  dataset_count : Int32
+  episode_count : Int32
+  frame_count : Int32
+  signal_count : Int32
+  robot_model_count : Int32
+  quality_count : Int32
+  transform_count : Int32
+  version_count : Int32
+  curation_count : Int32
+  annotation_count : Int32
+  annotation_index_count : Int32
+  replay_count : Int32
+  export_count : Int32
+  lineage_count : Int32
+  validation_count : Int32
+  handoff_count : Int32
+  repair_count : Int32
+  repair_receipt_count : Int32
+  repair_work_count : Int32
+  repair_open_count : Int32
+  repair_applied_count : Int32
+  repair_applied_unvalidated_count : Int32
+  repair_failed_count : Int32
+  repair_pending_count : Int32
   latest_validation_report_id : String
   latest_validation_status : String
   latest_validation_generated_at_ms : Int64
-  latest_validation_catalog_entry_count : Int
+  latest_validation_catalog_entry_count : Int32
   latest_validation_covers_catalog : Bool
-  latest_validation_finding_count : Int
-  latest_validation_blocker_count : Int
-  latest_validation_warning_count : Int
+  latest_validation_finding_count : Int32
+  latest_validation_blocker_count : Int32
+  latest_validation_warning_count : Int32
   refs : Array[@moondata_core.MoonDataRef]
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-fn count_kind(catalog : @moondata_core.MoonDataCatalog, kind : String) -> Int {
+fn count_kind(catalog : @moondata_core.MoonDataCatalog, kind : String) -> Int32 {
   let mut count = 0
   for entry in catalog.entries {
     if entry.artifact_kind == kind {
@@ -68,10 +68,10 @@ fn latest_validation_entry(
 
 ///|
 fn repair_pressure_clear(
-  repair_open_count : Int,
-  repair_applied_unvalidated_count : Int,
-  repair_failed_count : Int,
-  repair_pending_count : Int,
+  repair_open_count : Int32,
+  repair_applied_unvalidated_count : Int32,
+  repair_failed_count : Int32,
+  repair_pending_count : Int32,
 ) -> Bool {
   repair_open_count == 0 &&
   repair_applied_unvalidated_count == 0 &&
@@ -96,17 +96,17 @@ fn status_from_catalog_status(
   latest_validation_report_id : String,
   latest_validation_status : String,
   latest_validation_generated_at_ms : Int64,
-  latest_validation_catalog_entry_count : Int,
+  latest_validation_catalog_entry_count : Int32,
   latest_validation_covers_catalog : Bool,
-  latest_validation_finding_count : Int,
-  latest_validation_blocker_count : Int,
-  latest_validation_warning_count : Int,
-  repair_work_count? : Int = 0,
-  repair_open_count? : Int = 0,
-  repair_applied_count? : Int = 0,
-  repair_applied_unvalidated_count? : Int = 0,
-  repair_failed_count? : Int = 0,
-  repair_pending_count? : Int = 0,
+  latest_validation_finding_count : Int32,
+  latest_validation_blocker_count : Int32,
+  latest_validation_warning_count : Int32,
+  repair_work_count~ : Int32 = 0,
+  repair_open_count~ : Int32 = 0,
+  repair_applied_count~ : Int32 = 0,
+  repair_applied_unvalidated_count~ : Int32 = 0,
+  repair_failed_count~ : Int32 = 0,
+  repair_pending_count~ : Int32 = 0,
 ) -> MoonDataStatus {
   let source_count = count_kind(catalog, "source")
   let capture_count = count_kind(catalog, "capture")
@@ -201,11 +201,11 @@ priv struct LatestValidationSummary {
   validation_report_id : String
   status : String
   generated_at_ms : Int64
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   covers_catalog : Bool
-  finding_count : Int
-  blocker_count : Int
-  warning_count : Int
+  finding_count : Int32
+  blocker_count : Int32
+  warning_count : Int32
 }
 
 ///|
@@ -227,7 +227,7 @@ fn validation_covers_catalog(
   catalog : @moondata_core.MoonDataCatalog,
   validation_report_id : String,
   validation_generated_at_ms : Int64,
-  validation_catalog_entry_count : Int,
+  validation_catalog_entry_count : Int32,
 ) -> Bool {
   if validation_generated_at_ms < catalog.generated_at_ms {
     return false

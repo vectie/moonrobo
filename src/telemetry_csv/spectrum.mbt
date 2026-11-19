@@ -1,7 +1,7 @@
 ///|
 /// One original observation, retaining its zero-based position in the source.
 pub(all) struct SpectrumSample {
-  source_sample_index : Int
+  source_sample_index : Int32
   timestamp_ms : Int64
   value : Double
 } derive(Debug, Eq, ToJson)
@@ -9,7 +9,7 @@ pub(all) struct SpectrumSample {
 ///|
 /// A one-sided peak-amplitude bin, not power, PSD, RMS, or a diagnosis.
 pub(all) struct SpectrumBin {
-  index : Int
+  index : Int32
   frequency_hz : Double
   amplitude : Double
   is_nyquist : Bool
@@ -27,7 +27,7 @@ pub(all) struct TelemetrySpectrum {
   demean : Bool
   source_mean : Double
   removed_mean : Double
-  source_sample_count : Int
+  source_sample_count : Int32
   samples : Array[SpectrumSample]
   requested_start_ms : Int64
   requested_end_ms : Int64
@@ -65,9 +65,9 @@ pub fn spectrum_csv(
   text : String,
   channel : String,
   unit_label~ : String,
-  demean? : Bool = false,
-  start_ms? : Int64 = 0L,
-  end_ms? : Int64 = 9223372036854775807L,
+  demean~ : Bool = false,
+  start_ms~ : Int64 = 0L,
+  end_ms~ : Int64 = 9223372036854775807L,
 ) -> Result[TelemetrySpectrum, String] {
   if start_ms < 0L || end_ms < start_ms {
     return Err("expected 0 <= start_ms <= end_ms")

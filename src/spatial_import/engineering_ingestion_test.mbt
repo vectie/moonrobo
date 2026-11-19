@@ -8,7 +8,7 @@ fn fixture() -> String raise {
 ///|
 fn ingest(
   text : String,
-  parent? : String = "sha256:15e7a26f57448cbc8ef67eb87803bd8f7f8acf14ae6cd0f2f03a6723b1dceda7",
+  parent~ : String = "sha256:15e7a26f57448cbc8ef67eb87803bd8f7f8acf14ae6cd0f2f03a6723b1dceda7",
 ) -> Result[EngineeringSpatialInput, EngineeringImportIssue] {
   ingest_moonmold_engineering(text, expected_editable_parent_digest=parent)
 }

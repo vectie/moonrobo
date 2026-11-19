@@ -11,16 +11,16 @@ pub(all) struct MoonDataHandoffDossierQuery {
 pub(all) struct MoonDataHandoffDossierList {
   root : String
   query : MoonDataHandoffDossierQuery
-  handoff_count : Int
-  ready_count : Int
-  ref_count : Int
-  repair_work_count : Int
-  repair_open_count : Int
-  repair_applied_count : Int
-  repair_applied_unvalidated_count : Int
-  repair_failed_count : Int
-  repair_pending_count : Int
-  output_ref_count : Int
+  handoff_count : Int32
+  ready_count : Int32
+  ref_count : Int32
+  repair_work_count : Int32
+  repair_open_count : Int32
+  repair_applied_count : Int32
+  repair_applied_unvalidated_count : Int32
+  repair_failed_count : Int32
+  repair_pending_count : Int32
+  output_ref_count : Int32
   total_output_byte_count : Int64
   output_checksums : Array[String]
   output_refs : Array[@moondata_core.DataRef]
@@ -33,11 +33,11 @@ pub(all) struct MoonDataHandoffDossierList {
 
 ///|
 pub fn handoff_dossier_query(
-  version_id? : String = "",
-  readiness_status? : String = "",
-  validation_report_id? : String = "",
-  artifact_kind? : String = "",
-  artifact_id? : String = "",
+  version_id~ : String = "",
+  readiness_status~ : String = "",
+  validation_report_id~ : String = "",
+  artifact_kind~ : String = "",
+  artifact_id~ : String = "",
 ) -> MoonDataHandoffDossierQuery {
   {
     version_id,
@@ -119,15 +119,15 @@ fn handoff_dossier_refs(
 
 ///|
 priv struct HandoffDossierListSummary {
-  ready_count : Int
-  ref_count : Int
-  repair_work_count : Int
-  repair_open_count : Int
-  repair_applied_count : Int
-  repair_applied_unvalidated_count : Int
-  repair_failed_count : Int
-  repair_pending_count : Int
-  output_ref_count : Int
+  ready_count : Int32
+  ref_count : Int32
+  repair_work_count : Int32
+  repair_open_count : Int32
+  repair_applied_count : Int32
+  repair_applied_unvalidated_count : Int32
+  repair_failed_count : Int32
+  repair_pending_count : Int32
+  output_ref_count : Int32
   total_output_byte_count : Int64
   output_checksums : Array[String]
   output_refs : Array[@moondata_core.DataRef]
@@ -214,7 +214,7 @@ fn handoff_dossier_list_summary(
 ///|
 pub fn list_handoff_dossiers(
   root : String,
-  query? : MoonDataHandoffDossierQuery = handoff_dossier_query(),
+  query~ : MoonDataHandoffDossierQuery = handoff_dossier_query(),
 ) -> Result[MoonDataHandoffDossierList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

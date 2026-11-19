@@ -29,7 +29,7 @@ pub fn command_intent(
   robot_id : RobotId,
   capability : CapabilityId,
   requested_by : Requester,
-  parameters? : Map[String, String] = {},
+  parameters~ : Map[String, String] = {},
 ) -> CommandIntent {
   { intent_id, robot_id, capability, parameters, requested_by, }
 }

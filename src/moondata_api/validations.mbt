@@ -11,14 +11,14 @@ pub(all) struct MoonDataValidationQuery {
 pub(all) struct MoonDataValidationList {
   root : String
   query : MoonDataValidationQuery
-  validation_count : Int
-  finding_count : Int
-  blocker_count : Int
-  warning_count : Int
+  validation_count : Int32
+  finding_count : Int32
+  blocker_count : Int32
+  warning_count : Int32
   latest_validation_report_id : String
   latest_validation_status : String
   latest_validation_generated_at_ms : Int64
-  latest_validation_catalog_entry_count : Int
+  latest_validation_catalog_entry_count : Int32
   latest_validation_covers_catalog : Bool
   validations : Array[@moondata_core.ValidationReport]
   refs : Array[@moondata_core.MoonDataRef]
@@ -27,11 +27,11 @@ pub(all) struct MoonDataValidationList {
 
 ///|
 pub fn validation_query(
-  status? : String = "",
-  severity? : String = "",
-  rule_id? : String = "",
-  artifact_kind? : String = "",
-  artifact_id? : String = "",
+  status~ : String = "",
+  severity~ : String = "",
+  rule_id~ : String = "",
+  artifact_kind~ : String = "",
+  artifact_id~ : String = "",
 ) -> MoonDataValidationQuery {
   { status, severity, rule_id, artifact_kind, artifact_id, }
 }
@@ -123,13 +123,13 @@ fn validation_refs(
 
 ///|
 priv struct ValidationListSummary {
-  finding_count : Int
-  blocker_count : Int
-  warning_count : Int
+  finding_count : Int32
+  blocker_count : Int32
+  warning_count : Int32
   latest_validation_report_id : String
   latest_validation_status : String
   latest_validation_generated_at_ms : Int64
-  latest_validation_catalog_entry_count : Int
+  latest_validation_catalog_entry_count : Int32
   latest_validation_covers_catalog : Bool
 }
 
@@ -190,7 +190,7 @@ fn validation_list_summary(
 ///|
 pub fn list_validations(
   root : String,
-  query? : MoonDataValidationQuery = validation_query(),
+  query~ : MoonDataValidationQuery = validation_query(),
 ) -> Result[MoonDataValidationList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

@@ -36,7 +36,7 @@ pub(all) struct DigitalTrialBinding {
 ///|
 pub(all) struct DigitalTrialEvent {
   trial_id : String
-  expected_revision : Int
+  expected_revision : Int32
   event_id : String
   kind : String
   proof_text : String
@@ -411,8 +411,8 @@ pub fn decode_digital_trial(
     request.result_text,
     "Replay proof differs",
   )
-  let required : Int = @json.from_json(field(replay, "required_replays"))
-  let completed : Int = @json.from_json(field(replay, "completed_replays"))
+  let required : Int32 = @json.from_json(field(replay, "required_replays"))
+  let completed : Int32 = @json.from_json(field(replay, "completed_replays"))
   need(
     required >= 2 &&
     completed >= required &&

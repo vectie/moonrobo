@@ -30,10 +30,10 @@ pub fn curation_request(
   input_dataset : @moondata_core.DatasetManifest,
   accepted_episode_ids : Array[@moondata_core.EpisodeId],
   created_at_ms : Int64,
-  steps? : Array[@moondata_core.TransformStep] = [],
-  rejected_refs? : Array[@moondata_core.MoonDataRef] = [],
-  quality_run_ids? : Array[@moondata_core.QualityRunId] = [],
-  summary? : String = "",
+  steps~ : Array[@moondata_core.TransformStep] = [],
+  rejected_refs~ : Array[@moondata_core.MoonDataRef] = [],
+  quality_run_ids~ : Array[@moondata_core.QualityRunId] = [],
+  summary~ : String = "",
 ) -> CurationRequest {
   {
     transform_run_id,

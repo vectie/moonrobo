@@ -13,9 +13,9 @@ pub fn data_ref(
   ref_id : DataRefId,
   kind : String,
   uri : String,
-  content_type? : String = "application/octet-stream",
-  byte_count? : Int64 = 0L,
-  checksum? : String = "",
+  content_type~ : String = "application/octet-stream",
+  byte_count~ : Int64 = 0L,
+  checksum~ : String = "",
 ) -> DataRef {
   { ref_id, kind, uri, content_type, byte_count, checksum, }
 }

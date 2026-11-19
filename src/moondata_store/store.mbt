@@ -8,7 +8,7 @@ pub(all) struct MoonDataStoreIssue {
 ///|
 pub(all) struct MoonDataStoreInit {
   root : String
-  created_dir_count : Int
+  created_dir_count : Int32
   directories : Array[String]
 } derive(Debug, Eq, ToJson, FromJson)
 

@@ -4,7 +4,7 @@ pub(all) struct FrameRef {
   episode_id : EpisodeId
   robot_id : String
   bridge_id : String
-  sequence_index : Int
+  sequence_index : Int32
   captured_at_ms : Int64
   payload_ref : DataRef?
   signal_refs : Array[DataRef]
@@ -17,11 +17,11 @@ pub fn frame_ref(
   episode_id : EpisodeId,
   robot_id : String,
   bridge_id : String,
-  sequence_index : Int,
+  sequence_index : Int32,
   captured_at_ms : Int64,
-  payload_ref? : DataRef? = None,
-  signal_refs? : Array[DataRef] = [],
-  media_refs? : Array[DataRef] = [],
+  payload_ref~ : DataRef? = None,
+  signal_refs~ : Array[DataRef] = [],
+  media_refs~ : Array[DataRef] = [],
 ) -> FrameRef {
   {
     frame_id,

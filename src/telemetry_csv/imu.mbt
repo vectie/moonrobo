@@ -2,10 +2,10 @@
 /// Original stamp, orientation and covariance metadata for one input line.
 /// Covariances remain in the source basis; none are propagated to Euler angles.
 pub(all) struct ImuSource {
-  source_line_number : Int
-  sec : Int
-  nanosec : Int
-  discarded_nanoseconds : Int
+  source_line_number : Int32
+  sec : Int32
+  nanosec : Int32
+  discarded_nanoseconds : Int32
   frame_id : String
   raw_orientation_xyzw : Array[Double]
   quaternion_norm : Double?
@@ -48,7 +48,7 @@ fn imu_vector(
 fn imu_row(
   json : Json,
   recipe : ImuRecipe,
-  line_number : Int,
+  line_number : Int32,
 ) -> Result[(Sample, ImuSource), String] {
   guard json is Object(fields) else {
     return Err("expected an Imu JSON object")

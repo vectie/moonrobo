@@ -2,7 +2,7 @@
 /// One recorded beam. Unusable ranges keep their source representation and have
 /// no Cartesian coordinates. Offsets are seconds after the exact header stamp.
 pub(all) struct LaserBeam {
-  index : Int
+  index : Int32
   angle_rad : Double
   acquisition_offset_s : Double
   raw_range : Json
@@ -40,9 +40,9 @@ pub impl ToJson for LaserBeam with fn to_json(self) {
 ///|
 /// A sensor-frame observation, with no transform, deskew or occupancy inference.
 pub(all) struct LaserScan {
-  source_line_number : Int
-  sec : Int
-  nanosec : Int
+  source_line_number : Int32
+  sec : Int32
+  nanosec : Int32
   frame_id : String
   angle_min_rad : Double
   angle_max_rad : Double
@@ -51,7 +51,7 @@ pub(all) struct LaserScan {
   scan_time_s : Double
   range_min_m : Double
   range_max_m : Double
-  usable_count : Int
+  usable_count : Int32
   beams : Array[LaserBeam]
 } derive(Debug, Eq, ToJson)
 
@@ -81,7 +81,7 @@ fn laser_number(
 fn laser_row(
   json : Json,
   frame : String,
-  line : Int,
+  line : Int32,
 ) -> Result[LaserScan, String] {
   guard json is Object(fields) else {
     return Err("expected a LaserScan object")

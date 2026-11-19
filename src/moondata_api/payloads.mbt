@@ -29,7 +29,7 @@ pub(all) struct MoonDataPayloadView {
   local_status : String
   byte_count : Int64
   checksum : String
-  owner_count : Int
+  owner_count : Int32
   metadata_consistent : Bool
   owners : Array[MoonDataPayloadOwner]
 } derive(Debug, Eq, ToJson, FromJson)
@@ -38,16 +38,16 @@ pub(all) struct MoonDataPayloadView {
 pub(all) struct MoonDataPayloadList {
   root : String
   query : MoonDataPayloadQuery
-  payload_count : Int
-  owner_count : Int
+  payload_count : Int32
+  owner_count : Int32
   total_byte_count : Int64
   checksums : Array[String]
-  present_count : Int
-  missing_count : Int
-  non_payload_count : Int
-  unsafe_count : Int
-  external_count : Int
-  conflict_count : Int
+  present_count : Int32
+  missing_count : Int32
+  non_payload_count : Int32
+  unsafe_count : Int32
+  external_count : Int32
+  conflict_count : Int32
   payloads : Array[MoonDataPayloadView]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -55,13 +55,13 @@ pub(all) struct MoonDataPayloadList {
 
 ///|
 pub fn payload_query(
-  uri_contains? : String = "",
-  payload_root? : String = "",
-  local_status? : String = "",
-  data_kind? : String = "",
-  artifact_kind? : String = "",
-  artifact_id? : String = "",
-  metadata_status? : String = "",
+  uri_contains~ : String = "",
+  payload_root~ : String = "",
+  local_status~ : String = "",
+  data_kind~ : String = "",
+  artifact_kind~ : String = "",
+  artifact_id~ : String = "",
+  metadata_status~ : String = "",
 ) -> MoonDataPayloadQuery {
   {
     uri_contains,
@@ -91,7 +91,7 @@ fn owner_from_data_ref(view : MoonDataDataRefView) -> MoonDataPayloadOwner {
 fn find_payload_index(
   payloads : Array[MoonDataPayloadView],
   uri : String,
-) -> Int? {
+) -> Int32? {
   for index in 0..<payloads.length() {
     if payloads[index].uri == uri {
       return Some(index)
@@ -230,7 +230,7 @@ fn payload_total_byte_count(payloads : Array[MoonDataPayloadView]) -> Int64 {
 }
 
 ///|
-fn payload_owner_count(payloads : Array[MoonDataPayloadView]) -> Int {
+fn payload_owner_count(payloads : Array[MoonDataPayloadView]) -> Int32 {
   let mut count = 0
   for payload in payloads {
     count += payload.owner_count
@@ -249,12 +249,12 @@ fn payload_checksums(payloads : Array[MoonDataPayloadView]) -> Array[String] {
 
 ///|
 priv struct PayloadStatusSummary {
-  present_count : Int
-  missing_count : Int
-  non_payload_count : Int
-  unsafe_count : Int
-  external_count : Int
-  conflict_count : Int
+  present_count : Int32
+  missing_count : Int32
+  non_payload_count : Int32
+  unsafe_count : Int32
+  external_count : Int32
+  conflict_count : Int32
 }
 
 ///|
@@ -293,7 +293,7 @@ fn payload_status_summary(
 ///|
 pub fn list_payloads(
   root : String,
-  query? : MoonDataPayloadQuery = payload_query(),
+  query~ : MoonDataPayloadQuery = payload_query(),
 ) -> Result[MoonDataPayloadList, @moondata_store.MoonDataStoreIssue] {
   let data_refs = match
     list_data_refs(

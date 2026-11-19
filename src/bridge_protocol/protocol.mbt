@@ -73,7 +73,7 @@ pub(all) struct BridgeOperationContract {
 
 ///|
 pub(all) struct BridgeContract {
-  protocol_version : Int
+  protocol_version : Int32
   bridge_id : @core.BridgeId
   robot_id : @core.RobotId
   kind : @core.BridgeKind
@@ -82,7 +82,7 @@ pub(all) struct BridgeContract {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub fn protocol_version() -> Int {
+pub fn protocol_version() -> Int32 {
   1
 }
 
@@ -177,7 +177,7 @@ pub fn operation_contract(
 pub fn bridge_contract(
   profile : @core.RobotProfile,
   read_only : Bool,
-  operations? : Array[BridgeOperation] = default_contract_operations(),
+  operations~ : Array[BridgeOperation] = default_contract_operations(),
 ) -> BridgeContract {
   {
     protocol_version: protocol_version(),
@@ -199,7 +199,7 @@ pub fn bridge_request(
   issued_at_ms : Int64,
   session_id? : String,
   intent? : @core.CommandIntent,
-  parameters? : Map[String, String] = {},
+  parameters~ : Map[String, String] = {},
 ) -> BridgeRequest {
   {
     request_id,
@@ -439,12 +439,12 @@ pub fn error_response(
 }
 
 ///|
-pub fn request_json(request : BridgeRequest, indent? : Int = 2) -> String {
+pub fn request_json(request : BridgeRequest, indent~ : Int32 = 2) -> String {
   request.to_json().stringify(indent~)
 }
 
 ///|
-pub fn response_json(response : BridgeResponse, indent? : Int = 2) -> String {
+pub fn response_json(response : BridgeResponse, indent~ : Int32 = 2) -> String {
   response.to_json().stringify(indent~)
 }
 

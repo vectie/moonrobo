@@ -2,9 +2,9 @@
 pub(all) struct MoonDataQualityGateView {
   quality_run_id : @moondata_core.QualityRunId
   status : String
-  finding_count : Int
-  blocker_count : Int
-  warning_count : Int
+  finding_count : Int32
+  blocker_count : Int32
+  warning_count : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -52,15 +52,15 @@ pub(all) struct MoonDataDatasetSlice {
   catalog_generated_at_ms : Int64
   dataset_status : String
   accepted_episode_ids : Array[@moondata_core.EpisodeId]
-  accepted_episode_count : Int
+  accepted_episode_count : Int32
   quality_gates : Array[MoonDataQualityGateView]
   exports : Array[MoonDataExportView]
-  output_ref_count : Int
+  output_ref_count : Int32
   total_output_byte_count : Int64
   output_checksums : Array[String]
   annotations : Array[MoonDataAnnotationView]
   annotation_targets : Array[@moondata_core.AnnotationTargetIndex]
-  annotation_target_count : Int
+  annotation_target_count : Int32
   replays : Array[MoonDataReplayView]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -91,7 +91,7 @@ fn export_view(manifest : @moondata_core.ExportManifest) -> MoonDataExportView {
 }
 
 ///|
-fn slice_output_ref_count(exports : Array[MoonDataExportView]) -> Int {
+fn slice_output_ref_count(exports : Array[MoonDataExportView]) -> Int32 {
   let mut count = 0
   for published in exports {
     count += published.output_refs.length()

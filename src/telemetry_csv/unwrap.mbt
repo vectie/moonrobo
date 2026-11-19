@@ -2,9 +2,9 @@
 /// Arrays follow the explicit recipe order, not the full CSV channel order.
 /// step_adjustments are local changes to a raw delta; offsets are cumulative.
 pub(all) struct UnwrapPoint {
-  source_sample_index : Int
+  source_sample_index : Int32
   timestamp_ms : Int64
-  segment : Int
+  segment : Int32
   segment_start : Bool
   source_values : Array[Double]
   step_adjustments : Array[Double]
@@ -14,8 +14,8 @@ pub(all) struct UnwrapPoint {
 
 ///|
 pub(all) struct UnwrapGap {
-  left_sample_index : Int
-  right_sample_index : Int
+  left_sample_index : Int32
+  right_sample_index : Int32
   left_timestamp_ms : Int64
   right_timestamp_ms : Int64
   duration_ms : Int64
@@ -29,7 +29,7 @@ pub(all) struct TelemetryUnwrap {
   assumption : String
   tie_policy : String
   max_gap_ms : Int64
-  segment_count : Int
+  segment_count : Int32
   channels : Array[PeriodicChannel]
   recording : Recording
   points : Array[UnwrapPoint]
@@ -58,7 +58,7 @@ pub fn unwrap_csv(
     Ok(value) => value
     Err(message) => return Err(message)
   }
-  let indices : Array[Int] = []
+  let indices : Array[Int32] = []
   let names = source.channels.copy()
   for channel in channels {
     let index = match source.channels.search(channel.source) {

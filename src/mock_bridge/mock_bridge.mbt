@@ -2,7 +2,7 @@
 pub(all) struct MockBridgeState {
   bridge_id : @core.BridgeId
   robot_id : @core.RobotId
-  frame_index : Int
+  frame_index : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -13,7 +13,7 @@ pub fn new(profile : @core.RobotProfile) -> MockBridgeState {
 ///|
 pub fn health(
   profile : @core.RobotProfile,
-  telemetry_age_ms? : Int = 0,
+  telemetry_age_ms~ : Int32 = 0,
 ) -> @core.BridgeHealth {
   @core.bridge_ok(
     profile.bridge.id,

@@ -1,6 +1,6 @@
 ///|
 fn joint_recipe(
-  policy? : String = "exact-milliseconds",
+  policy~ : String = "exact-milliseconds",
 ) -> @telemetry_csv.JointStateRecipe {
   {
     timestamp_policy: policy,
@@ -23,12 +23,12 @@ fn joint_recipe(
 
 ///|
 fn joint_message(
-  sec? : Json = 1,
-  nanosec? : Json = 0,
-  names? : Json = ["shoulder", "elbow"],
-  position? : Json = [1, 2],
-  velocity? : Json = [3, 4],
-  effort? : Json = [],
+  sec~ : Json = 1,
+  nanosec~ : Json = 0,
+  names~ : Json = ["shoulder", "elbow"],
+  position~ : Json = [1, 2],
+  velocity~ : Json = [3, 4],
+  effort~ : Json = [],
 ) -> String {
   (
     {

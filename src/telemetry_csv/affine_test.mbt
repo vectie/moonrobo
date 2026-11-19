@@ -1,14 +1,14 @@
 ///|
 fn affine_recipe(
-  fit_start? : Int64 = 1000L,
-  fit_end? : Int64 = 1300L,
-  holdout_start? : Int64 = 2000L,
-  holdout_end? : Int64 = 2200L,
-  predictor? : String = "sensor.raw",
-  response? : String = "reference.n",
-  output? : String = "predicted.n",
-  x_unit? : String = "raw",
-  y_unit? : String = "N",
+  fit_start~ : Int64 = 1000L,
+  fit_end~ : Int64 = 1300L,
+  holdout_start~ : Int64 = 2000L,
+  holdout_end~ : Int64 = 2200L,
+  predictor~ : String = "sensor.raw",
+  response~ : String = "reference.n",
+  output~ : String = "predicted.n",
+  x_unit~ : String = "raw",
+  y_unit~ : String = "N",
 ) -> @telemetry_csv.AffineRecipe {
   {
     predictor,
@@ -32,7 +32,7 @@ fn affine_fixture() -> String {
 fn affine_near(
   actual : Double,
   expected : Double,
-  tolerance? : Double = 1.0e-12,
+  tolerance~ : Double = 1.0e-12,
 ) -> Unit raise {
   assert_true(
     (actual - expected).abs() <= tolerance,

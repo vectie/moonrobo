@@ -12,9 +12,9 @@ pub(all) struct StoredCaptureRegistrationResult {
   capture_id : @moondata_core.CaptureId
   dataset_id : @moondata_core.DatasetId
   episode_id : @moondata_core.EpisodeId
-  frame_count : Int
+  frame_count : Int32
   catalog_path : String
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   registration : @moondata_ingest.CaptureRegistration
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -22,7 +22,7 @@ pub(all) struct StoredCaptureRegistrationResult {
 pub fn stored_capture_registration_request(
   root : String,
   registration : @moondata_ingest.CaptureRegistrationRequest,
-  generated_at_ms? : Int64 = 0L,
+  generated_at_ms~ : Int64 = 0L,
 ) -> StoredCaptureRegistrationRequest {
   { root, registration, generated_at_ms, }
 }

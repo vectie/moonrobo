@@ -1,5 +1,5 @@
 ///|
-fn test_design(authority? : String = "digital-only") -> Json {
+fn test_design(authority~ : String = "digital-only") -> Json {
   {
     "contract_id": "moonsuite.robot-design.v1",
     "design_id": "test-rover",

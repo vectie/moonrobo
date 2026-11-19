@@ -5,7 +5,7 @@ pub(all) struct SignalSeries {
   episode_id : EpisodeId
   field_path : String
   units : String
-  sample_count : Int
+  sample_count : Int32
   timebase : String
   storage_ref : DataRef
 } derive(Debug, Eq, ToJson, FromJson)
@@ -17,7 +17,7 @@ pub fn signal_series(
   episode_id : EpisodeId,
   field_path : String,
   units : String,
-  sample_count : Int,
+  sample_count : Int32,
   timebase : String,
   storage_ref : DataRef,
 ) -> SignalSeries {

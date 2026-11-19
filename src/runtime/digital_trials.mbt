@@ -3,7 +3,7 @@
 /// product proof-session home. Not an execution queue or a physical receipt.
 pub(all) struct DigitalTrialRecord {
   contract_id : String
-  revision : Int
+  revision : Int32
   import_request : @moonmoon_adapter.DigitalTrialImport
   binding : @moonmoon_adapter.DigitalTrialBinding
   events : Array[@moonmoon_adapter.DigitalTrialEvent]

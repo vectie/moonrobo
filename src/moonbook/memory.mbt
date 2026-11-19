@@ -4,7 +4,7 @@ pub(all) struct MoonBookMemoryCard {
   robot_id : String
   resident_id : String
   kind : String
-  priority : Int
+  priority : Int32
   title : String
   summary : String
   evidence_path : String
@@ -18,8 +18,8 @@ pub(all) struct MoonBookMemoryPack {
   robot_id : String
   resident_id : String
   generated_at_ms : Int64
-  card_count : Int
-  highest_priority : Int
+  card_count : Int32
+  highest_priority : Int32
   cards : Array[MoonBookMemoryCard]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -28,7 +28,7 @@ fn card(
   robot_id : String,
   resident_id : String,
   kind : String,
-  priority : Int,
+  priority : Int32,
   title : String,
   summary : String,
   evidence_path : String,
@@ -54,7 +54,7 @@ pub fn memory_card(
   robot_id : String,
   resident_id : String,
   kind : String,
-  priority : Int,
+  priority : Int32,
   title : String,
   summary : String,
   evidence_path : String,
@@ -278,7 +278,7 @@ fn runtime_health_memory(
 }
 
 ///|
-fn highest_priority(cards : Array[MoonBookMemoryCard]) -> Int {
+fn highest_priority(cards : Array[MoonBookMemoryCard]) -> Int32 {
   let mut value = 0
   for card in cards {
     if card.priority > value {
@@ -299,8 +299,8 @@ pub fn project(
   reviews : Array[@review.ProcessReview],
   queue : @platform_queue.RobotPlatformQueue,
   generated_at_ms : Int64,
-  latest_runtime_health? : @runtime_health.RuntimeHealthRecord? = None,
-  extra_cards? : Array[MoonBookMemoryCard] = [],
+  latest_runtime_health~ : @runtime_health.RuntimeHealthRecord? = None,
+  extra_cards~ : Array[MoonBookMemoryCard] = [],
 ) -> MoonBookMemoryPack {
   let cards = [resident_memory(resident, generated_at_ms)]
   match observation_memory(resident, generated_at_ms) {
@@ -343,6 +343,9 @@ pub fn project(
 }
 
 ///|
-pub fn memory_pack_json(pack : MoonBookMemoryPack, indent? : Int = 2) -> String {
+pub fn memory_pack_json(
+  pack : MoonBookMemoryPack,
+  indent~ : Int32 = 2,
+) -> String {
   pack.to_json().stringify(indent~)
 }

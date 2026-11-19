@@ -2,7 +2,7 @@
 fn count_repair_action_severity(
   actions : Array[@moondata_core.RepairAction],
   severity : String,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for action in actions {
     if action.severity == severity {
@@ -16,7 +16,7 @@ fn count_repair_action_severity(
 fn count_repair_action_category(
   actions : Array[@moondata_core.RepairAction],
   category : String,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for action in actions {
     if action.category == category {
@@ -31,8 +31,8 @@ fn add_repair_count_mismatch(
   findings : Array[@moondata_core.ValidationFinding],
   entry : @moondata_core.CatalogEntry,
   field : String,
-  expected : Int,
-  actual : Int,
+  expected : Int32,
+  actual : Int32,
 ) -> Unit {
   if expected == actual {
     return

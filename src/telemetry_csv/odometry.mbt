@@ -2,10 +2,10 @@
 /// Exact stamp, raw quaternion and unchanged row-major 6x6 covariance arrays.
 /// Covariances are neither validated statistically nor propagated to Euler angles.
 pub(all) struct OdometrySource {
-  source_line_number : Int
-  sec : Int
-  nanosec : Int
-  discarded_nanoseconds : Int
+  source_line_number : Int32
+  sec : Int32
+  nanosec : Int32
+  discarded_nanoseconds : Int32
   frame_id : String
   child_frame_id : String
   raw_orientation_xyzw : Array[Double]
@@ -46,7 +46,7 @@ fn odometry_covariance(value : Json) -> Result[Array[Double], String] {
 fn odometry_row(
   json : Json,
   recipe : OdometryRecipe,
-  line_number : Int,
+  line_number : Int32,
 ) -> Result[(Sample, OdometrySource), String] {
   guard json is Object(fields) else {
     return Err("expected an Odometry JSON object")

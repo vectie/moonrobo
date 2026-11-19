@@ -3,11 +3,11 @@ pub(all) struct SdkE1HighControlCommand {
   intent_id : String
   capability : String
   action : String
-  action_code : Int
+  action_code : Int32
   vertical : Double
   horizontal : Double
-  duration_ms : Int
-  data : Int
+  duration_ms : Int32
+  data : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -34,7 +34,7 @@ fn parse_int_parameter(
   parameters : Map[String, String],
   key : String,
   fallback : String,
-) -> Result[Int, SdkE1AdapterIssue] {
+) -> Result[Int32, SdkE1AdapterIssue] {
   let text = parameters.get(key).unwrap_or(fallback)
   let value = @string.parse_int(text) catch {
     _ =>
@@ -52,11 +52,11 @@ fn parse_int_parameter(
 fn command(
   intent : @core.CommandIntent,
   action : String,
-  action_code : Int,
+  action_code : Int32,
   vertical : Double,
   horizontal : Double,
-  duration_ms : Int,
-  data? : Int = 0,
+  duration_ms : Int32,
+  data~ : Int32 = 0,
 ) -> SdkE1HighControlCommand {
   {
     intent_id: intent.intent_id,
@@ -151,7 +151,7 @@ pub fn high_control_command_artifact(
 ///|
 pub fn high_control_command_json(
   command : SdkE1HighControlCommand,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   command.to_json().stringify(indent~)
 }
@@ -174,9 +174,9 @@ pub fn command_feedback_frame(
   profile : @core.RobotProfile,
   snapshot : SdkE1Snapshot,
   intent : @core.CommandIntent,
-  frame_id? : String = "",
-  bridge_request_id? : String = "",
-  receipt_id? : String = "",
+  frame_id~ : String = "",
+  bridge_request_id~ : String = "",
+  receipt_id~ : String = "",
 ) -> Result[@core.TelemetryFrame, SdkE1AdapterIssue] {
   let frame = match telemetry_frame(profile, snapshot) {
     Ok(frame) => frame

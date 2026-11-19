@@ -5,7 +5,7 @@ pub(all) struct TrackPoint {
   timestamp_ms : Int64
   x : Double
   y : Double
-  segment : Int
+  segment : Int32
   connected : Bool
   distance : Double
   speed : Double
@@ -21,8 +21,8 @@ pub(all) struct Trajectory {
   start_ms : Int64
   end_ms : Int64
   points : Array[TrackPoint]
-  segment_count : Int
-  gap_count : Int
+  segment_count : Int32
+  gap_count : Int32
   observed_duration_ms : Int64
   observed_distance : Double
   peak_interval_speed : Double
@@ -40,10 +40,10 @@ pub fn trajectory_csv(
   text : String,
   x_channel : String,
   y_channel : String,
-  units? : String = "coordinate-units",
-  max_gap_ms? : Int64 = 1000L,
-  start_ms? : Int64 = 0L,
-  end_ms? : Int64 = 9223372036854775807L,
+  units~ : String = "coordinate-units",
+  max_gap_ms~ : Int64 = 1000L,
+  start_ms~ : Int64 = 0L,
+  end_ms~ : Int64 = 9223372036854775807L,
 ) -> Result[Trajectory, String] {
   if max_gap_ms <= 0L || start_ms < 0L || end_ms < start_ms {
     return Err("expected max_gap_ms > 0 and 0 <= start_ms <= end_ms")

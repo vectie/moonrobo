@@ -33,7 +33,7 @@ async fn main {
   async fn run(
     label : String,
     parameters : Array[String],
-    expected : Int,
+    expected : Int32,
   ) -> String {
     let (code, out, err) = @process.collect_output(exe, parameters)
     @fs.write_file(

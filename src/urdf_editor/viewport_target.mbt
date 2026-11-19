@@ -5,7 +5,7 @@ pub(all) struct UrdfEditorViewportTarget {
   sub_type : String
   link_name : String
   joint_name : String
-  object_index : Int
+  object_index : Int32
   label : String
   detail : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -26,12 +26,12 @@ pub fn urdf_joint_node_id(name : String) -> String {
 }
 
 ///|
-pub fn urdf_visual_node_id(link_name : String, index : Int) -> String {
+pub fn urdf_visual_node_id(link_name : String, index : Int32) -> String {
   "visual:\{link_name}:\{index}"
 }
 
 ///|
-pub fn urdf_collision_node_id(link_name : String, index : Int) -> String {
+pub fn urdf_collision_node_id(link_name : String, index : Int32) -> String {
   "collision:\{link_name}:\{index}"
 }
 
@@ -43,7 +43,7 @@ pub fn urdf_inertial_node_id(link_name : String) -> String {
 ///|
 pub fn viewport_link_target(
   name : String,
-  depth : Int,
+  depth : Int32,
   status : String,
 ) -> UrdfEditorViewportTarget {
   {
@@ -81,7 +81,7 @@ pub fn viewport_joint_target(
 ///|
 pub fn viewport_visual_target(
   link_name : String,
-  index : Int,
+  index : Int32,
   geometry_kind : String,
   asset_status : String,
 ) -> UrdfEditorViewportTarget {
@@ -100,7 +100,7 @@ pub fn viewport_visual_target(
 ///|
 pub fn viewport_collision_target(
   link_name : String,
-  index : Int,
+  index : Int32,
   geometry_kind : String,
   asset_status : String,
 ) -> UrdfEditorViewportTarget {

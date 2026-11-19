@@ -25,9 +25,9 @@ pub(all) struct SidecarTaskMessageExecution {
 pub(all) struct ReviewedMessageSidecarRun {
   message_id : String
   task_id : String
-  evaluate_status : Int
-  dry_run_status : Int
-  approval_status : Int
+  evaluate_status : Int32
+  dry_run_status : Int32
+  approval_status : Int32
   execution : SidecarTaskMessageExecution
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -35,9 +35,9 @@ pub(all) struct ReviewedMessageSidecarRun {
 pub(all) struct ReviewedMessagePreparation {
   message_id : String
   task_id : String
-  evaluate_status : Int
-  dry_run_status : Int
-  approval_status : Int
+  evaluate_status : Int32
+  dry_run_status : Int32
+  approval_status : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -350,7 +350,7 @@ fn dispatch_for_response(
   response : @bridge_protocol.BridgeResponse,
   receipt : @core.RunReceipt,
   now_ms : Int64,
-  runtime_log_path? : String = "",
+  runtime_log_path~ : String = "",
 ) -> @core.BridgeDispatchEvidence {
   let route = @bridge_protocol.route_for_request(request)
   let intent_id = match request.intent {
@@ -465,7 +465,7 @@ pub async fn execute_task_message_with_sidecar(
   root : String,
   task_id : String,
   client : @bridge_client.BridgeClientConfig,
-  runtime_log_path? : String = "",
+  runtime_log_path~ : String = "",
 ) -> Result[SidecarTaskMessageExecution, BridgeExecutionIssue] {
   let bridge_request = match bridge_request_for_task_message(root, task_id) {
     Ok(request) => request
@@ -489,7 +489,7 @@ pub async fn execute_task_message_with_sidecar_async(
   root : String,
   task_id : String,
   client : @bridge_client.BridgeClientConfig,
-  runtime_log_path? : String = "",
+  runtime_log_path~ : String = "",
 ) -> Result[SidecarTaskMessageExecution, BridgeExecutionIssue] {
   let bridge_request = match bridge_request_for_task_message(root, task_id) {
     Ok(request) => request
@@ -606,7 +606,7 @@ pub fn persist_task_message_execution_response(
   root : String,
   task_id : String,
   bridge_response : @bridge_protocol.BridgeResponse,
-  runtime_log_path? : String = "",
+  runtime_log_path~ : String = "",
 ) -> Result[SidecarTaskMessageExecution, BridgeExecutionIssue] {
   let book = match @runtime.load_robobook(root) {
     Ok(book) => book

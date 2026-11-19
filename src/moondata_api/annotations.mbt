@@ -13,10 +13,10 @@ pub(all) struct MoonDataAnnotationQuery {
 pub(all) struct MoonDataAnnotationList {
   root : String
   query : MoonDataAnnotationQuery
-  annotation_count : Int
-  label_count : Int
-  target_ref_count : Int
-  evidence_ref_count : Int
+  annotation_count : Int32
+  label_count : Int32
+  target_ref_count : Int32
+  evidence_ref_count : Int32
   latest_annotation_set_id : String
   latest_annotation_created_at_ms : Int64
   annotations : Array[MoonDataAnnotationView]
@@ -38,10 +38,10 @@ pub(all) struct MoonDataAnnotationTargetQuery {
 pub(all) struct MoonDataAnnotationTargetList {
   root : String
   query : MoonDataAnnotationTargetQuery
-  annotation_index_count : Int
-  target_ref_count : Int
-  label_key_count : Int
-  label_value_count : Int
+  annotation_index_count : Int32
+  target_ref_count : Int32
+  label_key_count : Int32
+  label_value_count : Int32
   latest_annotation_index_id : String
   latest_annotation_created_at_ms : Int64
   indexes : Array[@moondata_core.AnnotationTargetIndex]
@@ -51,13 +51,13 @@ pub(all) struct MoonDataAnnotationTargetList {
 
 ///|
 pub fn annotation_query(
-  artifact_kind? : String = "",
-  artifact_id? : String = "",
-  reviewer? : String = "",
-  status? : String = "",
-  label_key? : String = "",
-  label_value? : String = "",
-  task_id? : String = "",
+  artifact_kind~ : String = "",
+  artifact_id~ : String = "",
+  reviewer~ : String = "",
+  status~ : String = "",
+  label_key~ : String = "",
+  label_value~ : String = "",
+  task_id~ : String = "",
 ) -> MoonDataAnnotationQuery {
   {
     artifact_kind,
@@ -72,12 +72,12 @@ pub fn annotation_query(
 
 ///|
 pub fn annotation_target_query(
-  artifact_kind? : String = "",
-  artifact_id? : String = "",
-  reviewer? : String = "",
-  status? : String = "",
-  label_key? : String = "",
-  label_value? : String = "",
+  artifact_kind~ : String = "",
+  artifact_id~ : String = "",
+  reviewer~ : String = "",
+  status~ : String = "",
+  label_key~ : String = "",
+  label_value~ : String = "",
 ) -> MoonDataAnnotationTargetQuery {
   { artifact_kind, artifact_id, reviewer, status, label_key, label_value, }
 }
@@ -313,9 +313,9 @@ fn annotation_target_refs(
 
 ///|
 priv struct AnnotationListSummary {
-  label_count : Int
-  target_ref_count : Int
-  evidence_ref_count : Int
+  label_count : Int32
+  target_ref_count : Int32
+  evidence_ref_count : Int32
   latest_annotation_set_id : String
   latest_annotation_created_at_ms : Int64
 }
@@ -358,9 +358,9 @@ fn annotation_list_summary(
 
 ///|
 priv struct AnnotationTargetListSummary {
-  target_ref_count : Int
-  label_key_count : Int
-  label_value_count : Int
+  target_ref_count : Int32
+  label_key_count : Int32
+  label_value_count : Int32
   latest_annotation_index_id : String
   latest_annotation_created_at_ms : Int64
 }
@@ -421,7 +421,7 @@ fn annotation_target_matches(
 ///|
 pub fn list_annotations(
   root : String,
-  query? : MoonDataAnnotationQuery = annotation_query(),
+  query~ : MoonDataAnnotationQuery = annotation_query(),
 ) -> Result[MoonDataAnnotationList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value
@@ -468,7 +468,7 @@ pub fn list_annotations(
 ///|
 pub fn list_annotation_targets(
   root : String,
-  query? : MoonDataAnnotationTargetQuery = annotation_target_query(),
+  query~ : MoonDataAnnotationTargetQuery = annotation_target_query(),
 ) -> Result[MoonDataAnnotationTargetList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

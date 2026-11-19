@@ -10,7 +10,7 @@ pub(all) struct MoonDataArtifactQuery {
 pub(all) struct MoonDataArtifactList {
   root : String
   query : MoonDataArtifactQuery
-  artifact_count : Int
+  artifact_count : Int32
   artifacts : Array[@moondata_core.CatalogEntry]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -18,10 +18,10 @@ pub(all) struct MoonDataArtifactList {
 
 ///|
 pub fn artifact_query(
-  artifact_kind? : String = "",
-  status? : String = "",
-  artifact_id_contains? : String = "",
-  summary_contains? : String = "",
+  artifact_kind~ : String = "",
+  status~ : String = "",
+  artifact_id_contains~ : String = "",
+  summary_contains~ : String = "",
 ) -> MoonDataArtifactQuery {
   { artifact_kind, status, artifact_id_contains, summary_contains, }
 }
@@ -70,7 +70,7 @@ fn artifact_refs(
 ///|
 pub fn list_artifacts(
   root : String,
-  query? : MoonDataArtifactQuery = artifact_query(),
+  query~ : MoonDataArtifactQuery = artifact_query(),
 ) -> Result[MoonDataArtifactList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

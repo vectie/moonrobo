@@ -2,8 +2,8 @@
 fn mapping(
   source : String,
   target : String,
-  scale? : Double = 1.0,
-  offset? : Double = 0.0,
+  scale~ : Double = 1.0,
+  offset~ : Double = 0.0,
 ) -> @telemetry_csv.ChannelMapping {
   { source, target, scale, offset, source_unit: "raw", target_unit: "chosen", }
 }

@@ -123,8 +123,8 @@ fn local_blob_result(
 pub fn put_local_bytes(
   root : String,
   bytes : Bytes,
-  kind? : String = "blob",
-  content_type? : String = "application/octet-stream",
+  kind~ : String = "blob",
+  content_type~ : String = "application/octet-stream",
 ) -> Result[LocalBlobResult, @moondata_store.MoonDataStoreIssue] {
   if bytes.length() == 0 {
     return Err(
@@ -187,9 +187,9 @@ pub fn put_local_bytes(
 pub fn put_local_file(
   root : String,
   source_path : String,
-  kind? : String = "blob",
-  content_type? : String = "application/octet-stream",
-  expected_checksum? : String = "",
+  kind~ : String = "blob",
+  content_type~ : String = "application/octet-stream",
+  expected_checksum~ : String = "",
 ) -> Result[LocalBlobResult, @moondata_store.MoonDataStoreIssue] {
   let size = match local_file_size(source_path) {
     Ok(value) => value

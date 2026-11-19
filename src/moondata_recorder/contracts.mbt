@@ -13,7 +13,7 @@ pub(all) struct RecorderPlan {
   max_bag_size_bytes : Int64
   max_bag_duration_seconds : Int64
   max_cache_size_bytes : Int64
-  max_bag_files : Int
+  max_bag_files : Int32
   minimum_free_bytes : Int64
   command : Array[String]
 } derive(Debug, Eq, ToJson, FromJson)
@@ -32,11 +32,11 @@ pub(all) struct RecorderSealResult {
   schema_version : String
   session : RecorderSession
   captures : Array[RecorderSealedChunk]
-  sealed_count : Int
+  sealed_count : Int32
   recovery_required_paths : Array[String]
-  recovery_required_count : Int
+  recovery_required_count : Int32
   invalid_paths : Array[String]
-  invalid_count : Int
+  invalid_count : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -60,7 +60,7 @@ pub(all) struct RecorderRecoveryReceipt {
   original_blob_uri : String
   original_checksum : String
   recovered_checksum : String
-  exit_code : Int
+  exit_code : Int32
   lossy : Bool
   status : String
   recovered_at_ms : Int64
@@ -71,9 +71,9 @@ pub(all) struct RecorderRecoveryReceipt {
 pub(all) struct RecorderRecoveryResult {
   schema_version : String
   session : RecorderSession
-  recovered_count : Int
-  lossy_count : Int
-  failed_count : Int
+  recovered_count : Int32
+  lossy_count : Int32
+  failed_count : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -90,9 +90,9 @@ pub(all) struct RecorderSession {
   schema_version : String
   session_id : String
   status : String
-  pid : Int
+  pid : Int32
   running : Bool
-  revision : Int
+  revision : Int32
   created_at_ms : Int64
   updated_at_ms : Int64
   started_at_ms : Int64

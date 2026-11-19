@@ -4,6 +4,7 @@ package "vectie/moonrobo/src/urdf_viewport"
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
+  "vectie/moonnum/geometry",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/urdf",
 }
@@ -34,18 +35,6 @@ pub(all) struct UrdfViewportSimulation {
   links : Array[ViewportLinkPose]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
-pub(all) struct ViewportBasis {
-  xx : Double
-  xy : Double
-  xz : Double
-  yx : Double
-  yy : Double
-  yz : Double
-  zx : Double
-  zy : Double
-  zz : Double
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
 pub(all) struct ViewportLinkPose {
   name : String
   index : Int
@@ -55,7 +44,7 @@ pub(all) struct ViewportLinkPose {
   x : Double
   y : Double
   z : Double
-  world_basis : ViewportBasis
+  world_basis : @geometry.Basis3
   transform : String
   status : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -67,10 +56,11 @@ pub(all) struct ViewportVisualInstance {
   x : Double
   y : Double
   z : Double
-  world_basis : ViewportBasis
+  world_basis : @geometry.Basis3
   link_status : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
+pub using @geometry {type Basis3 as ViewportBasis}
 
 // Traits

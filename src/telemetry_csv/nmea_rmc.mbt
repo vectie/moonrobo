@@ -1,7 +1,7 @@
 ///|
 /// One checksum-verified sentence, including excluded fixes and missing values.
 pub(all) struct NmeaRmcSource {
-  source_line_number : Int
+  source_line_number : Int32
   sentence : String
   talker : String
   status : String
@@ -24,15 +24,15 @@ pub(all) struct NmeaRmcImport {
   raw_source : String
   recipe : NmeaRmcRecipe
   sources : Array[NmeaRmcSource]
-  exported_source_line_numbers : Array[Int]
-  excluded_sentence_count : Int
+  exported_source_line_numbers : Array[Int32]
+  excluded_sentence_count : Int32
   recording : Recording
 } derive(Debug, Eq, ToJson)
 
 ///|
 fn rmc_source(
   sentence : String,
-  line : Int,
+  line : Int32,
   recipe : NmeaRmcRecipe,
 ) -> NmeaRmcSource raise NmeaRmcError {
   let f = rmc_fields(sentence)
@@ -151,7 +151,7 @@ pub fn import_nmea_rmc(
   }
   let samples : Array[Sample] = []
   let sources : Array[NmeaRmcSource] = []
-  let exported_source_line_numbers : Array[Int] = []
+  let exported_source_line_numbers : Array[Int32] = []
   let mut line_number = 0
   for line in text.split("\n") {
     line_number += 1

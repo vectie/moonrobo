@@ -17,8 +17,8 @@ pub(all) struct TelemetryBucket {
   end_ms : Int64
   selected_start_ms : Int64
   selected_end_ms : Int64
-  sample_count : Int
-  source_sample_indices : Array[Int]
+  sample_count : Int32
+  source_sample_indices : Array[Int32]
   source_timestamps_ms : Array[Int64]
   statistics : Array[BucketStatistics]
 } derive(Debug, Eq, ToJson)
@@ -44,8 +44,8 @@ pub(all) struct TelemetryBuckets {
   start_ms : Int64
   end_ms : Int64
   channels : Array[String]
-  source_sample_count : Int
-  selected_sample_count : Int
+  source_sample_count : Int32
+  selected_sample_count : Int32
   total_bucket_count : UInt64
   buckets : Array[TelemetryBucket]
   gaps : Array[BucketGap]
@@ -71,9 +71,9 @@ fn bucket_bounds(
 ///|
 fn summarize_bucket(
   recording : Recording,
-  indices : Array[Int],
-  begin : Int,
-  limit : Int,
+  indices : Array[Int32],
+  begin : Int32,
+  limit : Int32,
   index : Int64,
   width : Int64,
   origin : Int64,
@@ -115,7 +115,7 @@ fn summarize_bucket(
     })
   }
   let (start_ms, end_ms) = bucket_bounds(index, width, origin)
-  let source_sample_indices : Array[Int] = []
+  let source_sample_indices : Array[Int32] = []
   let source_timestamps_ms : Array[Int64] = []
   for i in begin..<limit {
     source_sample_indices.push(i)
@@ -181,7 +181,7 @@ pub fn bucket_csv(
     Ok(value) => value
     Err(message) => return Err(message)
   }
-  let indices : Array[Int] = []
+  let indices : Array[Int32] = []
   for name in channels {
     let index = match recording.channels.search(name) {
       Some(index) => index

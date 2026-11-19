@@ -2,12 +2,12 @@
 /// One physical JSONL line's original ROS stamp and selected array positions.
 /// Joint indices are in recipe order; frame_id is retained, not interpreted.
 pub(all) struct JointStateSource {
-  source_line_number : Int
-  sec : Int
-  nanosec : Int
-  discarded_nanoseconds : Int
+  source_line_number : Int32
+  sec : Int32
+  nanosec : Int32
+  discarded_nanoseconds : Int32
   frame_id : String
-  joint_indices : Array[Int]
+  joint_indices : Array[Int32]
 } derive(Debug, Eq, ToJson)
 
 ///|
@@ -21,7 +21,7 @@ pub(all) struct JointStateImport {
 } derive(Debug, Eq, ToJson)
 
 ///|
-fn joint_state_integer(value : Json, maximum : Int) -> Result[Int, String] {
+fn joint_state_integer(value : Json, maximum : Int32) -> Result[Int32, String] {
   guard value is Number(number) &&
     !number.is_nan() &&
     !number.is_inf() &&
@@ -40,7 +40,7 @@ fn joint_state_integer(value : Json, maximum : Int) -> Result[Int, String] {
 fn joint_state_row(
   json : Json,
   recipe : JointStateRecipe,
-  line_number : Int,
+  line_number : Int32,
 ) -> Result[(Sample, JointStateSource), String] {
   guard json is Object(fields) else {
     return Err("expected a JointState JSON object")
@@ -101,7 +101,7 @@ fn joint_state_row(
     arrays[field] = values
   }
   let values : Array[Double] = []
-  let joint_indices : Array[Int] = []
+  let joint_indices : Array[Int32] = []
   for channel in recipe.channels {
     let mut index = -1
     for i, name in names {

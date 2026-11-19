@@ -44,7 +44,7 @@ fn review_receipt(status : @core.RunStatus) -> @core.RunReceipt {
 }
 
 ///|
-fn review_replay(error_count : Int) -> @replay.ReplayTimeline {
+fn review_replay(error_count : Int32) -> @replay.ReplayTimeline {
   {
     session_id: "task-review-observe",
     robot_id: "review-robot",

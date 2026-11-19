@@ -5,9 +5,9 @@ pub(all) struct EventResponsePoint {
   offset_ms : Int64
   timestamp_ms : Int64?
   status : String
-  source_segment : Int?
-  left_sample_index : Int?
-  right_sample_index : Int?
+  source_segment : Int32?
+  left_sample_index : Int32?
+  right_sample_index : Int32?
   left_timestamp_ms : Int64?
   right_timestamp_ms : Int64?
   right_weight : Double?
@@ -16,7 +16,7 @@ pub(all) struct EventResponsePoint {
 
 ///|
 pub(all) struct EventResponseTrial {
-  episode_index : Int
+  episode_index : Int32
   anchor : ThresholdEpisode
   points : Array[EventResponsePoint]
 } derive(Debug, Eq, ToJson)
@@ -24,10 +24,10 @@ pub(all) struct EventResponseTrial {
 ///|
 pub(all) struct EventResponseSummary {
   offset_ms : Int64
-  supported_episode_indices : Array[Int]
-  exact_count : Int
-  interpolated_count : Int
-  missing_count : Int
+  supported_episode_indices : Array[Int32]
+  exact_count : Int32
+  interpolated_count : Int32
+  missing_count : Int32
   mean : Array[Double]?
   minimum : Array[Double]?
   maximum : Array[Double]?
@@ -35,8 +35,8 @@ pub(all) struct EventResponseSummary {
 
 ///|
 pub(all) struct EventResponseOverlap {
-  first_episode_index : Int
-  second_episode_index : Int
+  first_episode_index : Int32
+  second_episode_index : Int32
 } derive(Debug, Eq, ToJson)
 
 ///|
@@ -114,7 +114,7 @@ pub fn event_responses_csv(
   event_channel : String,
   direction : String,
   threshold : Double,
-  episodes~ : Array[Int],
+  episodes~ : Array[Int32],
   channels~ : Array[String],
   unit_labels~ : Array[String],
   before_ms~ : Int64,
@@ -177,7 +177,7 @@ pub fn event_responses_csv(
     Ok(value) => value
     Err(message) => return Err(message)
   }
-  let indices : Array[Int] = []
+  let indices : Array[Int32] = []
   for channel in channels {
     let index = match source.channels.search(channel) {
       Some(value) => value
@@ -212,7 +212,7 @@ pub fn event_responses_csv(
       }
     }
   }
-  let segments : Array[Int] = []
+  let segments : Array[Int32] = []
   let mut segment = 0
   for i, sample in source.samples {
     if i > 0 &&
@@ -314,7 +314,7 @@ pub fn event_responses_csv(
   }
   let summaries : Array[EventResponseSummary] = []
   for grid_index in 0..<grid_count {
-    let supported : Array[Int] = []
+    let supported : Array[Int32] = []
     let mean : Array[Double] = []
     let minimum : Array[Double] = []
     let maximum : Array[Double] = []

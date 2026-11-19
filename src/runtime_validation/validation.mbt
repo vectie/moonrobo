@@ -17,10 +17,10 @@ pub(all) struct RuntimeValidationReport {
   observed_bridge_id : String
   status : String
   ready_for_live_sdk : Bool
-  check_count : Int
-  pass_count : Int
-  warn_count : Int
-  fail_count : Int
+  check_count : Int32
+  pass_count : Int32
+  warn_count : Int32
+  fail_count : Int32
   checks : Array[RuntimeValidationCheck]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -28,9 +28,9 @@ pub(all) struct RuntimeValidationReport {
 pub(all) struct RuntimeMappingProof {
   robot_id : String
   bridge_id : String
-  sample_count : Int
-  matching_sample_count : Int
-  mismatch_sample_count : Int
+  sample_count : Int32
+  matching_sample_count : Int32
+  mismatch_sample_count : Int32
   stable : Bool
   status : String
   first_mismatch_report_id : String
@@ -46,10 +46,10 @@ pub(all) struct RuntimeValidationSession {
   bridge_id : String
   status : String
   ready_for_live_sdk : Bool
-  required_sample_count : Int
-  sample_count : Int
-  ready_sample_count : Int
-  blocked_sample_count : Int
+  required_sample_count : Int32
+  sample_count : Int32
+  ready_sample_count : Int32
+  blocked_sample_count : Int32
   first_blocker_code : String
   mapping_proof : RuntimeMappingProof
   report_ids : Array[String]
@@ -76,8 +76,8 @@ pub(all) struct RuntimeCalibrationPlan {
   robot_id : String
   bridge_id : String
   status : String
-  action_count : Int
-  blocking_action_count : Int
+  action_count : Int32
+  blocking_action_count : Int32
   actions : Array[RuntimeCalibrationAction]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -125,7 +125,10 @@ fn fail(
 }
 
 ///|
-fn count_status(checks : Array[RuntimeValidationCheck], status : String) -> Int {
+fn count_status(
+  checks : Array[RuntimeValidationCheck],
+  status : String,
+) -> Int32 {
   let mut count = 0
   for check in checks {
     if check.status == status {
@@ -151,7 +154,7 @@ fn first_blocker_code(reports : Array[RuntimeValidationReport]) -> String {
 }
 
 ///|
-fn count_ready_reports(reports : Array[RuntimeValidationReport]) -> Int {
+fn count_ready_reports(reports : Array[RuntimeValidationReport]) -> Int32 {
   let mut count = 0
   for report in reports {
     if report.ready_for_live_sdk {
@@ -408,7 +411,7 @@ pub fn calibration_resolution(
   resolved_at_ms : Int64,
   note : String,
   next_validation_route : String,
-  resolution_id? : String = "runtime-calibration-resolution-\{action.action_id}-\{resolved_at_ms}",
+  resolution_id~ : String = "runtime-calibration-resolution-\{action.action_id}-\{resolved_at_ms}",
 ) -> RuntimeCalibrationResolution {
   {
     resolution_id,
@@ -467,7 +470,7 @@ fn command_arg_after(command : Array[String], flag : String) -> String {
 }
 
 ///|
-fn command_arg_at(command : Array[String], index : Int) -> String {
+fn command_arg_at(command : Array[String], index : Int32) -> String {
   match command.get(index) {
     Some(value) => value
     None => ""
@@ -755,12 +758,12 @@ fn identity_check(
 pub fn validation_report(
   plan : @supervisor.SupervisorPlan,
   generated_at_ms : Int64,
-  health? : @runtime_process.RuntimeHealthSnapshot? = None,
-  bridge_contract? : @bridge_protocol.BridgeContract? = None,
-  bridge_contract_path? : String = "",
-  log_path? : String = "",
-  log_exists? : Bool = false,
-  report_id? : String = "runtime-validation-\{plan.runtime_id}-\{generated_at_ms}",
+  health~ : @runtime_process.RuntimeHealthSnapshot? = None,
+  bridge_contract~ : @bridge_protocol.BridgeContract? = None,
+  bridge_contract_path~ : String = "",
+  log_path~ : String = "",
+  log_exists~ : Bool = false,
+  report_id~ : String = "runtime-validation-\{plan.runtime_id}-\{generated_at_ms}",
 ) -> RuntimeValidationReport {
   let checks : Array[RuntimeValidationCheck] = []
   if plan.ready {
@@ -890,8 +893,8 @@ pub fn validation_report(
 pub fn validation_session(
   reports : Array[RuntimeValidationReport],
   generated_at_ms : Int64,
-  required_sample_count? : Int = reports.length(),
-  session_id? : String = "runtime-validation-session-\{generated_at_ms}",
+  required_sample_count~ : Int32 = reports.length(),
+  session_id~ : String = "runtime-validation-session-\{generated_at_ms}",
 ) -> RuntimeValidationSession {
   let sample_count = reports.length()
   let ready_sample_count = count_ready_reports(reports)
@@ -944,7 +947,7 @@ pub fn validation_session(
 pub fn calibration_plan_for_session(
   session : RuntimeValidationSession,
   generated_at_ms : Int64,
-  plan_id? : String = "runtime-calibration-\{session.session_id}-\{generated_at_ms}",
+  plan_id~ : String = "runtime-calibration-\{session.session_id}-\{generated_at_ms}",
 ) -> RuntimeCalibrationPlan {
   let actions : Array[RuntimeCalibrationAction] = []
   for report in session.reports {

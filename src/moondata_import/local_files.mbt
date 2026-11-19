@@ -26,11 +26,11 @@ pub(all) struct LocalFileImportResult {
   episode_id : @moondata_core.EpisodeId
   source_id : @moondata_core.SourceId
   capture_id : @moondata_core.CaptureId
-  payload_count : Int
+  payload_count : Int32
   catalog_path : String
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   payloads : Array[ImportedPayload]
-  signal_count : Int
+  signal_count : Int32
   signals : Array[@moondata_core.SignalSeries]
   dataset : @moondata_core.DatasetManifest
   episode : @moondata_core.EpisodeManifest
@@ -45,7 +45,7 @@ pub fn local_file_import_request(
   bridge_id : String,
   session_id : String,
   imported_at_ms : Int64,
-  source_label? : String = "MoonData local file import",
+  source_label~ : String = "MoonData local file import",
 ) -> LocalFileImportRequest {
   {
     root,
@@ -177,7 +177,7 @@ fn payload_uri(
 }
 
 ///|
-fn frame_id(dataset_id : @moondata_core.DatasetId, index : Int) -> String {
+fn frame_id(dataset_id : @moondata_core.DatasetId, index : Int32) -> String {
   "frame-\{dataset_id}-import-\{index}"
 }
 
@@ -324,7 +324,7 @@ fn frames(
 }
 
 ///|
-fn signal_id(dataset_id : @moondata_core.DatasetId, index : Int) -> String {
+fn signal_id(dataset_id : @moondata_core.DatasetId, index : Int32) -> String {
   "signal-\{dataset_id}-import-\{index}"
 }
 

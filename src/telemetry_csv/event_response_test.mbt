@@ -5,17 +5,17 @@ fn response_fixture() -> String {
 
 ///|
 fn responses(
-  text? : String = response_fixture(),
-  episodes? : Array[Int] = [0, 1, 2],
-  channels? : Array[String] = ["load.n", "temperature.c"],
-  units? : Array[String] = ["N", "C"],
-  before? : Int64 = 100L,
-  after? : Int64 = 200L,
-  step? : Int64 = 100L,
-  min_span? : Int64 = 0L,
-  event_gap? : Int64 = 250L,
-  gap? : Int64 = 200L,
-  overlap? : String = "reject",
+  text~ : String = response_fixture(),
+  episodes~ : Array[Int32] = [0, 1, 2],
+  channels~ : Array[String] = ["load.n", "temperature.c"],
+  units~ : Array[String] = ["N", "C"],
+  before~ : Int64 = 100L,
+  after~ : Int64 = 200L,
+  step~ : Int64 = 100L,
+  min_span~ : Int64 = 0L,
+  event_gap~ : Int64 = 250L,
+  gap~ : Int64 = 200L,
+  overlap~ : String = "reject",
 ) -> Result[@telemetry_csv.EventResponses, String] {
   @telemetry_csv.event_responses_csv(
     text,

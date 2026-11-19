@@ -18,8 +18,8 @@ pub(all) struct TaskMessageWorkEvidence {
 pub(all) struct RuntimeCalibrationWorkEvidence {
   plan_id : String
   status : String
-  action_count : Int
-  blocking_action_count : Int
+  action_count : Int32
+  blocking_action_count : Int32
   first_action_id : String
   first_blocker_code : String
   first_owner : String
@@ -36,9 +36,9 @@ pub(all) struct RuntimeCalibrationWorkEvidence {
 pub(all) struct ProofSessionWorkEvidence {
   status : String
   ready : Bool
-  completed_count : Int
-  total_count : Int
-  percent : Int
+  completed_count : Int32
+  total_count : Int32
+  percent : Int32
   next_route : String
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -56,7 +56,7 @@ pub(all) struct GatewayCommandWorkEvidence {
 pub(all) struct RobotPlatformWorkItem {
   work_id : String
   kind : String
-  priority : Int
+  priority : Int32
   title : String
   summary : String
   target_id : String
@@ -70,8 +70,8 @@ pub(all) struct RobotPlatformQueue {
   robot_id : @core.RobotId
   resident_id : String
   generated_at_ms : Int64
-  item_count : Int
-  high_priority_count : Int
+  item_count : Int32
+  high_priority_count : Int32
   items : Array[RobotPlatformWorkItem]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -87,10 +87,10 @@ pub fn dataset_work_evidence(
 pub fn task_message_work_evidence(
   message_path : String,
   plan : @task.RobotTaskMessagePlan,
-  evaluated? : Bool = false,
-  dry_run_collected? : Bool = false,
-  approved? : Bool = false,
-  executed? : Bool = false,
+  evaluated~ : Bool = false,
+  dry_run_collected~ : Bool = false,
+  approved~ : Bool = false,
+  executed~ : Bool = false,
 ) -> TaskMessageWorkEvidence {
   { message_path, plan, evaluated, dry_run_collected, approved, executed, }
 }
@@ -99,18 +99,18 @@ pub fn task_message_work_evidence(
 pub fn runtime_calibration_work_evidence(
   plan_id : String,
   status : String,
-  action_count : Int,
-  blocking_action_count : Int,
+  action_count : Int32,
+  blocking_action_count : Int32,
   first_action_id : String,
   first_blocker_code : String,
   first_owner : String,
   first_summary : String,
   first_next_step : String,
   plan_path : String,
-  pending_revalidation? : Bool = false,
-  resolution_id? : String = "",
-  resolution_status? : String = "",
-  validation_path? : String = "/api/runtime/validation/session",
+  pending_revalidation~ : Bool = false,
+  resolution_id~ : String = "",
+  resolution_status~ : String = "",
+  validation_path~ : String = "/api/runtime/validation/session",
 ) -> RuntimeCalibrationWorkEvidence {
   {
     plan_id,
@@ -134,9 +134,9 @@ pub fn runtime_calibration_work_evidence(
 pub fn proof_session_work_evidence(
   status : String,
   ready : Bool,
-  completed_count : Int,
-  total_count : Int,
-  percent : Int,
+  completed_count : Int32,
+  total_count : Int32,
+  percent : Int32,
   next_route : String,
   message : String,
 ) -> ProofSessionWorkEvidence {
@@ -149,7 +149,7 @@ pub fn gateway_command_work_evidence(
   ready : Bool,
   next_route : String,
   message : String,
-  latest_gateway_command_path? : String = "",
+  latest_gateway_command_path~ : String = "",
 ) -> GatewayCommandWorkEvidence {
   { status, ready, next_route, message, latest_gateway_command_path, }
 }
@@ -158,7 +158,7 @@ pub fn gateway_command_work_evidence(
 fn work_item(
   work_id : String,
   kind : String,
-  priority : Int,
+  priority : Int32,
   title : String,
   summary : String,
   target_id : String,
@@ -475,7 +475,7 @@ fn task_message_target_path(task_id : String, kind : String) -> String {
 ///|
 fn command_message_work_kind(
   evidence : TaskMessageWorkEvidence,
-) -> (String, Int, String, String) {
+) -> (String, Int32, String, String) {
   if evidence.executed {
     (
       "review-command-message", 20, "Review executed command task", "Command task already has an execution receipt; inspect the persisted evidence only",
@@ -504,7 +504,7 @@ fn command_message_work_kind(
 }
 
 ///|
-fn high_priority_count(items : Array[RobotPlatformWorkItem]) -> Int {
+fn high_priority_count(items : Array[RobotPlatformWorkItem]) -> Int32 {
   let mut count = 0
   for item in items {
     if item.priority >= 80 {
@@ -522,9 +522,9 @@ pub fn project(
   task_messages : Array[TaskMessageWorkEvidence],
   episodes : Array[DatasetWorkEvidence],
   generated_at_ms : Int64,
-  runtime_calibration? : RuntimeCalibrationWorkEvidence? = None,
-  gateway_command? : GatewayCommandWorkEvidence? = None,
-  proof_session? : ProofSessionWorkEvidence? = None,
+  runtime_calibration~ : RuntimeCalibrationWorkEvidence? = None,
+  gateway_command~ : GatewayCommandWorkEvidence? = None,
+  proof_session~ : ProofSessionWorkEvidence? = None,
 ) -> RobotPlatformQueue {
   let items : Array[RobotPlatformWorkItem] = []
   add_bridge_work(items, resident)
@@ -549,6 +549,6 @@ pub fn project(
 }
 
 ///|
-pub fn queue_json(queue : RobotPlatformQueue, indent? : Int = 2) -> String {
+pub fn queue_json(queue : RobotPlatformQueue, indent~ : Int32 = 2) -> String {
   queue.to_json().stringify(indent~)
 }

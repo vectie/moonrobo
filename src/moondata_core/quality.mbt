@@ -18,8 +18,8 @@ pub fn quality_finding(
   target_kind : String,
   target_id : String,
   message : String,
-  recommendation? : String = "",
-  evidence_refs? : Array[MoonDataRef] = [],
+  recommendation~ : String = "",
+  evidence_refs~ : Array[MoonDataRef] = [],
 ) -> QualityFinding {
   {
     finding_id,
@@ -40,14 +40,14 @@ pub(all) struct QualityRun {
   episode_ids : Array[EpisodeId]
   created_at_ms : Int64
   status : String
-  finding_count : Int
-  blocker_count : Int
-  warning_count : Int
+  finding_count : Int32
+  blocker_count : Int32
+  warning_count : Int32
   findings : Array[QualityFinding]
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-fn count_severity(findings : Array[QualityFinding], severity : String) -> Int {
+fn count_severity(findings : Array[QualityFinding], severity : String) -> Int32 {
   let mut count = 0
   for finding in findings {
     if finding.severity == severity {

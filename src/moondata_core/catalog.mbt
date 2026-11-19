@@ -12,8 +12,8 @@ pub fn catalog_entry(
   artifact_kind : String,
   artifact_id : String,
   manifest_path : String,
-  status? : String = "",
-  summary? : String = "",
+  status~ : String = "",
+  summary~ : String = "",
 ) -> CatalogEntry {
   { artifact_kind, artifact_id, manifest_path, status, summary, }
 }
@@ -23,7 +23,7 @@ pub(all) struct MoonDataCatalog {
   catalog_id : String
   root : String
   generated_at_ms : Int64
-  entry_count : Int
+  entry_count : Int32
   entries : Array[CatalogEntry]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -32,7 +32,7 @@ pub fn moondata_catalog(
   root : String,
   generated_at_ms : Int64,
   entries : Array[CatalogEntry],
-  catalog_id? : String = "catalog",
+  catalog_id~ : String = "catalog",
 ) -> MoonDataCatalog {
   { catalog_id, root, generated_at_ms, entry_count: entries.length(), entries, }
 }

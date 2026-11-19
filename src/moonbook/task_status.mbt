@@ -66,13 +66,13 @@ pub fn task_message_bridge_dispatch_id(
 
 ///|
 pub fn task_message_execution_evidence(
-  evaluated_receipt? : @core.RunReceipt? = None,
-  dry_run? : @core.DryRunEvidence? = None,
-  approval? : @core.ApprovalRecord? = None,
-  execution_receipt? : @core.RunReceipt? = None,
-  bridge_dispatch? : @core.BridgeDispatchEvidence? = None,
-  runtime_status? : String = "unknown",
-  runtime_bridge_base_url? : String = "",
+  evaluated_receipt~ : @core.RunReceipt? = None,
+  dry_run~ : @core.DryRunEvidence? = None,
+  approval~ : @core.ApprovalRecord? = None,
+  execution_receipt~ : @core.RunReceipt? = None,
+  bridge_dispatch~ : @core.BridgeDispatchEvidence? = None,
+  runtime_status~ : String = "unknown",
+  runtime_bridge_base_url~ : String = "",
 ) -> TaskMessageExecutionEvidence {
   {
     evaluated_receipt,

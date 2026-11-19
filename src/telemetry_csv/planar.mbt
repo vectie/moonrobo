@@ -10,11 +10,11 @@ pub(all) struct PlanarPosition {
 pub(all) struct PlanarRow {
   aligned_ms : Int64
   baseline_timestamp_ms : Int64
-  baseline_sample_index : Int
+  baseline_sample_index : Int32
   candidate_left_timestamp_ms : Int64?
   candidate_right_timestamp_ms : Int64?
-  candidate_left_sample_index : Int?
-  candidate_right_sample_index : Int?
+  candidate_left_sample_index : Int32?
+  candidate_right_sample_index : Int32?
   status : String
   baseline : PlanarPosition
   candidate : PlanarPosition?
@@ -42,9 +42,9 @@ pub(all) struct PlanarComparison {
   end_ms : Int64
   max_gap_ms : Int64
   summary_weighting : String
-  compared_count : Int
-  interpolated_count : Int
-  unmatched_count : Int
+  compared_count : Int32
+  interpolated_count : Int32
+  unmatched_count : Int32
   summary : PlanarSummary?
   baseline_source : Recording
   candidate_source : Recording
@@ -82,9 +82,9 @@ pub fn compare_planar_csv(
   baseline_text : String,
   candidate_text : String,
   recipe : PlanarRecipe,
-  start_ms? : Int64 = 0L,
-  end_ms? : Int64 = 9223372036854775807L,
-  max_gap_ms? : Int64 = 0L,
+  start_ms~ : Int64 = 0L,
+  end_ms~ : Int64 = 9223372036854775807L,
+  max_gap_ms~ : Int64 = 0L,
 ) -> Result[PlanarComparison, String] {
   match validate_planar_recipe(recipe) {
     Err(e) => return Err(e)
@@ -144,7 +144,7 @@ pub fn compare_planar_csv(
   }
   // Prefix counts prevent the overlay from bridging a candidate outage even
   // when exact observations exist on both sides and no baseline row is inside.
-  let bad_prefix : Array[Int] = [0]
+  let bad_prefix : Array[Int32] = [0]
   for i in 1..<candidate.samples.length() {
     let outage = if candidate.samples[i].timestamp_ms -
       candidate.samples[i - 1].timestamp_ms >

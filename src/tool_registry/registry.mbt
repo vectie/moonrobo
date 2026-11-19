@@ -34,8 +34,8 @@ pub(all) struct ToolRegistry {
   registry_id : String
   robot_id : @core.RobotId
   generated_at_ms : Int64
-  provider_count : Int
-  capability_count : Int
+  provider_count : Int32
+  capability_count : Int32
   providers : Array[ToolProvider]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -90,7 +90,7 @@ fn provider(
 }
 
 ///|
-fn capability_count(providers : Array[ToolProvider]) -> Int {
+fn capability_count(providers : Array[ToolProvider]) -> Int32 {
   let mut count = 0
   for item in providers {
     count += item.capabilities.length()

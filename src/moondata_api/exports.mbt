@@ -12,8 +12,8 @@ pub(all) struct MoonDataExportQuery {
 pub(all) struct MoonDataExportList {
   root : String
   query : MoonDataExportQuery
-  export_count : Int
-  output_ref_count : Int
+  export_count : Int32
+  output_ref_count : Int32
   total_output_byte_count : Int64
   output_checksums : Array[String]
   exports : Array[@moondata_core.ExportManifest]
@@ -23,12 +23,12 @@ pub(all) struct MoonDataExportList {
 
 ///|
 pub fn export_query(
-  version_id? : String = "",
-  dataset_id? : String = "",
-  target_format? : String = "",
-  status? : String = "",
-  quality_run_id? : String = "",
-  output_kind? : String = "",
+  version_id~ : String = "",
+  dataset_id~ : String = "",
+  target_format~ : String = "",
+  status~ : String = "",
+  quality_run_id~ : String = "",
+  output_kind~ : String = "",
 ) -> MoonDataExportQuery {
   {
     version_id,
@@ -123,7 +123,7 @@ fn push_unique_checksum(checksums : Array[String], checksum : String) -> Unit {
 }
 
 ///|
-fn output_ref_count(manifests : Array[@moondata_core.ExportManifest]) -> Int {
+fn output_ref_count(manifests : Array[@moondata_core.ExportManifest]) -> Int32 {
   let mut count = 0
   for manifest in manifests {
     count += manifest.output_refs.length()
@@ -160,7 +160,7 @@ fn output_checksums(
 ///|
 pub fn list_exports(
   root : String,
-  query? : MoonDataExportQuery = export_query(),
+  query~ : MoonDataExportQuery = export_query(),
 ) -> Result[MoonDataExportList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

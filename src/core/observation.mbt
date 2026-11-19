@@ -13,7 +13,7 @@ pub(all) struct ObservationSession {
   status : ObservationStatus
   started_at_ms : Int64
   stopped_at_ms : Int64?
-  telemetry_frame_count : Int
+  telemetry_frame_count : Int32
   latest_frame_id : String?
   receipt_id : ReceiptId
   artifact_paths : Array[String]
@@ -26,9 +26,9 @@ pub fn observation_session(
   requested_by : Requester,
   receipt_id : ReceiptId,
   started_at_ms : Int64,
-  telemetry_frame_count? : Int = 0,
+  telemetry_frame_count~ : Int32 = 0,
   latest_frame_id? : String,
-  artifact_paths? : Array[String] = [],
+  artifact_paths~ : Array[String] = [],
 ) -> ObservationSession {
   {
     session_id,
@@ -49,9 +49,9 @@ pub fn observation_session(
 pub fn stopped_observation_session(
   session : ObservationSession,
   stopped_at_ms : Int64,
-  telemetry_frame_count : Int,
+  telemetry_frame_count : Int32,
   latest_frame_id? : String,
-  artifact_paths? : Array[String] = session.artifact_paths,
+  artifact_paths~ : Array[String] = session.artifact_paths,
 ) -> ObservationSession {
   {
     ..session,

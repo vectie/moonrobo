@@ -1,7 +1,7 @@
 ///|
 fn rmc_recipe(
-  channels? : Array[String] = ["latitude", "longitude", "speed", "course"],
-  century? : Int = 2000,
+  channels~ : Array[String] = ["latitude", "longitude", "speed", "course"],
+  century~ : Int32 = 2000,
 ) -> @telemetry_csv.NmeaRmcRecipe {
   { year_century: century, channels, row_policy: "eligible-only", }
 }
@@ -22,14 +22,14 @@ fn rmc_checked(body : String) -> String {
 
 ///|
 fn rmc_body(
-  time? : String = "000000.125",
-  date? : String = "010100",
-  status? : String = "A",
-  latitude? : String = "4807.038,N",
-  longitude? : String = "01131.000,E",
-  speed? : String = "22.4",
-  course? : String = "84.4",
-  suffix? : String = ",,",
+  time~ : String = "000000.125",
+  date~ : String = "010100",
+  status~ : String = "A",
+  latitude~ : String = "4807.038,N",
+  longitude~ : String = "01131.000,E",
+  speed~ : String = "22.4",
+  course~ : String = "84.4",
+  suffix~ : String = ",,",
 ) -> String {
   "GPRMC,\{time},\{status},\{latitude},\{longitude},\{speed},\{course},\{date}\{suffix}"
 }

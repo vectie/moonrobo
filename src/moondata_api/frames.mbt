@@ -10,11 +10,11 @@ pub(all) struct MoonDataFrameQuery {
 pub(all) struct MoonDataFrameList {
   root : String
   query : MoonDataFrameQuery
-  frame_count : Int
-  payload_ref_count : Int
-  signal_ref_count : Int
-  media_ref_count : Int
-  data_ref_count : Int
+  frame_count : Int32
+  payload_ref_count : Int32
+  signal_ref_count : Int32
+  media_ref_count : Int32
+  data_ref_count : Int32
   total_data_byte_count : Int64
   latest_frame_id : String
   latest_frame_captured_at_ms : Int64
@@ -25,10 +25,10 @@ pub(all) struct MoonDataFrameList {
 
 ///|
 pub fn frame_query(
-  episode_id? : String = "",
-  robot_id? : String = "",
-  bridge_id? : String = "",
-  data_kind? : String = "",
+  episode_id~ : String = "",
+  robot_id~ : String = "",
+  bridge_id~ : String = "",
+  data_kind~ : String = "",
 ) -> MoonDataFrameQuery {
   { episode_id, robot_id, bridge_id, data_kind, }
 }
@@ -108,10 +108,10 @@ fn frame_inventory_refs(
 
 ///|
 priv struct FrameListSummary {
-  payload_ref_count : Int
-  signal_ref_count : Int
-  media_ref_count : Int
-  data_ref_count : Int
+  payload_ref_count : Int32
+  signal_ref_count : Int32
+  media_ref_count : Int32
+  data_ref_count : Int32
   total_data_byte_count : Int64
   latest_frame_id : String
   latest_frame_captured_at_ms : Int64
@@ -177,7 +177,7 @@ fn frame_list_summary(
 ///|
 pub fn list_frames(
   root : String,
-  query? : MoonDataFrameQuery = frame_query(),
+  query~ : MoonDataFrameQuery = frame_query(),
 ) -> Result[MoonDataFrameList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

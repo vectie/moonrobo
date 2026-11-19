@@ -18,9 +18,9 @@ pub(all) struct MoonDataLineageNode {
 pub(all) struct MoonDataLineageGraph {
   root : String
   query : MoonDataLineageQuery
-  lineage_count : Int
-  node_count : Int
-  edge_count : Int
+  lineage_count : Int32
+  node_count : Int32
+  edge_count : Int32
   lineages : Array[@moondata_core.LineageManifest]
   nodes : Array[MoonDataLineageNode]
   edges : Array[@moondata_core.LineageEdge]
@@ -30,9 +30,9 @@ pub(all) struct MoonDataLineageGraph {
 
 ///|
 pub fn lineage_query(
-  lineage_id? : String = "",
-  root_dataset_id? : String = "",
-  node_id? : String = "",
+  lineage_id~ : String = "",
+  root_dataset_id~ : String = "",
+  node_id~ : String = "",
 ) -> MoonDataLineageQuery {
   { lineage_id, root_dataset_id, node_id, }
 }
@@ -190,7 +190,7 @@ fn lineage_refs(
 ///|
 pub fn read_lineage_graph(
   root : String,
-  query? : MoonDataLineageQuery = lineage_query(),
+  query~ : MoonDataLineageQuery = lineage_query(),
 ) -> Result[MoonDataLineageGraph, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

@@ -16,7 +16,7 @@ pub(all) struct DigitalPhysicalMapping {
   latest_execution_status : String
   latest_feedback_status : String
   latest_command_outcome_status : String
-  verified_execution_count : Int
+  verified_execution_count : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -33,8 +33,8 @@ fn mapping_reachable(
 pub fn digital_physical_mapping(
   book : @runtime.LoadedRoboBook,
   agent : ResidentRobotAgent,
-  runtime_status? : String = "unknown",
-  runtime_bridge_base_url? : String = "",
+  runtime_status~ : String = "unknown",
+  runtime_bridge_base_url~ : String = "",
 ) -> DigitalPhysicalMapping {
   let latest = agent.latest_execution
   {

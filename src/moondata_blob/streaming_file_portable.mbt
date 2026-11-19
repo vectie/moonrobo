@@ -28,7 +28,7 @@ pub fn local_file_size(
 pub fn read_local_file_range(
   path : String,
   offset : Int64,
-  length : Int,
+  length : Int32,
 ) -> Result[Bytes, @moondata_store.MoonDataStoreIssue] {
   if offset < 0L || length < 0 {
     return Err(
@@ -60,7 +60,7 @@ pub fn read_local_file_range(
 ///|
 pub fn local_file_checksum(
   path : String,
-  chunk_size? : Int = 1024 * 1024,
+  chunk_size~ : Int32 = 1024 * 1024,
 ) -> Result[String, @moondata_store.MoonDataStoreIssue] {
   if chunk_size <= 0 {
     return Err(

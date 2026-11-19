@@ -13,8 +13,8 @@ pub(all) struct MoonDataSourceQuery {
 pub(all) struct MoonDataSourceList {
   root : String
   query : MoonDataSourceQuery
-  source_count : Int
-  source_ref_count : Int
+  source_count : Int32
+  source_ref_count : Int32
   total_source_byte_count : Int64
   source_checksums : Array[String]
   latest_source_id : String
@@ -26,13 +26,13 @@ pub(all) struct MoonDataSourceList {
 
 ///|
 pub fn source_query(
-  source_id_contains? : String = "",
-  kind? : String = "",
-  robot_id? : String = "",
-  bridge_id? : String = "",
-  origin_contains? : String = "",
-  label_contains? : String = "",
-  data_kind? : String = "",
+  source_id_contains~ : String = "",
+  kind~ : String = "",
+  robot_id~ : String = "",
+  bridge_id~ : String = "",
+  origin_contains~ : String = "",
+  label_contains~ : String = "",
+  data_kind~ : String = "",
 ) -> MoonDataSourceQuery {
   {
     source_id_contains,
@@ -121,7 +121,7 @@ fn source_refs(
 
 ///|
 priv struct SourceListSummary {
-  source_ref_count : Int
+  source_ref_count : Int32
   total_source_byte_count : Int64
   source_checksums : Array[String]
   latest_source_id : String
@@ -169,7 +169,7 @@ fn source_list_summary(
 ///|
 pub fn list_sources(
   root : String,
-  query? : MoonDataSourceQuery = source_query(),
+  query~ : MoonDataSourceQuery = source_query(),
 ) -> Result[MoonDataSourceList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

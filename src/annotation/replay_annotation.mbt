@@ -36,7 +36,7 @@ pub fn replay_annotation(
 ///|
 pub fn annotation_json(
   annotation : ReplayAnnotation,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   annotation.to_json().stringify(indent~)
 }

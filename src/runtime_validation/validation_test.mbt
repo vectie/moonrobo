@@ -1,9 +1,14 @@
 ///|
-fn validation_plan(snapshot_ready? : Bool = true) -> @supervisor.SupervisorPlan {
+fn validation_plan(snapshot_ready~ : Bool = true) -> @supervisor.SupervisorPlan {
   @supervisor.plan(
     @bridge_sidecar.runtime_spec_for_profile(
       @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01"),
       "examples/noetix-e1",
+      backend=Native,
+      sidecar_path="/bin/sh",
+      collector_path="/bin/sh",
+      writer_path="/bin/sh",
+      library_path="/bin/sh",
     ),
     snapshot_ready~,
   )

@@ -16,7 +16,7 @@ pub(all) struct CatalogueEntry {
 pub(all) struct DesignCatalogue {
   contract_id : String
   entries : Array[CatalogueEntry]
-  limit : Int
+  limit : Int32
   truncated : Bool
   physical_execution_allowed : Bool
 } derive(Debug, Eq, ToJson, FromJson)

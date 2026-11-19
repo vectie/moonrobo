@@ -6,9 +6,9 @@ pub(all) struct MoonroboGatewayStatusInput {
   mapped : Bool
   has_task_message : Bool
   session_stage : String
-  memory_card_count : Int
+  memory_card_count : Int32
   loop_ready : Bool
-  loop_percent : Int
+  loop_percent : Int32
   loop_status : String
   live_readiness_status : String
   physical_execution_allowed : Bool
@@ -18,8 +18,8 @@ pub(all) struct MoonroboGatewayStatusInput {
   latest_robo_loop_path : String
   latest_proof_session_path : String
   proof_session_feedback_closed : Bool
-  proof_session_feedback_binding_success_count : Int
-  proof_session_latest_feedback_status : Int
+  proof_session_feedback_binding_success_count : Int32
+  proof_session_latest_feedback_status : Int32
   proof_session_latest_feedback_message : String
   next_method : String
   next_route : String
@@ -37,9 +37,9 @@ pub(all) struct MoonroboGatewayStatus {
   mapped : Bool
   has_task_message : Bool
   session_stage : String
-  memory_card_count : Int
+  memory_card_count : Int32
   loop_ready : Bool
-  loop_percent : Int
+  loop_percent : Int32
   loop_status : String
   live_readiness_status : String
   physical_execution_allowed : Bool
@@ -49,8 +49,8 @@ pub(all) struct MoonroboGatewayStatus {
   latest_robo_loop_path : String
   latest_proof_session_path : String
   proof_session_feedback_closed : Bool
-  proof_session_feedback_binding_success_count : Int
-  proof_session_latest_feedback_status : Int
+  proof_session_feedback_binding_success_count : Int32
+  proof_session_latest_feedback_status : Int32
   proof_session_latest_feedback_message : String
   next_method : String
   next_route : String

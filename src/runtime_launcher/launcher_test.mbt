@@ -5,6 +5,11 @@ fn launcher_plan(root : String) -> @supervisor.SupervisorPlan {
     @bridge_sidecar.runtime_spec_for_profile(
       profile,
       root,
+      backend=Native,
+      sidecar_path="/bin/sh",
+      collector_path="/bin/sh",
+      writer_path="/bin/sh",
+      library_path="/bin/sh",
       host="127.0.0.2",
       port=5999,
       snapshot_path="/tmp/moonrobo-launch-test.json",

@@ -40,7 +40,7 @@ pub(all) struct BridgeRef {
 ///|
 pub(all) struct JointSpec {
   name : String
-  index : Int
+  index : Int32
   min_position : Double?
   max_position : Double?
 } derive(Debug, Eq, ToJson, FromJson)
@@ -64,12 +64,12 @@ pub(all) struct CapabilitySpec {
 
 ///|
 pub(all) struct RobotLimits {
-  telemetry_freshness_ms : Int
-  heartbeat_ms : Int
+  telemetry_freshness_ms : Int32
+  heartbeat_ms : Int32
   default_mode : String
   high_control_max_x_abs : Double
   high_control_max_yaw_abs : Double
-  high_control_max_duration_ms : Int
+  high_control_max_duration_ms : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -78,7 +78,7 @@ pub(all) struct RobotProfile {
   label : String
   kind : RobotKind
   platform : String
-  profile_version : Int
+  profile_version : Int32
   model : RobotModelRef
   bridge : BridgeRef
   joints : Array[JointSpec]
@@ -92,9 +92,9 @@ pub fn capability(
   id : CapabilityId,
   command_class : CommandClass,
   label : String,
-  enabled? : Bool = true,
-  requires_approval? : Bool = false,
-  requires_dry_run? : Bool = false,
+  enabled~ : Bool = true,
+  requires_approval~ : Bool = false,
+  requires_dry_run~ : Bool = false,
 ) -> CapabilitySpec {
   { id, command_class, label, enabled, requires_approval, requires_dry_run, }
 }
@@ -102,7 +102,7 @@ pub fn capability(
 ///|
 pub fn joint(
   name : String,
-  index : Int,
+  index : Int32,
   min_position? : Double,
   max_position? : Double,
 ) -> JointSpec {

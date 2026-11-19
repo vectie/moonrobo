@@ -13,10 +13,10 @@ pub(all) struct DatasetQualityResult {
   root : String
   dataset_id : @moondata_core.DatasetId
   quality_run_id : @moondata_core.QualityRunId
-  episode_count : Int
-  frame_count : Int
+  episode_count : Int32
+  frame_count : Int32
   catalog_path : String
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   quality : @moondata_core.QualityRun
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -25,9 +25,9 @@ pub fn dataset_quality_request(
   root : String,
   dataset_id : @moondata_core.DatasetId,
   generated_at_ms : Int64,
-  quality_run_id? : @moondata_core.QualityRunId = "",
-  expected_robot_id? : String = "",
-  expected_bridge_id? : String = "",
+  quality_run_id~ : @moondata_core.QualityRunId = "",
+  expected_robot_id~ : String = "",
+  expected_bridge_id~ : String = "",
 ) -> DatasetQualityRequest {
   let run_id = if quality_run_id == "" {
     "qr-\{dataset_id}"

@@ -1,0 +1,8 @@
+import {
+  "vectie/moonnum" @canonical,
+}
+
+import {
+  "moonbitlang/core/math",
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+} for "test"

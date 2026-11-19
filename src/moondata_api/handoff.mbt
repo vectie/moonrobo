@@ -7,26 +7,26 @@ pub(all) struct MoonDataHandoff {
   validation_report_id : String
   validation_status : String
   validation_generated_at_ms : Int64
-  validation_catalog_entry_count : Int
+  validation_catalog_entry_count : Int32
   validation_covers_catalog : Bool
-  validation_finding_count : Int
-  validation_blocker_count : Int
-  validation_warning_count : Int
-  repair_count : Int
-  repair_receipt_count : Int
-  repair_work_count : Int
-  repair_open_count : Int
-  repair_applied_count : Int
-  repair_applied_unvalidated_count : Int
-  repair_failed_count : Int
-  repair_pending_count : Int
+  validation_finding_count : Int32
+  validation_blocker_count : Int32
+  validation_warning_count : Int32
+  repair_count : Int32
+  repair_receipt_count : Int32
+  repair_work_count : Int32
+  repair_open_count : Int32
+  repair_applied_count : Int32
+  repair_applied_unvalidated_count : Int32
+  repair_failed_count : Int32
+  repair_pending_count : Int32
   validation_findings : Array[@moondata_core.ValidationFinding]
   status : MoonDataStatus
   context : MoonDataContext
   artifacts : MoonDataArtifactList
   lineage : MoonDataLineageGraph
   slice : MoonDataDatasetSlice?
-  output_ref_count : Int
+  output_ref_count : Int32
   total_output_byte_count : Int64
   output_checksums : Array[String]
   output_refs : Array[@moondata_core.DataRef]
@@ -82,7 +82,7 @@ fn handoff_summary(
   lineage : MoonDataLineageGraph,
   slice : MoonDataDatasetSlice?,
   readiness_status : String,
-  output_ref_count : Int,
+  output_ref_count : Int32,
   total_output_byte_count : Int64,
 ) -> String {
   let slice_text = match slice {
@@ -149,7 +149,7 @@ fn latest_validation_findings(
 ///|
 priv struct HandoffOutputEvidence {
   output_refs : Array[@moondata_core.DataRef]
-  output_ref_count : Int
+  output_ref_count : Int32
   total_output_byte_count : Int64
   output_checksums : Array[String]
 }
@@ -214,7 +214,7 @@ fn handoff_output_evidence(
 ///|
 pub fn read_handoff(
   root : String,
-  version_id? : @moondata_core.DatasetVersionId = "",
+  version_id~ : @moondata_core.DatasetVersionId = "",
 ) -> Result[MoonDataHandoff, @moondata_store.MoonDataStoreIssue] {
   let status = match read_status(root) {
     Ok(value) => value

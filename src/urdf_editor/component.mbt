@@ -5,8 +5,8 @@ pub(all) struct UrdfEditorComponentRow {
   parent_id : String
   label : String
   detail : String
-  command_count : Int
-  issue_count : Int
+  command_count : Int32
+  issue_count : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -50,8 +50,8 @@ fn component_issues(
 fn field(
   name : String,
   value : String,
-  editable? : Bool = false,
-  command? : String = "",
+  editable~ : Bool = false,
+  command~ : String = "",
 ) -> UrdfEditorField {
   { name, value, editable, command, }
 }
@@ -130,7 +130,7 @@ fn first_tag_text(
   source_span : UrdfSourceSpan,
   tag_name : String,
 ) -> String {
-  let mut open_end : Int? = None
+  let mut open_end : Int32? = None
   for tag in scan_tags(source) {
     if tag.span.start < source_span.start || tag.span.end > source_span.end {
       continue
@@ -220,43 +220,43 @@ fn first_plugin_parameter_value(
 }
 
 ///|
-fn link_visual_count(doc : UrdfDocument, link_name : String) -> Int {
+fn link_visual_count(doc : UrdfDocument, link_name : String) -> Int32 {
   doc.visuals.filter(fn(visual) { visual.link_name == link_name }).length()
 }
 
 ///|
-fn link_collision_count(doc : UrdfDocument, link_name : String) -> Int {
+fn link_collision_count(doc : UrdfDocument, link_name : String) -> Int32 {
   doc.collisions
   .filter(fn(collision) { collision.link_name == link_name })
   .length()
 }
 
 ///|
-fn link_inertial_count(doc : UrdfDocument, link_name : String) -> Int {
+fn link_inertial_count(doc : UrdfDocument, link_name : String) -> Int32 {
   doc.inertials
   .filter(fn(inertial) { inertial.link_name == link_name })
   .length()
 }
 
 ///|
-fn link_material_count(doc : UrdfDocument, link_name : String) -> Int {
+fn link_material_count(doc : UrdfDocument, link_name : String) -> Int32 {
   doc.materials
   .filter(fn(material) { material.link_name == link_name })
   .length()
 }
 
 ///|
-fn global_material_count(doc : UrdfDocument) -> Int {
+fn global_material_count(doc : UrdfDocument) -> Int32 {
   doc.materials.filter(fn(material) { material.scope == "robot" }).length()
 }
 
 ///|
-fn parent_joint_count(doc : UrdfDocument, link_name : String) -> Int {
+fn parent_joint_count(doc : UrdfDocument, link_name : String) -> Int32 {
   doc.joints.filter(fn(joint) { joint.child_link == link_name }).length()
 }
 
 ///|
-fn child_joint_count(doc : UrdfDocument, link_name : String) -> Int {
+fn child_joint_count(doc : UrdfDocument, link_name : String) -> Int32 {
   doc.joints.filter(fn(joint) { joint.parent_link == link_name }).length()
 }
 
@@ -268,7 +268,7 @@ fn component_row(
   parent_id : String,
   label : String,
   detail : String,
-  command_count : Int,
+  command_count : Int32,
 ) -> UrdfEditorComponentRow {
   {
     node_id,

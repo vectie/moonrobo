@@ -18,7 +18,7 @@ pub(all) struct RunReceipt {
   status : RunStatus
   started_at_ms : Int64
   ended_at_ms : Int64?
-  telemetry_frame_count : Int
+  telemetry_frame_count : Int32
   artifact_paths : Array[String]
   bridge_error : String?
 } derive(Debug, Eq, ToJson, FromJson)
@@ -61,8 +61,8 @@ pub fn executed_receipt(
   receipt_id : ReceiptId,
   ready_receipt : RunReceipt,
   ended_at_ms : Int64,
-  telemetry_frame_count? : Int = 0,
-  artifact_paths? : Array[String] = [],
+  telemetry_frame_count~ : Int32 = 0,
+  artifact_paths~ : Array[String] = [],
   bridge_error? : String,
 ) -> RunReceipt {
   {
@@ -82,8 +82,8 @@ pub fn failed_receipt(
   ready_receipt : RunReceipt,
   ended_at_ms : Int64,
   bridge_error : String,
-  telemetry_frame_count? : Int = 0,
-  artifact_paths? : Array[String] = [],
+  telemetry_frame_count~ : Int32 = 0,
+  artifact_paths~ : Array[String] = [],
 ) -> RunReceipt {
   {
     ..ready_receipt,

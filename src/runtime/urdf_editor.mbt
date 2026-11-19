@@ -16,8 +16,8 @@ pub(all) struct UrdfEditorEditRequest {
   selected_node_id : String?
   session : @urdf_editor.UrdfEditorSession?
   material_node_id : String?
-  visual_index : Int?
-  collision_index : Int?
+  visual_index : Int32?
+  collision_index : Int32?
   origin : @urdf_editor.UrdfOriginPatch?
   axis : @urdf_editor.UrdfAxisPatch?
   limit : @urdf_editor.UrdfLimitPatch?
@@ -48,7 +48,7 @@ pub(all) struct UrdfEditorEditReceipt {
   model_path : String
   changed : Bool
   status : String
-  issue_count : Int
+  issue_count : Int32
   before_digest : String
   after_digest : String
   before_source_path : String
@@ -61,7 +61,7 @@ pub(all) struct UrdfEditorEditReceipt {
 pub(all) struct UrdfEditorHistoryResult {
   model_primary : String
   model_path : String
-  receipt_count : Int
+  receipt_count : Int32
   receipts : Array[UrdfEditorEditReceipt]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -529,7 +529,7 @@ fn blocking_editor_save_issue(
 }
 
 ///|
-fn source_line_count(source : String) -> Int {
+fn source_line_count(source : String) -> Int32 {
   if source == "" {
     0
   } else {
@@ -550,7 +550,7 @@ fn source_digest(source : String) -> String {
 }
 
 ///|
-fn first_source_diff(before : String, after : String) -> Int {
+fn first_source_diff(before : String, after : String) -> Int32 {
   let limit = if before.length() < after.length() {
     before.length()
   } else {

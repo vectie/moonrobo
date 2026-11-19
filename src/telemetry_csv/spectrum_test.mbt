@@ -2,7 +2,7 @@
 fn spectrum_close(
   actual : Double,
   expected : Double,
-  tolerance? : Double = 1.0e-10,
+  tolerance~ : Double = 1.0e-10,
 ) -> Unit raise {
   assert_true(
     (actual - expected).abs() <= tolerance,
@@ -13,8 +13,8 @@ fn spectrum_close(
 ///|
 fn spectrum_values(
   values : Array[Double],
-  origin? : Int64 = 0L,
-  interval? : Int64 = 250L,
+  origin~ : Int64 = 0L,
+  interval~ : Int64 = 250L,
 ) -> @telemetry_csv.TelemetrySpectrum raise {
   let text = StringBuilder()
   text.write_string("timestamp_ms,v\n")

@@ -1,6 +1,6 @@
 ///|
 fn planar_recipe(
-  alignment? : String = "first-sample",
+  alignment~ : String = "first-sample",
 ) -> @telemetry_csv.PlanarRecipe {
   {
     baseline_x: "x",

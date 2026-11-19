@@ -6,17 +6,17 @@ pub(all) struct MoonDataContext {
   validation_report_id : String
   validation_status : String
   validation_generated_at_ms : Int64
-  validation_catalog_entry_count : Int
+  validation_catalog_entry_count : Int32
   validation_covers_catalog : Bool
-  validation_finding_count : Int
-  validation_blocker_count : Int
-  validation_warning_count : Int
-  repair_work_count : Int
-  repair_open_count : Int
-  repair_applied_count : Int
-  repair_applied_unvalidated_count : Int
-  repair_failed_count : Int
-  repair_pending_count : Int
+  validation_finding_count : Int32
+  validation_blocker_count : Int32
+  validation_warning_count : Int32
+  repair_work_count : Int32
+  repair_open_count : Int32
+  repair_applied_count : Int32
+  repair_applied_unvalidated_count : Int32
+  repair_failed_count : Int32
+  repair_pending_count : Int32
   summary : String
   refs : Array[@moondata_core.MoonDataRef]
 } derive(Debug, Eq, ToJson, FromJson)

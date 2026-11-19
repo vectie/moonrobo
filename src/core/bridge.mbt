@@ -4,7 +4,7 @@ pub(all) struct BridgeHealth {
   status : String
   mode : String
   robot_id : RobotId
-  last_telemetry_age_ms : Int?
+  last_telemetry_age_ms : Int32?
   capabilities_hash : String
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -13,7 +13,7 @@ pub(all) struct BridgeMetadata {
   bridge_id : BridgeId
   kind : BridgeKind
   label : String
-  protocol_version : Int
+  protocol_version : Int32
   read_only : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -21,8 +21,8 @@ pub(all) struct BridgeMetadata {
 pub fn bridge_ok(
   bridge_id : BridgeId,
   robot_id : RobotId,
-  mode? : String = "read-only",
-  last_telemetry_age_ms? : Int,
+  mode~ : String = "read-only",
+  last_telemetry_age_ms? : Int32,
 ) -> BridgeHealth {
   {
     bridge_id,

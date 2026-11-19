@@ -1,7 +1,7 @@
 ///|
 fn resident_with(
   active_observation : @resident.ResidentObservationSummary?,
-  review_count : Int,
+  review_count : Int32,
 ) -> @resident.ResidentRobotAgent {
   {
     resident_id: "robot:routine-test",

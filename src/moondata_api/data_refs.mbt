@@ -27,14 +27,14 @@ pub(all) struct MoonDataDataRefView {
 pub(all) struct MoonDataDataRefList {
   root : String
   query : MoonDataDataRefQuery
-  data_ref_count : Int
+  data_ref_count : Int32
   total_byte_count : Int64
   checksums : Array[String]
-  present_count : Int
-  missing_count : Int
-  non_payload_count : Int
-  unsafe_count : Int
-  external_count : Int
+  present_count : Int32
+  missing_count : Int32
+  non_payload_count : Int32
+  unsafe_count : Int32
+  external_count : Int32
   data_refs : Array[MoonDataDataRefView]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -42,15 +42,15 @@ pub(all) struct MoonDataDataRefList {
 
 ///|
 pub fn data_ref_query(
-  artifact_kind? : String = "",
-  artifact_id? : String = "",
-  ref_role? : String = "",
-  data_kind? : String = "",
-  ref_id_contains? : String = "",
-  uri_contains? : String = "",
-  content_type? : String = "",
-  checksum? : String = "",
-  local_status? : String = "",
+  artifact_kind~ : String = "",
+  artifact_id~ : String = "",
+  ref_role~ : String = "",
+  data_kind~ : String = "",
+  ref_id_contains~ : String = "",
+  uri_contains~ : String = "",
+  content_type~ : String = "",
+  checksum~ : String = "",
+  local_status~ : String = "",
 ) -> MoonDataDataRefQuery {
   {
     artifact_kind,
@@ -458,11 +458,11 @@ fn data_ref_checksums(views : Array[MoonDataDataRefView]) -> Array[String] {
 
 ///|
 priv struct DataRefLocalStatusSummary {
-  present_count : Int
-  missing_count : Int
-  non_payload_count : Int
-  unsafe_count : Int
-  external_count : Int
+  present_count : Int32
+  missing_count : Int32
+  non_payload_count : Int32
+  unsafe_count : Int32
+  external_count : Int32
 }
 
 ///|
@@ -496,7 +496,7 @@ fn data_ref_local_status_summary(
 ///|
 pub fn list_data_refs(
   root : String,
-  query? : MoonDataDataRefQuery = data_ref_query(),
+  query~ : MoonDataDataRefQuery = data_ref_query(),
 ) -> Result[MoonDataDataRefList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

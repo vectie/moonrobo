@@ -667,7 +667,7 @@ pub fn add_collision(
 pub fn remove_visual(
   source : String,
   link_name : String,
-  visual_index : Int,
+  visual_index : Int32,
 ) -> Result[UrdfEditResult, UrdfEditError] {
   let doc = parse_document(source)
   let visual = match find_visual(doc, link_name, visual_index) {
@@ -697,7 +697,7 @@ pub fn remove_visual(
 pub fn remove_collision(
   source : String,
   link_name : String,
-  collision_index : Int,
+  collision_index : Int32,
 ) -> Result[UrdfEditResult, UrdfEditError] {
   let doc = parse_document(source)
   let collision = match find_collision(doc, link_name, collision_index) {
@@ -1459,7 +1459,7 @@ pub fn update_joint_safety_controller(
 pub fn update_visual_origin(
   source : String,
   link_name : String,
-  visual_index : Int,
+  visual_index : Int32,
   patch : UrdfOriginPatch,
 ) -> Result[UrdfEditResult, UrdfEditError] {
   let doc = parse_document(source)
@@ -1511,7 +1511,7 @@ pub fn update_visual_origin(
 pub fn update_collision_origin(
   source : String,
   link_name : String,
-  collision_index : Int,
+  collision_index : Int32,
   patch : UrdfOriginPatch,
 ) -> Result[UrdfEditResult, UrdfEditError] {
   let doc = parse_document(source)
@@ -1717,7 +1717,7 @@ fn apply_geometry_patch(
 pub fn update_visual_geometry(
   source : String,
   link_name : String,
-  visual_index : Int,
+  visual_index : Int32,
   patch : UrdfGeometryPatch,
 ) -> Result[UrdfEditResult, UrdfEditError] {
   let doc = parse_document(source)
@@ -1755,7 +1755,7 @@ pub fn update_visual_geometry(
 pub fn update_collision_geometry(
   source : String,
   link_name : String,
-  collision_index : Int,
+  collision_index : Int32,
   patch : UrdfGeometryPatch,
 ) -> Result[UrdfEditResult, UrdfEditError] {
   let doc = parse_document(source)

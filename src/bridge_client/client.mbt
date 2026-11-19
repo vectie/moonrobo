@@ -1,7 +1,7 @@
 ///|
 pub(all) struct BridgeClientConfig {
   host : String
-  port : Int
+  port : Int32
   contract_path : String
   telemetry_path : String
   execute_path : String
@@ -16,11 +16,11 @@ pub(all) struct BridgeClientIssue {
 
 ///|
 pub fn config(
-  host? : String = "127.0.0.1",
-  port? : Int = 5391,
-  contract_path? : String = "/contract",
-  telemetry_path? : String = "/telemetry/latest",
-  execute_path? : String = "/intents/execute",
+  host~ : String = "127.0.0.1",
+  port~ : Int32 = 5391,
+  contract_path~ : String = "/contract",
+  telemetry_path~ : String = "/telemetry/latest",
+  execute_path~ : String = "/intents/execute",
 ) -> BridgeClientConfig {
   { host, port, contract_path, telemetry_path, execute_path, }
 }
@@ -38,7 +38,7 @@ fn issue(code : String, path : String, message : String) -> BridgeClientIssue {
 ///|
 pub fn telemetry_frame_from_body(
   body : String,
-  path? : String = "/telemetry/latest",
+  path~ : String = "/telemetry/latest",
 ) -> Result[@core.TelemetryFrame, BridgeClientIssue] {
   let bridge_response = match @bridge_protocol.parse_response(body) {
     Ok(value) => value
@@ -75,7 +75,7 @@ pub fn telemetry_frame_from_body(
 pub fn sampled_telemetry_frame(
   frame : @core.TelemetryFrame,
   sample_id : String,
-  index : Int,
+  index : Int32,
 ) -> @core.TelemetryFrame {
   let operator_input : Map[String, String] = {}
   for key, value in frame.operator_input {
@@ -183,7 +183,7 @@ async fn get_contract_text(
 ///|
 pub fn bridge_response_from_body(
   body : String,
-  path? : String = "/intents/execute",
+  path~ : String = "/intents/execute",
 ) -> Result[@bridge_protocol.BridgeResponse, BridgeClientIssue] {
   match @bridge_protocol.parse_response(body) {
     Ok(response) => Ok(response)
@@ -201,7 +201,7 @@ pub fn bridge_response_from_body(
 ///|
 pub fn bridge_contract_from_body(
   body : String,
-  path? : String = "/contract",
+  path~ : String = "/contract",
 ) -> Result[@bridge_protocol.BridgeContract, BridgeClientIssue] {
   let json = @json.parse(body) catch {
     _ =>
@@ -225,7 +225,7 @@ pub fn bridge_contract_from_body(
 ///|
 pub fn execute_response_from_body(
   body : String,
-  path? : String = "/intents/execute",
+  path~ : String = "/intents/execute",
 ) -> Result[@bridge_protocol.BridgeResponse, BridgeClientIssue] {
   let response = match bridge_response_from_body(body, path~) {
     Ok(response) => response

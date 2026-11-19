@@ -14,10 +14,10 @@ pub(all) struct NormalizeResult {
   root : String
   raw_dataset_id : @moondata_core.DatasetId
   canonical_dataset_id : @moondata_core.DatasetId
-  episode_count : Int
-  frame_count : Int
+  episode_count : Int32
+  frame_count : Int32
   catalog_path : String
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   dataset : @moondata_core.DatasetManifest
   transform : @moondata_core.TransformRun
   lineage : @moondata_core.LineageManifest
@@ -29,9 +29,9 @@ pub fn normalize_request(
   raw_dataset_id : @moondata_core.DatasetId,
   canonical_dataset_id : @moondata_core.DatasetId,
   normalized_at_ms : Int64,
-  transform_run_id? : @moondata_core.TransformRunId = "",
-  lineage_id? : String = "",
-  summary? : String = "normalized raw dataset",
+  transform_run_id~ : @moondata_core.TransformRunId = "",
+  lineage_id~ : String = "",
+  summary~ : String = "normalized raw dataset",
 ) -> NormalizeRequest {
   let transform = if transform_run_id == "" {
     "norm-\{raw_dataset_id}"
@@ -105,7 +105,7 @@ fn verify_raw_dataset(
 fn count_verified_frames(
   root : String,
   dataset : @moondata_core.DatasetManifest,
-) -> Result[Int, @moondata_store.MoonDataStoreIssue] {
+) -> Result[Int32, @moondata_store.MoonDataStoreIssue] {
   let mut count = 0
   for episode_id in dataset.episode_ids {
     let episode = match @moondata_store.read_episode(root, episode_id) {

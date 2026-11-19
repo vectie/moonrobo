@@ -19,7 +19,7 @@ fn run(args : Array[String]) -> Unit raise {
   let mut end_ms = 0L
   let mut step_ms = 0L
   let mut max_gap_ms = 0L
-  let mut segment : Int? = None
+  let mut segment : Int32? = None
   let mut csv = false
   let seen : Array[String] = []
   for i = 3; i < args.length(); {

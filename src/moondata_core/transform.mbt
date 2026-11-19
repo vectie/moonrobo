@@ -11,7 +11,7 @@ pub fn transform_step(
   step_id : String,
   kind : String,
   config_json : String,
-  summary? : String = "",
+  summary~ : String = "",
 ) -> TransformStep {
   { step_id, kind, config_json, summary, }
 }
@@ -23,7 +23,7 @@ pub(all) struct TransformRun {
   output_dataset_id : DatasetId
   created_at_ms : Int64
   status : String
-  step_count : Int
+  step_count : Int32
   quality_run_ids : Array[QualityRunId]
   rejected_refs : Array[MoonDataRef]
   lineage_id : String
@@ -38,11 +38,11 @@ pub fn transform_run(
   output_dataset_id : DatasetId,
   created_at_ms : Int64,
   steps : Array[TransformStep],
-  status? : String = "completed",
-  quality_run_ids? : Array[QualityRunId] = [],
-  rejected_refs? : Array[MoonDataRef] = [],
-  lineage_id? : String = "",
-  summary? : String = "",
+  status~ : String = "completed",
+  quality_run_ids~ : Array[QualityRunId] = [],
+  rejected_refs~ : Array[MoonDataRef] = [],
+  lineage_id~ : String = "",
+  summary~ : String = "",
 ) -> TransformRun {
   {
     transform_run_id,

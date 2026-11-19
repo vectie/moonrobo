@@ -1,26 +1,26 @@
 ///|
 fn imu_recipe(
-  timestamp_policy? : String = "exact-milliseconds",
-  quaternion_policy? : String = "require-unit",
-  groups? : Array[String] = [
+  timestamp_policy~ : String = "exact-milliseconds",
+  quaternion_policy~ : String = "require-unit",
+  groups~ : Array[String] = [
     "attitude", "angular_velocity", "linear_acceleration",
   ],
-  frame_id? : String = "imu_link",
+  frame_id~ : String = "imu_link",
 ) -> @telemetry_csv.ImuRecipe {
   { timestamp_policy, quaternion_policy, frame_id, groups, }
 }
 
 ///|
 fn imu_message(
-  sec? : Json = 1,
-  nanosec? : Json = 0,
-  frame? : Json = "imu_link",
-  orientation? : Json = { "x": 0, "y": 0, "z": 0, "w": 1 },
-  gyro? : Json = { "x": 1, "y": -2, "z": 3 },
-  accel? : Json = { "x": 4, "y": 5, "z": 9.81 },
-  oc? : Json = [0, 0, 0, 0, 0, 0, 0, 0, 0],
-  gc? : Json = [1, -0.1, 0, -0.1, 1, 0, 0, 0, 1],
-  ac? : Json = [0, 0, 0, 0, 0, 0, 0, 0, 0],
+  sec~ : Json = 1,
+  nanosec~ : Json = 0,
+  frame~ : Json = "imu_link",
+  orientation~ : Json = { "x": 0, "y": 0, "z": 0, "w": 1 },
+  gyro~ : Json = { "x": 1, "y": -2, "z": 3 },
+  accel~ : Json = { "x": 4, "y": 5, "z": 9.81 },
+  oc~ : Json = [0, 0, 0, 0, 0, 0, 0, 0, 0],
+  gc~ : Json = [1, -0.1, 0, -0.1, 1, 0, 0, 0, 1],
+  ac~ : Json = [0, 0, 0, 0, 0, 0, 0, 0, 0],
 ) -> String {
   (
     {

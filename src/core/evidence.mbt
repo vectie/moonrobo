@@ -84,7 +84,7 @@ pub fn dry_run_evidence(
   source_receipt : RunReceipt,
   summary : String,
   created_at_ms : Int64,
-  artifact_paths? : Array[String] = [],
+  artifact_paths~ : Array[String] = [],
 ) -> DryRunEvidence {
   {
     dry_run_receipt_id,
@@ -169,7 +169,7 @@ fn command_echo_matches(
 pub fn command_outcome_evidence(
   snapshot : TaskExecutionSnapshot,
   frame : TelemetryFrame?,
-  intent? : CommandIntent? = None,
+  intent~ : CommandIntent? = None,
 ) -> CommandOutcomeEvidence {
   match frame {
     None =>
@@ -280,15 +280,15 @@ pub fn task_execution_snapshot(
   receipt : RunReceipt,
   dispatch : BridgeDispatchEvidence,
   captured_at_ms : Int64,
-  runtime_health_path? : String = "",
-  runtime_status? : String = "",
-  runtime_health_persisted? : Bool = false,
-  runtime_log_path? : String = "",
-  telemetry_frame_id? : String = "",
-  telemetry_captured_at_ms? : Int64 = 0L,
-  physical_feedback_path? : String = "",
-  checked_command_outcome_status? : String = "",
-  checked_command_outcome_verified? : Bool = false,
+  runtime_health_path~ : String = "",
+  runtime_status~ : String = "",
+  runtime_health_persisted~ : Bool = false,
+  runtime_log_path~ : String = "",
+  telemetry_frame_id~ : String = "",
+  telemetry_captured_at_ms~ : Int64 = 0L,
+  physical_feedback_path~ : String = "",
+  checked_command_outcome_status~ : String = "",
+  checked_command_outcome_verified~ : Bool = false,
 ) -> TaskExecutionSnapshot {
   let physical_feedback_status = if telemetry_frame_id == "" {
     "missing"
@@ -415,7 +415,7 @@ pub fn bridge_dispatch_evidence(
   status : String,
   message : String,
   created_at_ms : Int64,
-  runtime_log_path? : String = "",
+  runtime_log_path~ : String = "",
 ) -> BridgeDispatchEvidence {
   {
     dispatch_id,

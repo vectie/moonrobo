@@ -6,11 +6,11 @@ pub(all) struct CockpitRobotSummary {
   platform : String
   model_primary : String
   ready : Bool
-  missing_paths : Int
-  validation_issues : Int
-  joints : Int
-  sensors : Int
-  capabilities : Int
+  missing_paths : Int32
+  validation_issues : Int32
+  joints : Int32
+  sensors : Int32
+  capabilities : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -18,7 +18,7 @@ pub(all) struct CockpitBridgeSummary {
   bridge_id : @core.BridgeId
   status : String
   mode : String
-  telemetry_age_ms : Int?
+  telemetry_age_ms : Int32?
   telemetry_stale : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -39,16 +39,16 @@ pub(all) struct CockpitTelemetrySummary {
   frame_id : String
   captured_at_ms : Int64
   mode : String
-  joints : Int
+  joints : Int32
   imu_available : Bool
-  operator_input_fields : Int
-  errors : Int
+  operator_input_fields : Int32
+  errors : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
 pub(all) struct CockpitViewportJoint {
   name : String
-  index : Int
+  index : Int32
   role : String
   side : String
   mapped : Bool
@@ -68,7 +68,7 @@ pub(all) struct CockpitViewportJoint {
 
 ///|
 pub(all) struct CockpitViewportVisual {
-  index : Int
+  index : Int32
   link_name : String
   geometry_kind : String
   mesh_filename : String
@@ -83,7 +83,7 @@ pub(all) struct CockpitViewportVisual {
 
 ///|
 pub(all) struct CockpitViewportCollision {
-  index : Int
+  index : Int32
   link_name : String
   geometry_kind : String
   mesh_filename : String
@@ -98,7 +98,7 @@ pub(all) struct CockpitViewportCollision {
 
 ///|
 pub(all) struct CockpitViewportInertial {
-  index : Int
+  index : Int32
   link_name : String
   origin : @urdf.UrdfOrigin
   mass : Double?
@@ -118,24 +118,24 @@ pub(all) struct CockpitModelViewport {
   renderer : String
   status : String
   root_link : String
-  declared_joints : Int
-  telemetry_joints : Int
-  model_links : Int
-  model_joints : Int
-  visual_geometries : Int
-  mesh_geometries : Int
-  primitive_geometries : Int
-  resolved_meshes : Int
-  missing_meshes : Int
-  external_meshes : Int
-  simulated_links : Int
-  mapped_joints : Int
-  unmapped_joints : Int
-  model_mapped_joints : Int
-  model_unmapped_joints : Int
-  extra_model_joints : Int
-  extra_telemetry_joints : Int
-  issue_count : Int
+  declared_joints : Int32
+  telemetry_joints : Int32
+  model_links : Int32
+  model_joints : Int32
+  visual_geometries : Int32
+  mesh_geometries : Int32
+  primitive_geometries : Int32
+  resolved_meshes : Int32
+  missing_meshes : Int32
+  external_meshes : Int32
+  simulated_links : Int32
+  mapped_joints : Int32
+  unmapped_joints : Int32
+  model_mapped_joints : Int32
+  model_unmapped_joints : Int32
+  extra_model_joints : Int32
+  extra_telemetry_joints : Int32
+  issue_count : Int32
   issues : Array[String]
   links : Array[@urdf_viewport.ViewportLinkPose]
   visuals : Array[CockpitViewportVisual]
@@ -173,7 +173,7 @@ pub(all) struct CockpitSnapshot {
   telemetry : CockpitTelemetrySummary
   model_viewport : CockpitModelViewport
   safety : CockpitSafetySummary
-  receipt_count : Int
+  receipt_count : Int32
   latest_receipt : CockpitReceiptSummary?
   read_only : Bool
 } derive(Debug, Eq, ToJson, FromJson)
@@ -582,7 +582,7 @@ fn viewport_inertials(
 }
 
 ///|
-fn mesh_geometry_count(model : @urdf.UrdfModel?) -> Int {
+fn mesh_geometry_count(model : @urdf.UrdfModel?) -> Int32 {
   match model {
     Some(value) =>
       value.visuals
@@ -593,7 +593,7 @@ fn mesh_geometry_count(model : @urdf.UrdfModel?) -> Int {
 }
 
 ///|
-fn primitive_geometry_count(model : @urdf.UrdfModel?) -> Int {
+fn primitive_geometry_count(model : @urdf.UrdfModel?) -> Int32 {
   match model {
     Some(value) =>
       value.visuals
@@ -604,7 +604,7 @@ fn primitive_geometry_count(model : @urdf.UrdfModel?) -> Int {
 }
 
 ///|
-fn external_mesh_count(model : @urdf.UrdfModel?) -> Int {
+fn external_mesh_count(model : @urdf.UrdfModel?) -> Int32 {
   match model {
     Some(value) =>
       value.visuals
@@ -621,7 +621,7 @@ fn resolved_mesh_count(
   root : String,
   model_path : String,
   model : @urdf.UrdfModel?,
-) -> Int {
+) -> Int32 {
   match model {
     Some(value) => {
       let mut count = 0
@@ -644,7 +644,7 @@ fn missing_mesh_count(
   root : String,
   model_path : String,
   model : @urdf.UrdfModel?,
-) -> Int {
+) -> Int32 {
   match model {
     Some(value) => {
       let mut count = 0
@@ -725,7 +725,7 @@ fn profile_has_telemetry_joint(
 fn extra_telemetry_joint_count(
   profile : @core.RobotProfile,
   telemetry : @core.TelemetryFrame,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for joint in telemetry.joints {
     if !profile_has_telemetry_joint(profile, joint) {
@@ -752,7 +752,7 @@ fn profile_has_model_joint(
 fn extra_model_joint_count(
   profile : @core.RobotProfile,
   model : @urdf.UrdfModel?,
-) -> Int {
+) -> Int32 {
   match model {
     None => 0
     Some(value) => {
@@ -852,7 +852,7 @@ fn viewport_joint(
 pub fn model_viewport(
   book : @runtime.LoadedRoboBook,
   telemetry : @core.TelemetryFrame,
-  urdf_model? : @urdf.UrdfModel? = None,
+  urdf_model~ : @urdf.UrdfModel? = None,
 ) -> CockpitModelViewport {
   let source_path = book.profile.model.primary
   let format = model_format(source_path)
@@ -1028,10 +1028,10 @@ pub fn snapshot(
   telemetry : @core.TelemetryFrame,
   safety : @pipeline.PipelineResult,
   receipts : Array[@core.RunReceipt],
-  product_status? : @product_status.MoonroboProductStatus = initial_product_status(
+  product_status~ : @product_status.MoonroboProductStatus = initial_product_status(
     book,
   ),
-  urdf_model? : @urdf.UrdfModel? = None,
+  urdf_model~ : @urdf.UrdfModel? = None,
 ) -> CockpitSnapshot {
   {
     robot: robot_summary(book),
@@ -1048,6 +1048,6 @@ pub fn snapshot(
 }
 
 ///|
-pub fn snapshot_json(snapshot : CockpitSnapshot, indent? : Int = 2) -> String {
+pub fn snapshot_json(snapshot : CockpitSnapshot, indent~ : Int32 = 2) -> String {
   snapshot.to_json().stringify(indent~)
 }

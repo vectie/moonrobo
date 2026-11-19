@@ -1,7 +1,7 @@
 ///|
 pub(all) struct UrdfEditorSourceDiffHunk {
-  before_start_line : Int
-  after_start_line : Int
+  before_start_line : Int32
+  after_start_line : Int32
   before_text : String
   after_text : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -10,23 +10,23 @@ pub(all) struct UrdfEditorSourceDiffHunk {
 pub(all) struct UrdfEditorSourceDiff {
   changed : Bool
   summary : String
-  before_bytes : Int
-  after_bytes : Int
-  before_lines : Int
-  after_lines : Int
-  first_changed_byte : Int
-  first_changed_line : Int
+  before_bytes : Int32
+  after_bytes : Int32
+  before_lines : Int32
+  after_lines : Int32
+  first_changed_byte : Int32
+  first_changed_line : Int32
   hunks : Array[UrdfEditorSourceDiffHunk]
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
 pub(all) struct UrdfEditorHistoryEntry {
   lane : String
-  index : Int
+  index : Int32
   current : Bool
   selected_node_id : String
-  byte_count : Int
-  line_count : Int
+  byte_count : Int32
+  line_count : Int32
   changed_from_baseline : Bool
   diff_summary : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -41,7 +41,7 @@ fn source_lines(source : String) -> Array[String] {
 }
 
 ///|
-fn editor_source_line_count(source : String) -> Int {
+fn editor_source_line_count(source : String) -> Int32 {
   if source == "" {
     0
   } else {
@@ -50,7 +50,7 @@ fn editor_source_line_count(source : String) -> Int {
 }
 
 ///|
-fn first_diff_byte(before : String, after : String) -> Int {
+fn first_diff_byte(before : String, after : String) -> Int32 {
   let limit = if before.length() < after.length() {
     before.length()
   } else {
@@ -65,7 +65,7 @@ fn first_diff_byte(before : String, after : String) -> Int {
 }
 
 ///|
-fn line_number_at_byte(source : String, byte_index : Int) -> Int {
+fn line_number_at_byte(source : String, byte_index : Int32) -> Int32 {
   let limit = if byte_index < source.length() {
     byte_index
   } else {
@@ -81,7 +81,7 @@ fn line_number_at_byte(source : String, byte_index : Int) -> Int {
 }
 
 ///|
-fn source_line_at(lines : Array[String], index : Int) -> String {
+fn source_line_at(lines : Array[String], index : Int32) -> String {
   match lines.get(index) {
     Some(line) => line
     None => ""
@@ -89,7 +89,7 @@ fn source_line_at(lines : Array[String], index : Int) -> String {
 }
 
 ///|
-fn min_int(left : Int, right : Int) -> Int {
+fn min_int(left : Int32, right : Int32) -> Int32 {
   if left < right {
     left
   } else {
@@ -98,7 +98,7 @@ fn min_int(left : Int, right : Int) -> Int {
 }
 
 ///|
-fn max_int(left : Int, right : Int) -> Int {
+fn max_int(left : Int32, right : Int32) -> Int32 {
   if left > right {
     left
   } else {
@@ -109,8 +109,8 @@ fn max_int(left : Int, right : Int) -> Int {
 ///|
 fn numbered_range(
   lines : Array[String],
-  start_line : Int,
-  end_line : Int,
+  start_line : Int32,
+  end_line : Int32,
 ) -> String {
   if lines.is_empty() {
     ""
@@ -129,8 +129,8 @@ fn numbered_range(
 fn collect_line_change_ranges(
   before_lines : Array[String],
   after_lines : Array[String],
-) -> Array[(Int, Int, Int, Int)] {
-  let ranges : Array[(Int, Int, Int, Int)] = []
+) -> Array[(Int32, Int32, Int32, Int32)] {
+  let ranges : Array[(Int32, Int32, Int32, Int32)] = []
   let limit = max_int(before_lines.length(), after_lines.length())
   let mut index = 0
   while index < limit {
@@ -158,11 +158,11 @@ fn collect_line_change_ranges(
 
 ///|
 fn context_range(
-  start_line : Int,
-  end_line : Int,
-  line_count : Int,
-  radius : Int,
-) -> (Int, Int) {
+  start_line : Int32,
+  end_line : Int32,
+  line_count : Int32,
+  radius : Int32,
+) -> (Int32, Int32) {
   if line_count == 0 {
     (0, 0)
   } else {
@@ -250,7 +250,7 @@ pub fn compare_sources(before : String, after : String) -> UrdfEditorSourceDiff 
 fn history_entry(
   baseline_source : String,
   lane : String,
-  index : Int,
+  index : Int32,
   current : Bool,
   snapshot : UrdfEditorSessionSnapshot,
 ) -> UrdfEditorHistoryEntry {

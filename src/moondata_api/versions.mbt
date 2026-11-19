@@ -12,10 +12,10 @@ pub(all) struct MoonDataVersionQuery {
 pub(all) struct MoonDataVersionList {
   root : String
   query : MoonDataVersionQuery
-  version_count : Int
-  accepted_episode_count : Int
-  parent_version_count : Int
-  quality_gate_count : Int
+  version_count : Int32
+  accepted_episode_count : Int32
+  parent_version_count : Int32
+  quality_gate_count : Int32
   latest_version_id : String
   latest_version_status : String
   latest_version_created_at_ms : Int64
@@ -26,12 +26,12 @@ pub(all) struct MoonDataVersionList {
 
 ///|
 pub fn version_query(
-  dataset_id? : String = "",
-  status? : String = "",
-  parent_version_id? : String = "",
-  episode_id? : String = "",
-  quality_run_id? : String = "",
-  summary_contains? : String = "",
+  dataset_id~ : String = "",
+  status~ : String = "",
+  parent_version_id~ : String = "",
+  episode_id~ : String = "",
+  quality_run_id~ : String = "",
+  summary_contains~ : String = "",
 ) -> MoonDataVersionQuery {
   {
     dataset_id,
@@ -101,9 +101,9 @@ fn version_refs(
 
 ///|
 priv struct VersionListSummary {
-  accepted_episode_count : Int
-  parent_version_count : Int
-  quality_gate_count : Int
+  accepted_episode_count : Int32
+  parent_version_count : Int32
+  quality_gate_count : Int32
   latest_version_id : String
   latest_version_status : String
   latest_version_created_at_ms : Int64
@@ -152,7 +152,7 @@ fn version_list_summary(
 ///|
 pub fn list_versions(
   root : String,
-  query? : MoonDataVersionQuery = version_query(),
+  query~ : MoonDataVersionQuery = version_query(),
 ) -> Result[MoonDataVersionList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

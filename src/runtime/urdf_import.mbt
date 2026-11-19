@@ -15,11 +15,11 @@ pub(all) struct UrdfImportResult {
   urdf_source_path : String
   urdf_path : String
   model_primary : String
-  mesh_count : Int
-  copied_file_count : Int
-  joint_count : Int
-  link_count : Int
-  visual_count : Int
+  mesh_count : Int32
+  copied_file_count : Int32
+  joint_count : Int32
+  link_count : Int32
+  visual_count : Int32
   robot_name : String
   profile_path : String
   message : String
@@ -100,7 +100,7 @@ fn ensure_import_dirs(
 }
 
 ///|
-fn urdf_candidate_score(path : String) -> Int {
+fn urdf_candidate_score(path : String) -> Int32 {
   if path.contains("/urdf/") {
     0
   } else if path.has_suffix("/robot.urdf") {
@@ -164,7 +164,7 @@ fn copy_file(source : String, target : String) -> Result[Unit, RuntimeIssue] {
 fn copy_dir_contents(
   source : String,
   target : String,
-) -> Result[Int, RuntimeIssue] {
+) -> Result[Int32, RuntimeIssue] {
   let mut copied = 0
   let names = @fsx.read_dir(source) catch {
     _ =>
@@ -204,7 +204,7 @@ fn copy_dir_contents(
 fn copy_meshes(
   source_root : String,
   target_root : String,
-) -> Result[(Int, Int), RuntimeIssue] {
+) -> Result[(Int32, Int32), RuntimeIssue] {
   let source_meshes = path_join(source_root, "meshes")
   if !@fsx.path_exists(source_meshes) || !is_directory(source_meshes) {
     Ok((0, 0))

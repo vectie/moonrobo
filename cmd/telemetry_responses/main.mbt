@@ -16,7 +16,7 @@ fn run(args : Array[String]) -> Unit raise {
   }
   guard args.length() >= 3 else { fail(usage) }
   let mut format = "json"
-  let mut clip_episode : Int? = None
+  let mut clip_episode : Int32? = None
   let seen : Array[String] = []
   for i = 3; i < args.length(); {
     let flag = args[i]

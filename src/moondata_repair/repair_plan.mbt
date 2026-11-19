@@ -4,7 +4,7 @@ pub(all) struct StoredRepairRunResult {
   repair_run_id : @moondata_core.RepairRunId
   repair_run_path : String
   catalog_path : String
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   repair_run : @moondata_core.RepairRun
   validation_result : @moondata_validate.StoredValidationResult
 } derive(Debug, Eq, ToJson, FromJson)
@@ -65,7 +65,7 @@ fn repair_target_ref(finding : @moondata_core.ValidationFinding) -> String {
 
 ///|
 fn repair_action(
-  index : Int,
+  index : Int32,
   finding : @moondata_core.ValidationFinding,
 ) -> @moondata_core.RepairAction {
   @moondata_core.repair_action(
@@ -84,15 +84,15 @@ fn repair_action(
 
 ///|
 priv struct RepairCounts {
-  mut blocker_count : Int
-  mut warning_count : Int
-  mut missing_payload_count : Int
-  mut unmanaged_payload_count : Int
-  mut metadata_conflict_count : Int
-  mut unsafe_ref_count : Int
-  mut external_ref_count : Int
-  mut non_payload_ref_count : Int
-  mut manifest_surface_ref_count : Int
+  mut blocker_count : Int32
+  mut warning_count : Int32
+  mut missing_payload_count : Int32
+  mut unmanaged_payload_count : Int32
+  mut metadata_conflict_count : Int32
+  mut unsafe_ref_count : Int32
+  mut external_ref_count : Int32
+  mut non_payload_ref_count : Int32
+  mut manifest_surface_ref_count : Int32
 }
 
 ///|
@@ -155,7 +155,7 @@ fn repair_refs(
 }
 
 ///|
-fn repair_summary(action_count : Int, counts : RepairCounts) -> String {
+fn repair_summary(action_count : Int32, counts : RepairCounts) -> String {
   "MoonData repair run: \{action_count} action(s), \{counts.blocker_count} blocker(s), \{counts.warning_count} warning(s), \{counts.missing_payload_count} missing payload(s), \{counts.unmanaged_payload_count} unmanaged payload(s), \{counts.metadata_conflict_count} metadata conflict(s)"
 }
 
@@ -194,7 +194,7 @@ fn repair_run_from_report(
 ///|
 pub fn plan_repairs(
   root : String,
-  generated_at_ms? : Int64 = 0L,
+  generated_at_ms~ : Int64 = 0L,
 ) -> Result[@moondata_core.RepairRun, @moondata_store.MoonDataStoreIssue] {
   let report = match @moondata_validate.validate_root(root, generated_at_ms~) {
     Ok(value) => value
@@ -206,7 +206,7 @@ pub fn plan_repairs(
 ///|
 pub fn write_repair_run(
   root : String,
-  generated_at_ms? : Int64 = 0L,
+  generated_at_ms~ : Int64 = 0L,
 ) -> Result[StoredRepairRunResult, @moondata_store.MoonDataStoreIssue] {
   let validation_result = match
     @moondata_validate.validate_and_write_root(root, generated_at_ms~) {

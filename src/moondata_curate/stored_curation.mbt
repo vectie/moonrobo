@@ -18,9 +18,9 @@ pub(all) struct StoredCurationResult {
   curated_dataset_id : @moondata_core.DatasetId
   version_id : @moondata_core.DatasetVersionId
   quality_run_id : @moondata_core.QualityRunId
-  accepted_episode_count : Int
+  accepted_episode_count : Int32
   catalog_path : String
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   dataset : @moondata_core.DatasetManifest
   version : @moondata_core.DatasetVersion
   transform : @moondata_core.TransformRun
@@ -33,11 +33,11 @@ pub fn stored_curation_request(
   input_dataset_id : @moondata_core.DatasetId,
   quality_run_id : @moondata_core.QualityRunId,
   created_at_ms : Int64,
-  output_dataset_id? : @moondata_core.DatasetId = "",
-  version_id? : @moondata_core.DatasetVersionId = "",
-  transform_run_id? : @moondata_core.TransformRunId = "",
-  lineage_id? : String = "",
-  summary? : String = "curated accepted dataset",
+  output_dataset_id~ : @moondata_core.DatasetId = "",
+  version_id~ : @moondata_core.DatasetVersionId = "",
+  transform_run_id~ : @moondata_core.TransformRunId = "",
+  lineage_id~ : String = "",
+  summary~ : String = "curated accepted dataset",
 ) -> StoredCurationRequest {
   let output_id = if output_dataset_id == "" {
     "\{input_dataset_id}-curated"

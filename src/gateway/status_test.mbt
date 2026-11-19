@@ -1,10 +1,10 @@
 ///|
 fn input(
-  mapped? : Bool = true,
-  loop_ready? : Bool = false,
-  live_readiness_status? : String = "needs-runtime-validation",
-  can_submit_gateway_command? : Bool = false,
-  proof_session_feedback_closed? : Bool = false,
+  mapped~ : Bool = true,
+  loop_ready~ : Bool = false,
+  live_readiness_status~ : String = "needs-runtime-validation",
+  can_submit_gateway_command~ : Bool = false,
+  proof_session_feedback_closed~ : Bool = false,
 ) -> @gateway.MoonroboGatewayStatusInput {
   {
     root: "/tmp/moonrobo-gateway-test",

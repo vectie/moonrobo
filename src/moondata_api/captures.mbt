@@ -11,10 +11,10 @@ pub(all) struct MoonDataCaptureQuery {
 pub(all) struct MoonDataCaptureList {
   root : String
   query : MoonDataCaptureQuery
-  capture_count : Int
-  data_ref_count : Int
-  receipt_count : Int
-  stopped_capture_count : Int
+  capture_count : Int32
+  data_ref_count : Int32
+  receipt_count : Int32
+  stopped_capture_count : Int32
   total_data_byte_count : Int64
   latest_capture_id : String
   latest_capture_status : String
@@ -26,11 +26,11 @@ pub(all) struct MoonDataCaptureList {
 
 ///|
 pub fn capture_query(
-  source_id? : String = "",
-  robot_id? : String = "",
-  bridge_id? : String = "",
-  status? : String = "",
-  data_kind? : String = "",
+  source_id~ : String = "",
+  robot_id~ : String = "",
+  bridge_id~ : String = "",
+  status~ : String = "",
+  data_kind~ : String = "",
 ) -> MoonDataCaptureQuery {
   { source_id, robot_id, bridge_id, status, data_kind, }
 }
@@ -101,9 +101,9 @@ fn capture_refs(
 
 ///|
 priv struct CaptureListSummary {
-  data_ref_count : Int
-  receipt_count : Int
-  stopped_capture_count : Int
+  data_ref_count : Int32
+  receipt_count : Int32
+  stopped_capture_count : Int32
   total_data_byte_count : Int64
   latest_capture_id : String
   latest_capture_status : String
@@ -161,7 +161,7 @@ fn capture_list_summary(
 ///|
 pub fn list_captures(
   root : String,
-  query? : MoonDataCaptureQuery = capture_query(),
+  query~ : MoonDataCaptureQuery = capture_query(),
 ) -> Result[MoonDataCaptureList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

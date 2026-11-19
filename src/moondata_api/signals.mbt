@@ -10,9 +10,9 @@ pub(all) struct MoonDataSignalQuery {
 pub(all) struct MoonDataSignalList {
   root : String
   query : MoonDataSignalQuery
-  signal_count : Int
-  sample_count : Int
-  storage_ref_count : Int
+  signal_count : Int32
+  sample_count : Int32
+  storage_ref_count : Int32
   total_storage_byte_count : Int64
   storage_checksums : Array[String]
   signals : Array[@moondata_core.SignalSeries]
@@ -22,10 +22,10 @@ pub(all) struct MoonDataSignalList {
 
 ///|
 pub fn signal_query(
-  dataset_id? : String = "",
-  episode_id? : String = "",
-  field_path_contains? : String = "",
-  storage_kind? : String = "",
+  dataset_id~ : String = "",
+  episode_id~ : String = "",
+  field_path_contains~ : String = "",
+  storage_kind~ : String = "",
 ) -> MoonDataSignalQuery {
   { dataset_id, episode_id, field_path_contains, storage_kind, }
 }
@@ -80,8 +80,8 @@ fn signal_refs(
 
 ///|
 priv struct SignalListSummary {
-  sample_count : Int
-  storage_ref_count : Int
+  sample_count : Int32
+  storage_ref_count : Int32
   total_storage_byte_count : Int64
   storage_checksums : Array[String]
 }
@@ -111,7 +111,7 @@ fn signal_list_summary(
 ///|
 pub fn list_signals(
   root : String,
-  query? : MoonDataSignalQuery = signal_query(),
+  query~ : MoonDataSignalQuery = signal_query(),
 ) -> Result[MoonDataSignalList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

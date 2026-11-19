@@ -4,7 +4,7 @@ pub(all) struct EventResponseRecipe {
   event_channel : String
   direction : String
   threshold : Double
-  episodes : Array[Int]
+  episodes : Array[Int32]
   channels : Array[String]
   unit_labels : Array[String]
   before_ms : Int64

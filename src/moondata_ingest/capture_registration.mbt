@@ -44,10 +44,10 @@ pub fn frame_input(
   frame_id : String,
   captured_at_ms : Int64,
   payload_uri : String,
-  payload_kind? : String = "telemetry-frame",
-  content_type? : String = "application/json",
-  byte_count? : Int64 = 0L,
-  checksum? : String = "",
+  payload_kind~ : String = "telemetry-frame",
+  content_type~ : String = "application/json",
+  byte_count~ : Int64 = 0L,
+  checksum~ : String = "",
 ) -> CaptureFrameInput {
   {
     frame_id,

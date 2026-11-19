@@ -4,7 +4,7 @@ pub(all) struct StoredRepairReceiptResult {
   repair_receipt_id : @moondata_core.RepairReceiptId
   repair_receipt_path : String
   catalog_path : String
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   repair_receipt : @moondata_core.RepairReceipt
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -55,8 +55,8 @@ pub fn record_repair_receipt(
   status : String,
   actor : String,
   applied_at_ms : Int64,
-  validation_report_id? : String = "",
-  evidence_refs? : Array[@moondata_core.MoonDataRef] = [],
+  validation_report_id~ : String = "",
+  evidence_refs~ : Array[@moondata_core.MoonDataRef] = [],
 ) -> Result[StoredRepairReceiptResult, @moondata_store.MoonDataStoreIssue] {
   let run = match @moondata_store.read_repair_run(root, repair_run_id) {
     Ok(value) => value

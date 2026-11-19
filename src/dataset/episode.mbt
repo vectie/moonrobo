@@ -1,20 +1,20 @@
 ///|
 pub(all) struct DatasetEpisode {
   episode_id : String
-  format_version : Int
+  format_version : Int32
   robot_id : @core.RobotId
   bridge_id : @core.BridgeId
   session_id : String
   status : String
   started_at_ms : Int64
   stopped_at_ms : Int64?
-  frame_count : Int
+  frame_count : Int32
   receipt_id : @core.ReceiptId
   review_id : String
   review_disposition : String
   replay_path : String
   artifact_paths : Array[String]
-  annotation_count : Int
+  annotation_count : Int32
   annotation_ids : Array[String]
   frames : Array[@replay.ReplayFrameSummary]
 } derive(Debug, Eq, ToJson, FromJson)
@@ -30,11 +30,11 @@ pub(all) struct DatasetQualityIssue {
 pub(all) struct DatasetQualityReport {
   episode_id : String
   passed : Bool
-  issue_count : Int
-  blocker_count : Int
-  warning_count : Int
-  frame_count : Int
-  artifact_count : Int
+  issue_count : Int32
+  blocker_count : Int32
+  warning_count : Int32
+  frame_count : Int32
+  artifact_count : Int32
   issues : Array[DatasetQualityIssue]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -103,7 +103,7 @@ pub fn episode(
   session : @core.ObservationSession,
   replay : @replay.ReplayTimeline,
   review : @review.ProcessReview?,
-  annotations? : Array[@annotation.ReplayAnnotation] = [],
+  annotations~ : Array[@annotation.ReplayAnnotation] = [],
 ) -> DatasetEpisode {
   {
     episode_id: "episode-\{session.session_id}",
@@ -127,7 +127,7 @@ pub fn episode(
 }
 
 ///|
-pub fn episode_json(episode : DatasetEpisode, indent? : Int = 2) -> String {
+pub fn episode_json(episode : DatasetEpisode, indent~ : Int32 = 2) -> String {
   episode.to_json().stringify(indent~)
 }
 
@@ -162,7 +162,7 @@ fn add_warning(
 fn count_severity(
   issues : Array[DatasetQualityIssue],
   severity : String,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for issue in issues {
     if issue.severity == severity {
@@ -191,7 +191,7 @@ fn add_frame_error_warnings(
 ///|
 pub fn quality_report(
   episode : DatasetEpisode,
-  min_frame_count? : Int = 1,
+  min_frame_count~ : Int32 = 1,
 ) -> DatasetQualityReport {
   let issues : Array[DatasetQualityIssue] = []
   if episode.status != "stopped" {
@@ -245,7 +245,7 @@ pub fn quality_report(
 ///|
 pub fn quality_report_json(
   report : DatasetQualityReport,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   report.to_json().stringify(indent~)
 }

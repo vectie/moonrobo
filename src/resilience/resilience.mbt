@@ -2,23 +2,23 @@
 pub(all) struct RecoveryCapability {
   capability_id : String
   subsystem : String
-  max_severity : Int
+  max_severity : Int32
   energy_cost_wh : Double
-  duration_s : Int
-  max_attempts : Int
+  duration_s : Int32
+  max_attempts : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
 pub(all) struct FaultScenario {
   fault_id : String
   subsystem : String
-  severity : Int
-  onset_s : Int
-  duration_s : Int
+  severity : Int32
+  onset_s : Int32
+  duration_s : Int32
   observable : Bool
   recoverable : Bool
   recovery_energy_budget_wh : Double
-  recovery_time_budget_s : Int
+  recovery_time_budget_s : Int32
   requested_mission : String
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -41,7 +41,7 @@ pub(all) struct RecoveryScenarioResult {
   states : Array[String]
   outcome : String
   recovery_capability_id : String
-  attempts : Int
+  attempts : Int32
   evidence : Array[String]
   remaining_limitations : Array[String]
 } derive(Debug, Eq, ToJson, FromJson)
@@ -53,10 +53,10 @@ pub(all) struct RobotResilienceQualification {
   accepted : Bool
   claim : String
   physical_readiness : Bool
-  recovered_count : Int
-  reduced_mission_count : Int
-  safe_return_count : Int
-  fail_closed_count : Int
+  recovered_count : Int32
+  reduced_mission_count : Int32
+  safe_return_count : Int32
+  fail_closed_count : Int32
   scenarios : Array[RecoveryScenarioResult]
   hardware_assumptions : Array[String]
   limitations : Array[String]

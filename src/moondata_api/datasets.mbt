@@ -12,11 +12,11 @@ pub(all) struct MoonDataDatasetQuery {
 pub(all) struct MoonDataDatasetList {
   root : String
   query : MoonDataDatasetQuery
-  dataset_count : Int
-  source_ref_count : Int
-  capture_ref_count : Int
-  episode_count : Int
-  data_ref_count : Int
+  dataset_count : Int32
+  source_ref_count : Int32
+  capture_ref_count : Int32
+  episode_count : Int32
+  data_ref_count : Int32
   total_data_byte_count : Int64
   latest_dataset_id : String
   latest_dataset_status : String
@@ -28,12 +28,12 @@ pub(all) struct MoonDataDatasetList {
 
 ///|
 pub fn dataset_query(
-  kind? : String = "",
-  status? : String = "",
-  source_id? : String = "",
-  capture_id? : String = "",
-  episode_id? : String = "",
-  data_kind? : String = "",
+  kind~ : String = "",
+  status~ : String = "",
+  source_id~ : String = "",
+  capture_id~ : String = "",
+  episode_id~ : String = "",
+  data_kind~ : String = "",
 ) -> MoonDataDatasetQuery {
   { kind, status, source_id, capture_id, episode_id, data_kind, }
 }
@@ -136,10 +136,10 @@ fn dataset_refs(
 
 ///|
 priv struct DatasetListSummary {
-  source_ref_count : Int
-  capture_ref_count : Int
-  episode_count : Int
-  data_ref_count : Int
+  source_ref_count : Int32
+  capture_ref_count : Int32
+  episode_count : Int32
+  data_ref_count : Int32
   total_data_byte_count : Int64
   latest_dataset_id : String
   latest_dataset_status : String
@@ -199,7 +199,7 @@ fn dataset_list_summary(
 ///|
 pub fn list_datasets(
   root : String,
-  query? : MoonDataDatasetQuery = dataset_query(),
+  query~ : MoonDataDatasetQuery = dataset_query(),
 ) -> Result[MoonDataDatasetList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

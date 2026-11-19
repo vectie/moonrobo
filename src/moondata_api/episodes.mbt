@@ -13,12 +13,12 @@ pub(all) struct MoonDataEpisodeQuery {
 pub(all) struct MoonDataEpisodeList {
   root : String
   query : MoonDataEpisodeQuery
-  episode_count : Int
-  declared_frame_count : Int
-  frame_ref_count : Int
-  data_ref_count : Int
-  receipt_count : Int
-  stopped_episode_count : Int
+  episode_count : Int32
+  declared_frame_count : Int32
+  frame_ref_count : Int32
+  data_ref_count : Int32
+  receipt_count : Int32
+  stopped_episode_count : Int32
   total_data_byte_count : Int64
   latest_episode_id : String
   latest_episode_status : String
@@ -30,13 +30,13 @@ pub(all) struct MoonDataEpisodeList {
 
 ///|
 pub fn episode_query(
-  dataset_id? : String = "",
-  robot_id? : String = "",
-  bridge_id? : String = "",
-  session_id? : String = "",
-  task_id? : String = "",
-  status? : String = "",
-  data_kind? : String = "",
+  dataset_id~ : String = "",
+  robot_id~ : String = "",
+  bridge_id~ : String = "",
+  session_id~ : String = "",
+  task_id~ : String = "",
+  status~ : String = "",
+  data_kind~ : String = "",
 ) -> MoonDataEpisodeQuery {
   { dataset_id, robot_id, bridge_id, session_id, task_id, status, data_kind, }
 }
@@ -115,11 +115,11 @@ fn episode_refs(
 
 ///|
 priv struct EpisodeListSummary {
-  declared_frame_count : Int
-  frame_ref_count : Int
-  data_ref_count : Int
-  receipt_count : Int
-  stopped_episode_count : Int
+  declared_frame_count : Int32
+  frame_ref_count : Int32
+  data_ref_count : Int32
+  receipt_count : Int32
+  stopped_episode_count : Int32
   total_data_byte_count : Int64
   latest_episode_id : String
   latest_episode_status : String
@@ -185,7 +185,7 @@ fn episode_list_summary(
 ///|
 pub fn list_episodes(
   root : String,
-  query? : MoonDataEpisodeQuery = episode_query(),
+  query~ : MoonDataEpisodeQuery = episode_query(),
 ) -> Result[MoonDataEpisodeList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

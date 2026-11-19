@@ -11,10 +11,10 @@ pub(all) struct MoonDataQualityQuery {
 pub(all) struct MoonDataQualityList {
   root : String
   query : MoonDataQualityQuery
-  quality_count : Int
-  finding_count : Int
-  blocker_count : Int
-  warning_count : Int
+  quality_count : Int32
+  finding_count : Int32
+  blocker_count : Int32
+  warning_count : Int32
   latest_quality_run_id : String
   latest_quality_status : String
   latest_quality_created_at_ms : Int64
@@ -25,11 +25,11 @@ pub(all) struct MoonDataQualityList {
 
 ///|
 pub fn quality_query(
-  dataset_id? : String = "",
-  episode_id? : String = "",
-  status? : String = "",
-  severity? : String = "",
-  rule_id? : String = "",
+  dataset_id~ : String = "",
+  episode_id~ : String = "",
+  status~ : String = "",
+  severity~ : String = "",
+  rule_id~ : String = "",
 ) -> MoonDataQualityQuery {
   { dataset_id, episode_id, status, severity, rule_id, }
 }
@@ -116,9 +116,9 @@ fn quality_refs(
 
 ///|
 priv struct QualityListSummary {
-  finding_count : Int
-  blocker_count : Int
-  warning_count : Int
+  finding_count : Int32
+  blocker_count : Int32
+  warning_count : Int32
   latest_quality_run_id : String
   latest_quality_status : String
   latest_quality_created_at_ms : Int64
@@ -167,7 +167,7 @@ fn quality_list_summary(
 ///|
 pub fn list_quality_runs(
   root : String,
-  query? : MoonDataQualityQuery = quality_query(),
+  query~ : MoonDataQualityQuery = quality_query(),
 ) -> Result[MoonDataQualityList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

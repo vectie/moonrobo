@@ -1,9 +1,9 @@
 ///|
 /// Selected original observations and their position in the recording.
 pub(all) struct EnergyPoint {
-  source_sample_index : Int
+  source_sample_index : Int32
   timestamp_ms : Int64
-  segment : Int
+  segment : Int32
   segment_start : Bool
   voltage_v : Double
   current_a : Double
@@ -13,12 +13,12 @@ pub(all) struct EnergyPoint {
 ///|
 /// One supported interval. Energy assumes linear power between its two samples.
 pub(all) struct EnergyInterval {
-  left_sample_index : Int
-  right_sample_index : Int
+  left_sample_index : Int32
+  right_sample_index : Int32
   left_timestamp_ms : Int64
   right_timestamp_ms : Int64
   duration_ms : Int64
-  segment : Int
+  segment : Int32
   zero_crossing_fraction : Double?
   drawn_wh : Double
   recovered_wh : Double
@@ -28,8 +28,8 @@ pub(all) struct EnergyInterval {
 ///|
 /// Missing duration excluded from every accumulated energy quantity.
 pub(all) struct EnergyGap {
-  left_sample_index : Int
-  right_sample_index : Int
+  left_sample_index : Int32
+  right_sample_index : Int32
   left_timestamp_ms : Int64
   right_timestamp_ms : Int64
   duration_ms : Int64
@@ -46,9 +46,9 @@ pub(all) struct TelemetryEnergy {
   current_unit : String
   current_polarity : String
   max_gap_ms : Int64
-  source_sample_count : Int
-  segment_count : Int
-  supported_interval_count : Int
+  source_sample_count : Int32
+  segment_count : Int32
+  supported_interval_count : Int32
   integrated_duration_ms : Int64
   excluded_duration_ms : Int64
   drawn_wh : Double

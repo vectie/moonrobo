@@ -15,10 +15,10 @@ pub(all) struct MoonDataTransformQuery {
 pub(all) struct MoonDataTransformList {
   root : String
   query : MoonDataTransformQuery
-  transform_count : Int
-  step_count : Int
-  rejected_ref_count : Int
-  quality_gate_count : Int
+  transform_count : Int32
+  step_count : Int32
+  rejected_ref_count : Int32
+  quality_gate_count : Int32
   latest_transform_run_id : String
   latest_transform_status : String
   latest_transform_created_at_ms : Int64
@@ -29,15 +29,15 @@ pub(all) struct MoonDataTransformList {
 
 ///|
 pub fn transform_query(
-  input_dataset_id? : String = "",
-  output_dataset_id? : String = "",
-  status? : String = "",
-  quality_run_id? : String = "",
-  rejected_artifact_kind? : String = "",
-  rejected_artifact_id? : String = "",
-  lineage_id? : String = "",
-  step_kind? : String = "",
-  summary_contains? : String = "",
+  input_dataset_id~ : String = "",
+  output_dataset_id~ : String = "",
+  status~ : String = "",
+  quality_run_id~ : String = "",
+  rejected_artifact_kind~ : String = "",
+  rejected_artifact_id~ : String = "",
+  lineage_id~ : String = "",
+  step_kind~ : String = "",
+  summary_contains~ : String = "",
 ) -> MoonDataTransformQuery {
   {
     input_dataset_id,
@@ -159,9 +159,9 @@ fn transform_refs(
 
 ///|
 priv struct TransformListSummary {
-  step_count : Int
-  rejected_ref_count : Int
-  quality_gate_count : Int
+  step_count : Int32
+  rejected_ref_count : Int32
+  quality_gate_count : Int32
   latest_transform_run_id : String
   latest_transform_status : String
   latest_transform_created_at_ms : Int64
@@ -210,7 +210,7 @@ fn transform_list_summary(
 ///|
 pub fn list_transforms(
   root : String,
-  query? : MoonDataTransformQuery = transform_query(),
+  query~ : MoonDataTransformQuery = transform_query(),
 ) -> Result[MoonDataTransformList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

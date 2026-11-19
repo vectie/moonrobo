@@ -22,7 +22,7 @@ fn argument_ms(text : String, flag : String) -> Int64 raise {
 }
 
 ///|
-fn argument_index(text : String) -> Int raise {
+fn argument_index(text : String) -> Int32 raise {
   @string.parse_int(text) catch {
     _ => fail("invalid episode index")
   }

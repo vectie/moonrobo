@@ -11,23 +11,23 @@ pub(all) struct MotionChannel {
 /// One derivative's exact source stencil, in the selected channel order.
 pub(all) struct MotionStencil {
   timestamp_ms : Int64
-  segment : Int
-  source_sample_indices : Array[Int]
+  segment : Int32
+  source_sample_indices : Array[Int32]
   source_timestamps_ms : Array[Int64]
   source_values : Array[Array[Double]]
 } derive(Debug, Eq, ToJson)
 
 ///|
 pub(all) struct MotionUnavailable {
-  source_sample_index : Int
+  source_sample_index : Int32
   timestamp_ms : Int64
   reason : String
 } derive(Debug, Eq, ToJson)
 
 ///|
 pub(all) struct MotionGap {
-  left_sample_index : Int
-  right_sample_index : Int
+  left_sample_index : Int32
+  right_sample_index : Int32
   left_timestamp_ms : Int64
   right_timestamp_ms : Int64
   duration_ms : Int64
@@ -37,12 +37,12 @@ pub(all) struct MotionGap {
 pub(all) struct TelemetryMotion {
   format : String
   timebase : String
-  order : Int
+  order : Int32
   method : String
   timestamp_assignment : String
   max_gap_ms : Int64
-  source_sample_count : Int
-  segment_count : Int
+  source_sample_count : Int32
+  segment_count : Int32
   channels : Array[MotionChannel]
   recording : Recording
   stencils : Array[MotionStencil]
@@ -60,7 +60,7 @@ pub fn motion_csv(
   text : String,
   channels : Array[String],
   unit_labels~ : Array[String],
-  order~ : Int,
+  order~ : Int32,
   max_gap_ms~ : Int64,
 ) -> Result[TelemetryMotion, String] {
   if order != 1 && order != 2 {
@@ -76,7 +76,7 @@ pub fn motion_csv(
     Ok(value) => value
     Err(message) => return Err(message)
   }
-  let indices : Array[Int] = []
+  let indices : Array[Int32] = []
   let mappings : Array[MotionChannel] = []
   for i, channel in channels {
     if !normalization_label_valid(channel) || unit_labels[i].trim().is_empty() {
@@ -100,7 +100,7 @@ pub fn motion_csv(
     })
   }
   let gaps : Array[MotionGap] = []
-  let segments : Array[Int] = []
+  let segments : Array[Int32] = []
   let mut segment = 0
   for i, sample in source.samples {
     if i > 0 {

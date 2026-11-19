@@ -22,7 +22,7 @@ fn fixture_root(name : String) -> String raise {
 }
 
 ///|
-fn design(revision? : String = "r1", max? : Double = 0.1) -> Json {
+fn design(revision~ : String = "r1", max~ : Double = 0.1) -> Json {
   {
     "contract_id": "moonsuite.robot-design.v1",
     "design_id": "excavation-haul",
@@ -64,8 +64,8 @@ fn design(revision? : String = "r1", max? : Double = 0.1) -> Json {
 ///|
 fn save(
   root : String,
-  revision? : String = "r1",
-  max? : Double = 0.1,
+  revision~ : String = "r1",
+  max~ : Double = 0.1,
 ) -> @design_workbench.DesignDraft raise {
   @design_workbench.save_draft(
     root,

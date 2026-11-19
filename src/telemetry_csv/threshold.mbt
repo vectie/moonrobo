@@ -4,10 +4,10 @@
 pub(all) struct ThresholdEpisode {
   first_timestamp_ms : Int64
   last_timestamp_ms : Int64
-  first_sample_position : Int
-  last_sample_position : Int
+  first_sample_position : Int32
+  last_sample_position : Int32
   observed_span_ms : Int64
-  sample_count : Int
+  sample_count : Int32
   minimum : Double
   maximum : Double
 } derive(Debug, Eq, ToJson)
@@ -20,7 +20,7 @@ pub(all) struct ThresholdEvents {
   threshold : Double
   min_span_ms : Int64
   max_gap_ms : Int64
-  source_sample_count : Int
+  source_sample_count : Int32
   episodes : Array[ThresholdEpisode]
 } derive(Debug, Eq, ToJson)
 
@@ -35,8 +35,8 @@ pub fn threshold_events_csv(
   channel : String,
   direction : String,
   threshold : Double,
-  min_span_ms? : Int64 = 0L,
-  max_gap_ms? : Int64 = 9223372036854775807L,
+  min_span_ms~ : Int64 = 0L,
+  max_gap_ms~ : Int64 = 9223372036854775807L,
 ) -> Result[ThresholdEvents, String] {
   if direction != "above" && direction != "below" {
     return Err("direction must be above or below (strict comparison)")

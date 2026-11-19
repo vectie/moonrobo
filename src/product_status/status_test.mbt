@@ -1,12 +1,12 @@
 ///|
 fn input(
-  mapped? : Bool = true,
-  has_task_message? : Bool = true,
-  memory_card_count? : Int = 3,
-  can_submit_gateway_command? : Bool = true,
-  physical_execution_allowed? : Bool = false,
-  loop_ready? : Bool = false,
-  proof_session_feedback_closed? : Bool = false,
+  mapped~ : Bool = true,
+  has_task_message~ : Bool = true,
+  memory_card_count~ : Int32 = 3,
+  can_submit_gateway_command~ : Bool = true,
+  physical_execution_allowed~ : Bool = false,
+  loop_ready~ : Bool = false,
+  proof_session_feedback_closed~ : Bool = false,
 ) -> @product_status.MoonroboProductStatusInput {
   let root = "/tmp/moonrobo-product-status-suite/books/status-test"
   {

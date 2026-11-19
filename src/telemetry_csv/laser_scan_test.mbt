@@ -1,9 +1,9 @@
 ///|
 fn scan_fixture(
   ranges : String,
-  min? : Double = -1.5707963267948966,
-  max? : Double = 1.5707963267948966,
-  step? : Double = 1.5707963267948966,
+  min~ : Double = -1.5707963267948966,
+  max~ : Double = 1.5707963267948966,
+  step~ : Double = 1.5707963267948966,
 ) -> String {
   (
     $|{"header":{"stamp":{"sec":10,"nanosec":123456789},"frame_id":"laser"},"angle_min":\{min},"angle_max":\{max},"angle_increment":\{step},"time_increment":0.0001,"scan_time":0.1,"range_min":0.1,"range_max":10,"ranges":\{ranges},"intensities":[]}

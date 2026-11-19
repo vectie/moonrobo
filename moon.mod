@@ -26,6 +26,9 @@ description = "Auditable physical-world interface and operator cockpit for the M
 preferred_target = "native"
 
 import {
+  "vectie/lunakine@0.1.0",
+  "vectie/moonnum@0.1.0",
+  "vectie/moonphys@0.1.0",
   "moonbitlang/async@0.20.2",
   "moonbitlang/x@0.5.5",
   "vectie/moonlib@0.1.19",

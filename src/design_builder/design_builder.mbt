@@ -68,7 +68,7 @@ fn array_map_field(fields : Map[String, Json], name : String) -> Array[Json]? {
 fn required_non_empty_array(
   value : Json,
   name : String,
-  minimum : Int,
+  minimum : Int32,
 ) -> Result[Array[Json], DesignBuildIssue] {
   match array_field(value, name) {
     Some(values) if values.length() >= minimum => Ok(values)

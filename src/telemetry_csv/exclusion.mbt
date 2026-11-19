@@ -1,37 +1,37 @@
 ///|
 /// One disposition for every original sample; segment is absent on excluded rows.
 pub(all) struct ExclusionRow {
-  source_sample_index : Int
+  source_sample_index : Int32
   disposition : String
   interval_ids : Array[String]
-  segment : Int?
+  segment : Int32?
 } derive(Debug, Eq, ToJson)
 
 ///|
 pub(all) struct ExclusionCoverage {
   interval_id : String
-  matched_sample_count : Int
-  crossed_boundary_count : Int
+  matched_sample_count : Int32
+  crossed_boundary_count : Int32
 } derive(Debug, Eq, ToJson)
 
 ///|
 /// A new retained segment can follow excluded observations, an annotated
 /// interval with no observation, a large source gap, or both interval and gap.
 pub(all) struct ExclusionBoundary {
-  previous_retained_source_index : Int
-  next_retained_source_index : Int
+  previous_retained_source_index : Int32
+  next_retained_source_index : Int32
   interval_ids : Array[String]
   exceeds_max_gap : Bool
 } derive(Debug, Eq, ToJson)
 
 ///|
 pub(all) struct ExclusionSegment {
-  index : Int
-  first_source_sample_index : Int
-  last_source_sample_index : Int
+  index : Int32
+  first_source_sample_index : Int32
+  last_source_sample_index : Int32
   start_ms : Int64
   end_ms : Int64
-  sample_count : Int
+  sample_count : Int32
 } derive(Debug, Eq, ToJson)
 
 ///|
@@ -42,8 +42,8 @@ pub(all) struct TelemetryExclusion {
   annotation_scope : String
   recipe : ExclusionRecipe
   source : Recording
-  retained_sample_count : Int
-  excluded_sample_count : Int
+  retained_sample_count : Int32
+  excluded_sample_count : Int32
   rows : Array[ExclusionRow]
   coverage : Array[ExclusionCoverage]
   segments : Array[ExclusionSegment]
@@ -97,7 +97,7 @@ pub fn exclude_csv(
   let rows : Array[ExclusionRow] = []
   let segments : Array[ExclusionSegment] = []
   let boundaries : Array[ExclusionBoundary] = []
-  let mut previous : Int? = None
+  let mut previous : Int32? = None
   let mut retained = 0
   for source_sample_index, sample in source.samples {
     let interval_ids : Array[String] = []

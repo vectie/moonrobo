@@ -27,7 +27,7 @@ pub fn lineage_manifest(
   lineage_id : String,
   root_dataset_id : DatasetId,
   created_at_ms : Int64,
-  edges? : Array[LineageEdge] = [],
+  edges~ : Array[LineageEdge] = [],
 ) -> LineageManifest {
   { lineage_id, root_dataset_id, created_at_ms, edges, }
 }

@@ -17,11 +17,11 @@ pub(all) struct StoredReviewResult {
   dataset_id : @moondata_core.DatasetId
   annotation_set_id : @moondata_core.AnnotationSetId
   annotation_index_id : @moondata_core.AnnotationTargetIndexId
-  target_ref_count : Int
-  label_count : Int
-  evidence_ref_count : Int
+  target_ref_count : Int32
+  label_count : Int32
+  evidence_ref_count : Int32
   catalog_path : String
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   annotation : @moondata_core.AnnotationSet
   annotation_index : @moondata_core.AnnotationTargetIndex
   annotation_manifest : @moondata_store.PersistedManifest
@@ -34,10 +34,10 @@ pub fn stored_review_request(
   version_id : @moondata_core.DatasetVersionId,
   reviewer : String,
   created_at_ms : Int64,
-  annotation_set_id? : @moondata_core.AnnotationSetId = "",
-  labels? : Array[@moondata_core.AnnotationLabel] = [],
-  status? : String = "accepted",
-  summary? : String = "stored MoonData review annotation",
+  annotation_set_id~ : @moondata_core.AnnotationSetId = "",
+  labels~ : Array[@moondata_core.AnnotationLabel] = [],
+  status~ : String = "accepted",
+  summary~ : String = "stored MoonData review annotation",
 ) -> StoredReviewRequest {
   let annotation_id = if annotation_set_id == "" {
     "annotation-\{version_id}"

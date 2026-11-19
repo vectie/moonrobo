@@ -2,7 +2,7 @@
 pub(all) struct RuntimeSupervisorRun {
   launch_id : String
   runtime_id : String
-  pid : Int
+  pid : Int32
   running : Bool
   status : String
   script_path : String
@@ -16,7 +16,7 @@ pub(all) struct RuntimeSupervisorRun {
 ///|
 pub(all) struct RuntimeSupervisorStopResult {
   launch_id : String
-  pid : Int
+  pid : Int32
   stopped : Bool
   running : Bool
   status : String
@@ -41,7 +41,7 @@ pub(all) struct RuntimeHealthSnapshot {
   active : Bool
   status : String
   running : Bool
-  pid : Int
+  pid : Int32
   launch_id : String
   runtime_id : String
   bridge_base_url : String
@@ -58,7 +58,7 @@ pub(all) struct RuntimeHealthSnapshot {
 
 ///|
 fn issue(
-  status : Int,
+  status : Int32,
   code : String,
   path : String,
   message : String,
@@ -67,7 +67,7 @@ fn issue(
 }
 
 ///|
-fn run_json(run : RuntimeSupervisorRun, indent? : Int = 2) -> String {
+fn run_json(run : RuntimeSupervisorRun, indent~ : Int32 = 2) -> String {
   run.to_json().stringify(indent~)
 }
 
@@ -79,7 +79,7 @@ fn active_run_path(root : String) -> String {
 ///|
 pub fn telemetry_probe_from_frame(
   frame : @core.TelemetryFrame,
-  path? : String = "/telemetry/latest",
+  path~ : String = "/telemetry/latest",
 ) -> RuntimeTelemetryProbe {
   {
     ok: true,
@@ -200,7 +200,7 @@ fn health_snapshot_from_run(
 ///|
 pub fn runtime_health_snapshot(
   root : String,
-  telemetry_probe? : RuntimeTelemetryProbe? = None,
+  telemetry_probe~ : RuntimeTelemetryProbe? = None,
 ) -> Result[RuntimeHealthSnapshot, @pipeline.PipelineIssue] {
   match read_active_run(root) {
     Ok(None) => Ok(empty_health_snapshot("not-running", active_run_path(root)))
@@ -317,7 +317,7 @@ pub fn read_active_run(
 ///|
 pub fn require_active_run(
   root : String,
-  expected_bridge_base_url? : String = "",
+  expected_bridge_base_url~ : String = "",
 ) -> Result[RuntimeSupervisorRun, @pipeline.PipelineIssue] {
   let path = active_run_path(root)
   let run = match read_active_run(root) {
@@ -356,7 +356,7 @@ pub fn require_active_run(
 pub fn start_launch(
   root : String,
   plan : @supervisor.SupervisorPlan,
-  launch_id? : String = @runtime_launcher.launch_id_for_plan(plan),
+  launch_id~ : String = @runtime_launcher.launch_id_for_plan(plan),
 ) -> Result[RuntimeSupervisorRun, @pipeline.PipelineIssue] {
   match read_active_run(root) {
     Ok(Some(run)) if run.running => return Ok(run)

@@ -15,7 +15,7 @@ fn run(args : Array[String]) -> Unit raise {
   guard args.length() >= 8 else { fail(usage) }
   let mut left : String? = None
   let mut right : String? = None
-  let mut max_lag : Int? = None
+  let mut max_lag : Int32? = None
   let mut start_ms = 0L
   let mut end_ms = 9223372036854775807L
   let mut output = "json"

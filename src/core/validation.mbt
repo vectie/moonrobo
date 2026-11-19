@@ -64,7 +64,7 @@ fn validate_joint_indices(
   issues : Array[ValidationIssue],
   joints : Array[JointSpec],
 ) -> Unit {
-  let seen : Map[Int, Bool] = {}
+  let seen : Map[Int32, Bool] = {}
   for joint in joints {
     require_non_blank(issues, "joints[].name", joint.name)
     if joint.index < 0 {

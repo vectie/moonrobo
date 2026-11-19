@@ -2,8 +2,8 @@
 /// The first actual observation of a selected qualifying threshold episode.
 /// This is not an interpolated crossing, a command timestamp, or a clock sync.
 pub(all) struct EventAnchor {
-  episode_index : Int
-  qualifying_episode_count : Int
+  episode_index : Int32
+  qualifying_episode_count : Int32
   episode : ThresholdEpisode
   source_value : Double
 } derive(Debug, Eq, ToJson)
@@ -35,8 +35,8 @@ pub fn compare_event_csv(
   event_channel : String,
   direction : String,
   threshold : Double,
-  baseline_episode~ : Int,
-  candidate_episode~ : Int,
+  baseline_episode~ : Int32,
+  candidate_episode~ : Int32,
   before_ms~ : Int64,
   after_ms~ : Int64,
   event_min_span_ms~ : Int64,

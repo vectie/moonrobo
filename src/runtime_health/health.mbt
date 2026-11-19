@@ -5,7 +5,7 @@ pub(all) struct RuntimeHealthRecord {
   status : String
   active : Bool
   running : Bool
-  pid : Int
+  pid : Int32
   launch_id : String
   runtime_id : String
   robot_id : String
@@ -25,7 +25,7 @@ pub fn record(
   status : String,
   active : Bool,
   running : Bool,
-  pid : Int,
+  pid : Int32,
   launch_id : String,
   runtime_id : String,
   robot_id : String,
@@ -37,7 +37,7 @@ pub fn record(
   telemetry_path : String,
   telemetry_frame_id : String,
   telemetry_captured_at_ms : Int64,
-  health_id? : String = "runtime-health-\{recorded_at_ms}",
+  health_id~ : String = "runtime-health-\{recorded_at_ms}",
 ) -> RuntimeHealthRecord {
   {
     health_id,
@@ -61,7 +61,7 @@ pub fn record(
 }
 
 ///|
-pub fn priority(record : RuntimeHealthRecord) -> Int {
+pub fn priority(record : RuntimeHealthRecord) -> Int32 {
   match record.status {
     "healthy" => 58
     "running-unprobed" => 68
@@ -87,6 +87,6 @@ pub fn summary(record : RuntimeHealthRecord) -> String {
 }
 
 ///|
-pub fn record_json(record : RuntimeHealthRecord, indent? : Int = 2) -> String {
+pub fn record_json(record : RuntimeHealthRecord, indent~ : Int32 = 2) -> String {
   record.to_json().stringify(indent~)
 }

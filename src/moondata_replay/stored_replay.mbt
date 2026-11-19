@@ -18,10 +18,10 @@ pub(all) struct StoredReplayResult {
   replay_payload_path : String
   replay_payload_byte_count : Int64
   replay_payload_checksum : String
-  accepted_episode_count : Int
-  frame_count : Int
+  accepted_episode_count : Int32
+  frame_count : Int32
   catalog_path : String
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   manifest : @moondata_core.ReplayArtifact
   replay_manifest : @moondata_store.PersistedManifest
   replay_payload_ref : @moondata_core.DataRef
@@ -31,7 +31,7 @@ pub(all) struct StoredReplayResult {
 priv struct ReplayPayloadFrame {
   episode_id : @moondata_core.EpisodeId
   frame_id : @moondata_core.FrameId
-  sequence_index : Int
+  sequence_index : Int32
   captured_at_ms : Int64
   payload_ref : @moondata_core.DataRef?
 } derive(ToJson)
@@ -42,7 +42,7 @@ priv struct ReplayPayload {
   dataset_id : @moondata_core.DatasetId
   version_id : @moondata_core.DatasetVersionId
   episode_ids : Array[@moondata_core.EpisodeId]
-  frame_count : Int
+  frame_count : Int32
   frames : Array[ReplayPayloadFrame]
 } derive(ToJson)
 
@@ -51,9 +51,9 @@ pub fn stored_replay_request(
   root : String,
   version_id : @moondata_core.DatasetVersionId,
   created_at_ms : Int64,
-  replay_artifact_id? : @moondata_core.ReplayArtifactId = "",
-  viewer_profile? : String = "moondata.replay.v1",
-  summary? : String = "stored MoonData replay artifact",
+  replay_artifact_id~ : @moondata_core.ReplayArtifactId = "",
+  viewer_profile~ : String = "moondata.replay.v1",
+  summary~ : String = "stored MoonData replay artifact",
 ) -> StoredReplayRequest {
   let replay_id = if replay_artifact_id == "" {
     "replay-\{version_id}"

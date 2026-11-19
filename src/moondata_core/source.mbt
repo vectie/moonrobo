@@ -19,7 +19,7 @@ pub fn data_source(
   bridge_id : String,
   origin_uri : String,
   created_at_ms : Int64,
-  source_refs? : Array[DataRef] = [],
+  source_refs~ : Array[DataRef] = [],
 ) -> DataSource {
   {
     source_id,

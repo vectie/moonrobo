@@ -137,7 +137,7 @@ test "sdk e1 bridge accepts observation session lifecycle" {
 ///|
 fn execute_request(
   capability : String,
-  x? : String = "0.10",
+  x~ : String = "0.10",
 ) -> @bridge_protocol.BridgeRequest {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let intent = @core.command_intent(

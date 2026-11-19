@@ -1,11 +1,11 @@
 ///|
 pub(all) struct SdkE1MotorState {
-  motor_id : Int
+  motor_id : Int32
   position : Double
   velocity : Double
   torque : Double
-  error : Int
-  temperature : Int
+  error : Int32
+  temperature : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -18,15 +18,15 @@ pub(all) struct SdkE1ImuData {
 ///|
 pub(all) struct SdkE1JoyData {
   axes : Array[Double]
-  buttons : Array[Int]
+  buttons : Array[Int32]
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
 pub(all) struct SdkE1Snapshot {
   frame_id : String
   captured_at_ms : Int64
-  mode : Int
-  telemetry_age_ms : Int
+  mode : Int32
+  telemetry_age_ms : Int32
   joints : Array[SdkE1MotorState]
   imu : SdkE1ImuData?
   joy : SdkE1JoyData?
@@ -45,7 +45,7 @@ fn issue(code : String, message : String) -> SdkE1AdapterIssue {
 }
 
 ///|
-pub fn mode_text(mode : Int) -> String {
+pub fn mode_text(mode : Int32) -> String {
   match mode {
     0 => "low"
     1 => "high"
@@ -64,7 +64,7 @@ pub fn read_only_capabilities() -> Array[@core.CapabilityId] {
 pub fn default_snapshot(
   frame_id : String,
   captured_at_ms : Int64,
-  telemetry_age_ms? : Int = 0,
+  telemetry_age_ms~ : Int32 = 0,
 ) -> SdkE1Snapshot {
   {
     frame_id,
@@ -136,7 +136,7 @@ pub fn validate_snapshot(
 }
 
 ///|
-fn joint_error(error : Int) -> String? {
+fn joint_error(error : Int32) -> String? {
   if error == 0 {
     None
   } else {
@@ -245,7 +245,7 @@ pub fn health_response(
 }
 
 ///|
-pub fn snapshot_json(snapshot : SdkE1Snapshot, indent? : Int = 2) -> String {
+pub fn snapshot_json(snapshot : SdkE1Snapshot, indent~ : Int32 = 2) -> String {
   snapshot.to_json().stringify(indent~)
 }
 

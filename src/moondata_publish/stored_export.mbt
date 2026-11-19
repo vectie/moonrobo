@@ -19,12 +19,12 @@ pub(all) struct StoredExportResult {
   target_format : String
   output_uri : String
   output_path : String
-  output_record_count : Int
+  output_record_count : Int32
   output_byte_count : Int64
   output_checksum : String
-  quality_run_count : Int
+  quality_run_count : Int32
   catalog_path : String
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   manifest : @moondata_core.ExportManifest
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -34,7 +34,7 @@ priv struct ExportFrameRecord {
   dataset_id : @moondata_core.DatasetId
   episode_id : @moondata_core.EpisodeId
   frame_id : @moondata_core.FrameId
-  sequence_index : Int
+  sequence_index : Int32
   captured_at_ms : Int64
   payload_ref : @moondata_core.DataRef?
 } derive(ToJson)
@@ -44,11 +44,11 @@ pub fn stored_export_request(
   root : String,
   version_id : @moondata_core.DatasetVersionId,
   created_at_ms : Int64,
-  export_manifest_id? : @moondata_core.ExportManifestId = "",
-  target_format? : String = "jsonl",
-  field_mapping? : String = "{\"dataset_id\":\"version.dataset_id\",\"episodes\":\"version.accepted_episode_ids\"}",
-  output_uri? : String = "",
-  report? : String = "stored MoonData export manifest",
+  export_manifest_id~ : @moondata_core.ExportManifestId = "",
+  target_format~ : String = "jsonl",
+  field_mapping~ : String = "{\"dataset_id\":\"version.dataset_id\",\"episodes\":\"version.accepted_episode_ids\"}",
+  output_uri~ : String = "",
+  report~ : String = "stored MoonData export manifest",
 ) -> StoredExportRequest {
   let export_id = if export_manifest_id == "" {
     "export-\{version_id}"

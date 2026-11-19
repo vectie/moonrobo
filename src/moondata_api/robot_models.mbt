@@ -14,8 +14,8 @@ pub(all) struct MoonDataRobotModelQuery {
 pub(all) struct MoonDataRobotModelList {
   root : String
   query : MoonDataRobotModelQuery
-  model_count : Int
-  data_ref_count : Int
+  model_count : Int32
+  data_ref_count : Int32
   total_model_byte_count : Int64
   model_checksums : Array[String]
   latest_model_id : String
@@ -27,14 +27,14 @@ pub(all) struct MoonDataRobotModelList {
 
 ///|
 pub fn robot_model_query(
-  model_id_contains? : String = "",
-  robot_id? : String = "",
-  format? : String = "",
-  status? : String = "",
-  validation_status? : String = "",
-  data_kind? : String = "",
-  link_name? : String = "",
-  joint_name? : String = "",
+  model_id_contains~ : String = "",
+  robot_id~ : String = "",
+  format~ : String = "",
+  status~ : String = "",
+  validation_status~ : String = "",
+  data_kind~ : String = "",
+  link_name~ : String = "",
+  joint_name~ : String = "",
 ) -> MoonDataRobotModelQuery {
   {
     model_id_contains,
@@ -149,7 +149,7 @@ fn robot_model_refs(
 
 ///|
 priv struct RobotModelListSummary {
-  data_ref_count : Int
+  data_ref_count : Int32
   total_model_byte_count : Int64
   model_checksums : Array[String]
   latest_model_id : String
@@ -206,7 +206,7 @@ fn robot_model_list_summary(
 ///|
 pub fn list_robot_models(
   root : String,
-  query? : MoonDataRobotModelQuery = robot_model_query(),
+  query~ : MoonDataRobotModelQuery = robot_model_query(),
 ) -> Result[MoonDataRobotModelList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

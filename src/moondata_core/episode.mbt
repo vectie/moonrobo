@@ -9,7 +9,7 @@ pub(all) struct EpisodeManifest {
   status : String
   started_at_ms : Int64
   stopped_at_ms : Int64?
-  frame_count : Int
+  frame_count : Int32
   timebase : String
   receipt_ids : Array[String]
   frame_ids : Array[FrameId]
@@ -25,13 +25,13 @@ pub fn episode_manifest(
   session_id : String,
   status : String,
   started_at_ms : Int64,
-  stopped_at_ms? : Int64? = None,
-  frame_count? : Int = 0,
-  frame_ids? : Array[FrameId] = [],
-  receipt_ids? : Array[String] = [],
-  data_refs? : Array[DataRef] = [],
-  task_id? : String = "",
-  timebase? : String = "unix-ms",
+  stopped_at_ms~ : Int64? = None,
+  frame_count~ : Int32 = 0,
+  frame_ids~ : Array[FrameId] = [],
+  receipt_ids~ : Array[String] = [],
+  data_refs~ : Array[DataRef] = [],
+  task_id~ : String = "",
+  timebase~ : String = "unix-ms",
 ) -> EpisodeManifest {
   {
     episode_id,

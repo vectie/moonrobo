@@ -2,18 +2,18 @@
 /// A full centered window over the piecewise-linear source curve.
 /// Its inclusive source index range references `TelemetrySmooth.source`.
 pub(all) struct SmoothPoint {
-  source_sample_index : Int
+  source_sample_index : Int32
   timestamp_ms : Int64
-  source_segment : Int
+  source_segment : Int32
   window_start_ms : Int64
   window_end_ms : Int64
-  first_source_index : Int
-  last_source_index : Int
+  first_source_index : Int32
+  last_source_index : Int32
 } derive(Debug, Eq, ToJson)
 
 ///|
 pub(all) struct SmoothMissing {
-  source_sample_index : Int
+  source_sample_index : Int32
   timestamp_ms : Int64
   reason : String
 } derive(Debug, Eq, ToJson)
@@ -26,8 +26,8 @@ pub(all) struct TelemetrySmooth {
   value_units : String
   half_window_ms : Int64
   max_gap_ms : Int64
-  source_segment_count : Int
-  output_segment_count : Int
+  source_segment_count : Int32
+  output_segment_count : Int32
   source : Recording
   recording : Recording
   points : Array[SmoothPoint]
@@ -65,7 +65,7 @@ pub fn smooth_csv(
   if input.samples.length() > 100000 {
     return Err("source exceeds 100000 samples; split the recording")
   }
-  let indices : Array[Int] = []
+  let indices : Array[Int32] = []
   for channel in channels {
     let index = match input.channels.search(channel) {
       Some(value) => value
@@ -84,9 +84,9 @@ pub fn smooth_csv(
     }),
   }
   let source_gaps : Array[ResampleSourceGap] = []
-  let segments : Array[Int] = []
-  let starts : Array[Int] = [0]
-  let ends : Array[Int] = []
+  let segments : Array[Int32] = []
+  let starts : Array[Int32] = [0]
+  let ends : Array[Int32] = []
   let mut segment = 0
   for i, sample in source.samples {
     if i > 0 {

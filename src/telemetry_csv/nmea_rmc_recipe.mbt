@@ -2,7 +2,7 @@
 /// Explicit two-digit year interpretation, selected channels and exclusion policy.
 /// Geographic degrees are never Cartesian distances. Speed remains in knots.
 pub(all) struct NmeaRmcRecipe {
-  year_century : Int
+  year_century : Int32
   channels : Array[String]
   row_policy : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -127,7 +127,7 @@ fn rmc_century_token(text : String) -> String? {
 /// Compare a valid JSON number's exact decimal value to 1900 or 2000 without
 /// floating point or unbounded integer parsing. Normalize significant digits,
 /// trailing zeros and signed exponent spelling; huge exponents cannot overflow.
-fn rmc_exact_century(token : String) -> Int? {
+fn rmc_exact_century(token : String) -> Int32? {
   if token.has_prefix("-") {
     return None
   }

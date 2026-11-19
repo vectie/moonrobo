@@ -7,12 +7,12 @@ struct XmlTag {
 } derive(Debug, Eq)
 
 ///|
-fn span(start : Int, end : Int) -> UrdfSourceSpan {
+fn span(start : Int32, end : Int32) -> UrdfSourceSpan {
   { start, end, }
 }
 
 ///|
-fn empty_span(at : Int) -> UrdfSourceSpan {
+fn empty_span(at : Int32) -> UrdfSourceSpan {
   { start: at, end: at, }
 }
 
@@ -146,7 +146,7 @@ fn is_close_tag(tag : XmlTag, name : String) -> Bool {
 }
 
 ///|
-fn indentation_before(source : String, at : Int) -> String {
+fn indentation_before(source : String, at : Int32) -> String {
   let mut cursor = at - 1
   while cursor >= 0 {
     let ch = source[cursor:cursor + 1]

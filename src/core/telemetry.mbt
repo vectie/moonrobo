@@ -1,7 +1,7 @@
 ///|
 pub(all) struct JointTelemetry {
   name : String
-  index : Int
+  index : Int32
   position : Double
   velocity : Double
   torque : Double

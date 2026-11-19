@@ -4,8 +4,8 @@ pub(all) struct ReplayFrameSummary {
   artifact_path : String
   captured_at_ms : Int64
   mode : String
-  joint_count : Int
-  error_count : Int
+  joint_count : Int32
+  error_count : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -16,7 +16,7 @@ pub(all) struct ReplayTimeline {
   status : String
   started_at_ms : Int64
   stopped_at_ms : Int64?
-  telemetry_frame_count : Int
+  telemetry_frame_count : Int32
   latest_frame_id : String?
   frames : Array[ReplayFrameSummary]
 } derive(Debug, Eq, ToJson, FromJson)
@@ -92,6 +92,6 @@ pub fn timeline(
 }
 
 ///|
-pub fn timeline_json(timeline : ReplayTimeline, indent? : Int = 2) -> String {
+pub fn timeline_json(timeline : ReplayTimeline, indent~ : Int32 = 2) -> String {
   timeline.to_json().stringify(indent~)
 }

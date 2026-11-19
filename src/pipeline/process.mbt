@@ -35,7 +35,7 @@ pub fn evaluate_request(
   now_ms : Int64,
   approval_id? : String,
   dry_run_receipt_id? : @core.ReceiptId,
-  developer_gate? : Bool = false,
+  developer_gate~ : Bool = false,
 ) -> PipelineResult {
   let context : @core.SafetyContext = {
     profile,

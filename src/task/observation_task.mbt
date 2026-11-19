@@ -99,6 +99,6 @@ pub fn accepted_plan(plan : ObservationTaskPlan) -> ObservationTaskPlan {
 }
 
 ///|
-pub fn plan_json(plan : ObservationTaskPlan, indent? : Int = 2) -> String {
+pub fn plan_json(plan : ObservationTaskPlan, indent~ : Int32 = 2) -> String {
   plan.to_json().stringify(indent~)
 }

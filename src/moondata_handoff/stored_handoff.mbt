@@ -14,15 +14,15 @@ pub(all) struct StoredHandoffResult {
   ready : Bool
   source_readiness_status : String
   source_validation_report_id : String
-  source_repair_work_count : Int
-  source_repair_open_count : Int
-  source_repair_applied_unvalidated_count : Int
-  output_ref_count : Int
+  source_repair_work_count : Int32
+  source_repair_open_count : Int32
+  source_repair_applied_unvalidated_count : Int32
+  output_ref_count : Int32
   total_output_byte_count : Int64
   output_refs : Array[@moondata_core.DataRef]
-  ref_count : Int
+  ref_count : Int32
   catalog_path : String
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   dossier : @moondata_core.HandoffDossier
   dossier_manifest : @moondata_store.PersistedManifest
   validation_result : @moondata_validate.StoredValidationResult
@@ -32,8 +32,8 @@ pub(all) struct StoredHandoffResult {
 pub fn stored_handoff_request(
   root : String,
   generated_at_ms : Int64,
-  version_id? : @moondata_core.DatasetVersionId = "",
-  handoff_dossier_id? : @moondata_core.HandoffDossierId = "",
+  version_id~ : @moondata_core.DatasetVersionId = "",
+  handoff_dossier_id~ : @moondata_core.HandoffDossierId = "",
 ) -> StoredHandoffRequest {
   let id = if handoff_dossier_id == "" {
     if version_id == "" {

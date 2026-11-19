@@ -5,9 +5,9 @@ pub fn review_annotation_set(
   labels : Array[@moondata_core.AnnotationLabel],
   reviewer : String,
   created_at_ms : Int64,
-  status? : String = "accepted",
-  evidence_refs? : Array[@moondata_core.MoonDataRef] = [],
-  summary? : String = "",
+  status~ : String = "accepted",
+  evidence_refs~ : Array[@moondata_core.MoonDataRef] = [],
+  summary~ : String = "",
 ) -> @moondata_core.AnnotationSet {
   @moondata_core.annotation_set(
     annotation_set_id,

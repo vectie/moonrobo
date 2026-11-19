@@ -1,12 +1,12 @@
 ///|
 /// A grid sample's exact source bracket, in selected channel order.
 pub(all) struct ResamplePoint {
-  grid_index : Int
+  grid_index : Int32
   timestamp_ms : Int64
-  source_segment : Int
+  source_segment : Int32
   exact : Bool
-  left_sample_index : Int
-  right_sample_index : Int
+  left_sample_index : Int32
+  right_sample_index : Int32
   left_timestamp_ms : Int64
   right_timestamp_ms : Int64
   right_weight : Double
@@ -16,7 +16,7 @@ pub(all) struct ResamplePoint {
 
 ///|
 pub(all) struct ResampleMissing {
-  grid_index : Int
+  grid_index : Int32
   timestamp_ms : Int64
   reason : String
 } derive(Debug, Eq, ToJson)
@@ -24,8 +24,8 @@ pub(all) struct ResampleMissing {
 ///|
 /// Every excessive source interval, even when the grid has no point inside it.
 pub(all) struct ResampleSourceGap {
-  left_sample_index : Int
-  right_sample_index : Int
+  left_sample_index : Int32
+  right_sample_index : Int32
   left_timestamp_ms : Int64
   right_timestamp_ms : Int64
   duration_ms : Int64
@@ -41,12 +41,12 @@ pub(all) struct TelemetryResample {
   end_ms : Int64
   step_ms : Int64
   max_gap_ms : Int64
-  source_sample_count : Int
-  source_segment_count : Int
-  output_segment_count : Int
-  grid_count : Int
-  exact_count : Int
-  interpolated_count : Int
+  source_sample_count : Int32
+  source_segment_count : Int32
+  output_segment_count : Int32
+  grid_count : Int32
+  exact_count : Int32
+  interpolated_count : Int32
   recording : Recording
   points : Array[ResamplePoint]
   missing : Array[ResampleMissing]
@@ -86,7 +86,7 @@ pub fn resample_csv(
     Ok(value) => value
     Err(message) => return Err(message)
   }
-  let indices : Array[Int] = []
+  let indices : Array[Int32] = []
   for channel in channels {
     let index = match source.channels.search(channel) {
       Some(value) => value
@@ -98,7 +98,7 @@ pub fn resample_csv(
     indices.push(index)
   }
   let source_gaps : Array[ResampleSourceGap] = []
-  let segments : Array[Int] = []
+  let segments : Array[Int32] = []
   let mut segment = 0
   for i, sample in source.samples {
     if i > 0 {

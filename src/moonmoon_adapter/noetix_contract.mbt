@@ -17,12 +17,12 @@ pub(all) struct MoonmoonNoetixLocomotionContract {
   profile_path : String
   urdf_path : String
   mesh_paths : Array[String]
-  expected_profile_joint_count : Int
+  expected_profile_joint_count : Int32
   profile_joint_ids : Array[String]
   required_motion_joint_ids : Array[String]
   walk_clip : MoonmoonNoetixWalkClipContract
   source_refs : Array[MoonmoonAdapterSourceRef]
-  blocker_count : Int
+  blocker_count : Int32
   blockers : Array[String]
   ready : Bool
   status : String
@@ -187,8 +187,8 @@ fn noetix_contract_blockers(
 
 ///|
 pub fn noetix_e1_moonmoon_locomotion_contract(
-  robot_id? : String = "noetix-e1-lab-01",
-  robot_label? : String = "Noetix E1 Lab 01",
+  robot_id~ : String = "noetix-e1-lab-01",
+  robot_label~ : String = "Noetix E1 Lab 01",
 ) -> MoonmoonNoetixLocomotionContract {
   let profile = @core.noetix_e1_profile(robot_id, robot_label)
   let profile_joint_ids = profile.joints.map(fn(joint) { joint.name })

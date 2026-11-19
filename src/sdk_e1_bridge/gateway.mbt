@@ -20,7 +20,7 @@ pub(all) struct SdkE1BridgeConfig {
 
 ///|
 pub(all) struct SdkE1BridgeHttpResponse {
-  status : Int
+  status : Int32
   content_type : String
   body : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -34,9 +34,9 @@ pub(all) struct SdkE1BridgeIssue {
 ///|
 pub fn config(
   robobook_root : String,
-  read_only? : Bool = true,
-  snapshot_path? : String = "",
-  command_path? : String = "",
+  read_only~ : Bool = true,
+  snapshot_path~ : String = "",
+  command_path~ : String = "",
 ) -> SdkE1BridgeConfig {
   {
     robobook_root,
@@ -56,13 +56,13 @@ pub fn telemetry_source(snapshot_path : String) -> SdkE1TelemetrySource {
 }
 
 ///|
-fn json_response(status : Int, body : Json) -> SdkE1BridgeHttpResponse {
+fn json_response(status : Int32, body : Json) -> SdkE1BridgeHttpResponse {
   { status, content_type: "application/json", body: body.stringify(indent=2), }
 }
 
 ///|
 fn issue_response(
-  status : Int,
+  status : Int32,
   code : String,
   message : String,
 ) -> SdkE1BridgeHttpResponse {
@@ -71,7 +71,7 @@ fn issue_response(
 
 ///|
 fn response_json(
-  status : Int,
+  status : Int32,
   response : @bridge_protocol.BridgeResponse,
 ) -> SdkE1BridgeHttpResponse {
   json_response(status, response.to_json())
@@ -565,7 +565,7 @@ pub fn route(
   http_method : String,
   path : String,
   body : String,
-  now_ms? : Int64 = 0L,
+  now_ms~ : Int64 = 0L,
 ) -> SdkE1BridgeHttpResponse {
   let profile = match load_profile(config) {
     Ok(profile) => profile

@@ -121,7 +121,7 @@ fn live_method_text(method_ : @http.RequestMethod) -> String {
 }
 
 ///|
-fn live_reason_text(status : Int) -> String {
+fn live_reason_text(status : Int32) -> String {
   match status {
     200 => "OK"
     400 => "Bad Request"
@@ -134,7 +134,7 @@ fn live_reason_text(status : Int) -> String {
 }
 
 ///|
-async fn live_read_request_body(reader : &@io.Reader, limit : Int) -> String {
+async fn live_read_request_body(reader : &@io.Reader, limit : Int32) -> String {
   let bytes : Array[Byte] = []
   let buf = FixedArray::make(1024, b'\x00')
   for ;; {
@@ -196,7 +196,7 @@ async fn serve_one_live_sdk_bridge_request(
 ///|
 async fn try_bind_live_sdk_bridge_server(
   host : String,
-  port : Int,
+  port : Int32,
 ) -> @http.Server? {
   let server = @http.Server::new(@socket.Addr::parse("\{host}:\{port}")) catch {
     _ => return None
@@ -207,8 +207,8 @@ async fn try_bind_live_sdk_bridge_server(
 ///|
 async fn bind_live_sdk_bridge_server(
   host : String,
-  start_port : Int,
-) -> (@http.Server, Int) {
+  start_port : Int32,
+) -> (@http.Server, Int32) {
   for offset in 0..<20 {
     let port = start_port + offset
     match try_bind_live_sdk_bridge_server(host, port) {

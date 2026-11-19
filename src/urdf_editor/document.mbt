@@ -19,7 +19,7 @@ struct MutableJointState {
 ///|
 struct MutableVisualState {
   link_name : String
-  index : Int
+  index : Int32
   geometry_kind : String
   mesh_filename : String
   mesh_scale : String
@@ -34,7 +34,7 @@ struct MutableVisualState {
 ///|
 struct MutableCollisionState {
   link_name : String
-  index : Int
+  index : Int32
   geometry_kind : String
   mesh_filename : String
   mesh_scale : String
@@ -66,7 +66,7 @@ struct MutableMaterialState {
   scope : String
   name : String
   link_name : String
-  visual_index : Int?
+  visual_index : Int32?
   color_rgba : String
   texture_filename : String
   color_source_span : UrdfSourceSpan?
@@ -85,7 +85,7 @@ struct MutableExtensionState {
   raw : String
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
-  depth : Int
+  depth : Int32
 } derive(Debug, Eq)
 
 ///|
@@ -562,7 +562,7 @@ fn duplicate_issues(
 fn count_visuals_for_link(
   visuals : Array[UrdfVisualNode],
   link_name : String,
-) -> Int {
+) -> Int32 {
   visuals.filter(fn(visual) { visual.link_name == link_name }).length()
 }
 
@@ -570,7 +570,7 @@ fn count_visuals_for_link(
 fn count_collisions_for_link(
   collisions : Array[UrdfCollisionNode],
   link_name : String,
-) -> Int {
+) -> Int32 {
   collisions.filter(fn(collision) { collision.link_name == link_name }).length()
 }
 
@@ -1487,7 +1487,7 @@ pub fn find_joint(doc : UrdfDocument, name : String) -> UrdfJointNode? {
 pub fn find_visual(
   doc : UrdfDocument,
   link_name : String,
-  index : Int,
+  index : Int32,
 ) -> UrdfVisualNode? {
   for visual in doc.visuals {
     if visual.link_name == link_name && visual.index == index {
@@ -1501,7 +1501,7 @@ pub fn find_visual(
 pub fn find_collision(
   doc : UrdfDocument,
   link_name : String,
-  index : Int,
+  index : Int32,
 ) -> UrdfCollisionNode? {
   for collision in doc.collisions {
     if collision.link_name == link_name && collision.index == index {

@@ -4,7 +4,7 @@ priv suberror NmeaRmcError {
 }
 
 ///|
-fn rmc_digits(text : StringView) -> Int raise NmeaRmcError {
+fn rmc_digits(text : StringView) -> Int32 raise NmeaRmcError {
   if text.is_empty() || text.length() > 9 {
     raise NmeaRmcError("expected 1 to 9 decimal digits")
   }
@@ -34,12 +34,12 @@ fn rmc_decimal(text : String) -> Double raise NmeaRmcError {
 }
 
 ///|
-fn rmc_leap(year : Int) -> Bool {
+fn rmc_leap(year : Int32) -> Bool {
   year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
 }
 
 ///|
-fn rmc_month_days(year : Int, month : Int) -> Int {
+fn rmc_month_days(year : Int32, month : Int32) -> Int32 {
   if month == 2 && rmc_leap(year) {
     29
   } else {
@@ -48,7 +48,7 @@ fn rmc_month_days(year : Int, month : Int) -> Int {
 }
 
 ///|
-fn rmc_day(text : String, century : Int) -> Int? raise NmeaRmcError {
+fn rmc_day(text : String, century : Int32) -> Int32? raise NmeaRmcError {
   if text == "" {
     return None
   }
@@ -75,7 +75,7 @@ fn rmc_day(text : String, century : Int) -> Int? raise NmeaRmcError {
 }
 
 ///|
-fn rmc_time(text : String) -> Int? raise NmeaRmcError {
+fn rmc_time(text : String) -> Int32? raise NmeaRmcError {
   if text == "" {
     return None
   }
@@ -149,10 +149,10 @@ fn rmc_optional_decimal(text : String) -> Double? raise NmeaRmcError {
 }
 
 ///|
-fn rmc_hex(ch : UInt16) -> Int raise NmeaRmcError {
+fn rmc_hex(ch : UInt16) -> Int32 raise NmeaRmcError {
   match ch {
-    '0'..='9' => ch.to_int() - 48
-    'A'..='F' => ch.to_int() - 55
+    '0'..<='9' => ch.to_int() - 48
+    'A'..<='F' => ch.to_int() - 55
     _ => raise NmeaRmcError("checksum must be two uppercase hexadecimal digits")
   }
 }

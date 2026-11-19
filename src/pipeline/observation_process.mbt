@@ -1,6 +1,6 @@
 ///|
 pub(all) struct PipelineIssue {
-  http_status : Int
+  http_status : Int32
   code : String
   path : String
   message : String
@@ -19,7 +19,7 @@ pub(all) struct ObservationStopRequest {
   receipt_id : String
   requester : @core.Requester
   now_ms : Int64
-  telemetry_frame_count : Int
+  telemetry_frame_count : Int32
   latest_frame_id : String
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -51,7 +51,7 @@ pub(all) struct ObservationRunRequest {
   requester : @core.Requester
   goal : String
   now_ms : Int64
-  frame_count : Int
+  frame_count : Int32
   frame_interval_ms : Int64
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -69,7 +69,7 @@ pub(all) struct ObservationRunResult {
 
 ///|
 fn issue(
-  http_status : Int,
+  http_status : Int32,
   code : String,
   path : String,
   message : String,
@@ -78,7 +78,10 @@ fn issue(
 }
 
 ///|
-fn runtime_issue(status : Int, error : @runtime.RuntimeIssue) -> PipelineIssue {
+fn runtime_issue(
+  status : Int32,
+  error : @runtime.RuntimeIssue,
+) -> PipelineIssue {
   issue(status, error.code, error.path, error.message)
 }
 
@@ -144,7 +147,7 @@ fn mock_observation_frame(
 fn sdk_frame(
   profile : @core.RobotProfile,
   session_id : String,
-  index : Int,
+  index : Int32,
   captured_at_ms : Int64,
   path : String,
 ) -> Result[@core.TelemetryFrame, PipelineIssue] {
@@ -466,7 +469,7 @@ pub fn stop_observation(
 }
 
 ///|
-fn normalized_frame_count(value : Int) -> Int {
+fn normalized_frame_count(value : Int32) -> Int32 {
   if value < 1 {
     1
   } else {
@@ -531,7 +534,7 @@ fn latest_frame_id(
 fn generated_telemetry_frames(
   profile : @core.RobotProfile,
   session_id : String,
-  frame_count : Int,
+  frame_count : Int32,
   interval : Int64,
   now_ms : Int64,
   path : String,
@@ -557,7 +560,7 @@ fn generated_telemetry_frames(
 ///|
 fn ensure_telemetry_frame_count(
   frames : Array[@core.TelemetryFrame],
-  frame_count : Int,
+  frame_count : Int32,
   path : String,
 ) -> PipelineIssue? {
   if frames.length() < frame_count {

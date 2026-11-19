@@ -19,9 +19,9 @@ pub fn capture_session(
   bridge_id : String,
   status : String,
   started_at_ms : Int64,
-  stopped_at_ms? : Int64? = None,
-  receipt_ids? : Array[String] = [],
-  data_refs? : Array[DataRef] = [],
+  stopped_at_ms~ : Int64? = None,
+  receipt_ids~ : Array[String] = [],
+  data_refs~ : Array[DataRef] = [],
 ) -> CaptureSession {
   {
     capture_id,

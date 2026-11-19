@@ -2,8 +2,8 @@
 pub fn mcap_recovery_command(
   source_path : String,
   output_path : String,
-  executable? : String = "mcap",
-  executable_args? : Array[String] = [],
+  executable~ : String = "mcap",
+  executable_args~ : Array[String] = [],
 ) -> Array[String] {
   let command : Array[String] = [executable]
   for arg in executable_args {
@@ -98,7 +98,7 @@ fn persist_recovery_receipt(
 ///|
 fn failed_recovery_receipt(
   receipt : RecorderRecoveryReceipt,
-  exit_code : Int,
+  exit_code : Int32,
   message : String,
   now_ms : Int64,
 ) -> RecorderRecoveryReceipt {
@@ -109,7 +109,7 @@ fn failed_recovery_receipt(
 fn recovery_count(
   receipts : Array[RecorderRecoveryReceipt],
   status : String,
-) -> Int {
+) -> Int32 {
   receipts.fold(init=0, fn(count, receipt) {
     if receipt.status == status {
       count + 1
@@ -120,7 +120,7 @@ fn recovery_count(
 }
 
 ///|
-fn lossy_recovery_count(receipts : Array[RecorderRecoveryReceipt]) -> Int {
+fn lossy_recovery_count(receipts : Array[RecorderRecoveryReceipt]) -> Int32 {
   receipts.fold(init=0, fn(count, receipt) {
     if receipt.status == "recovered" && receipt.lossy {
       count + 1
@@ -135,8 +135,8 @@ pub fn recover_recorder_chunks(
   root : String,
   session_id : String,
   now_ms : Int64,
-  executable? : String = "mcap",
-  executable_args? : Array[String] = [],
+  executable~ : String = "mcap",
+  executable_args~ : Array[String] = [],
 ) -> Result[RecorderRecoveryResult, @moondata_store.MoonDataStoreIssue] {
   let mut current = match read_recorder_session(root, session_id) {
     Ok(value) => value
@@ -374,8 +374,8 @@ pub fn finalize_recorder_session(
   root : String,
   session_id : String,
   now_ms : Int64,
-  executable? : String = "mcap",
-  executable_args? : Array[String] = [],
+  executable~ : String = "mcap",
+  executable_args~ : Array[String] = [],
 ) -> Result[RecorderFinalizeResult, @moondata_store.MoonDataStoreIssue] {
   let recovery = match
     recover_recorder_chunks(

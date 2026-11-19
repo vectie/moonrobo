@@ -10,8 +10,8 @@ pub(all) struct RobotRoutineContextPack {
   readiness : @readiness.PlatformReadinessReport
   readiness_plan : @readiness.PlatformReadinessPlan
   gateway : @gateway.MoonroboGatewayStatus
-  review_count : Int
-  needs_human_count : Int
+  review_count : Int32
+  needs_human_count : Int32
   latest_review : @review.ProcessReview?
   generated_at_ms : Int64
 } derive(Debug, Eq, ToJson, FromJson)
@@ -89,7 +89,7 @@ pub fn routine_context(
   readiness_plan : @readiness.PlatformReadinessPlan,
   gateway : @gateway.MoonroboGatewayStatus,
   generated_at_ms : Int64,
-  task_intent? : RobotRoutineTaskIntent = empty_task_intent(),
+  task_intent~ : RobotRoutineTaskIntent = empty_task_intent(),
 ) -> RobotRoutineContextPack {
   {
     pack_id: "robot-routine-context-\{resident.robot_id}-\{generated_at_ms}",
@@ -112,7 +112,7 @@ pub fn routine_context(
 ///|
 pub fn routine_context_json(
   context : RobotRoutineContextPack,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   context.to_json().stringify(indent~)
 }

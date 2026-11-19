@@ -26,16 +26,16 @@ pub(all) struct MoonmoonNoetixMotorTargetStep {
 
 ///|
 pub(all) struct MoonmoonNoetixMotorFrameSample {
-  frame_index : Int
+  frame_index : Int32
   time_s : Double
   dt_s : Double
   phase_start : Double
   phase_end : Double
   phase_label : String
   support_foot : String
-  joint_count : Int
-  driven_joint_count : Int
-  review_count : Int
+  joint_count : Int32
+  driven_joint_count : Int32
+  review_count : Int32
   max_abs_angle_delta_rad : Double
   max_abs_velocity_rad_s : Double
   max_abs_commanded_torque_nm : Double
@@ -264,7 +264,7 @@ fn noetix_support_foot(phase : Double) -> String {
 
 ///|
 fn noetix_motor_frame(
-  frame_index : Int,
+  frame_index : Int32,
   before : MoonmoonNoetixAuthoredJointSample,
   after : MoonmoonNoetixAuthoredJointSample,
   dt_s : Double,

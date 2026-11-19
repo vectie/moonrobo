@@ -12,10 +12,10 @@ pub(all) struct MoonDataReplayQuery {
 pub(all) struct MoonDataReplayList {
   root : String
   query : MoonDataReplayQuery
-  replay_count : Int
-  episode_count : Int
-  source_ref_count : Int
-  generated_ref_count : Int
+  replay_count : Int32
+  episode_count : Int32
+  source_ref_count : Int32
+  generated_ref_count : Int32
   total_generated_byte_count : Int64
   generated_checksums : Array[String]
   latest_replay_artifact_id : String
@@ -27,12 +27,12 @@ pub(all) struct MoonDataReplayList {
 
 ///|
 pub fn replay_query(
-  dataset_id? : String = "",
-  episode_id? : String = "",
-  source_artifact_kind? : String = "",
-  source_artifact_id? : String = "",
-  viewer_profile? : String = "",
-  generated_kind? : String = "",
+  dataset_id~ : String = "",
+  episode_id~ : String = "",
+  source_artifact_kind~ : String = "",
+  source_artifact_id~ : String = "",
+  viewer_profile~ : String = "",
+  generated_kind~ : String = "",
 ) -> MoonDataReplayQuery {
   {
     dataset_id,
@@ -132,9 +132,9 @@ fn replay_refs(
 
 ///|
 priv struct ReplayListSummary {
-  episode_count : Int
-  source_ref_count : Int
-  generated_ref_count : Int
+  episode_count : Int32
+  source_ref_count : Int32
+  generated_ref_count : Int32
   total_generated_byte_count : Int64
   generated_checksums : Array[String]
   latest_replay_artifact_id : String
@@ -190,7 +190,7 @@ fn replay_list_summary(
 ///|
 pub fn list_replays(
   root : String,
-  query? : MoonDataReplayQuery = replay_query(),
+  query~ : MoonDataReplayQuery = replay_query(),
 ) -> Result[MoonDataReplayList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

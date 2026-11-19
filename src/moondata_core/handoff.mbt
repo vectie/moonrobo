@@ -7,24 +7,24 @@ pub(all) struct HandoffDossier {
   source_validation_report_id : String
   source_validation_status : String
   source_validation_generated_at_ms : Int64
-  source_validation_catalog_entry_count : Int
+  source_validation_catalog_entry_count : Int32
   source_validation_covers_catalog : Bool
-  source_validation_finding_count : Int
-  source_validation_blocker_count : Int
-  source_validation_warning_count : Int
-  source_repair_count : Int
-  source_repair_receipt_count : Int
-  source_repair_work_count : Int
-  source_repair_open_count : Int
-  source_repair_applied_count : Int
-  source_repair_applied_unvalidated_count : Int
-  source_repair_failed_count : Int
-  source_repair_pending_count : Int
+  source_validation_finding_count : Int32
+  source_validation_blocker_count : Int32
+  source_validation_warning_count : Int32
+  source_repair_count : Int32
+  source_repair_receipt_count : Int32
+  source_repair_work_count : Int32
+  source_repair_open_count : Int32
+  source_repair_applied_count : Int32
+  source_repair_applied_unvalidated_count : Int32
+  source_repair_failed_count : Int32
+  source_repair_pending_count : Int32
   output_refs : Array[DataRef]
-  output_ref_count : Int
+  output_ref_count : Int32
   total_output_byte_count : Int64
   output_checksums : Array[String]
-  ref_count : Int
+  ref_count : Int32
   refs : Array[MoonDataRef]
   validation_findings : Array[ValidationFinding]
   generated_at_ms : Int64
@@ -40,19 +40,19 @@ pub fn handoff_dossier(
   source_validation_report_id : String,
   source_validation_status : String,
   source_validation_generated_at_ms : Int64,
-  source_validation_catalog_entry_count : Int,
+  source_validation_catalog_entry_count : Int32,
   source_validation_covers_catalog : Bool,
-  source_validation_finding_count : Int,
-  source_validation_blocker_count : Int,
-  source_validation_warning_count : Int,
-  source_repair_count : Int,
-  source_repair_receipt_count : Int,
-  source_repair_work_count : Int,
-  source_repair_open_count : Int,
-  source_repair_applied_count : Int,
-  source_repair_applied_unvalidated_count : Int,
-  source_repair_failed_count : Int,
-  source_repair_pending_count : Int,
+  source_validation_finding_count : Int32,
+  source_validation_blocker_count : Int32,
+  source_validation_warning_count : Int32,
+  source_repair_count : Int32,
+  source_repair_receipt_count : Int32,
+  source_repair_work_count : Int32,
+  source_repair_open_count : Int32,
+  source_repair_applied_count : Int32,
+  source_repair_applied_unvalidated_count : Int32,
+  source_repair_failed_count : Int32,
+  source_repair_pending_count : Int32,
   output_refs : Array[DataRef],
   refs : Array[MoonDataRef],
   validation_findings : Array[ValidationFinding],

@@ -1,7 +1,7 @@
 ///|
 pub(all) struct DatasetManifest {
   dataset_id : DatasetId
-  schema_version : Int
+  schema_version : Int32
   kind : String
   status : String
   source_ids : Array[SourceId]
@@ -18,12 +18,12 @@ pub fn dataset_manifest(
   kind : String,
   status : String,
   created_at_ms : Int64,
-  source_ids? : Array[SourceId] = [],
-  capture_ids? : Array[CaptureId] = [],
-  episode_ids? : Array[EpisodeId] = [],
-  lineage_id? : String = "",
-  data_refs? : Array[DataRef] = [],
-  schema_version? : Int = 1,
+  source_ids~ : Array[SourceId] = [],
+  capture_ids~ : Array[CaptureId] = [],
+  episode_ids~ : Array[EpisodeId] = [],
+  lineage_id~ : String = "",
+  data_refs~ : Array[DataRef] = [],
+  schema_version~ : Int32 = 1,
 ) -> DatasetManifest {
   {
     dataset_id,
@@ -57,10 +57,10 @@ pub fn dataset_version(
   dataset_id : DatasetId,
   status : String,
   created_at_ms : Int64,
-  parent_version_ids? : Array[DatasetVersionId] = [],
-  accepted_episode_ids? : Array[EpisodeId] = [],
-  quality_run_ids? : Array[QualityRunId] = [],
-  summary? : String = "",
+  parent_version_ids~ : Array[DatasetVersionId] = [],
+  accepted_episode_ids~ : Array[EpisodeId] = [],
+  quality_run_ids~ : Array[QualityRunId] = [],
+  summary~ : String = "",
 ) -> DatasetVersion {
   {
     version_id,

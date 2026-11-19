@@ -78,7 +78,7 @@ fn moondata_manifests() -> Array[String] {
     "src/moondata_index/moon.pkg", "src/moondata_import/moon.pkg", "src/moondata_robot_model/moon.pkg",
     "src/moondata_normalize/moon.pkg", "src/moondata_pipeline/moon.pkg", "src/moondata_recorder/moon.pkg",
     "src/moondata_api/moon.pkg", "src/moondata_validate/moon.pkg", "src/moondata_repair/moon.pkg",
-    "cmd/moondata/moon.pkg",
+    "src/moondata_learning/moon.pkg", "cmd/learning_experiment/moon.pkg", "cmd/moondata/moon.pkg",
   ]
 }
 
@@ -86,6 +86,9 @@ fn moondata_manifests() -> Array[String] {
 fn moondata_source_files() -> Array[String] {
   [
     "docs/MOONDATA.md", "docs/MOONDATA_PIPELINE.md", "cmd/moondata/main.mbt", "cmd/moondata/moon.pkg",
+    "docs/LEARNING_EXPERIMENT_REGISTRY.md", "cmd/learning_experiment/main.mbt", "cmd/learning_experiment/moon.pkg",
+    "src/moondata_learning/moon.pkg", "src/moondata_learning/contracts.mbt", "src/moondata_learning/experiments.mbt",
+    "src/moondata_learning/experiments_test.mbt", "src/moondata_learning/physics.mbt",
     "src/moondata_annotation/moon.pkg", "src/moondata_annotation/moondata_annotation_test.mbt",
     "src/moondata_annotation/review.mbt", "src/moondata_api/annotations.mbt", "src/moondata_api/artifacts.mbt",
     "src/moondata_api/captures.mbt", "src/moondata_api/context.mbt", "src/moondata_api/data_refs.mbt",
@@ -162,10 +165,10 @@ test "moondata package list is explicit and standalone" {
   assert_only_expected_moondata_dirs("src", "moondata_", [
     "moondata_annotation", "moondata_api", "moondata_assess", "moondata_blob", "moondata_boundaries",
     "moondata_capture", "moondata_core", "moondata_curate", "moondata_export", "moondata_handoff",
-    "moondata_import", "moondata_index", "moondata_ingest", "moondata_normalize",
-    "moondata_pipeline", "moondata_publish", "moondata_quality", "moondata_recorder",
-    "moondata_repair", "moondata_replay", "moondata_review", "moondata_robot_model",
-    "moondata_store", "moondata_transform", "moondata_validate",
+    "moondata_import", "moondata_index", "moondata_ingest", "moondata_learning",
+    "moondata_normalize", "moondata_pipeline", "moondata_publish", "moondata_quality",
+    "moondata_recorder", "moondata_repair", "moondata_replay", "moondata_review",
+    "moondata_robot_model", "moondata_store", "moondata_transform", "moondata_validate",
   ])
   assert_only_expected_moondata_dirs("cmd", "moondata", ["moondata"])
   for manifest in moondata_manifests() {

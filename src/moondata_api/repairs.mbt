@@ -15,17 +15,17 @@ pub(all) struct MoonDataRepairRunQuery {
 pub(all) struct MoonDataRepairRunList {
   root : String
   query : MoonDataRepairRunQuery
-  repair_count : Int
-  action_count : Int
-  blocker_count : Int
-  warning_count : Int
-  missing_payload_count : Int
-  unmanaged_payload_count : Int
-  metadata_conflict_count : Int
-  unsafe_ref_count : Int
-  external_ref_count : Int
-  non_payload_ref_count : Int
-  manifest_surface_ref_count : Int
+  repair_count : Int32
+  action_count : Int32
+  blocker_count : Int32
+  warning_count : Int32
+  missing_payload_count : Int32
+  unmanaged_payload_count : Int32
+  metadata_conflict_count : Int32
+  unsafe_ref_count : Int32
+  external_ref_count : Int32
+  non_payload_ref_count : Int32
+  manifest_surface_ref_count : Int32
   latest_repair_run_id : String
   latest_repair_generated_at_ms : Int64
   repairs : Array[@moondata_core.RepairRun]
@@ -48,10 +48,10 @@ pub(all) struct MoonDataRepairReceiptQuery {
 pub(all) struct MoonDataRepairReceiptList {
   root : String
   query : MoonDataRepairReceiptQuery
-  receipt_count : Int
-  applied_count : Int
-  failed_count : Int
-  pending_count : Int
+  receipt_count : Int32
+  applied_count : Int32
+  failed_count : Int32
+  pending_count : Int32
   latest_repair_receipt_id : String
   latest_repair_applied_at_ms : Int64
   receipts : Array[@moondata_core.RepairReceipt]
@@ -102,12 +102,12 @@ pub(all) struct MoonDataRepairWorkItem {
 pub(all) struct MoonDataRepairWorkList {
   root : String
   query : MoonDataRepairWorkQuery
-  work_item_count : Int
-  open_count : Int
-  applied_count : Int
-  applied_unvalidated_count : Int
-  failed_count : Int
-  pending_count : Int
+  work_item_count : Int32
+  open_count : Int32
+  applied_count : Int32
+  applied_unvalidated_count : Int32
+  failed_count : Int32
+  pending_count : Int32
   latest_repair_run_id : String
   latest_repair_generated_at_ms : Int64
   latest_repair_receipt_id : String
@@ -119,15 +119,15 @@ pub(all) struct MoonDataRepairWorkList {
 
 ///|
 pub fn repair_run_query(
-  validation_report_id? : String = "",
-  validation_status? : String = "",
-  operation_kind? : String = "",
-  target_ref_contains? : String = "",
-  category? : String = "",
-  severity? : String = "",
-  rule_id? : String = "",
-  artifact_kind? : String = "",
-  artifact_id? : String = "",
+  validation_report_id~ : String = "",
+  validation_status~ : String = "",
+  operation_kind~ : String = "",
+  target_ref_contains~ : String = "",
+  category~ : String = "",
+  severity~ : String = "",
+  rule_id~ : String = "",
+  artifact_kind~ : String = "",
+  artifact_id~ : String = "",
 ) -> MoonDataRepairRunQuery {
   {
     validation_report_id,
@@ -144,17 +144,17 @@ pub fn repair_run_query(
 
 ///|
 pub fn repair_work_query(
-  repair_run_id? : String = "",
-  validation_report_id? : String = "",
-  operation_kind? : String = "",
-  target_ref_contains? : String = "",
-  category? : String = "",
-  severity? : String = "",
-  rule_id? : String = "",
-  artifact_kind? : String = "",
-  artifact_id? : String = "",
-  work_status? : String = "",
-  receipt_status? : String = "",
+  repair_run_id~ : String = "",
+  validation_report_id~ : String = "",
+  operation_kind~ : String = "",
+  target_ref_contains~ : String = "",
+  category~ : String = "",
+  severity~ : String = "",
+  rule_id~ : String = "",
+  artifact_kind~ : String = "",
+  artifact_id~ : String = "",
+  work_status~ : String = "",
+  receipt_status~ : String = "",
 ) -> MoonDataRepairWorkQuery {
   {
     repair_run_id,
@@ -173,13 +173,13 @@ pub fn repair_work_query(
 
 ///|
 pub fn repair_receipt_query(
-  repair_run_id? : String = "",
-  action_id? : String = "",
-  operation_kind? : String = "",
-  target_ref_contains? : String = "",
-  status? : String = "",
-  actor? : String = "",
-  validation_report_id? : String = "",
+  repair_run_id~ : String = "",
+  action_id~ : String = "",
+  operation_kind~ : String = "",
+  target_ref_contains~ : String = "",
+  status~ : String = "",
+  actor~ : String = "",
+  validation_report_id~ : String = "",
 ) -> MoonDataRepairReceiptQuery {
   {
     repair_run_id,
@@ -510,9 +510,9 @@ fn repair_receipt_refs(
 
 ///|
 priv struct RepairReceiptListSummary {
-  applied_count : Int
-  failed_count : Int
-  pending_count : Int
+  applied_count : Int32
+  failed_count : Int32
+  pending_count : Int32
   latest_repair_receipt_id : String
   latest_repair_applied_at_ms : Int64
 }
@@ -577,16 +577,16 @@ fn repair_run_refs(
 
 ///|
 priv struct RepairRunListSummary {
-  action_count : Int
-  blocker_count : Int
-  warning_count : Int
-  missing_payload_count : Int
-  unmanaged_payload_count : Int
-  metadata_conflict_count : Int
-  unsafe_ref_count : Int
-  external_ref_count : Int
-  non_payload_ref_count : Int
-  manifest_surface_ref_count : Int
+  action_count : Int32
+  blocker_count : Int32
+  warning_count : Int32
+  missing_payload_count : Int32
+  unmanaged_payload_count : Int32
+  metadata_conflict_count : Int32
+  unsafe_ref_count : Int32
+  external_ref_count : Int32
+  non_payload_ref_count : Int32
+  manifest_surface_ref_count : Int32
   latest_repair_run_id : String
   latest_repair_generated_at_ms : Int64
 }
@@ -657,11 +657,11 @@ fn repair_run_list_summary(
 
 ///|
 priv struct RepairWorkListSummary {
-  open_count : Int
-  applied_count : Int
-  applied_unvalidated_count : Int
-  failed_count : Int
-  pending_count : Int
+  open_count : Int32
+  applied_count : Int32
+  applied_unvalidated_count : Int32
+  failed_count : Int32
+  pending_count : Int32
   latest_repair_run_id : String
   latest_repair_receipt_id : String
   latest_repair_generated_at_ms : Int64
@@ -741,7 +741,7 @@ fn repair_work_refs(
 ///|
 pub fn list_repair_runs(
   root : String,
-  query? : MoonDataRepairRunQuery = repair_run_query(),
+  query~ : MoonDataRepairRunQuery = repair_run_query(),
 ) -> Result[MoonDataRepairRunList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value
@@ -791,7 +791,7 @@ pub fn list_repair_runs(
 ///|
 pub fn list_repair_work(
   root : String,
-  query? : MoonDataRepairWorkQuery = repair_work_query(),
+  query~ : MoonDataRepairWorkQuery = repair_work_query(),
 ) -> Result[MoonDataRepairWorkList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value
@@ -857,7 +857,7 @@ pub fn list_repair_work(
 ///|
 pub fn list_repair_receipts(
   root : String,
-  query? : MoonDataRepairReceiptQuery = repair_receipt_query(),
+  query~ : MoonDataRepairReceiptQuery = repair_receipt_query(),
 ) -> Result[MoonDataRepairReceiptList, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

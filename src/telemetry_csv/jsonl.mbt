@@ -5,7 +5,7 @@ pub(all) struct TelemetryJsonlImport {
   format : String
   timebase : String
   recipe : JsonlRecipe
-  source_line_numbers : Array[Int]
+  source_line_numbers : Array[Int32]
   recording : Recording
 } derive(Debug, Eq, ToJson)
 
@@ -53,7 +53,7 @@ pub fn import_jsonl(
     Ok(_) => ()
   }
   let samples : Array[Sample] = []
-  let source_line_numbers : Array[Int] = []
+  let source_line_numbers : Array[Int32] = []
   let mut line_number = 0
   for line in text.split("\n") {
     line_number += 1

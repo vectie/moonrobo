@@ -27,13 +27,13 @@ pub(all) struct TelemetryMerge {
   secondary_prefix : String
   secondary_offset_ms : Int64
   tolerance_ms : Int64
-  primary_count : Int
-  secondary_count : Int
-  merged_count : Int
-  exact_count : Int
-  nearest_count : Int
-  reused_count : Int
-  secondary_unused_count : Int
+  primary_count : Int32
+  secondary_count : Int32
+  merged_count : Int32
+  exact_count : Int32
+  nearest_count : Int32
+  reused_count : Int32
+  secondary_unused_count : Int32
   recording : Recording
   matches : Array[MergeMatch]
   unmatched : Array[MergeGap]
@@ -77,10 +77,10 @@ fn merge_distance(a : Int64, b : Int64) -> Int64 {
 pub fn merge_csv(
   primary_text : String,
   secondary_text : String,
-  primary_prefix? : String = "primary",
-  secondary_prefix? : String = "secondary",
-  secondary_offset_ms? : Int64 = 0L,
-  tolerance_ms? : Int64 = 0L,
+  primary_prefix~ : String = "primary",
+  secondary_prefix~ : String = "secondary",
+  secondary_offset_ms~ : Int64 = 0L,
+  tolerance_ms~ : Int64 = 0L,
 ) -> Result[TelemetryMerge, String] {
   if tolerance_ms < 0L {
     return Err("tolerance_ms must be nonnegative")

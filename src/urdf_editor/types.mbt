@@ -7,8 +7,8 @@ pub(all) enum UrdfEditorSeverity {
 
 ///|
 pub(all) struct UrdfSourceSpan {
-  start : Int
-  end : Int
+  start : Int32
+  end : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -248,7 +248,7 @@ pub(all) struct UrdfJointNode {
 pub(all) struct UrdfVisualNode {
   node_id : String
   link_name : String
-  index : Int
+  index : Int32
   geometry_kind : String
   mesh_filename : String
   mesh_scale : String
@@ -265,7 +265,7 @@ pub(all) struct UrdfVisualNode {
 pub(all) struct UrdfCollisionNode {
   node_id : String
   link_name : String
-  index : Int
+  index : Int32
   geometry_kind : String
   mesh_filename : String
   mesh_scale : String
@@ -301,7 +301,7 @@ pub(all) struct UrdfMaterialNode {
   scope : String
   name : String
   link_name : String
-  visual_index : Int?
+  visual_index : Int32?
   color_rgba : String
   texture_filename : String
   color_source_span : UrdfSourceSpan?

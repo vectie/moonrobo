@@ -8,10 +8,10 @@ pub(all) struct MoonroboStatus {
   bridge_state : String
   availability : String
   safety_state : String
-  receipt_count : Int
-  observation_count : Int
-  process_review_count : Int
-  pending_review_count : Int
+  receipt_count : Int32
+  observation_count : Int32
+  process_review_count : Int32
+  pending_review_count : Int32
   latest_session_id : String
   latest_review_id : String
   latest_replay_path : String
@@ -101,6 +101,6 @@ pub fn project(
 }
 
 ///|
-pub fn status_json(status : MoonroboStatus, indent? : Int = 2) -> String {
+pub fn status_json(status : MoonroboStatus, indent~ : Int32 = 2) -> String {
   status.to_json().stringify(indent~)
 }

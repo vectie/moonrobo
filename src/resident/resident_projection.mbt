@@ -2,7 +2,7 @@
 pub(all) struct ResidentObservationSummary {
   session_id : String
   status : String
-  telemetry_frame_count : Int
+  telemetry_frame_count : Int32
   latest_frame_id : String?
   latest_artifact_path : String?
   started_at_ms : Int64
@@ -43,16 +43,16 @@ pub(all) struct ResidentProofSessionSummary {
   session_id : String
   status : String
   ready : Bool
-  attempted_count : Int
-  requested_iterations : Int
+  attempted_count : Int32
+  requested_iterations : Int32
   stop_reason : String
   session_path : String
   latest_proof_path : String
   next_route : String
-  feedback_binding_required_count : Int
-  feedback_binding_success_count : Int
+  feedback_binding_required_count : Int32
+  feedback_binding_success_count : Int32
   feedback_closed : Bool
-  latest_feedback_status : Int
+  latest_feedback_status : Int32
   latest_feedback_message : String
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -72,11 +72,11 @@ pub(all) struct ResidentRobotAgent {
   latest_receipt : ResidentReceiptSummary?
   latest_execution : ResidentExecutionSummary?
   latest_proof_session : ResidentProofSessionSummary?
-  execution_count : Int
-  verified_execution_count : Int
-  proof_session_count : Int
-  capability_count : Int
-  review_count : Int
+  execution_count : Int32
+  verified_execution_count : Int32
+  proof_session_count : Int32
+  capability_count : Int32
+  review_count : Int32
   command_path : String
   town_route : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -174,16 +174,16 @@ pub fn proof_session_summary(
   session_id : String,
   status : String,
   ready : Bool,
-  attempted_count : Int,
-  requested_iterations : Int,
+  attempted_count : Int32,
+  requested_iterations : Int32,
   stop_reason : String,
   session_path : String,
   latest_proof_path : String,
   next_route : String,
-  feedback_binding_required_count : Int,
-  feedback_binding_success_count : Int,
+  feedback_binding_required_count : Int32,
+  feedback_binding_success_count : Int32,
   feedback_closed : Bool,
-  latest_feedback_status : Int,
+  latest_feedback_status : Int32,
   latest_feedback_message : String,
   message : String,
 ) -> ResidentProofSessionSummary {
@@ -273,7 +273,7 @@ fn latest_proof_session(
 ///|
 fn verified_execution_count(
   snapshots : Array[@core.TaskExecutionSnapshot],
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for snapshot in snapshots {
     if @core.task_execution_proof(snapshot).verified {
@@ -305,7 +305,7 @@ fn receipt_needs_review(receipt : @core.RunReceipt) -> Bool {
 }
 
 ///|
-fn review_count(receipts : Array[@core.RunReceipt]) -> Int {
+fn review_count(receipts : Array[@core.RunReceipt]) -> Int32 {
   let mut count = 0
   for receipt in receipts {
     if receipt_needs_review(receipt) {
@@ -321,7 +321,7 @@ fn process_review_needs_human(review : @review.ProcessReview) -> Bool {
 }
 
 ///|
-fn process_review_count(reviews : Array[@review.ProcessReview]) -> Int {
+fn process_review_count(reviews : Array[@review.ProcessReview]) -> Int32 {
   let mut count = 0
   for review in reviews {
     if process_review_needs_human(review) {
@@ -335,7 +335,7 @@ fn process_review_count(reviews : Array[@review.ProcessReview]) -> Int {
 fn total_review_count(
   receipts : Array[@core.RunReceipt],
   reviews : Array[@review.ProcessReview],
-) -> Int {
+) -> Int32 {
   review_count(receipts) + process_review_count(reviews)
 }
 
@@ -388,8 +388,8 @@ pub fn project(
   receipts : Array[@core.RunReceipt],
   sessions : Array[@core.ObservationSession],
   reviews : Array[@review.ProcessReview],
-  executions? : Array[@core.TaskExecutionSnapshot] = [],
-  proof_sessions? : Array[ResidentProofSessionSummary] = [],
+  executions~ : Array[@core.TaskExecutionSnapshot] = [],
+  proof_sessions~ : Array[ResidentProofSessionSummary] = [],
 ) -> ResidentRobotAgent {
   let active = active_observation(sessions)
   {
@@ -429,6 +429,6 @@ pub fn project(
 }
 
 ///|
-pub fn resident_json(agent : ResidentRobotAgent, indent? : Int = 2) -> String {
+pub fn resident_json(agent : ResidentRobotAgent, indent~ : Int32 = 2) -> String {
   agent.to_json().stringify(indent~)
 }

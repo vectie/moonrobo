@@ -5,7 +5,7 @@
 /// Keep JSON beside CSV: CSV omits window lineage and unsupported centers.
 pub fn TelemetrySmooth::to_csv(
   self : TelemetrySmooth,
-  segment? : Int,
+  segment? : Int32,
 ) -> Result[String, String] {
   let selected = match segment {
     Some(value) => value

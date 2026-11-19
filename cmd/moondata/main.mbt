@@ -39,7 +39,7 @@ fn print_validated_cli_result(
 }
 
 ///|
-fn cli_arg(args : Array[String], index : Int) -> String? {
+fn cli_arg(args : Array[String], index : Int32) -> String? {
   if index < args.length() {
     Some(args[index])
   } else {
@@ -305,7 +305,7 @@ fn sidecar_frame_payload_body(
   dataset_id : String,
   robot_id : String,
   bridge_id : String,
-  frame_index : Int,
+  frame_index : Int32,
   captured_at_ms : Int64,
 ) -> String {
   "{\"dataset_id\":\"\{dataset_id}\",\"robot_id\":\"\{robot_id}\",\"bridge_id\":\"\{bridge_id}\",\"frame_index\":\{frame_index},\"captured_at_ms\":\{captured_at_ms}}\n"
@@ -1422,7 +1422,7 @@ fn cli_recorder_plan(
   topic_selection : String,
   max_bag_size_bytes : Int64,
   max_bag_duration_seconds : Int64,
-  max_bag_files : Int,
+  max_bag_files : Int32,
   minimum_free_bytes : Int64,
   max_cache_size_bytes : Int64,
 ) -> Result[@moondata_recorder.RecorderPlan, @moondata_store.MoonDataStoreIssue] {

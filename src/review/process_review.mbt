@@ -154,6 +154,6 @@ pub fn resolve_review(
 }
 
 ///|
-pub fn review_json(review : ProcessReview, indent? : Int = 2) -> String {
+pub fn review_json(review : ProcessReview, indent~ : Int32 = 2) -> String {
   review.to_json().stringify(indent~)
 }

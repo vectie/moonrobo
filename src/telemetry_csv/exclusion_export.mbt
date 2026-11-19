@@ -4,7 +4,7 @@
 /// Keep the JSON report and raw input beside CSV for the full editing lineage.
 pub fn TelemetryExclusion::to_csv(
   self : TelemetryExclusion,
-  segment? : Int,
+  segment? : Int32,
 ) -> Result[String, String] {
   if self.segments.is_empty() {
     return Err("no retained samples; inspect the JSON report")

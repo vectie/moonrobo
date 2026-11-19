@@ -13,7 +13,7 @@ pub(all) struct RobotTaskIntentDraft {
   receipt_id : @core.ReceiptId
   capability : @core.CapabilityId
   parameters : Map[String, String]
-  telemetry_age_ms : Int
+  telemetry_age_ms : Int32
   developer_gate : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -170,7 +170,7 @@ fn plan(
   physical_execution_allowed : Bool,
   requires_review : Bool,
   suggested_capability : String,
-  intent_draft? : RobotTaskIntentDraft? = None,
+  intent_draft~ : RobotTaskIntentDraft? = None,
 ) -> RobotTaskMessagePlan {
   {
     message_id: request.message_id,

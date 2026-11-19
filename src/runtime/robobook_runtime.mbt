@@ -470,7 +470,7 @@ pub fn write_robot_profile(
 }
 
 ///|
-pub fn receipt_json(receipt : @core.RunReceipt, indent? : Int = 2) -> String {
+pub fn receipt_json(receipt : @core.RunReceipt, indent~ : Int32 = 2) -> String {
   receipt.to_json().stringify(indent~)
 }
 
@@ -643,7 +643,7 @@ pub fn tool_registry_path(root : String) -> String {
 ///|
 pub fn dry_run_evidence_json(
   evidence : @core.DryRunEvidence,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   evidence.to_json().stringify(indent~)
 }
@@ -651,7 +651,7 @@ pub fn dry_run_evidence_json(
 ///|
 pub fn approval_record_json(
   approval : @core.ApprovalRecord,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   approval.to_json().stringify(indent~)
 }
@@ -659,7 +659,7 @@ pub fn approval_record_json(
 ///|
 pub fn bridge_dispatch_evidence_json(
   dispatch : @core.BridgeDispatchEvidence,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   dispatch.to_json().stringify(indent~)
 }
@@ -667,7 +667,7 @@ pub fn bridge_dispatch_evidence_json(
 ///|
 pub fn task_execution_snapshot_json(
   snapshot : @core.TaskExecutionSnapshot,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   snapshot.to_json().stringify(indent~)
 }
@@ -675,7 +675,7 @@ pub fn task_execution_snapshot_json(
 ///|
 pub fn replay_annotation_json(
   annotation : @annotation.ReplayAnnotation,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   annotation.to_json().stringify(indent~)
 }
@@ -683,7 +683,7 @@ pub fn replay_annotation_json(
 ///|
 pub fn observation_session_json(
   session : @core.ObservationSession,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   session.to_json().stringify(indent~)
 }
@@ -691,7 +691,7 @@ pub fn observation_session_json(
 ///|
 pub fn telemetry_frame_json(
   frame : @core.TelemetryFrame,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   frame.to_json().stringify(indent~)
 }
@@ -699,7 +699,7 @@ pub fn telemetry_frame_json(
 ///|
 pub fn process_review_json(
   review : @review.ProcessReview,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   review.to_json().stringify(indent~)
 }
@@ -707,7 +707,7 @@ pub fn process_review_json(
 ///|
 pub fn runtime_health_json(
   record : @runtime_health.RuntimeHealthRecord,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   @runtime_health.record_json(record, indent~)
 }
@@ -1107,7 +1107,7 @@ fn tool_registry_issue(
 ///|
 pub fn tool_registry_json(
   registry : @tool_registry.ToolRegistry,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   registry.to_json().stringify(indent~)
 }

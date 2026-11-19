@@ -10,7 +10,7 @@ pub(all) struct PipelineRunError {
 pub(all) struct PipelineStageRun {
   stage_id : String
   status : String
-  attempt : Int
+  attempt : Int32
   started_at_ms : Int64
   completed_at_ms : Int64
   message : String
@@ -22,8 +22,8 @@ pub(all) struct PipelineRun {
   run_id : String
   pipeline_kind : String
   status : String
-  revision : Int
-  attempt : Int
+  revision : Int32
+  attempt : Int32
   created_at_ms : Int64
   updated_at_ms : Int64
   current_stage : String

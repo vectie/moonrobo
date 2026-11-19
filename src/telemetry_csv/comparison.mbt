@@ -40,9 +40,9 @@ pub(all) struct Comparison {
   end_ms : Int64
   max_gap_ms : Int64
   channels : Array[String]
-  compared_count : Int
-  interpolated_count : Int
-  unmatched_count : Int
+  compared_count : Int32
+  interpolated_count : Int32
+  unmatched_count : Int32
   summaries : Array[DifferenceSummary]
   samples : Array[ComparedSample]
   gaps : Array[ComparisonGap]
@@ -59,9 +59,9 @@ pub fn compare_csv(
   baseline_text : String,
   candidate_text : String,
   channels? : Array[String],
-  start_ms? : Int64 = 0L,
-  end_ms? : Int64 = 9223372036854775807L,
-  max_gap_ms? : Int64 = 0L,
+  start_ms~ : Int64 = 0L,
+  end_ms~ : Int64 = 9223372036854775807L,
+  max_gap_ms~ : Int64 = 0L,
 ) -> Result[Comparison, String] {
   if start_ms < 0L || end_ms < start_ms || max_gap_ms < 0L {
     return Err("expected 0 <= start_ms <= end_ms and max_gap_ms >= 0")
@@ -110,8 +110,8 @@ fn compare_recordings(
   if selected.is_empty() {
     return Err("select at least one channel present in both recordings")
   }
-  let baseline_indices : Array[Int] = []
-  let candidate_indices : Array[Int] = []
+  let baseline_indices : Array[Int32] = []
+  let candidate_indices : Array[Int32] = []
   for i, name in selected {
     if selected[:i].contains(name) {
       return Err("duplicate selected channel: " + name)

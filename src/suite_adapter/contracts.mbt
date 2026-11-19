@@ -30,7 +30,7 @@ pub(all) struct MoonflowAdapterRequest {
   required_claim : String
   input_digest : String
   input_artifacts : Array[String]
-  timeout_ms : Int
+  timeout_ms : Int32
   created_at : String
 } derive(Debug, Eq, ToJson)
 
@@ -168,7 +168,7 @@ fn wire_object(value : Json, label : String) -> Map[String, Json] raise {
 fn wire_string(
   fields : Map[String, Json],
   name : String,
-  required? : Bool = true,
+  required~ : Bool = true,
 ) -> String raise {
   match fields.get(name) {
     Some(String(value)) => value
@@ -196,7 +196,7 @@ fn wire_strings(
 }
 
 ///|
-fn wire_int(fields : Map[String, Json], name : String) -> Int raise {
+fn wire_int(fields : Map[String, Json], name : String) -> Int32 raise {
   match fields.get(name) {
     Some(value) => @json.from_json(value)
     None => fail("\{name} is required")

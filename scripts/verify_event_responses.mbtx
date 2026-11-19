@@ -33,7 +33,7 @@ async fn run(
   label : String,
   exe : String,
   args : Array[String],
-  code? : Int = 0,
+  code~ : Int32 = 0,
 ) -> String {
   let (actual, stdout, stderr) = @process.collect_output(exe, args)
   save(root, label + ".stdout", stdout.text())

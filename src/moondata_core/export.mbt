@@ -21,9 +21,9 @@ pub fn export_manifest(
   field_mapping : String,
   output_refs : Array[DataRef],
   created_at_ms : Int64,
-  quality_run_ids? : Array[QualityRunId] = [],
-  status? : String = "ready",
-  report? : String = "",
+  quality_run_ids~ : Array[QualityRunId] = [],
+  status~ : String = "ready",
+  report~ : String = "",
 ) -> ExportManifest {
   {
     export_manifest_id,

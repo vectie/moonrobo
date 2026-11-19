@@ -106,7 +106,7 @@ fn parse_int_parameter(
   intent : CommandIntent,
   key : String,
   fallback : String,
-) -> Result[Int, SafetyVerdict] {
+) -> Result[Int32, SafetyVerdict] {
   let text = intent.parameters.get(key).unwrap_or(fallback)
   let value = @string.parse_int(text) catch {
     _ =>

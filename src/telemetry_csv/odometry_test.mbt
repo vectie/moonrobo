@@ -1,10 +1,10 @@
 ///|
 fn odom_recipe(
-  timestamp_policy? : String = "exact-milliseconds",
-  quaternion_policy? : String = "require-unit",
-  frame_id? : String = "odom",
-  child_frame_id? : String = "base_link",
-  groups? : Array[String] = [
+  timestamp_policy~ : String = "exact-milliseconds",
+  quaternion_policy~ : String = "require-unit",
+  frame_id~ : String = "odom",
+  child_frame_id~ : String = "base_link",
+  groups~ : Array[String] = [
     "position", "attitude", "linear_velocity", "angular_velocity",
   ],
 ) -> @telemetry_csv.OdometryRecipe {
@@ -13,14 +13,14 @@ fn odom_recipe(
 
 ///|
 fn odom_message(
-  sec? : Json = 1,
-  ns? : Json = 0,
-  frame? : Json = "odom",
-  child? : Json = "base_link",
-  position? : Json = { "x": 3, "y": 4, "z": 0 },
-  orientation? : Json = { "x": 0, "y": 0, "z": 0, "w": 1 },
-  linear? : Json = { "x": 1, "y": -2, "z": 3 },
-  angular? : Json = { "x": 4, "y": 5, "z": 6 },
+  sec~ : Json = 1,
+  ns~ : Json = 0,
+  frame~ : Json = "odom",
+  child~ : Json = "base_link",
+  position~ : Json = { "x": 3, "y": 4, "z": 0 },
+  orientation~ : Json = { "x": 0, "y": 0, "z": 0, "w": 1 },
+  linear~ : Json = { "x": 1, "y": -2, "z": 3 },
+  angular~ : Json = { "x": 4, "y": 5, "z": 6 },
   pc? : Json,
   tc? : Json,
 ) -> String {

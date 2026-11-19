@@ -5,7 +5,7 @@
 /// Keep JSON beside CSV: CSV omits interpolation lineage and omitted-grid data.
 pub fn TelemetryResample::to_csv(
   self : TelemetryResample,
-  segment? : Int,
+  segment? : Int32,
 ) -> Result[String, String] {
   let selected = match segment {
     Some(value) => value

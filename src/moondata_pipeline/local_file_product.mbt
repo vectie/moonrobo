@@ -35,7 +35,7 @@ pub(all) struct LocalFileProductResult {
   validation_status : String
   ready : Bool
   catalog_path : String
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   import_result : @moondata_import.LocalFileImportResult
   normalize_result : @moondata_normalize.NormalizeResult
   quality_result : @moondata_assess.DatasetQualityResult
@@ -56,17 +56,17 @@ pub fn local_file_product_request(
   robot_id : String,
   bridge_id : String,
   generated_at_ms : Int64,
-  canonical_dataset_id? : String = "",
-  quality_run_id? : String = "",
-  curated_dataset_id? : String = "",
-  version_id? : String = "",
-  transform_run_id? : String = "",
-  lineage_id? : String = "",
-  annotation_set_id? : String = "",
-  replay_artifact_id? : String = "",
-  export_manifest_id? : String = "",
-  target_format? : String = "jsonl",
-  output_uri? : String = "",
+  canonical_dataset_id~ : String = "",
+  quality_run_id~ : String = "",
+  curated_dataset_id~ : String = "",
+  version_id~ : String = "",
+  transform_run_id~ : String = "",
+  lineage_id~ : String = "",
+  annotation_set_id~ : String = "",
+  replay_artifact_id~ : String = "",
+  export_manifest_id~ : String = "",
+  target_format~ : String = "jsonl",
+  output_uri~ : String = "",
 ) -> LocalFileProductRequest {
   let canonical_id = if canonical_dataset_id == "" {
     "\{dataset_id}-canonical"

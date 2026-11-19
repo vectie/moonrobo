@@ -25,11 +25,11 @@ pub(all) struct RobotModelImportResult {
   robot_id : String
   urdf_source_path : String
   urdf_path : String
-  asset_count : Int
-  mesh_count : Int
-  material_count : Int
+  asset_count : Int32
+  mesh_count : Int32
+  material_count : Int32
   catalog_path : String
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   model : @moondata_core.RobotModelManifest
   assets : Array[ImportedRobotModelAsset]
 } derive(Debug, Eq, ToJson, FromJson)
@@ -41,8 +41,8 @@ pub fn robot_model_import_request(
   model_id : @moondata_core.RobotModelId,
   robot_id : String,
   imported_at_ms : Int64,
-  package_name? : String = "",
-  source_label? : String = "MoonData robot model import",
+  package_name~ : String = "",
+  source_label~ : String = "MoonData robot model import",
 ) -> RobotModelImportRequest {
   {
     root,
@@ -206,7 +206,7 @@ fn collect_files(
 }
 
 ///|
-fn urdf_score(relative_path : String) -> Int {
+fn urdf_score(relative_path : String) -> Int32 {
   if relative_path.contains("/urdf/") {
     0
   } else if relative_path.has_suffix("robot.urdf") {

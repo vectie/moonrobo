@@ -24,7 +24,7 @@ pub(all) struct ChannelSummary {
 pub(all) struct Exploration {
   format : String
   timebase : String
-  sample_count : Int
+  sample_count : Int32
   channels : Array[String]
   summaries : Array[ChannelSummary]
   samples : Array[Sample]
@@ -106,8 +106,8 @@ pub fn parse(text : String) -> Result[Recording, String] {
 /// No interpolation, resampling, unit conversion, or hardware dispatch occurs.
 pub fn explore_csv(
   text : String,
-  start_ms? : Int64 = 0L,
-  end_ms? : Int64 = 9223372036854775807L,
+  start_ms~ : Int64 = 0L,
+  end_ms~ : Int64 = 9223372036854775807L,
 ) -> Result[Exploration, String] {
   if start_ms < 0L || end_ms < start_ms {
     return Err("expected 0 <= start_ms <= end_ms")

@@ -32,8 +32,8 @@ pub(all) struct MoonmoonNoetixContactPatchSample {
   center : MoonmoonNoetixVec3Sample
   half_length_m : Double
   half_width_m : Double
-  sample_count : Int
-  contact_count : Int
+  sample_count : Int32
+  contact_count : Int32
   min_clearance_m : Double
   max_clearance_m : Double
   average_surface_elevation_m : Double
@@ -52,7 +52,7 @@ pub(all) struct MoonmoonNoetixContactEvidenceSample {
 
 ///|
 pub(all) struct MoonmoonNoetixContactFrameSample {
-  frame_index : Int
+  frame_index : Int32
   time_s : Double
   phase : Double
   phase_label : String
@@ -61,8 +61,8 @@ pub(all) struct MoonmoonNoetixContactFrameSample {
   center_of_mass : MoonmoonNoetixVec3Sample
   center_of_mass_velocity : MoonmoonNoetixVec3Sample
   total_mass_kg : Double
-  contact_count : Int
-  active_footprint_count : Int
+  contact_count : Int32
+  active_footprint_count : Int32
   contacts : Array[MoonmoonNoetixContactEvidenceSample]
   status : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -219,7 +219,7 @@ fn noetix_terrain_sample_at(
 ///|
 fn noetix_contact_probe(
   foot_name : String,
-  sample_index : Int,
+  sample_index : Int32,
   point : NoetixRootLocalPoint,
   foot_center : NoetixRootLocalPoint,
   root_forward_m : Double,
@@ -380,7 +380,7 @@ fn noetix_contact_center_of_mass(
 
 ///|
 fn noetix_contact_frame_base(
-  frame_index : Int,
+  frame_index : Int32,
   motion : MoonmoonNoetixAuthoredMotionSample,
 ) -> MoonmoonNoetixContactFrameSample {
   let root = noetix_root_transform_for_motion(motion)

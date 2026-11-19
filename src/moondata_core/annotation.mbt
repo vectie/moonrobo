@@ -10,8 +10,8 @@ pub(all) struct AnnotationLabel {
 pub fn annotation_label(
   key : String,
   value : String,
-  confidence? : Double = 1.0,
-  source? : String = "human",
+  confidence~ : Double = 1.0,
+  source~ : String = "human",
 ) -> AnnotationLabel {
   { key, value, confidence, source, }
 }
@@ -35,9 +35,9 @@ pub fn annotation_set(
   labels : Array[AnnotationLabel],
   reviewer : String,
   created_at_ms : Int64,
-  status? : String = "draft",
-  evidence_refs? : Array[MoonDataRef] = [],
-  summary? : String = "",
+  status~ : String = "draft",
+  evidence_refs~ : Array[MoonDataRef] = [],
+  summary~ : String = "",
 ) -> AnnotationSet {
   {
     annotation_set_id,
@@ -72,9 +72,9 @@ pub fn annotation_target_index(
   reviewer : String,
   status : String,
   created_at_ms : Int64,
-  label_keys? : Array[String] = [],
-  label_values? : Array[String] = [],
-  summary? : String = "",
+  label_keys~ : Array[String] = [],
+  label_values~ : Array[String] = [],
+  summary~ : String = "",
 ) -> AnnotationTargetIndex {
   {
     annotation_index_id,

@@ -7,7 +7,7 @@ extern "c" fn native_file_size(path : Bytes) -> Int64 = "moondata_blob_file_size
 extern "c" fn native_read_file_range(
   path : Bytes,
   offset : Int64,
-  length : Int,
+  length : Int32,
 ) -> Bytes = "moondata_blob_read_file_range"
 
 ///|
@@ -15,7 +15,7 @@ extern "c" fn native_read_file_range(
 extern "c" fn native_copy_file_staged(
   source_path : Bytes,
   destination_path : Bytes,
-) -> Int = "moondata_blob_copy_file_staged"
+) -> Int32 = "moondata_blob_copy_file_staged"
 
 ///|
 #borrow(path)
@@ -57,7 +57,7 @@ pub fn local_file_size(
 pub fn read_local_file_range(
   path : String,
   offset : Int64,
-  length : Int,
+  length : Int32,
 ) -> Result[Bytes, @moondata_store.MoonDataStoreIssue] {
   if offset < 0L || length < 0 {
     return Err(
@@ -95,7 +95,7 @@ pub fn read_local_file_range(
 ///|
 pub fn local_file_checksum(
   path : String,
-  chunk_size? : Int = 1024 * 1024,
+  chunk_size~ : Int32 = 1024 * 1024,
 ) -> Result[String, @moondata_store.MoonDataStoreIssue] {
   if chunk_size <= 0 {
     return Err(

@@ -19,16 +19,16 @@ pub(all) struct RepairRun {
   validation_report_id : String
   validation_status : String
   generated_at_ms : Int64
-  action_count : Int
-  blocker_count : Int
-  warning_count : Int
-  missing_payload_count : Int
-  unmanaged_payload_count : Int
-  metadata_conflict_count : Int
-  unsafe_ref_count : Int
-  external_ref_count : Int
-  non_payload_ref_count : Int
-  manifest_surface_ref_count : Int
+  action_count : Int32
+  blocker_count : Int32
+  warning_count : Int32
+  missing_payload_count : Int32
+  unmanaged_payload_count : Int32
+  metadata_conflict_count : Int32
+  unsafe_ref_count : Int32
+  external_ref_count : Int32
+  non_payload_ref_count : Int32
+  manifest_surface_ref_count : Int32
   actions : Array[RepairAction]
   refs : Array[MoonDataRef]
   summary : String
@@ -59,8 +59,8 @@ pub fn repair_action(
   rule_id : String,
   reason : String,
   recommendation : String,
-  operation_kind? : String = "",
-  target_ref? : String = "",
+  operation_kind~ : String = "",
+  target_ref~ : String = "",
 ) -> RepairAction {
   {
     action_id,
@@ -87,8 +87,8 @@ pub fn repair_receipt(
   actor : String,
   applied_at_ms : Int64,
   validation_report_id : String,
-  evidence_refs? : Array[MoonDataRef] = [],
-  summary? : String = "",
+  evidence_refs~ : Array[MoonDataRef] = [],
+  summary~ : String = "",
 ) -> RepairReceipt {
   {
     repair_receipt_id,
@@ -112,16 +112,16 @@ pub fn repair_run(
   validation_report_id : String,
   validation_status : String,
   generated_at_ms : Int64,
-  action_count : Int,
-  blocker_count : Int,
-  warning_count : Int,
-  missing_payload_count : Int,
-  unmanaged_payload_count : Int,
-  metadata_conflict_count : Int,
-  unsafe_ref_count : Int,
-  external_ref_count : Int,
-  non_payload_ref_count : Int,
-  manifest_surface_ref_count : Int,
+  action_count : Int32,
+  blocker_count : Int32,
+  warning_count : Int32,
+  missing_payload_count : Int32,
+  unmanaged_payload_count : Int32,
+  metadata_conflict_count : Int32,
+  unsafe_ref_count : Int32,
+  external_ref_count : Int32,
+  non_payload_ref_count : Int32,
+  manifest_surface_ref_count : Int32,
   actions : Array[RepairAction],
   refs : Array[MoonDataRef],
   summary : String,

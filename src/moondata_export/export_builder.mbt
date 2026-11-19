@@ -6,8 +6,8 @@ pub fn build_export_manifest(
   field_mapping : String,
   output_refs : Array[@moondata_core.DataRef],
   created_at_ms : Int64,
-  status? : String = "ready",
-  report? : String = "",
+  status~ : String = "ready",
+  report~ : String = "",
 ) -> @moondata_core.ExportManifest {
   @moondata_core.export_manifest(
     export_manifest_id,

@@ -6,19 +6,19 @@ pub(all) struct MoonmoonNoetixLiveSuiteEvidence {
   robot_id : String
   walk_clip_id : String
   source : String
-  sample_count : Int
-  profile_joint_count : Int
-  required_motion_joint_count : Int
-  authored_joint_sample_count : Int
-  authored_motion_sample_count : Int
-  authored_contact_frame_count : Int
-  authored_motor_frame_count : Int
-  active_contact_frame_count : Int
-  loaded_contact_count : Int
-  driven_motor_frame_count : Int
-  motor_review_count : Int
-  contact_review_count : Int
-  blocker_count : Int
+  sample_count : Int32
+  profile_joint_count : Int32
+  required_motion_joint_count : Int32
+  authored_joint_sample_count : Int32
+  authored_motion_sample_count : Int32
+  authored_contact_frame_count : Int32
+  authored_motor_frame_count : Int32
+  active_contact_frame_count : Int32
+  loaded_contact_count : Int32
+  driven_motor_frame_count : Int32
+  motor_review_count : Int32
+  contact_review_count : Int32
+  blocker_count : Int32
   blockers : Array[String]
   ready : Bool
   status : String

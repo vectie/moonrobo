@@ -1,10 +1,10 @@
 ///|
 pub(all) struct ViewportLinkPose {
   name : String
-  index : Int
+  index : Int32
   parent_link : String
   parent_joint : String
-  depth : Int
+  depth : Int32
   x : Double
   y : Double
   z : Double
@@ -16,13 +16,13 @@ pub(all) struct ViewportLinkPose {
 ///|
 pub(all) struct UrdfViewportSimulation {
   root_link : String
-  simulated_links : Int
+  simulated_links : Int32
   links : Array[ViewportLinkPose]
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
 pub(all) struct ViewportVisualInstance {
-  index : Int
+  index : Int32
   link_name : String
   geometry_kind : String
   x : Double
@@ -33,24 +33,10 @@ pub(all) struct ViewportVisualInstance {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub(all) struct ViewportBasis {
-  xx : Double
-  xy : Double
-  xz : Double
-  yx : Double
-  yy : Double
-  yz : Double
-  zx : Double
-  zy : Double
-  zz : Double
-} derive(Debug, Eq, ToJson, FromJson)
+pub type ViewportBasis = @geometry.Basis3
 
 ///|
-priv struct Vec3 {
-  x : Double
-  y : Double
-  z : Double
-}
+type Vec3 = @geometry.Vec3
 
 ///|
 priv struct LinkTransform {
@@ -60,45 +46,21 @@ priv struct LinkTransform {
 
 ///|
 fn identity_basis() -> ViewportBasis {
-  {
-    xx: 1.0,
-    xy: 0.0,
-    xz: 0.0,
-    yx: 0.0,
-    yy: 1.0,
-    yz: 0.0,
-    zx: 0.0,
-    zy: 0.0,
-    zz: 1.0,
-  }
+  @geometry.identity_basis3()
 }
 
 ///|
 fn mat_vec(basis : ViewportBasis, vec : Vec3) -> Vec3 {
-  {
-    x: basis.xx * vec.x + basis.xy * vec.y + basis.xz * vec.z,
-    y: basis.yx * vec.x + basis.yy * vec.y + basis.yz * vec.z,
-    z: basis.zx * vec.x + basis.zy * vec.y + basis.zz * vec.z,
-  }
+  basis.mul_vec3(vec)
 }
 
 ///|
 fn mat_mul(a : ViewportBasis, b : ViewportBasis) -> ViewportBasis {
-  {
-    xx: a.xx * b.xx + a.xy * b.yx + a.xz * b.zx,
-    xy: a.xx * b.xy + a.xy * b.yy + a.xz * b.zy,
-    xz: a.xx * b.xz + a.xy * b.yz + a.xz * b.zz,
-    yx: a.yx * b.xx + a.yy * b.yx + a.yz * b.zx,
-    yy: a.yx * b.xy + a.yy * b.yy + a.yz * b.zy,
-    yz: a.yx * b.xz + a.yy * b.yz + a.yz * b.zz,
-    zx: a.zx * b.xx + a.zy * b.yx + a.zz * b.zx,
-    zy: a.zx * b.xy + a.zy * b.yy + a.zz * b.zy,
-    zz: a.zx * b.xz + a.zy * b.yz + a.zz * b.zz,
-  }
+  a.mul_basis3(b)
 }
 
 ///|
-fn parse_vector_part(text : String, index : Int) -> Double {
+fn parse_vector_part(text : String, index : Int32) -> Double {
   let mut current = 0
   for part in text.split(" ") {
     if !part.is_empty() {
@@ -121,32 +83,8 @@ fn axis_vec(axis : String) -> Vec3 {
 }
 
 ///|
-fn normalize(vec : Vec3) -> Vec3 {
-  let length = (vec.x * vec.x + vec.y * vec.y + vec.z * vec.z).sqrt()
-  if length > 0.0 {
-    { x: vec.x / length, y: vec.y / length, z: vec.z / length, }
-  } else {
-    { x: 0.0, y: 0.0, z: 1.0, }
-  }
-}
-
-///|
 fn axis_rotation(axis : String, angle : Double) -> ViewportBasis {
-  let a = normalize(axis_vec(axis))
-  let c = @math.cos(angle)
-  let s = @math.sin(angle)
-  let t = 1.0 - c
-  {
-    xx: t * a.x * a.x + c,
-    xy: t * a.x * a.y - s * a.z,
-    xz: t * a.x * a.z + s * a.y,
-    yx: t * a.x * a.y + s * a.z,
-    yy: t * a.y * a.y + c,
-    yz: t * a.y * a.z - s * a.x,
-    zx: t * a.x * a.z - s * a.y,
-    zy: t * a.y * a.z + s * a.x,
-    zz: t * a.z * a.z + c,
-  }
+  @geometry.axis_angle_basis3(axis_vec(axis), angle)
 }
 
 ///|
@@ -233,7 +171,7 @@ fn parent_joint_for_link(
 }
 
 ///|
-fn link_index(model : @urdf.UrdfModel, link_name : String) -> Int {
+fn link_index(model : @urdf.UrdfModel, link_name : String) -> Int32 {
   for index in 0..<model.links.length() {
     if model.links[index] == link_name {
       return index
@@ -282,7 +220,7 @@ fn joint_transform_text(joint : @urdf.UrdfJoint, position : Double) -> String {
 ///|
 fn unresolved_link_pose(
   name : String,
-  index : Int,
+  index : Int32,
   parent_link : String,
   parent_joint : String,
 ) -> ViewportLinkPose {
@@ -304,7 +242,7 @@ fn unresolved_link_pose(
 ///|
 fn unresolved_link_transform(
   name : String,
-  index : Int,
+  index : Int32,
   parent_link : String,
   parent_joint : String,
 ) -> LinkTransform {
@@ -315,7 +253,7 @@ fn unresolved_link_transform(
 }
 
 ///|
-fn root_link_transform(link_name : String, index : Int) -> LinkTransform {
+fn root_link_transform(link_name : String, index : Int32) -> LinkTransform {
   {
     pose: {
       name: link_name,
@@ -339,7 +277,7 @@ fn link_transform(
   model : @urdf.UrdfModel,
   telemetry : @core.TelemetryFrame,
   link_name : String,
-  remaining : Int,
+  remaining : Int32,
 ) -> LinkTransform {
   let index = link_index(model, link_name)
   match parent_joint_for_link(model, link_name) {
@@ -360,7 +298,7 @@ fn link_transform(
           remaining - 1,
         )
         let position = telemetry_joint_position(telemetry, joint.name)
-        let local_origin = {
+        let local_origin : Vec3 = {
           x: joint.origin.x,
           y: joint.origin.y,
           z: joint.origin.z,
@@ -437,11 +375,11 @@ fn link_pose_by_name(
 fn visual_instance(
   simulation : UrdfViewportSimulation,
   visual : @urdf.UrdfVisual,
-  index : Int,
+  index : Int32,
 ) -> ViewportVisualInstance {
   match link_pose_by_name(simulation, visual.link_name) {
     Some(link) => {
-      let local_origin = {
+      let local_origin : Vec3 = {
         x: visual.origin.x,
         y: visual.origin.y,
         z: visual.origin.z,

@@ -13,13 +13,13 @@ pub(all) struct PlatformReadinessReport {
   robot_id : @core.RobotId
   ready : Bool
   status : String
-  check_count : Int
-  pass_count : Int
-  fail_count : Int
-  conversation_turn_count : Int
-  memory_card_count : Int
-  registered_capability_count : Int
-  task_execution_count : Int
+  check_count : Int32
+  pass_count : Int32
+  fail_count : Int32
+  conversation_turn_count : Int32
+  memory_card_count : Int32
+  registered_capability_count : Int32
+  task_execution_count : Int32
   latest_runtime_status : String
   checks : Array[ReadinessCheck]
 } derive(Debug, Eq, ToJson, FromJson)
@@ -28,7 +28,7 @@ pub(all) struct PlatformReadinessReport {
 pub(all) struct ReadinessAction {
   action_id : String
   check_code : String
-  priority : Int
+  priority : Int32
   title : String
   summary : String
   http_method : String
@@ -46,8 +46,8 @@ pub(all) struct PlatformReadinessPlan {
   report_id : String
   status : String
   ready : Bool
-  action_count : Int
-  blocking_action_count : Int
+  action_count : Int32
+  blocking_action_count : Int32
   next_action : ReadinessAction?
   actions : Array[ReadinessAction]
 } derive(Debug, Eq, ToJson, FromJson)
@@ -56,8 +56,8 @@ pub(all) struct PlatformReadinessPlan {
 priv struct RuntimeCalibrationPlanRecord {
   plan_id : String
   generated_at_ms : Int64
-  action_count : Int
-  blocking_action_count : Int
+  action_count : Int32
+  blocking_action_count : Int32
   actions : Array[Json]
 } derive(FromJson)
 
@@ -95,7 +95,7 @@ fn fail(code : String, path : String, message : String) -> ReadinessCheck {
 }
 
 ///|
-fn count_status(checks : Array[ReadinessCheck], status : String) -> Int {
+fn count_status(checks : Array[ReadinessCheck], status : String) -> Int32 {
   let mut count = 0
   for item in checks {
     if item.status == status {
@@ -106,7 +106,7 @@ fn count_status(checks : Array[ReadinessCheck], status : String) -> Int {
 }
 
 ///|
-fn task_message_count(root : String) -> Int {
+fn task_message_count(root : String) -> Int32 {
   match @runtime.list_moonbook_task_message_paths(root) {
     Ok(paths) => paths.length()
     Err(_) => 0
@@ -114,7 +114,7 @@ fn task_message_count(root : String) -> Int {
 }
 
 ///|
-fn task_execution_count(root : String) -> Int {
+fn task_execution_count(root : String) -> Int32 {
   match @runtime.list_task_execution_snapshot_paths(root) {
     Ok(paths) => paths.length()
     Err(_) => 0
@@ -462,7 +462,7 @@ fn registry_ready(
 fn action(
   action_id : String,
   check_code : String,
-  priority : Int,
+  priority : Int32,
   title : String,
   summary : String,
   http_method : String,
@@ -772,7 +772,7 @@ pub fn report(
 ///|
 pub fn report_json(
   report : PlatformReadinessReport,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   report.to_json().stringify(indent~)
 }

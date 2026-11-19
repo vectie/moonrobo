@@ -2,7 +2,7 @@
 fn count_severity(
   findings : Array[@moondata_core.ValidationFinding],
   severity : String,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for finding in findings {
     if finding.severity == severity {
@@ -19,9 +19,9 @@ pub(all) struct StoredValidationResult {
   report_path : String
   catalog_path : String
   status : String
-  finding_count : Int
-  blocker_count : Int
-  warning_count : Int
+  finding_count : Int32
+  blocker_count : Int32
+  warning_count : Int32
   report : @moondata_core.ValidationReport
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -372,7 +372,7 @@ fn add_data_ref_file_finding(
 fn data_ref_uri_match_count(
   refs : Array[@moondata_core.DataRef],
   uri : String,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for data_ref in refs {
     if data_ref.uri == uri {
@@ -1512,7 +1512,7 @@ fn moondata_ref_match_count(
   refs : Array[@moondata_core.MoonDataRef],
   artifact_kind : String,
   artifact_id : String,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for moondata_ref in refs {
     if moondata_ref.artifact_kind == artifact_kind &&
@@ -2046,7 +2046,7 @@ fn annotation_target_index_count(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   annotation_set_id : @moondata_core.AnnotationSetId,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for candidate in entries {
     if candidate.artifact_kind == "annotation-target-index" {
@@ -2578,7 +2578,7 @@ fn validation_finding_matches(
 fn validation_finding_match_count(
   findings : Array[@moondata_core.ValidationFinding],
   target : @moondata_core.ValidationFinding,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for candidate in findings {
     if validation_finding_matches(candidate, target) {
@@ -2607,14 +2607,14 @@ fn validation_findings_match(
 
 ///|
 priv struct HandoffRepairSnapshot {
-  mut repair_count : Int
-  mut repair_receipt_count : Int
-  mut repair_work_count : Int
-  mut repair_open_count : Int
-  mut repair_applied_count : Int
-  mut repair_applied_unvalidated_count : Int
-  mut repair_failed_count : Int
-  mut repair_pending_count : Int
+  mut repair_count : Int32
+  mut repair_receipt_count : Int32
+  mut repair_work_count : Int32
+  mut repair_open_count : Int32
+  mut repair_applied_count : Int32
+  mut repair_applied_unvalidated_count : Int32
+  mut repair_failed_count : Int32
+  mut repair_pending_count : Int32
 }
 
 ///|
@@ -2782,8 +2782,8 @@ fn add_handoff_repair_snapshot_mismatch(
   findings : Array[@moondata_core.ValidationFinding],
   entry : @moondata_core.CatalogEntry,
   field : String,
-  expected : Int,
-  actual : Int,
+  expected : Int32,
+  actual : Int32,
 ) -> Unit {
   if expected == actual {
     return
@@ -3266,8 +3266,8 @@ fn add_manifest_reference_findings(
 pub fn validate_catalog(
   root : String,
   catalog : @moondata_core.MoonDataCatalog,
-  generated_at_ms? : Int64 = 0L,
-  check_files? : Bool = false,
+  generated_at_ms~ : Int64 = 0L,
+  check_files~ : Bool = false,
 ) -> @moondata_core.ValidationReport {
   let findings : Array[@moondata_core.ValidationFinding] = []
   let data_ref_views : Array[CatalogDataRefView] = []
@@ -3345,7 +3345,7 @@ pub fn validate_catalog(
 ///|
 pub fn validate_root(
   root : String,
-  generated_at_ms? : Int64 = 0L,
+  generated_at_ms~ : Int64 = 0L,
 ) -> Result[@moondata_core.ValidationReport, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value
@@ -3382,7 +3382,7 @@ fn append_validation_entry(
 ///|
 pub fn validate_and_write_root(
   root : String,
-  generated_at_ms? : Int64 = 0L,
+  generated_at_ms~ : Int64 = 0L,
 ) -> Result[StoredValidationResult, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value

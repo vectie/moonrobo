@@ -18,8 +18,8 @@ pub(all) struct UrdfEditorSession {
   dirty : Bool
   diff : UrdfEditorSourceDiff
   history : Array[UrdfEditorHistoryEntry]
-  past_count : Int
-  future_count : Int
+  past_count : Int32
+  future_count : Int32
   can_undo : Bool
   can_redo : Bool
 } derive(Debug, Eq, ToJson, FromJson)
@@ -85,7 +85,7 @@ fn normalize_session_selection(
 fn append_bounded_snapshot(
   snapshots : Array[UrdfEditorSessionSnapshot],
   next : UrdfEditorSessionSnapshot,
-  limit : Int,
+  limit : Int32,
 ) -> Array[UrdfEditorSessionSnapshot] {
   let bounded : Array[UrdfEditorSessionSnapshot] = []
   let total = snapshots.length() + 1
@@ -162,7 +162,7 @@ fn retarget_selection_after_edit(
 ///|
 pub fn start_session(
   source : String,
-  selected_node_id? : String = "robot",
+  selected_node_id~ : String = "robot",
 ) -> UrdfEditorSession {
   make_session(source, source, selected_node_id, [], [], None)
 }
@@ -191,7 +191,7 @@ pub fn select_session_component(
 pub fn push_session_edit(
   session : UrdfEditorSession,
   edit : UrdfEditResult,
-  selected_node_id? : String = "",
+  selected_node_id~ : String = "",
 ) -> UrdfEditorSession {
   let next_selected = if selected_node_id.trim() == "" {
     retarget_selection_after_edit(edit, session.selected_node_id)

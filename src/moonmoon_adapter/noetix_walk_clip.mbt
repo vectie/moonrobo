@@ -44,7 +44,7 @@ pub(all) struct MoonmoonNoetixWalkClipContract {
   cycle_hz : Double
   root_speed_mps : Double
   stride_m : Double
-  sample_count : Int
+  sample_count : Int32
   foot_phase_sequence : Array[String]
   phase_labels : Array[String]
   foot_phase_specs : Array[MoonmoonNoetixFootPhaseSpec]
@@ -55,7 +55,7 @@ pub(all) struct MoonmoonNoetixWalkClipContract {
   authored_motion_samples : Array[MoonmoonNoetixAuthoredMotionSample]
   authored_contact_frames : Array[MoonmoonNoetixContactFrameSample]
   authored_motor_frames : Array[MoonmoonNoetixMotorFrameSample]
-  blocker_count : Int
+  blocker_count : Int32
   blockers : Array[String]
   ready : Bool
   status : String

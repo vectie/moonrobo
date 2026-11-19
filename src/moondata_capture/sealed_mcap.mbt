@@ -29,10 +29,10 @@ pub fn seal_mcap_request(
   robot_id : String,
   bridge_id : String,
   recorded_at_ms : Int64,
-  source_id? : String = "",
-  dataset_id? : String = "",
-  episode_id? : String = "",
-  session_id? : String = "",
+  source_id~ : String = "",
+  dataset_id~ : String = "",
+  episode_id~ : String = "",
+  session_id~ : String = "",
 ) -> SealMcapRequest {
   {
     root,

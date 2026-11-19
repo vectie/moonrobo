@@ -1,6 +1,6 @@
 ///|
 pub(all) struct QualityConfig {
-  min_frame_count : Int
+  min_frame_count : Int32
   max_frame_gap_ms : Int64
   expected_robot_id : String
   expected_bridge_id : String
@@ -9,11 +9,11 @@ pub(all) struct QualityConfig {
 
 ///|
 pub fn default_quality_config(
-  expected_robot_id? : String = "",
-  expected_bridge_id? : String = "",
-  min_frame_count? : Int = 1,
-  max_frame_gap_ms? : Int64 = 250L,
-  require_stopped_episode? : Bool = true,
+  expected_robot_id~ : String = "",
+  expected_bridge_id~ : String = "",
+  min_frame_count~ : Int32 = 1,
+  max_frame_gap_ms~ : Int64 = 250L,
+  require_stopped_episode~ : Bool = true,
 ) -> QualityConfig {
   {
     min_frame_count,
@@ -31,7 +31,7 @@ fn finding(
   target_kind : String,
   target_id : String,
   message : String,
-  recommendation? : String = "",
+  recommendation~ : String = "",
 ) -> @moondata_core.QualityFinding {
   @moondata_core.quality_finding(
     "\{rule_id}-\{target_id}",
@@ -213,7 +213,7 @@ pub fn evaluate_episode(
   episode : @moondata_core.EpisodeManifest,
   frames : Array[@moondata_core.FrameRef],
   created_at_ms : Int64,
-  config? : QualityConfig = default_quality_config(),
+  config~ : QualityConfig = default_quality_config(),
 ) -> @moondata_core.QualityRun {
   let findings : Array[@moondata_core.QualityFinding] = []
   add_identity_findings(findings, episode, config)

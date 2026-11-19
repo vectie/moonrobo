@@ -1,6 +1,6 @@
 ///|
 pub(all) struct RuntimeValidationSessionRequest {
-  sample_count : Int
+  sample_count : Int32
   physical_execution_allowed : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -8,7 +8,7 @@ pub(all) struct RuntimeValidationSessionRequest {
 pub(all) struct RuntimeValidationSessionEvidence {
   session_id : String
   generated_at_ms : Int64
-  sample_count : Int
+  sample_count : Int32
   physical_execution_allowed : Bool
   ready_for_live_sdk : Bool
   runtime_id : String
@@ -16,9 +16,9 @@ pub(all) struct RuntimeValidationSessionEvidence {
   bridge_id : String
   mapping_stable : Bool
   mapping_status : String
-  mapping_sample_count : Int
-  mapping_matching_sample_count : Int
-  mapping_mismatch_sample_count : Int
+  mapping_sample_count : Int32
+  mapping_matching_sample_count : Int32
+  mapping_mismatch_sample_count : Int32
   mapping_message : String
   health_path : String
   telemetry_path : String
@@ -35,8 +35,8 @@ pub(all) struct RuntimeValidationSessionResult {
 
 ///|
 pub fn default_runtime_validation_session_request(
-  sample_count? : Int = 3,
-  physical_execution_allowed? : Bool = false,
+  sample_count~ : Int32 = 3,
+  physical_execution_allowed~ : Bool = false,
 ) -> RuntimeValidationSessionRequest {
   { sample_count, physical_execution_allowed, }
 }
@@ -57,8 +57,8 @@ fn latest_health_ready_for_profile(
 ///|
 fn mapping_message(
   profile : @core.RobotProfile,
-  matching_sample_count : Int,
-  mismatch_sample_count : Int,
+  matching_sample_count : Int32,
+  mismatch_sample_count : Int32,
 ) -> String {
   if mismatch_sample_count == 0 && matching_sample_count > 0 {
     "\{matching_sample_count} runtime validation sample(s) matched RoboBook robot \{profile.id} and bridge \{profile.bridge.id}"

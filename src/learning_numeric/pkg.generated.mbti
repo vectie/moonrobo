@@ -1,0 +1,30 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_numeric"
+
+import {
+  "vectie/moonnum",
+}
+
+// Values
+pub fn finite(Double) -> Bool
+
+pub fn fit_normalization(Array[Array[Double]], Double) -> @moonnum.Normalization
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+pub using @moonnum {type Adam}
+
+pub using @moonnum {type MLP}
+
+pub using @moonnum {type Normalization}
+
+pub using @moonnum {type Rng}
+
+pub using @moonnum {type Tape}
+
+pub using @moonnum {type Value}
+
+// Traits

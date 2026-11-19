@@ -2,7 +2,7 @@
 fn action_category_count(
   actions : Array[@moondata_core.RepairAction],
   category : String,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for action in actions {
     if action.category == category {
@@ -16,7 +16,7 @@ fn action_category_count(
 fn action_operation_count(
   actions : Array[@moondata_core.RepairAction],
   operation_kind : String,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for action in actions {
     if action.operation_kind == operation_kind {
@@ -30,7 +30,7 @@ fn action_operation_count(
 fn action_target_count(
   actions : Array[@moondata_core.RepairAction],
   target_ref : String,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for action in actions {
     if action.target_ref == target_ref {

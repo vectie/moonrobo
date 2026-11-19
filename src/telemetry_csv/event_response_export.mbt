@@ -22,7 +22,7 @@ fn response_time(value : Int64?) -> String {
 }
 
 ///|
-fn response_index(value : Int?) -> String {
+fn response_index(value : Int32?) -> String {
   match value {
     Some(value) => value.to_string()
     None => ""
@@ -96,7 +96,7 @@ pub fn EventResponses::summary_csv(self : EventResponses) -> String {
 /// an explicit gap limit; retain this report for selection and source anchors.
 pub fn EventResponses::clip_csv(
   self : EventResponses,
-  episode_index : Int,
+  episode_index : Int32,
 ) -> Result[String, String] {
   let mut selected : EventResponseTrial? = None
   for trial in self.trials {

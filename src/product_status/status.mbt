@@ -38,11 +38,11 @@ pub(all) struct MoonroboProductStatusInput {
   bridge_id : String
   mapped : Bool
   has_task_message : Bool
-  memory_card_count : Int
+  memory_card_count : Int32
   can_submit_gateway_command : Bool
   physical_execution_allowed : Bool
   loop_ready : Bool
-  loop_percent : Int
+  loop_percent : Int32
   loop_status : String
   live_readiness_status : String
   latest_task_execution_path : String
@@ -50,8 +50,8 @@ pub(all) struct MoonroboProductStatusInput {
   latest_robo_loop_path : String
   latest_proof_session_path : String
   proof_session_feedback_closed : Bool
-  proof_session_feedback_binding_success_count : Int
-  proof_session_latest_feedback_status : Int
+  proof_session_feedback_binding_success_count : Int32
+  proof_session_latest_feedback_status : Int32
   proof_session_latest_feedback_message : String
   next_route : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -62,9 +62,9 @@ pub(all) struct MoonroboProductStatus {
   root : String
   status : String
   ready : Bool
-  percent : Int
-  completed_count : Int
-  total_count : Int
+  percent : Int32
+  completed_count : Int32
+  total_count : Int32
   robot_id : String
   bridge_id : String
   next_route : String
@@ -363,7 +363,7 @@ fn capability(
 }
 
 ///|
-fn completed_count(capabilities : Array[MoonroboProductCapability]) -> Int {
+fn completed_count(capabilities : Array[MoonroboProductCapability]) -> Int32 {
   let mut count = 0
   for item in capabilities {
     if item.ready {
@@ -389,8 +389,8 @@ fn first_blocked_route(
 ///|
 fn status_text(
   ready : Bool,
-  completed : Int,
-  total : Int,
+  completed : Int32,
+  total : Int32,
   can_submit_gateway_command : Bool,
 ) -> String {
   if ready {
@@ -407,8 +407,8 @@ fn status_text(
 ///|
 fn status_message(
   status : String,
-  completed : Int,
-  total : Int,
+  completed : Int32,
+  total : Int32,
   next_route : String,
 ) -> String {
   match status {

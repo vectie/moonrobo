@@ -16,12 +16,12 @@ fn usage() -> String {
 }
 
 ///|
-fn arg(args : Array[String], index : Int) -> String? {
+fn arg(args : Array[String], index : Int32) -> String? {
   args.get(index)
 }
 
 ///|
-fn command_index(args : Array[String]) -> Int {
+fn command_index(args : Array[String]) -> Int32 {
   match args.get(0) {
     Some(
       "capability"
@@ -85,7 +85,7 @@ fn load_request(
 ///|
 fn require_execution_args(
   args : Array[String],
-  index : Int,
+  index : Int32,
 ) -> Result[(String, String, String), @adapter_runtime.AdapterRuntimeIssue] {
   match (arg(args, index + 1), arg(args, index + 2), arg(args, index + 3)) {
     (Some(workspace), Some(robobook), Some(request)) =>

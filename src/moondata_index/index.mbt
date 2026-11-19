@@ -3,7 +3,7 @@ pub(all) struct CatalogRebuild {
   root : String
   catalog_path : String
   generated_at_ms : Int64
-  entry_count : Int
+  entry_count : Int32
   catalog : @moondata_core.MoonDataCatalog
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -11,11 +11,11 @@ pub(all) struct CatalogRebuild {
 pub(all) struct AnnotationTargetIndexRebuild {
   root : String
   generated_at_ms : Int64
-  annotation_count : Int
-  annotation_index_count : Int
+  annotation_count : Int32
+  annotation_index_count : Int32
   indexes : Array[@moondata_store.PersistedManifest]
   catalog_path : String
-  catalog_entry_count : Int
+  catalog_entry_count : Int32
   catalog : @moondata_core.MoonDataCatalog
 } derive(Debug, Eq, ToJson, FromJson)
 

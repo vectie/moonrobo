@@ -6,23 +6,23 @@ pub(all) struct ProcessIssue {
 
 ///|
 pub(all) struct StartedProcess {
-  pid : Int
+  pid : Int32
   running : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
 #borrow(script_path)
-extern "c" fn native_start_shell_script(script_path : Bytes) -> Int = "moonrobo_process_start_shell_script"
+extern "c" fn native_start_shell_script(script_path : Bytes) -> Int32 = "moonrobo_process_start_shell_script"
 
 ///|
 #borrow(script_path)
-extern "c" fn native_run_shell_script(script_path : Bytes) -> Int = "moonrobo_process_run_shell_script"
+extern "c" fn native_run_shell_script(script_path : Bytes) -> Int32 = "moonrobo_process_run_shell_script"
 
 ///|
-extern "c" fn native_is_running(pid : Int) -> Int = "moonrobo_process_is_running"
+extern "c" fn native_is_running(pid : Int32) -> Int32 = "moonrobo_process_is_running"
 
 ///|
-extern "c" fn native_stop(pid : Int) -> Int = "moonrobo_process_stop"
+extern "c" fn native_stop(pid : Int32) -> Int32 = "moonrobo_process_stop"
 
 ///|
 extern "c" fn native_last_error() -> Bytes = "moonrobo_process_last_error"
@@ -60,7 +60,7 @@ pub fn start_shell_script(
 }
 
 ///|
-pub fn run_shell_script(script_path : String) -> Result[Int, ProcessIssue] {
+pub fn run_shell_script(script_path : String) -> Result[Int32, ProcessIssue] {
   if script_path == "" {
     return Err(
       issue("script-path-empty", "runtime process script path is empty"),
@@ -75,12 +75,12 @@ pub fn run_shell_script(script_path : String) -> Result[Int, ProcessIssue] {
 }
 
 ///|
-pub fn is_running(pid : Int) -> Bool {
+pub fn is_running(pid : Int32) -> Bool {
   pid > 0 && native_is_running(pid) == 1
 }
 
 ///|
-pub fn stop(pid : Int) -> Result[Bool, ProcessIssue] {
+pub fn stop(pid : Int32) -> Result[Bool, ProcessIssue] {
   if pid <= 0 {
     return Err(issue("pid-invalid", "process pid must be positive"))
   }

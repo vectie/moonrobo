@@ -14,10 +14,10 @@ pub(all) struct ValidationReport {
   root : String
   generated_at_ms : Int64
   status : String
-  catalog_entry_count : Int
-  finding_count : Int
-  blocker_count : Int
-  warning_count : Int
+  catalog_entry_count : Int32
+  finding_count : Int32
+  blocker_count : Int32
+  warning_count : Int32
   findings : Array[ValidationFinding]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -28,7 +28,7 @@ pub fn validation_finding(
   artifact_kind : String,
   artifact_id : String,
   message : String,
-  recommendation? : String = "",
+  recommendation~ : String = "",
 ) -> ValidationFinding {
   { rule_id, severity, artifact_kind, artifact_id, message, recommendation, }
 }
@@ -39,10 +39,10 @@ pub fn validation_report(
   root : String,
   generated_at_ms : Int64,
   status : String,
-  catalog_entry_count : Int,
-  finding_count : Int,
-  blocker_count : Int,
-  warning_count : Int,
+  catalog_entry_count : Int32,
+  finding_count : Int32,
+  blocker_count : Int32,
+  warning_count : Int32,
   findings : Array[ValidationFinding],
 ) -> ValidationReport {
   {

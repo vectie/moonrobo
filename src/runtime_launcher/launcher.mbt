@@ -11,7 +11,7 @@ pub(all) struct RuntimeLaunchReceipt {
   receipt_path : String
   command : Array[String]
   bridge_base_url : String
-  issue_count : Int
+  issue_count : Int32
   plan : @supervisor.SupervisorPlan
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -27,7 +27,7 @@ pub(all) struct RuntimeLaunchResult {
 
 ///|
 fn issue(
-  status : Int,
+  status : Int32,
   code : String,
   path : String,
   message : String,
@@ -90,7 +90,7 @@ pub fn active_run_path(root : String) -> String {
 ///|
 pub fn receipt_json(
   receipt : RuntimeLaunchReceipt,
-  indent? : Int = 2,
+  indent~ : Int32 = 2,
 ) -> String {
   receipt.to_json().stringify(indent~)
 }
@@ -99,7 +99,7 @@ pub fn receipt_json(
 pub fn prepare_launch(
   root : String,
   plan : @supervisor.SupervisorPlan,
-  launch_id? : String = launch_id_for_plan(plan),
+  launch_id~ : String = launch_id_for_plan(plan),
 ) -> Result[RuntimeLaunchResult, @pipeline.PipelineIssue] {
   match ensure_launcher_dir(root) {
     Ok(_) => ()

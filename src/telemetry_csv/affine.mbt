@@ -1,6 +1,6 @@
 ///|
 pub(all) struct AffineRow {
-  source_sample_index : Int
+  source_sample_index : Int32
   timestamp_ms : Int64
   partition : String
   predictor : Double
@@ -12,12 +12,12 @@ pub(all) struct AffineRow {
 
 ///|
 pub(all) struct AffineSummary {
-  sample_count : Int
+  sample_count : Int32
   bias : Double
   mean_absolute_error : Double
   root_mean_square_error : Double
   maximum_absolute_error : Double
-  outside_fit_predictor_range_count : Int
+  outside_fit_predictor_range_count : Int32
 } derive(Debug, Eq, ToJson)
 
 ///|
@@ -33,7 +33,7 @@ pub(all) struct AffineFit {
   fit_predictor_maximum : Double
   fit_summary : AffineSummary
   holdout_summary : AffineSummary
-  excluded_sample_count : Int
+  excluded_sample_count : Int32
   source : Recording
   rows : Array[AffineRow]
 } derive(Debug, Eq, ToJson)

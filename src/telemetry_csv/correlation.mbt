@@ -1,6 +1,6 @@
 ///|
 pub(all) struct CorrelationSample {
-  source_sample_index : Int
+  source_sample_index : Int32
   timestamp_ms : Int64
   left : Double
   right : Double
@@ -10,11 +10,11 @@ pub(all) struct CorrelationSample {
 /// Positive lag pairs left[i] with right[i + lag]. An undefined coefficient
 /// means one overlapping channel is constant, never zero correlation.
 pub(all) struct CorrelationLag {
-  lag_samples : Int
+  lag_samples : Int32
   lag_ms : Int64
-  pair_count : Int
-  left_start_sample : Int
-  right_start_sample : Int
+  pair_count : Int32
+  left_start_sample : Int32
+  right_start_sample : Int32
   coefficient : Double?
   status : String
 } derive(Debug, Eq, ToJson)
@@ -29,9 +29,9 @@ pub(all) struct TelemetryCorrelation {
   requested_start_ms : Int64
   requested_end_ms : Int64
   sample_interval_ms : Int64
-  max_lag_samples : Int
-  minimum_pairs : Int
-  source_sample_count : Int
+  max_lag_samples : Int32
+  minimum_pairs : Int32
+  source_sample_count : Int32
   samples : Array[CorrelationSample]
   lags : Array[CorrelationLag]
 } derive(Debug, Eq, ToJson)
@@ -39,9 +39,9 @@ pub(all) struct TelemetryCorrelation {
 ///|
 fn correlation_coefficient(
   samples : Array[CorrelationSample],
-  left_start : Int,
-  right_start : Int,
-  count : Int,
+  left_start : Int32,
+  right_start : Int32,
+  count : Int32,
 ) -> Double? {
   // Independent scaling avoids overflowing subtraction, squares, or products
   // for finite values near the Double limits. Scaling does not change Pearson r.
@@ -114,9 +114,9 @@ pub fn correlation_csv(
   text : String,
   left_channel : String,
   right_channel : String,
-  max_lag_samples~ : Int,
-  start_ms? : Int64 = 0L,
-  end_ms? : Int64 = 9223372036854775807L,
+  max_lag_samples~ : Int32,
+  start_ms~ : Int64 = 0L,
+  end_ms~ : Int64 = 9223372036854775807L,
 ) -> Result[TelemetryCorrelation, String] {
   if start_ms < 0L || end_ms < start_ms || max_lag_samples < 0 {
     return Err("expected 0 <= start_ms <= end_ms and max_lag_samples >= 0")

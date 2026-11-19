@@ -69,11 +69,11 @@ pub(all) struct UrdfInertial {
 ///|
 pub(all) struct UrdfModel {
   robot_name : String
-  link_count : Int
-  joint_count : Int
-  visual_count : Int
-  collision_count : Int
-  inertial_count : Int
+  link_count : Int32
+  joint_count : Int32
+  visual_count : Int32
+  collision_count : Int32
+  inertial_count : Int32
   links : Array[String]
   joints : Array[UrdfJoint]
   visuals : Array[UrdfVisual]
@@ -111,7 +111,7 @@ fn attr_or(tag : String, name : String, fallback : String) -> String {
 }
 
 ///|
-fn parse_vector_part(text : String, index : Int) -> Double {
+fn parse_vector_part(text : String, index : Int32) -> Double {
   let mut current = 0
   for part in text.split(" ") {
     if !part.is_empty() {

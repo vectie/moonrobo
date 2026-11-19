@@ -1,0 +1,6 @@
+members = [
+  ".",
+  "../moonnum",
+  "../moonphys",
+  "../lunakine",
+]

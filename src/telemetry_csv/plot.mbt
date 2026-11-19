@@ -2,8 +2,8 @@
 /// One observed row. Positions refer to the complete parsed input, not the window.
 pub(all) struct PlotSample {
   timestamp_ms : Int64
-  source_sample_index : Int
-  segment : Int
+  source_sample_index : Int32
+  segment : Int32
   connected : Bool
   values : Array[Double]
 } derive(Debug, Eq, ToJson)
@@ -36,11 +36,11 @@ pub(all) struct TelemetryPlot {
   start_ms : Int64
   end_ms : Int64
   max_gap_ms : Int64
-  source_sample_count : Int
+  source_sample_count : Int32
   channels : Array[PlotChannel]
   samples : Array[PlotSample]
-  segment_count : Int
-  gap_count : Int
+  segment_count : Int32
+  gap_count : Int32
 } derive(Debug, Eq, ToJson)
 
 ///|
@@ -50,10 +50,10 @@ pub(all) struct TelemetryPlot {
 pub fn plot_csv(
   text : String,
   channels : Array[String],
-  unit_labels? : Array[String] = [],
-  max_gap_ms? : Int64 = 1000L,
-  start_ms? : Int64 = 0L,
-  end_ms? : Int64 = 9223372036854775807L,
+  unit_labels~ : Array[String] = [],
+  max_gap_ms~ : Int64 = 1000L,
+  start_ms~ : Int64 = 0L,
+  end_ms~ : Int64 = 9223372036854775807L,
 ) -> Result[TelemetryPlot, String] {
   if max_gap_ms <= 0L || start_ms < 0L || end_ms < start_ms {
     return Err("expected max_gap_ms > 0 and 0 <= start_ms <= end_ms")
@@ -73,7 +73,7 @@ pub fn plot_csv(
     Ok(value) => value
     Err(message) => return Err(message)
   }
-  let indices : Array[Int] = []
+  let indices : Array[Int32] = []
   for name in channels {
     let index = match recording.channels.search(name) {
       Some(index) => index

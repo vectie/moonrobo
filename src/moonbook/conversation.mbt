@@ -18,7 +18,7 @@ pub(all) struct MoonBookConversationTurn {
 ///|
 pub(all) struct MoonBookConversationThread {
   thread_id : String
-  turn_count : Int
+  turn_count : Int32
   latest_task_id : String
   turns : Array[MoonBookConversationTurn]
 } derive(Debug, Eq, ToJson, FromJson)
