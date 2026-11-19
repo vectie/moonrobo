@@ -1,0 +1,216 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+let dir = "output/spark-runtime-20261024/precision-scaling-20261028-a"
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(m) && m.get(k) is Some(v) else { fail(k) }
+  v
+}
+
+///|
+fn num(j : Json) -> Double raise {
+  guard j is Number(n, ..) else { fail("number") }
+  n
+}
+
+///|
+fn number(j : Json) -> Double raise {
+  match j {
+    Number(n, ..) => n
+    String(s) => @json.parse(s) |> num
+    _ => fail("numeric memory")
+  }
+}
+
+///|
+async fn read(p : String) -> Json {
+  @json.parse(@fs.read_file(p).text())
+}
+
+///|
+async fn main {
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-operator-179.sock"
+  // Preserve the refused startup as a failed admission, never a measurement.
+  for
+    file in [
+      "protocol.json", "completion.json", "training-guard.json", "training-docker-final.json",
+      "training.stdout.log", "training.stderr.log",
+    ] {
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-mlp-pscale-mlp-native-none-events-a/" +
+        file,
+        dir + "/pscale-mlp-native-none-events-a/" + file,
+      ]),
+      0,
+    )
+  }
+  for
+    (path, name) in [
+      (
+        "fi/cfih7q22udd5ys2gfm7lyy4c57ofhz4idmnoqcomarjztpnvyjvj.py", "smc-bf16-world-forward.py",
+      ),
+      (
+        "yo/cyobhugt56mis7chrcb7j7aiponf3sdlcwzztgo4go6lcyqo5ck7.py", "smc-bf16-world-backward.py",
+      ),
+    ] {
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-shared-bf16-smc-world-bf16-full-a/inductor-cache/" +
+        path,
+        dir + "/" + name,
+      ]),
+      0,
+    )
+  }
+  guard read(dir + "/measurements.json") is Array(records) else {
+    fail("records")
+  }
+  let value = name => {
+    let found = records.filter(r => field(r, "name") == Json(name))
+    guard found is [r] else { fail(name) }
+    num(field(r, "median_ms"))
+  }
+  let block = prefix => (value(prefix + "a") + value(prefix + "b")) / 2.0
+  let nf = block("pscale-native-fp32-off-")
+  let nb = block("pscale-native-bf16-off-")
+  let sf = block("pscale-smc-fp32-off-")
+  let sb = block("pscale-smc-bf16-off-")
+  let eager = block("pscale-smc-eager-bf16-control-")
+  let mlp = block("pscale-smc-mlp-bf16-control-")
+  let mut reserved = 0.0
+  let mut runs = 0
+  let mut min_free = 1.0e30
+  let mut min_available = 1.0e30
+  let mut max_cgroup = 0.0
+  for folder in @fs.readdir(dir) {
+    let p = dir + "/" + folder
+    if @fs.kind(p, follow_symlink=false) != Directory {
+      continue
+    }
+    if !@fs.exists(p + "/result.json") ||
+      !@fs.exists(p + "/training-guard.json") {
+      continue
+    }
+    let g = read(p + "/training-guard.json")
+    assert_eq(field(g, "reason"), Json("completed"))
+    assert_eq(field(g, "error"), Json::null())
+    guard read(p + "/training-docker-final.json")
+      is [
+        { "State": { "OOMKilled": False, "Running": False, "Pid": 0, .. }, .. },
+      ] else {
+      fail("closed jobs only")
+    }
+    guard field(g, "samples") is Array(samples) else { fail("samples") }
+    for s in samples {
+      min_free = min_free.min(number(field(s, "host_free_kib")))
+      min_available = min_available.min(number(field(s, "host_available_kib")))
+      max_cgroup = max_cgroup.max(number(field(s, "cgroup_peak_bytes")))
+    }
+    let r = read(p + "/result.json")
+    let bytes = match r {
+      { "reserved_peak": v, .. } => number(v)
+      { "memory": { "reserved_peak_bytes": v, .. }, .. } => number(v)
+      { "memory": { "reserved_peak": v, .. }, .. } => number(v)
+      _ => fail("allocator peak")
+    }
+    reserved = reserved.max(bytes)
+    runs += 1
+  }
+  let report : Json = {
+    "world_update": {
+      "batch": 2048,
+      "horizon": 8,
+      "adam_updates": 1,
+      "fixed_checkpoint": 60,
+      "warmups_per_block": 3,
+      "steady_per_block": 10,
+      "blocks_per_cell": 2,
+      "profiler": false,
+      "native_fp32_tf32_ms": Json(nf),
+      "smc_fp32_tf32_ms": Json(sf),
+      "native_bf16_ms": Json(nb),
+      "smc_bf16_ms": Json(sb),
+      "native_precision_speedup": Json(nf / nb),
+      "smc_precision_speedup": Json(sf / sb),
+      "fp32_slowdown_percent": Json((nf / sf - 1.0) * 100.0),
+      "bf16_slowdown_percent": Json((nb / sb - 1.0) * 100.0),
+    },
+    "compilation_scope_control": {
+      "precision": "bf16",
+      "original_smc_equations_retained": true,
+      "eager_ms": Json(eager),
+      "mlp_only_compiled_ms": Json(mlp),
+      "original_rollout_compiled_ms": Json(sb),
+      "mlp_compile_observed_saving_ms": Json(eager - mlp),
+      "wider_compile_observed_saving_ms": Json(mlp - sb),
+      "native_faster_than_smc_eager_ms": Json(eager - nb),
+      "limits": "Compile-boundary interventions, not an additive per-operator causal bill. Full-rollout control is the original separately paired same-session baseline. Numerical comparisons remain diagnostic; no promotion.",
+    },
+    "memory": {
+      "successful_gpu_jobs": Json(runs),
+      "max_torch_reserved_gib": Json(reserved / 1073741824.0),
+      "min_sampled_host_free_gib": Json(min_free / 1048576.0),
+      "min_sampled_host_available_gib": Json(min_available / 1048576.0),
+      "max_cgroup_peak_gib": Json(max_cgroup / 1073741824.0),
+      "counter_overlap": "UMA counters overlap; never add these numbers",
+      "guards_changed": false,
+      "oom": false,
+      "one_startup_admission_rejection_retained": true,
+    },
+    "scope": "world precision scaling; actor complete update not rebenchmarked in this investigation",
+    "production_training_changed": false,
+    "strict_numerical_tolerances_changed": false,
+  }
+  @fs.write_file(
+    dir + "/analysis.json",
+    report.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  for
+    (name, command) in [
+      ("final-containers.log", "docker ps --format '{{.Names}} {{.Status}}'"),
+      (
+        "final-gpu.log", "nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv",
+      ),
+      ("final-memory.log", "head -8 /proc/meminfo"),
+    ] {
+    assert_eq(
+      @process.run(
+        "ssh",
+        ["-S", socket, host, command],
+        stdout=@process.redirect_to_file(
+          dir + "/" + name,
+          create_mode=CreateNew,
+        ),
+      ),
+      0,
+    )
+  }
+  assert_eq(
+    @fs.read_file(dir + "/final-containers.log").text().trim().to_owned(),
+    "",
+  )
+  assert_eq(
+    @fs.read_file(dir + "/final-gpu.log").text().trim().to_owned(),
+    "pid, process_name, used_gpu_memory [MiB]",
+  )
+  println(report.stringify(indent=2))
+}

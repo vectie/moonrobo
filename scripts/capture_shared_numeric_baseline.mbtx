@@ -1,0 +1,49 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+/// Archive source text and storage SHA before replacing the local numeric
+/// implementation with canonical shared-library re-exports. This is metadata
+/// capture only: no numerical operation, test or training is executed.
+async fn main {
+  let folder = "docs/migration-baselines/shared-numerics"
+  assert_false(
+    @fs.exists(folder + "/learning-numeric-before-moonnum.json"),
+    msg="refuse to replace the pre-migration source baseline",
+  )
+  @fs.mkdir(folder, recursive=true)
+  let rows : Array[Json] = []
+  for
+    path in [
+      "src/learning_numeric/autodiff.mbt", "src/learning_numeric/network.mbt", "src/learning_numeric/adam.mbt",
+      "src/learning_numeric/numeric_test.mbt", "src/learning_numeric/moon.pkg", "src/learning_numeric/pkg.generated.mbti",
+      "src/learning_balance/heads.mbt",
+    ] {
+    let bytes = @fs.read_file(path).binary()
+    let mut digest = ""
+    for byte in @crypto.sha256(bytes) {
+      digest += byte.to_hex()
+    }
+    rows.push({
+      "path": path.to_json(),
+      "sha256": digest.to_json(),
+      "source_utf8": @utf8.decode(bytes).to_json(),
+    })
+  }
+  let manifest : Json = {
+    "format": "moonrobo.shared-numerics-source-baseline.v1",
+    "reason": "before canonical vectie/moonnum facade and shared linear algebra integration",
+    "entries": rows.to_json(),
+    "executed_numeric_work": false,
+  }
+  @fs.write_file(
+    folder + "/learning-numeric-before-moonnum.json",
+    manifest.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

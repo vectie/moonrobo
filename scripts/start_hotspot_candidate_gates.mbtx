@@ -1,0 +1,39 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, inspection] && ["true", "false"].contains(inspection) else {
+    fail("fixed pre-step baseline: true|false")
+  }
+  let base = "/home/wlc004s/moonrobo/private/hotspot-optimization-20261025-b"
+  let old = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+  async fn run(label : String, script : String, args : Array[String]) -> Unit {
+    println("Starting " + label)
+    guard @process.run("/home/wlc004s/moonrobo/toolchain/bin/moon", ["run", "--target", "native", script, "--", ..args],
+      stdout=@process.redirect_to_file(base + "/gates-final-" + label + ".stdout.log", create_mode=CreateNew),
+      stderr=@process.redirect_to_file(base + "/gates-final-" + label + ".stderr.log", create_mode=CreateNew)) == 0 else {
+      fail(label + " failed; stop and retain evidence; no guard or tolerance change")
+    }
+    println("Completed " + label)
+  }
+  guard !@fs.exists(base + "/numeric-gate-unused-v2") else { fail("fresh gate staging required") }
+  guard @process.run("cp", [base + "/numeric-gate", base + "/numeric-gate-unused-v2"]) == 0 else { fail("preserve v2 binary") }
+  run("fixture-final", base + "/update_hotspot_numeric_fixture_v3.mbtx", [])
+  run("build-final", base + "/build_hotspot_candidates_v2.mbtx", ["gate-build-final"])
+  run("closed-build-pages", old + "/advise_hotspot_recent_cache_e.mbtx", ["--host-build", "cache-hotspot-final-numeric-build-20261026-a.json"])
+  run("closed-image-pages", old + "/advise_closed_smc_image_pages_f.mbtx", ["--advise", "cache-hotspot-before-numeric-20261026-a.json"])
+  run("freeze", base + "/prepare_hotspot_candidates.mbtx", ["gate", "bulk", inspection])
+  for mode in ["layernorm-unit", "layernorm", "cross", "reference_fk-gather", "reference_fk"] {
+    run(mode, base + "/run_hotspot_pairs_v4.mbtx", [
+      "--numeric-gate", base + "/spec-gate.json",
+      "/home/wlc004s/moonrobo/runs/hotspot-numeric-" + mode + "-20261025-a", mode,
+    ])
+  }
+  println("All five GPU gate processes passed; throughput still requires separate ABBA")
+}

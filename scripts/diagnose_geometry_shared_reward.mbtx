@@ -1,0 +1,126 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let history = @fs.read_file("scripts/reclaim_geometry_history.mbtx").text()
+  let lines = history
+    .split("\n")
+    .filter(x => x.contains("let names=["))
+    .to_array()
+  assert_eq(lines.length(), 1)
+  let cleanup = history
+    .replace_all(
+      old=lines[0].to_owned(),
+      new="    #| let names=[\"geometry-math-native-gate-a\",\"geometry-math-native-gate-b\",\"geometry-math-native-gate-f\",\"geometry-math-reference-gate-a\",\"geometry-math-reference-gate-h\",\"geometry-math-reference-gate-n\"]",
+    )
+    .replace_all(old="history_b", new="early_math_a")
+    .replace_all(old="history-advice-b", new="early-math-advice-a")
+  @fs.write_file(
+    out + "/reclaim_early_math_a.mbtx",
+    cleanup,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("moon", [
+      "run",
+      "--target",
+      "native",
+      out + "/reclaim_early_math_a.mbtx",
+    ]),
+    0,
+  )
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-math-179.sock"
+  let runner = @fs.read_file(out + "/run_geometry_math_gate_n.mbtx")
+    .text()
+    .replace_all(
+      old="geometry_training_reference_n.py",
+      new="geometry_training_reference_p.py",
+    )
+    .replace_all(
+      old="run_geometry_math_gate_n.mbtx",
+      new="run_geometry_math_gate_p.mbtx",
+    )
+    .replace_all(
+      old="hotspot-shared-geometry-math-native-gate-l",
+      new="hotspot-shared-geometry-math-native-gate-o",
+    )
+    .replace_all(
+      old="  e[\"GEOMETRY_CAPTURE_CODE\"]=\"1\"",
+      new="  e[\"GEOMETRY_CAPTURE_CODE\"]=\"1\"\n  e[\"GEOMETRY_SHARED_REWARD_CONTROL\"]=\"/workspace/moonrobo/runs/hotspot-mlp-geometry-world-reward-graph-export-b/reward\"",
+    )
+  for
+    (name, code) in [
+      ("run_geometry_math_gate_p.mbtx", runner),
+      (
+        "geometry_training_reference_p.py",
+        @fs.read_file(
+          "providers/motion_learning/geometry_training_reference.py",
+        ).text(),
+      ),
+      (
+        "geometry_shared_reward_control_a.py",
+        @fs.read_file(
+          "providers/motion_learning/geometry_shared_reward_control.py",
+        ).text(),
+      ),
+    ] {
+    @fs.write_file(out + "/" + name, code, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        out + "/" + name,
+        host + ":" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  let folder = out + "/geometry-math-reference-gate-p"
+  @fs.mkdir(folder)
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      socket,
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/run_geometry_math_gate_p.mbtx -- train smc off 1 geometry-math-reference-gate-p bf16-full",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "compute-completed.json", "completion.json", "training-guard.json",
+      "training.stdout.log", "training.stderr.log",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-shared-geometry-math-reference-gate-p/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(status, 0)
+}

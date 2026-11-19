@@ -1,0 +1,60 @@
+///|
+async fn actor_head_probe(learner : @gpu.Learner, batch : @gpu.PolicyBatch, fixture : SharedFixture) -> @gpu.PolicyMetrics {
+  let source = "/workspace/moonrobo/runs/hotspot-shared-actor-boundary-smc-b"
+  let output = @env.get_env_var("MOONROBO_SHARED_OUTPUT").unwrap()
+  let manifest : Map[String, Json] = @json.from_json(@json.parse(@fs.read_file(source+"/boundaries.json").text()))
+  guard manifest["records"] is Array(rows) else {fail("reference records")}
+  for row in rows {
+    guard row is {"blob":Object(blob),..} else {fail("reference blob")}
+    for key in ["count","byte_length"] {
+      guard blob[key] is Number(n,..) && n>=0.0 && n<=134217728.0 && n.to_int64().to_double()==n else {fail("bounded exact reference count")}
+      blob[key]=Json(n.to_int64().to_string())
+    }
+  }
+  let entries : Array[SharedTensor] = @json.from_json(manifest["records"])
+  let input = { ..fixture, records: entries }
+  let backend=learner.backend
+  let arrays : Array[Array[@tensor.Tensor]] = []
+  for name in ["p","r","v","w","q","qd","action"] {
+    let parts=[]
+    for t in 0..<32 { parts.push(shared_read(source,input,backend,"step-\{t}-\{name}")) }
+    arrays.push(parts)
+  }
+  let leaf = (value : @tensor.Tensor) => backend.from_values(value.shape(),value.values(),cuda_device=0,dtype=Float32,requires_grad=true)
+  let ts=arrays.map(a=>leaf(backend.concat(a)))
+  let state : @geometry.State = {p:ts[0],rotation:ts[1],v:ts[2],w:ts[3],q:ts[4],qd:ts[5]}
+  let previous=leaf(backend.concat([batch.previous,..arrays[6][0:31]]))
+  let refs=batch.references[1:33].to_owned()
+  let reference : @geometry.State = {
+    p:backend.concat(refs.map(s=>s.p)),rotation:backend.concat(refs.map(s=>s.rotation)),
+    v:backend.concat(refs.map(s=>s.v)),w:backend.concat(refs.map(s=>s.w)),
+    q:backend.concat(refs.map(s=>s.q)),qd:backend.concat(refs.map(s=>s.qd)),
+  }
+  let tracking=learner.context.tracking_geometry_cached(state,reference,batch.reference_fk.map(t=>t.narrow(0,1,32).reshape([-1,learner.context.reference_body_width()])))
+  let reward=tracking.reward(ts[6],previous)
+  let failure=learner.context.soft_failure(state,reference)
+  let xi_n=batch.xi.normalize_xi_smc()
+  let features=tracking.narrow(31*4096,4096).critic_features(xi_n)
+  let tail=learner.critic.forward(backend.concat([features,batch.goals[32]],axis=-1),frozen_net=learner.critic.net.frozen())
+  let records=[]
+  for (name,t) in [("reward",reward),("failure",failure),("tail",tail),("tail-features",features)] {
+    records.push(shared_write(output,"head-"+name,t))
+  }
+  reward.sum().backward(retain_graph=true)
+  for i,name in ["p","r","v","w","q","qd","action"] {
+    records.push(shared_write(output,"head-reward-"+name,ts[i].gradient()))
+    ts[i].zero_gradient()
+  }
+  records.push(shared_write(output,"head-reward-previous",previous.gradient()))
+  failure.sum().backward(retain_graph=true)
+  for (name,t) in [("p",ts[0]),("r",ts[1])] {
+    records.push(shared_write(output,"head-failure-"+name,t.gradient()))
+    t.zero_gradient()
+  }
+  tail.sum().backward()
+  for i,name in ["p","r","v","w","q","qd"] {
+    records.push(shared_write(output,"head-tail-"+name,ts[i].gradient().narrow(0,31*4096,4096)))
+  }
+  shared_json(output+"/head.json",{"records":Json(records),"diagnostic_only":true,"cotangent":"ones independently for reward, soft failure, tail; no policy or optimizer update"})
+  {policy_loss:0.0,critic_loss:0.0,critic_loss_last:0.0,imagined_reward:0.0,imagined_survival:0.0,imagined_steps:0,critic_updates:0}
+}

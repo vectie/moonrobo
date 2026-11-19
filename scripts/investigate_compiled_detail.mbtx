@@ -1,0 +1,99 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/compiled-vjp-detail-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  guard @env.args() is [_, operation, label] &&
+    ["prepare", "run"].contains(operation) &&
+    label.all(c => c is ('a'..<='z' | '0'..<='9' | '-')) else {
+    fail("prepare/run fresh-label")
+  }
+  if operation == "prepare" {
+    if !@fs.exists(out) {
+      @fs.mkdir(out)
+    }
+    let runner = @fs.read_file(
+        "output/spark-runtime-20261024/compiled-mlp-20261028-a/run_compiled_contracts_final2.mbtx",
+      )
+      .text()
+      .replace_all(
+        old="run_compiled_contracts_final2.mbtx",
+        new="run_compiled_detail_b.mbtx",
+      )
+      .replace_all(
+        old="compiled_mlp_reference_a.py",
+        new="compiled_mlp_detail_b.py",
+      )
+    @fs.write_file(
+      out + "/run_compiled_detail_b.mbtx",
+      runner,
+      create_mode=CreateNew,
+    )
+    for
+      (source, target) in [
+        (out + "/run_compiled_detail_b.mbtx", "run_compiled_detail_b.mbtx"),
+        (
+          "providers/motion_learning/compiled_mlp_detail.py", "compiled_mlp_detail_b.py",
+        ),
+      ] {
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          source,
+          host + ":" + base + "/" + target,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/" + label
+  @fs.mkdir(folder)
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/run_compiled_detail_b.mbtx -- smc bf16 0 " +
+      label,
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    file in [
+      "result.json", "protocol.json", "completion.json", "training-guard.json", "training-docker-final.json",
+      "training.stdout.log", "training.stderr.log", "autotune-seed.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host + ":/home/wlc004s/moonrobo/runs/hotspot-mlp-" + label + "/" + file,
+        folder + "/" + file,
+      ]),
+    )
+  }
+  println(label + " exit=" + code.to_string())
+  assert_eq(code, 0)
+}

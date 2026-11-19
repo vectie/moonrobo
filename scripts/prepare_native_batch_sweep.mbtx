@@ -1,0 +1,510 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+// CPU-only configuration preparation and synchronized phase-time reporting.
+// No trainer, GPU, shell, or network invocation is performed by this script.
+let cases : Array[(String, Int32)] = [
+  ("micro16", 16),
+  ("micro32", 32),
+  ("micro64", 64),
+  ("full128", 0),
+]
+
+///|
+fn field(value : Json, name : String) -> Json raise {
+  guard value is Object(fields) && fields.get(name) is Some(result) else {
+    fail("missing JSON field: " + name)
+  }
+  result
+}
+
+///|
+fn integer(value : Json) -> Int64 raise {
+  let result = match value {
+    String(text) => @string.parse_int64(text)
+    Number(n, ..) => {
+      guard n >= 0.0 && n <= 9007199254740991.0 && n.to_int64().to_double() == n else {
+        fail("expected exact integer")
+      }
+      n.to_int64()
+    }
+    _ => fail("expected integer")
+  }
+  guard result >= 0L else { fail("expected nonnegative integer") }
+  result
+}
+
+///|
+fn validate_base(base : Json) -> Unit raise {
+  for
+    (key, expected) in [
+      ("backend", Json("isaac")),
+      ("device", Json("cuda:0")),
+      ("precision", Json("float32")),
+      ("amp", Json("none")),
+      ("observation_mode", Json("smc")),
+      ("self_collisions", Json(false)),
+      ("num_envs", Json(128)),
+      ("wm_batch", Json(128)),
+      ("pi_batch", Json(128)),
+      ("wm_microbatch", Json(16)),
+      ("pi_microbatch", Json(16)),
+      ("buffer_steps", Json(256)),
+      ("hist", Json(10)),
+      ("goal_frames", Json(10)),
+      ("horizon", Json(32)),
+      ("wm_window", Json(8)),
+      ("wm_batches", Json(10)),
+      ("wm_only_iters", Json(0)),
+      ("critic_epochs", Json(5)),
+      ("critic_minibatches", Json(4)),
+      ("iterations", Json(1)),
+      ("checkpoint_every", Json(1)),
+      ("seed", Json(179)),
+      ("reference_storage", Json("mmap")),
+      ("wm_hidden", Json([2048, 2048, 2048])),
+      ("pi_hidden", Json([2048, 1024, 512, 256])),
+      ("critic_hidden", Json([256, 128])),
+    ] {
+    guard field(base, key) == expected else {
+      fail("base differs from the N128 B128 SMC99 scale gate: " + key)
+    }
+  }
+}
+
+///|
+fn make_config(base : Json, micro : Int32) -> Json raise {
+  validate_base(base)
+  guard [16, 32, 64, 0].contains(micro) else { fail("unsupported microbatch") }
+  guard base is Object(original) else { fail("expected base object") }
+  let result : Map[String, Json] = Map([])
+  for name, value in original {
+    result[name] = value
+  }
+  result["profile"] = Json("native-n128-b128-throughput-sweep")
+  result["scope"] = Json(
+    "N128-B128-SMC99-collision-off-TF32-five-iteration-throughput-tuning; not-paper-method-or-scale-or-convergence-or-numerical-equivalence",
+  )
+  result["wm_microbatch"] = Json(micro)
+  result["pi_microbatch"] = Json(micro)
+  result["iterations"] = Json(5)
+  result["checkpoint_every"] = Json(5)
+  result["allow_tf32"] = Json(true)
+  result["motion_cache_dir"] = Json("/motion-cache")
+  Json::object(result)
+}
+
+///|
+fn differences(before : Json, after : Json) -> Array[Json] raise {
+  guard before is Object(old) && after is Object(new) else {
+    fail("difference inputs must be objects")
+  }
+  let changes : Array[Json] = []
+  for key, value in new {
+    if old.get(key) != Some(value) {
+      changes.push({
+        "field": Json(key),
+        "before_present": Json(old.contains(key)),
+        "before": old.get(key).unwrap_or(Json::null()),
+        "after": value,
+      })
+    }
+  }
+  for key, _ in old {
+    guard new.contains(key) else { fail("configuration field removed: " + key) }
+  }
+  changes
+}
+
+///|
+async fn read_json(path : String, limit : Int64) -> Json {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected regular JSON file: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= limit else { fail("JSON exceeds bound: " + path) }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else { fail("JSON changed while reading: " + path) }
+  @json.parse(@utf8.decode(bytes))
+}
+
+///|
+async fn write_json(path : String, value : Json) -> Unit {
+  @fs.write_file(
+    path,
+    value.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+}
+
+///|
+async fn prepare(base_path : String, root : String) -> Unit {
+  let base = read_json(base_path, 1048576L)
+  validate_base(base)
+  // mkdir without recursive=true rejects existing files/directories/symlinks.
+  @fs.mkdir(root)
+  @fs.mkdir(root + "/cases")
+  let rows : Array[Json] = []
+  let first = make_config(base, 16)
+  for (name, micro) in cases {
+    let path = root + "/cases/" + name
+    @fs.mkdir(path)
+    let config = make_config(base, micro)
+    write_json(path + "/config.json", config)
+    rows.push({
+      "case": Json(name),
+      "config_relative_path": Json("cases/" + name + "/config.json"),
+      "runtime_config_path": Json("/gate/cases/" + name + "/config.json"),
+      "runtime_train_output": Json("/gate/cases/" + name + "/train"),
+      "effective_logical_batch": 128,
+      "microbatch_setting": Json(micro),
+      "effective_chunk_rows": Json(if micro == 0 { 128 } else { micro }),
+      "chunks_per_world_update": Json(if micro == 0 { 1 } else { 128 / micro }),
+      "chunks_per_actor_update": Json(if micro == 0 { 1 } else { 128 / micro }),
+      "changed_fields_from_base": Json(differences(base, config)),
+      "changed_fields_from_micro16": Json(differences(first, config)),
+    })
+  }
+  write_json(root + "/manifest.json", {
+    "format": "moonrobo.native-batch-throughput-sweep.v1",
+    "base_path": Json(base_path),
+    "base_config": base,
+    "cases": Json(rows),
+    "scope": "SMC99 collision-off N128 B128 TF32 throughput tuning only",
+    "same_seed": 179,
+    "iterations": 5,
+    "measured_iterations": [2, 3, 4, 5],
+    "checkpoint_every": 5,
+    "required_trainer_flag": "--cuda-memory-telemetry",
+    "run_order": ["micro16", "micro32", "micro64", "full128"],
+    "launch_policy": "one case at a time, fresh process/output; independent current memory admission and external cgroup/no-swap limits required",
+    "memory_limits_or_admission_modified": false,
+    "numerical_equivalence_verified": false,
+    "gpu_utilization_measured": false,
+    "source_hashes": "not computed by this preparation tool; launcher must independently pin trainer/config/assets",
+  })
+  println("Prepared four CPU-only case configs: " + root)
+}
+
+///|
+fn sample_key(phase : String, iteration : Int64) -> String {
+  phase + ":" + iteration.to_string()
+}
+
+///|
+fn phase_times(diagnostic : Json) -> Json raise {
+  guard field(diagnostic, "format") ==
+    Json("moonrobo.cuda-training-memory-report.v1") &&
+    field(diagnostic, "status") == Json("complete") &&
+    field(diagnostic, "error") == Json::null() &&
+    integer(field(diagnostic, "omitted_sample_count")) == 0L &&
+    field(field(diagnostic, "options"), "synchronize_each_sample") == Json(true) &&
+    field(diagnostic, "samples") is Array(samples) else {
+    fail("complete synchronized telemetry with all samples is required")
+  }
+  let times : Map[String, Int64] = Map([])
+  let mut previous_end = 0L
+  for i, sample in samples {
+    guard field(sample, "phase") is String(phase) &&
+      integer(field(sample, "sequence")) == i.to_int64() else {
+      fail("invalid telemetry phase/sequence")
+    }
+    let iteration = integer(field(sample, "iteration"))
+    let begin = integer(field(sample, "sample_begin_unix_ms"))
+    let end = integer(field(sample, "sample_end_unix_ms"))
+    let key = sample_key(phase, iteration)
+    guard begin >= previous_end && end >= begin && !times.contains(key) else {
+      fail("nonmonotonic or duplicate telemetry sample")
+    }
+    times[key] = end
+    previous_end = end
+  }
+  fn duration(from : String, to : String) -> Int64 raise {
+    guard times.get(from) is Some(start) &&
+      times.get(to) is Some(end) &&
+      end >= start else {
+      fail("missing or invalid phase boundaries: " + from + " -> " + to)
+    }
+    end - start
+  }
+  let measured : Array[Json] = []
+  let mut world_sum = 0L
+  let mut policy_sum = 0L
+  let mut collection_sum = 0L
+  for iteration in 1L..<=5L {
+    let collect = duration(
+      if iteration == 1L {
+        sample_key("warmup_complete", 0L)
+      } else {
+        sample_key("actor_critic_complete", iteration - 1L)
+      },
+      sample_key("collection_complete", iteration),
+    )
+    let world = duration(
+      sample_key("collection_complete", iteration),
+      sample_key("world_updates_complete", iteration),
+    )
+    let policy = duration(
+      sample_key("world_updates_complete", iteration),
+      sample_key("actor_critic_complete", iteration),
+    )
+    measured.push({
+      "iteration": Json(iteration),
+      "included_in_steady_phase_summary": Json(iteration >= 2L),
+      "collection_and_between_iteration_overhead_ms": Json(collect),
+      "world_ten_updates_ms": Json(world),
+      "actor_and_twenty_critic_updates_ms": Json(policy),
+    })
+    if iteration >= 2L {
+      collection_sum += collect
+      world_sum += world
+      policy_sum += policy
+    }
+  }
+  {
+    "phase_rows": Json(measured),
+    "measured_iteration_count": 4,
+    "world_mean_ms": Json(world_sum.to_double() / 4.0),
+    "actor_critic_mean_ms": Json(policy_sum.to_double() / 4.0),
+    "collection_and_overhead_mean_ms": Json(collection_sum.to_double() / 4.0),
+    "world_fit_transition_slots_per_second": if world_sum > 0L {
+      Json(4.0 * 10.0 * 128.0 * 8.0 * 1000.0 / world_sum.to_double())
+    } else {
+      Json::null()
+    },
+    "policy_imagined_transitions_per_second_including_critic": if policy_sum >
+      0L {
+      Json(4.0 * 128.0 * 32.0 * 1000.0 / policy_sum.to_double())
+    } else {
+      Json::null()
+    },
+    "warmup_ms": Json(duration("window_start:0", "warmup_complete:0")),
+    "checkpoint_ms": Json(
+      duration("checkpoint_begin:5", "checkpoint_complete:5"),
+    ),
+    "initialization_and_dataset_cache_ms": Json::null(),
+    "initialization_and_dataset_cache_note": "not timed by CUDA telemetry; occurred before window_start, excluded from phase means",
+    "timing_method": "difference of synchronized sample_end_unix_ms; includes ending boundary synchronization and telemetry host sampling, not pure GPU kernel time",
+    "iteration_one_note": "recorded separately, excluded from means; four later iterations do not prove performance stability",
+    "allocated_window_peak_bytes": field(
+      diagnostic, "allocated_window_peak_bytes",
+    ),
+    "reserved_window_peak_bytes": field(
+      diagnostic, "reserved_window_peak_bytes",
+    ),
+    "minimum_observed_cuda_free_bytes": field(
+      diagnostic, "minimum_observed_cuda_free_bytes",
+    ),
+  }
+}
+
+///|
+async fn report(root : String, output : String) -> Unit {
+  let manifest = read_json(root + "/manifest.json", 1048576L)
+  guard field(manifest, "format") ==
+    Json("moonrobo.native-batch-throughput-sweep.v1") else {
+    fail("unexpected sweep manifest")
+  }
+  let base = field(manifest, "base_config")
+  let rows : Array[Json] = []
+  let mut passed = 0
+  for (name, micro) in cases {
+    let path = root + "/cases/" + name
+    let result : Json = try {
+      let config = read_json(path + "/config.json", 1048576L)
+      guard config == make_config(base, micro) else {
+        fail("generated config differs from manifest base")
+      }
+      let training = read_json(path + "/train/report.json", 8388608L)
+      guard field(training, "format") ==
+        Json("moonrobo.native-tensor-training-report.v1") &&
+        field(training, "training_complete_for_requested_iterations") ==
+        Json(true) &&
+        integer(field(training, "iteration")) == 5L &&
+        field(training, "distributed") == Json(false) &&
+        field(field(training, "identity"), "config") == config else {
+        fail("training result is incomplete or does not match generated case")
+      }
+      let fp32 = field(training, "cuda_fp32_policy")
+      guard field(fp32, "allow_tf32") == Json(true) &&
+        field(fp32, "matmul_precision") == Json("TF32") &&
+        field(fp32, "matmul_permission") == Json("LibraryMayUse") &&
+        field(fp32, "nvidia_tf32_override") == Json("unset") &&
+        field(fp32, "torch_allow_tf32_cublas_override") == Json("unset") else {
+        fail("TF32 matmul permission is not confirmed for this case")
+      }
+      let timing = phase_times(field(training, "cuda_memory_telemetry"))
+      passed += 1
+      {
+        "case": Json(name),
+        "status": "complete",
+        "cuda_fp32_policy": fp32,
+        "timing": timing,
+      }
+    } catch {
+      error =>
+        {
+          "case": Json(name),
+          "status": "unavailable_or_invalid",
+          "error": Json(error.to_string()),
+        }
+    }
+    rows.push(result)
+  }
+  write_json(output, {
+    "format": "moonrobo.native-batch-throughput-report.v1",
+    "sweep_root": Json(root),
+    "valid_case_count": Json(passed),
+    "cases": Json(rows),
+    "numerical_equivalence_verified": false,
+    "gpu_utilization_measured": false,
+    "scope": "short single-seed SMC99 collision-off N128 B128 TF32 phase timing; no convergence, paper-method, or OOM safety conclusion",
+    "external_evidence_required": "container exit/OOM and peak cgroup memory, live memory admission, asset/runtime hashes; GPU utilization and interconnect usage require separate measurements",
+  })
+  println(
+    "Recorded " + passed.to_string() + "/4 complete timing cases: " + output,
+  )
+}
+
+///|
+fn fixture_sample(
+  samples : Array[Json],
+  phase : String,
+  iteration : Int32,
+  timestamp : Int32,
+) -> Unit {
+  samples.push({
+    "phase": Json(phase),
+    "iteration": Json(iteration),
+    "sequence": Json(samples.length()),
+    "sample_begin_unix_ms": Json(timestamp),
+    "sample_end_unix_ms": Json(timestamp),
+  })
+}
+
+///|
+fn fixture_telemetry() -> Json {
+  let samples : Array[Json] = []
+  fixture_sample(
+    samples, "initialization_and_restore_complete_before_reset", 0, 90,
+  )
+  fixture_sample(samples, "window_start", 0, 100)
+  fixture_sample(samples, "warmup_complete", 0, 110)
+  for iteration in 1..<=5 {
+    let base = 100 + iteration * 100
+    fixture_sample(samples, "collection_complete", iteration, base + 10)
+    fixture_sample(
+      samples,
+      "world_updates_complete",
+      iteration,
+      base + (if iteration == 1 { 40 } else { 20 }),
+    )
+    fixture_sample(
+      samples,
+      "actor_critic_complete",
+      iteration,
+      base + (if iteration == 1 { 80 } else { 30 }),
+    )
+  }
+  fixture_sample(samples, "checkpoint_begin", 5, 640)
+  fixture_sample(samples, "checkpoint_complete", 5, 650)
+  fixture_sample(samples, "training_and_checkpoint_complete", 5, 660)
+  {
+    "format": "moonrobo.cuda-training-memory-report.v1",
+    "status": "complete",
+    "error": Json::null(),
+    "omitted_sample_count": "0",
+    "options": { "synchronize_each_sample": true },
+    "samples": Json(samples),
+    "allocated_window_peak_bytes": "1024",
+    "reserved_window_peak_bytes": "2048",
+    "minimum_observed_cuda_free_bytes": "4096",
+  }
+}
+
+///|
+fn self_test(base : Json) -> Unit raise {
+  let original = base.stringify()
+  let first = make_config(base, 16)
+  for (_, micro) in cases {
+    let config = make_config(base, micro)
+    let changes = differences(first, config)
+    assert_eq(changes.length(), if micro == 16 { 0 } else { 2 })
+    for change in changes {
+      assert_true(
+        [Json("wm_microbatch"), Json("pi_microbatch")].contains(
+          field(change, "field"),
+        ),
+      )
+    }
+    assert_eq(field(config, "wm_batch"), Json(128))
+    assert_eq(field(config, "pi_batch"), Json(128))
+    assert_eq(field(config, "allow_tf32"), Json(true))
+    assert_eq(field(config, "iterations"), Json(5))
+  }
+  assert_eq(base.stringify(), original)
+  try make_config(base, 17) catch {
+    _ => ()
+  } noraise {
+    _ => fail("invalid microbatch accepted")
+  }
+  try phase_times(Json::null()) catch {
+    _ => ()
+  } noraise {
+    _ => fail("missing telemetry accepted")
+  }
+  let timing = phase_times(fixture_telemetry())
+  assert_eq(field(timing, "world_mean_ms"), Json(10))
+  assert_eq(field(timing, "actor_critic_mean_ms"), Json(10))
+  assert_eq(field(timing, "warmup_ms"), Json(10L))
+  assert_eq(field(timing, "checkpoint_ms"), Json(10L))
+  assert_eq(
+    field(timing, "world_fit_transition_slots_per_second"),
+    Json(1024000),
+  )
+  assert_eq(
+    field(timing, "policy_imagined_transitions_per_second_including_critic"),
+    Json(409600),
+  )
+  guard fixture_telemetry() is Object(broken) else {
+    fail("fixture object missing")
+  }
+  broken["omitted_sample_count"] = Json("1")
+  try phase_times(Json::object(broken)) catch {
+    _ => ()
+  } noraise {
+    _ => fail("omitted telemetry accepted")
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  match args[1:].to_owned() {
+    ["prepare", base, root] => prepare(base, root)
+    ["report", root, output] => report(root, output)
+    ["--self-test"] => {
+      self_test(
+        read_json(
+          "examples/learning/g1-native-tensor-apic-n128-scale-gate.json", 1048576L,
+        ),
+      )
+      println("batch-sweep self-test passed")
+    }
+    _ =>
+      fail(
+        "usage: prepare_native_batch_sweep <prepare BASE_JSON FRESH_ROOT | report ROOT FRESH_REPORT_JSON | --self-test>",
+      )
+  }
+}

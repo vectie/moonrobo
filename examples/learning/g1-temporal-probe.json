@@ -1,0 +1,18 @@
+{
+  "policy_seeds": [0, 1, 2],
+  "reset_seeds": [4500, 4501],
+  "case_ids": ["stand", "joint-sines-high", "joint-sines-medium", "joint-sines-low"],
+  "snapshot_steps": [0, 100, 250],
+  "multipliers": [-0.1, 0.0, 0.1, 1.0],
+  "centered_scale": 0.1,
+  "prediction_steps": [1, 8, 32],
+  "horizon": 32,
+  "gamma": 0.99,
+  "actor_learning_rate": 0.0001,
+  "actor_critic_bootstrap": false,
+  "target_height_m": 0.783675,
+  "fall_height_m": 0.35,
+  "fall_upright_z": 0.5,
+  "cpu_threads": 2,
+  "scope": "Frame and preview input groups, all three policy seeds. Training-only independent joint-sine family and stand control; no canonical sway/wave origins or policy selection. Fresh Adam on the captured origin batch versus each actual selected refinement parameter delta. Same incoming causal history and absolute reference phase on all branches. Local H32 and full remaining episode reward, no critic bootstrap. Model error measured on replayed actual controls, with absolute XY excluded."
+}

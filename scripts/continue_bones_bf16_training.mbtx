@@ -1,0 +1,190 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn logged(root : String, stage : String, args : Array[String]) -> Unit {
+  guard args is [program, .. tail] else { fail("empty command") }
+  let code = @process.run(
+    program,
+    tail.to_owned(),
+    stdout=@process.redirect_to_file(
+      root + "/" + stage + ".stdout",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      root + "/" + stage + ".stderr",
+      create_mode=CreateNew,
+    ),
+  )
+  @fs.write_file(
+    root + "/" + stage + ".receipt.json",
+    ({ "stage": Json(stage), "exit": Json(code), "argv": Json(args) } : Json).stringify(
+      indent=2,
+    ),
+    create_mode=CreateNew,
+    sync=Full,
+  )
+  guard code == 0 else { fail(stage + " failed; refusing promotion") }
+}
+
+///|
+async fn idle(root : String, stage : String) -> Unit {
+  logged(root, stage, [
+    "nvidia-smi", "--query-compute-apps=pid", "--format=csv,noheader,nounits",
+  ])
+  guard @fs.read_file(root + "/" + stage + ".stdout").text().trim() == "" else {
+    fail("another GPU process is active")
+  }
+}
+
+///|
+fn invoke(
+  root : String,
+  data : String,
+  stage : String,
+  detached : Bool,
+  command : Array[String],
+) -> Array[String] {
+  let r = ["docker", "run"]
+  if detached {
+    r.push("--detach")
+  }
+  r.append([
+    "--name",
+    stage,
+    "--gpus",
+    "all",
+    "--network",
+    "none",
+    "--memory",
+    "100g",
+    "--memory-swap",
+    "100g",
+    "--pids-limit",
+    "512",
+    "--cpus",
+    "8",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--user",
+    "1000:1000",
+    "-e",
+    "OMP_NUM_THREADS=1",
+    "-e",
+    "HOME=/tmp",
+    "-v",
+    root + ":/prod:ro",
+    "-v",
+    root + "/out:/out",
+    "-v",
+    data + "/aligned-g1-v1:/bones:ro",
+    "-v",
+    data + "/filter-reference-cache:/motion-cache",
+    "-v",
+    root + "/run-data/apic-runtime:/opt/moonrobo/apic-runtime:ro",
+    "--entrypoint",
+    "/prod/trainer-a",
+    "sha256:00b6f7b8ec50afe93b1b975721411f5818c1f5b591b08b2c5b68eec7807ed688",
+  ])
+  r.append(command)
+  r
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, root, data, initial] &&
+    root.has_prefix("/") &&
+    data.has_prefix("/") &&
+    !initial.has_prefix("-") else {
+    fail("STAGING_ROOT BONES_ROOT FIRST_CONTAINER")
+  }
+  // Adopt only stage A, already launched by this task. Never retry a failed
+  // gate or promote a stale checkpoint found in another output directory.
+  logged(root, "gate-a-wait", ["docker", "wait", initial])
+  guard @fs.read_file(root + "/gate-a-wait.stdout").text().trim() == "0" else {
+    fail("first training process failed")
+  }
+  let dst = root + "/out/verify-a"
+  for name in ["current.json", "report.json"] {
+    @fs.write_file(
+      root + "/gate-a-" + name,
+      @fs.read_file(dst + "/" + name).binary(),
+      create_mode=CreateNew,
+      sync=Full,
+    )
+  }
+  let common = [
+    "--tensor-library", "/prod/run-data/private/shared-compute-20261026-a/libmoonrobo_geometry_math_v4.so",
+    "--manifest", "/bones/manifest.paper-partial.json", "--library", "/opt/isaaclab-venv/lib/python3.12/site-packages/mujoco/libmujoco.so.3.15.0",
+    "--scene", "/prod/run-data/data/g1_description-paper-self-collision/scene.xml",
+    "--physics-library", "/opt/moonrobo/apic-runtime/libmoonrobo_aligned_apic.so",
+    "--physics-artifact", "/prod/run-data/runs/apic-paper-n256-20261024-c/g1-paper-n256-self-collision-apic/manifest.json",
+  ]
+  let train = [
+    "--checkpoint-format", "stream-v2", "--cuda-memory-telemetry", "--compiled-bundle",
+    "/prod/bundle",
+  ]
+  let check = root + "/audit-bf16"
+  idle(root, "before-resume-gpu")
+  logged(
+    root,
+    "resume",
+    invoke(
+      root,
+      data,
+      "mr-bf16-resume-20261109",
+      false,
+      [
+        "train", ..common, ..train, "--config", "/prod/gate.json", "--output", "/out/verify-a",
+        "--resume", "/out/verify-a/current.json", "--iterations", "4",
+      ],
+    ),
+  )
+  logged(root, "resume-audit", [
+    check,
+    "resume",
+    root + "/gate-a-report.json",
+    dst + "/report.json",
+  ])
+  logged(root, "panel", [check, "panel"])
+  let panel = @fs.read_file(root + "/panel.stdout").text().trim().to_owned()
+  idle(root, "before-eval-gpu")
+  logged(
+    root,
+    "eval",
+    invoke(
+      root,
+      data,
+      "mr-bf16-eval-20261109",
+      false,
+      [
+        "evaluate", ..common, "--config", "/prod/gate.json", "--checkpoint", "/out/verify-a/current.json",
+        "--output", "/out/panel.json", "--clip-indices", panel,
+      ],
+    ),
+  )
+  logged(root, "eval-audit", [check, "evaluation", root + "/out/panel.json"])
+  idle(root, "before-long-gpu")
+  logged(
+    root,
+    "long",
+    invoke(
+      root,
+      data,
+      "mr-bf16-long-20261109",
+      true,
+      [
+        "train", ..common, ..train, "--config", "/prod/config.json", "--output",
+        "/out/long",
+      ],
+    ),
+  )
+}

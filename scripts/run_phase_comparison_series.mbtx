@@ -1,0 +1,135 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+let base = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+
+///|
+let moon = "/home/wlc004s/moonrobo/toolchain/bin/moon"
+
+///|
+async fn call(script : String, arguments : Array[String], log : String) -> Unit {
+  let code = @async.with_timeout(1900000, () => {
+    @process.run(
+      moon,
+      ["run", "--target", "native", script, "--"] + arguments,
+      stdout=@process.redirect_to_file(
+        base + "/" + log + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        base + "/" + log + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+  })
+  guard code == 0 else {
+    fail("step failed; preserved " + log + ".stdout/stderr.log")
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, series] &&
+    [
+      "native-phase", "phase-controls", "actor-controls", "actor-controls-after-admission",
+    ].contains(series) else {
+    fail(
+      "native-phase|phase-controls|actor-controls; fresh scopes, no automatic retry",
+    )
+  }
+  let jobs = match series {
+    "native-phase" =>
+      [
+        ("worldtracef", "world", "aten", "nsys", "native"),
+        ("collectnativea", "collection", "aten", "nsys", "native"),
+      ]
+    "phase-controls" =>
+      [
+        ("worldoffa", "world", "off", "off", "native"),
+        ("collectoffa", "collection", "off", "off", "smc-compiled"),
+        ("collectoffb", "collection", "off", "off", "native"),
+        ("worldoffb", "world", "off", "off", "smc-compiled"),
+      ]
+    "actor-controls-after-admission" =>
+      [
+        ("actoratenc", "actor_critic", "aten", "off", "native"),
+        ("actortracea", "actor_critic", "aten", "nsys", "native"),
+        ("actortraceb", "actor_chunk", "aten", "nsys", "smc-compiled"),
+      ]
+    _ =>
+      [
+        ("actoroffa", "actor_critic", "off", "off", "native"),
+        ("actoroffb", "actor_chunk", "off", "off", "smc-compiled"),
+        ("actoratenb", "actor_chunk", "aten", "off", "smc-compiled"),
+        ("actoratena", "actor_critic", "aten", "off", "native"),
+        ("actortracea", "actor_critic", "aten", "nsys", "native"),
+        ("actortraceb", "actor_chunk", "aten", "nsys", "smc-compiled"),
+      ]
+  }
+  let path = base + "/phase-series-" + series + ".json"
+  guard !@fs.exists(path) else {
+    fail("existing series; never overwrite or implicit resume")
+  }
+  for (label, _, _, _, _) in jobs {
+    guard !@fs.exists(base + "/specs41-phase-" + label) else {
+      fail("existing job label")
+    }
+  }
+  let rows = jobs.map(job => {
+    let (label, phase, observer, collector, kind) = job
+    (
+      {
+        "label": label,
+        "phase": phase,
+        "observer": observer,
+        "collector": collector,
+        "kind": kind,
+      } : Json)
+  })
+  @fs.write_file(
+    path,
+    Json({
+      "format": Json("moonrobo.phase-series-plan.v1"),
+      "jobs": Json(rows),
+      "serial": Json(true),
+      "single_agent": Json(true),
+      "fresh_prefix_iterations": Json(41),
+      "capture_iteration": Json(41),
+      "unchanged_diagnostic_guards": Json(true),
+      "automatic_retry": Json(false),
+      "single_window_not_steady_throughput": Json(true),
+    }).stringify(indent=2) +
+    "\n",
+    create_mode=CreateNew,
+  )
+  for (label, phase, observer, collector, kind) in jobs {
+    println("Preparing " + label + " " + kind)
+    call(
+      base + "/prepare_phase_run_l.mbtx",
+      [label, phase, observer, collector],
+      "series-" + label + "-prepare",
+    )
+    let runner = base + "/run_phase_" + label + ".mbtx"
+    if kind == "native" {
+      if series != "native-phase" {
+        call(
+          base + "/advise_closed_smc_image_pages_f.mbtx",
+          ["--advise", "cache-series-" + label + ".json"],
+          "series-" + label + "-cache",
+        )
+      }
+      call(runner, ["--preflight", kind], "series-" + label + "-preflight")
+    }
+    println("Running " + label + " " + kind)
+    call(runner, ["--run", kind], "series-" + label + "-run")
+    println("Completed " + label + " " + kind)
+  }
+  println("Completed series " + series)
+}

@@ -1,0 +1,7 @@
+[
+  {
+    "script": "export_g1_aligned_apic.mbtx",
+    "sha256": "8eb2118bed38f750bd854a4e9d813eb4e819ebccef1787fd48cdb53de4a3da92",
+    "legacy_entry": "scripts/python_reference/export_g1_aligned_apic.mbtx"
+  }
+]

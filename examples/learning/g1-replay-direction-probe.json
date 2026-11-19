@@ -1,0 +1,6 @@
+{
+  "draws": 3,
+  "distributions": ["teacher", "current", "mixed"],
+  "tail_flags": [false, true],
+  "scope": "Frozen original supervised frame/preview actors, initial calibrated critic from prior value-on checkpoint and same mixed dynamic model seed zero. Original initial critic-training replay only; no independent audit targets. Batch 64, three draws coupled across replay distributions and tail flags. Draw zero exactly reconstructs the original mixed first minibatch. Same physical integration states, actor histories, command phases and original task ends for every direction; no policy selection, full training or hardware operation."
+}

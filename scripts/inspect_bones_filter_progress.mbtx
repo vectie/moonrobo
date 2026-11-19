@@ -1,0 +1,131 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/string",
+}
+
+///|
+fn canonical_index(text : String, maximum : Int32) -> Int32 raise {
+  guard !text.is_empty() else { fail("empty filter receipt index") }
+  let index = @string.parse_int(text)
+  guard index >= 0 && index < maximum && index.to_string() == text else {
+    fail("invalid filter receipt index: " + text)
+  }
+  index
+}
+
+///|
+async fn receipt_result(path : String) -> Bool {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 65536L else {
+    fail("filter receipt is empty or exceeds 64 KiB: " + path)
+  }
+  let value = @json.parse(
+    @utf8.decode(file.read_exactly_at(size.to_int(), position=0)),
+  )
+  guard value is Object(fields) &&
+    fields.get("version") ==
+    Some(Json("moonrobo.bones-seed-partial-decision.v1")) &&
+    fields.get("id") is Some(String(id)) &&
+    !id.is_empty() &&
+    fields.get("reasons") is Some(Array(reasons)) &&
+    reasons.all(reason => reason is String(message) && !message.is_empty()) &&
+    fields.get("accepted") == Some(Json(reasons.is_empty())) else {
+    fail("invalid filter receipt decision: " + path)
+  }
+  reasons.is_empty()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 else {
+    fail(
+      "usage: moon run --target native scripts/inspect_bones_filter_progress.mbtx DECISIONS_ROOT EXPECTED_COUNT",
+    )
+  }
+  let root = args[1]
+  let expected = @string.parse_int(args[2])
+  guard expected > 0 && expected <= 200000 else {
+    fail("expected count must be in 1..200000")
+  }
+  let seen = Array::make(expected, false)
+  let mut completed = 0
+  let mut accepted = 0
+  let mut rejected = 0
+  let mut partial_files = 0
+  let mut highest_index = -1
+  if @fs.exists(root) {
+    guard @fs.kind(root, follow_symlink=false) is Directory else {
+      fail("decisions root must be a real directory")
+    }
+    let folders = @fs.readdir(root, sort=true)
+    guard folders.length() <= (expected + 999) / 1000 else {
+      fail("decisions root contains too many entries")
+    }
+    for folder in folders {
+      let group = canonical_index(folder, (expected + 999) / 1000)
+      let dir = root + "/" + folder
+      guard @fs.kind(dir, follow_symlink=false) is Directory else {
+        fail("filter receipt group is not a real directory: " + dir)
+      }
+      let names = @fs.readdir(dir, sort=true)
+      guard names.length() <= 2002 else {
+        fail("filter receipt group exceeds bounded entry count: " + dir)
+      }
+      for name in names {
+        let path = dir + "/" + name
+        // The producer atomically renames this temporary name to .json. It
+        // may disappear between readdir and kind while a scan is in progress.
+        if name.has_suffix(".json.partial") {
+          partial_files += 1
+          continue
+        }
+        guard @fs.kind(path, follow_symlink=false) is Regular else {
+          fail("filter receipt is not a regular file: " + path)
+        }
+        guard name.has_suffix(".json") && name.length() > 5 else {
+          fail("unexpected file in filter receipt group: " + path)
+        }
+        let index = canonical_index(
+          name[:name.length() - 5].to_owned(),
+          expected,
+        )
+        guard index / 1000 == group && !seen[index] else {
+          fail("duplicate or misplaced filter receipt: " + path)
+        }
+        let is_accepted = receipt_result(path)
+        seen[index] = true
+        completed += 1
+        if is_accepted {
+          accepted += 1
+        } else {
+          rejected += 1
+        }
+        highest_index = highest_index.max(index)
+      }
+    }
+  }
+  let mut contiguous_prefix = 0
+  while contiguous_prefix < expected && seen[contiguous_prefix] {
+    contiguous_prefix += 1
+  }
+  println(
+    Json({
+      "expected_count": Json(expected),
+      "completed": Json(completed),
+      "accepted": Json(accepted),
+      "rejected": Json(rejected),
+      "missing": Json(expected - completed),
+      "highest_index": Json(highest_index),
+      "contiguous_prefix": Json(contiguous_prefix),
+      "partial_files": Json(partial_files),
+    }).stringify(),
+  )
+}

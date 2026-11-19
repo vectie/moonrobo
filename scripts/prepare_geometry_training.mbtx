@@ -1,0 +1,124 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let old = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let put = async fn(name : String, content : String) {
+    @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-math-179.sock",
+        out + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  let substitutions = [
+    ("hotspot-mlp-actor-step-export-b", "hotspot-mlp-geometry-math-steps-a"),
+    (
+      "hotspot-mlp-actor-reference-backward-b", "hotspot-mlp-geometry-math-steps-a",
+    ),
+    (
+      "hotspot-mlp-actor-reward-reference-d", "hotspot-mlp-geometry-math-heads-a",
+    ),
+    ("hotspot-mlp-actor-critic-features-a", "hotspot-mlp-geometry-math-heads-a"),
+    (
+      "hotspot-mlp-world-reference-export-k", "hotspot-mlp-geometry-math-world-a",
+    ),
+  ]
+  let mut fixture = @fs.read_file(old + "/training_fixture_ap_final.mbt").text()
+  let mut runner = @fs.read_file(old + "/run_aligned_training_ap.mbtx").text()
+  for (a, b) in substitutions {
+    fixture = fixture.replace_all(old=a, new=b)
+    runner = runner.replace_all(old=a, new=b)
+  }
+  fixture = fixture
+    .replace_all(
+      old="rotation_error_mode: @geometry.TraceAcos",
+      new="rotation_error_mode: @geometry.GeodesicSquared",
+    )
+    .replace_all(
+      old="heading_mode: @geometry.SmcProjected",
+      new="heading_mode: @geometry.OrthonormalAtlas",
+    )
+  fixture = fixture.replace_all(
+    old="  let rows : Array[Json] = []",
+    new=(
+      #|  for dir in [package+"/initial",package+"/recurrent",reward_root,features_root,world_root+"/rollout",world_root+"/error"] {
+      #|    let m:Map[String,Json]=@json.from_json(@json.parse(@fs.read_file(dir+"/manifest.json").text()))
+      #|    assert_eq(m["geometry_revision"],Json("orthonormal-atlas-geodesic-squared-v1"))
+      #|  }
+      #|  let rows : Array[Json] = []
+    ),
+  )
+  runner = runner
+    .replace_all(
+      old="actor-step-gate-training-native-ap",
+      new="actor-step-gate-geometry-math-a",
+    )
+    .replace_all(
+      old="run_aligned_training_ap.mbtx",
+      new="run_geometry_math_training.mbtx",
+    )
+  put("geometry_math_fixture.mbt", fixture)
+  put("run_geometry_math_training.mbtx", runner)
+  put(
+    "geometry_training_reference.py",
+    @fs.read_file("providers/motion_learning/geometry_training_reference.py").text(),
+  )
+  put(
+    "run_geometry_math_gate.mbtx",
+    runner
+    .replace_all(
+      old="run_geometry_math_training.mbtx",
+      new="run_geometry_math_gate.mbtx",
+    )
+    .replace_all(
+      old="aligned_training_reference_am.py",
+      new="geometry_training_reference.py",
+    )
+    .replace_all(
+      old="hotspot-shared-training-native-gate-ap",
+      new="hotspot-shared-geometry-math-native-gate-a",
+    ),
+  )
+  for
+    (src, name) in [
+      ("src/learning_aligned_gpu/geometry/rotations.mbt", "math_rotations.mbt"),
+      ("src/learning_aligned_gpu/geometry/context.mbt", "math_context.mbt"),
+      (
+        "src/learning_aligned_gpu/geometry/math_revision_wbtest.mbt", "math_revision_wbtest.mbt",
+      ),
+    ] {
+    put(name, @fs.read_file(src).text())
+  }
+  let prefix = @fs.read_file(old + "/build_aligned_training_ap.mbtx")
+  .text()
+  .split("async fn main {")
+  .to_array()[0].to_owned()
+  put(
+    "build_geometry_math.mbtx",
+    prefix +
+    (
+      #|async fn main {
+      #| require_idle()
+      #| let ws=base+"/workspace/moonrobo-geometry-math-a"
+      #| guard !@fs.exists(ws) else {fail("fresh workspace")}
+      #| run("copy-geometry-math-a","cp",["-a","--reflink=auto",base+"/workspace/moonrobo-actor-step-training-native-ap",ws])
+      #| for (source,dest) in [("geometry_math_fixture.mbt","cmd/shared_fixture_wbtest.mbt"),("math_rotations.mbt","geometry/rotations.mbt"),("math_context.mbt","geometry/context.mbt")] {run("copy-geometry-math-"+source,"cp",[base+"/"+source,ws+"/src/learning_aligned_gpu/"+dest])}
+      #| container("build-geometry-math-a","/toolchain/bin/moon",["test","--build-only","--release","--target","native","-j","2","--frozen","src/learning_aligned_gpu/cmd"],workdir="/workspace/moonrobo-geometry-math-a")
+      #| run("binary-geometry-math-a","cp",[ws+"/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/cmd/cmd.whitebox_test.exe",base+"/actor-step-gate-geometry-math-a"])
+      #|}
+    ),
+  )
+}

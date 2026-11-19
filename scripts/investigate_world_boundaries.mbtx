@@ -1,0 +1,194 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, operation, label] &&
+    ["prepare", "build", "run"].contains(operation) &&
+    label.all(c => c is ('a'..<='z' | '0'..<='9' | '-')) else {
+    fail("prepare/build/run fresh-label")
+  }
+  let out = "output/spark-runtime-20261024/world-backward-boundaries-20261029-a"
+  let previous = "output/spark-runtime-20261024/compiled-vjp-detail-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  if operation == "prepare" {
+    if !@fs.exists(out) {
+      @fs.mkdir(out)
+    }
+    let build_prefix = @fs.read_file(
+      "output/spark-runtime-20261024/compiled-mlp-20261028-a/build_compiled_window_plugin_b.mbtx",
+    )
+    .text()
+    .split("async fn main {")
+    .to_array()[0].to_owned()
+    let build = build_prefix +
+      (
+        #|async fn main {
+        #|  container("world-boundary-hook-build-b","/usr/bin/g++",[
+        #|    "-std=c++17","-O1","-shared","-fPIC","-D_GLIBCXX_USE_CXX11_ABI=1",
+        #|    "-I/opt/isaaclab-venv/lib/python3.12/site-packages/torch/include",
+        #|    "-I/opt/isaaclab-venv/lib/python3.12/site-packages/torch/include/torch/csrc/api/include",
+        #|    "/build/compiled_boundary_capture_b.cpp","-o","/build/libworld_boundary_capture_b.so",
+        #|    "-L/opt/isaaclab-venv/lib/python3.12/site-packages/torch/lib",
+        #|    "-Wl,-rpath,/opt/isaaclab-venv/lib/python3.12/site-packages/torch/lib",
+        #|    "-Wl,--no-as-needed","-ltorch_cpu","-lc10","-ldl"
+        #|  ])
+        #|}
+      )
+    if !@fs.exists(out + "/build_world_boundary_b.mbtx") {
+      @fs.write_file(
+        out + "/build_world_boundary_b.mbtx",
+        build,
+        create_mode=CreateNew,
+      )
+    }
+    let prefix = @fs.read_file(previous + "/run_frozen_compilation_b.mbtx")
+    .text()
+    .split("async fn main {")
+    .to_array()[0].to_owned()
+    let main_code = @fs.read_file(
+      previous + "/run_compiled_world_detail_d.mbtx",
+    )
+    .text()
+    .split("async fn main {")
+    .to_array()[1].to_owned()
+    let frozen =
+      #|  let records:Array[Json]=[]
+      #|  let source="/home/wlc004s/moonrobo/runs/hotspot-mlp-world-boundary-f"
+      #|  guard field(read_json(source+"/completion.json"),"passed")==Json(true) else {fail("reference incomplete")}
+      #|  for name in ["inductor-cache","triton-cache"] {if @fs.exists(source+"/"+name){clone_compilation_tree(source+"/"+name,root+"/"+name,records)}}
+      #|  write_json(root+"/compilation-snapshot.json",{"source":Json(source),"original_smc_unchanged":true,"files":Json(records)})
+      #|  let passed=guarded(side,root,false)
+      #|  let changed:Array[Json]=[]
+      #|  for row in records {let path=text(field(row,"target"));if Json(hash_file(path))!=field(row,"sha256"){changed.push(row)}}
+      #|  write_json(root+"/compilation-audit.json",{"copied_count":Json(records.length()),"changed":Json(changed)})
+      #|  guard changed.is_empty() else {fail("compiled reference changed")}
+    let env =
+      #|  e["LD_PRELOAD"]=Json(mapped+"/libworld_boundary_capture_b.so")
+      #|  e["WORLD_PADDING_INTERVENTION"]="1"
+      #|  e["WORLD_NATIVE_WRAPPER"]=Json(mapped+"/world_native_backward_a.cpp")
+      #|  e["WORLD_SMC_WRAPPER"]=Json(mapped+"/world_smc_backward_a.py")
+      #|  e["WORLD_NATIVE_FX"]=Json(mapped+"/world_native_backward_fx_a.py")
+      #|  e["WORLD_SMC_FX"]=Json(mapped+"/world_smc_backward_fx_a.py")
+      #|  for file in ["libworld_boundary_capture_b.so","compiled_boundary_capture_b.cpp","compiled_world_detail_d.py","world_native_backward_a.cpp","world_smc_backward_a.py","world_native_backward_fx_a.py","world_smc_backward_fx_a.py"] {pins[base+"/"+file]=Json(hash_file(base+"/"+file))}
+      #|  write_json(root+"/world-pins.json",Json(pins))
+    let runner = (prefix + "async fn main {" + main_code)
+      .replace_all(
+        old="run_compiled_world_detail_d.mbtx",
+        new="run_world_boundary_g.mbtx",
+      )
+      .replace_all(
+        old="compiled_world_detail_d.py",
+        new="compiled_world_boundaries_g.py",
+      )
+      .replace_all(old="if route==\"smc\" && amp==\"bf16\" {", new="if false {")
+      .replace_all(
+        old="write_json(root+\"/world-pins.json\",Json(pins))",
+        new=env,
+      )
+      .replace_all(old="let passed=guarded(side,root,false)", new=frozen)
+    @fs.write_file(
+      out + "/run_world_boundary_g.mbtx",
+      runner,
+      create_mode=CreateNew,
+    )
+    for
+      (source, name) in [
+        (out + "/build_world_boundary_b.mbtx", "build_world_boundary_b.mbtx"),
+        (out + "/run_world_boundary_g.mbtx", "run_world_boundary_g.mbtx"),
+        (
+          "providers/motion_learning/compiled_boundary_capture.cpp", "compiled_boundary_capture_b.cpp",
+        ),
+        (
+          "providers/motion_learning/compiled_world_boundaries.py", "compiled_world_boundaries_g.py",
+        ),
+        (
+          previous +
+          "/cxzg6hdjz3zriw2sf5kajovhehc3lftcqmkbyjnp26vmlqukxeaa.wrapper.cpp",
+          "world_native_backward_a.cpp",
+        ),
+        (
+          previous +
+          "/detail-world-c/compile-debug/torchinductor/model__0_backward_7.3/output_code.py",
+          "world_smc_backward_a.py",
+        ),
+        (
+          previous + "/native-rollout-backward.fx.txt",
+          "world_native_backward_fx_a.py",
+        ),
+        (
+          previous +
+          "/detail-world-c/compile-debug/torchinductor/model__0_backward_7.3/fx_graph_readable.py",
+          "world_smc_backward_fx_a.py",
+        ),
+      ] {
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          source,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/" + label
+  @fs.mkdir(folder)
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      (if operation == "build" {
+        "build_world_boundary_b.mbtx"
+      } else {
+        "run_world_boundary_g.mbtx -- smc bf16 0 " + label
+      }),
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  if operation == "run" {
+    for
+      file in [
+        "result.json", "protocol.json", "world-pins.json", "completion.json", "training-guard.json",
+        "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+        "compilation-snapshot.json", "compilation-audit.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-mlp-" +
+          label +
+          "/" +
+          file,
+          folder + "/" + file,
+        ]),
+      )
+    }
+  }
+  println(label + " exit=" + code.to_string())
+  assert_eq(code, 0)
+}

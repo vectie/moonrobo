@@ -1,0 +1,118 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    6,
+    msg="usage: probe_g1_temporal_inputs.mbtx REPO SUPERVISED REFINEMENT WORLD_FIT OUTPUT",
+  )
+  let root = args[1]
+  let output = args[5]
+  assert_true(!@fs.exists(output), msg="choose a fresh probe directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in ["temporal_actor.py", "policy.py", "dynamics.py", "cpu_physics.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(args[2] + "/provider-sources/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  for name in ["actor_update_probe.py", "critic_probe.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/provider-sources/temporal_probe.py",
+    @fs.read_file(root + "/providers/motion_learning/temporal_probe.py").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/config.json",
+    @fs.read_file(root + "/examples/learning/g1-temporal-probe.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/experiment.json",
+    @fs.read_file(args[2] + "/collection.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-temporal-probe-charter.v1",
+        "incoming": Json(args[2]),
+        "refined": Json(args[3]),
+        "world_fit": Json(args[4]),
+        "config": @json.parse(@fs.read_file(output + "/config.json").text()),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @async.with_task_group() <| group => {
+    let running : Array[(@process.Process, String)] = []
+    for id in ["frame", "preview"] {
+      @fs.mkdir(output + "/" + id, recursive=true)
+      let process = @process.spawn(
+        group,
+        root + "/target/learning-venv/bin/python",
+        [
+          output + "/provider-sources/temporal_probe.py",
+          "--config",
+          output + "/config.json",
+          "--experiment",
+          output + "/experiment.json",
+          "--incoming",
+          args[2] + "/" + id + "/policy",
+          "--refined",
+          args[3] + "/" + id + "/policy",
+          "--dynamics",
+          args[4] + "/dynamics-seed-0.pt",
+          "--scene",
+          root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+          "--output",
+          output + "/" + id,
+        ],
+        stdout=@process.redirect_to_file(
+          output + "/" + id + "/probe.log",
+          create_mode=CreateOrTruncate,
+        ),
+        stderr=@process.redirect_to_file(
+          output + "/" + id + "/stderr.log",
+          create_mode=CreateOrTruncate,
+        ),
+      )
+      running.push((process, id))
+    }
+    for (process, id) in running {
+      assert_eq(process.wait(), 0, msg=id + " probe failed")
+      let report = @json.parse(
+        @fs.read_file(output + "/" + id + "/summary.json").text(),
+      )
+      assert_eq(field(report, "maximum_restore_error"), 0)
+      assert_eq(field(report, "dynamics_unchanged"), true)
+      println(id + ": probe completed")
+    }
+  }
+}

@@ -1,0 +1,15 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let dir="output/spark-runtime-20261024/coefficient-assembly-20261028"
+  let mut s=@fs.read_file(dir+"/report.mbtx").text()
+  s=s.replace_all(old="coefficient-assembly-",new="return-split-")
+  s=s.replace_all(old="/return-split-20261028",new="/coefficient-assembly-20261028")
+  s=rep(s,"[(\"world\",\"split\"),(\"world\",\"forward\"),(\"world\",\"both\"),(\"actor\",\"split\"),(\"actor\",\"forward\"),(\"actor\",\"both\")]","[(\"actor\",\"both\")]")
+  s=rep(s,"for p in [\"world\",\"actor\"]","for p in [\"actor\"]")
+  s=rep(s,"[(\"world\",\"forward\"),(\"actor\",\"forward\")]","[(\"actor\",\"both\")]")
+  s=rep(s,"return-split-cpu-validated-a.json","coefficient-assembly-cpu-validated-a.json")
+  s=rep(s,"out+\"/results.json\"","out+\"/return-results.json\"")
+  s=rep(s,"out+\"/phase-results.json\"","out+\"/return-phase-results.json\"")
+  @fs.write_file(dir+"/return_report.mbtx",s,create_mode=CreateNew)
+}

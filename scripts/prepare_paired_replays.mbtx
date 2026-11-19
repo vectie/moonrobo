@@ -1,0 +1,149 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn[T : FromJson] field(j : Json, key : String) -> T raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  @json.from_json(v)
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@utf8.decode(@fs.read_file(path).binary()))
+}
+
+///|
+fn digest(b : Bytes) -> String {
+  let h = @crypto.SHA256::new()
+  h.update(b)
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, baseline, recorded, output] else {
+    fail("prepare_paired_replays.mbtx BENCHMARK RECORDED NEW_OUTPUT")
+  }
+  guard !@fs.exists(output) else { fail("output must be fresh") }
+  let panel = read(baseline + "/panel.json")
+  let refs = read(baseline + "/references.json")
+  let panel_hash = digest(@fs.read_file(baseline + "/panel.json").binary())
+  let recording_refs = read(recorded + "/references.json")
+  assert_eq(
+    (field(recording_refs, "clips") : Json),
+    (field(refs, "clips") : Json),
+  )
+  assert_eq((field(recording_refs, "panel_sha256") : String), panel_hash)
+  let audit = read(baseline + "/overlap-audit.json")
+  assert_eq((field(audit, "panel_sha256") : String), panel_hash)
+  let iteration : Int32 = field(audit, "both_checkpoints_iteration")
+  let pins : Array[Json] = field(panel, "clips")
+  assert_eq(pins.length(), 40)
+  let motions : Array[Map[String, Json]] = pins.map(pin => {
+    "id": (field(pin, "id") : Json),
+    "expected_steps": (field(pin, "expected_steps") : Json),
+  })
+  let robots : Map[String, Json] = Map([])
+  for robot in ["g1", "e1"] {
+    let original = read(baseline + "/" + robot + ".json")
+    let result = read(
+      recorded + "/" + (if robot == "g1" { "g1" } else { "final" }) + ".json",
+    )
+    for
+      key in [
+        "per_clip", "norm_return", "actor_archive_sha256", "full_catalog_evaluated",
+        "mujoco_library_sha256", "tensor_library_sha256",
+      ] {
+      assert_eq((field(original, key) : Json), (field(result, key) : Json))
+    }
+    assert_eq(
+      (field(audit, robot + "_actor_sha256") : Json),
+      (field(result, "actor_archive_sha256") : Json),
+    )
+    let outcomes : Array[Json] = field(result, "per_clip")
+    let folder = recorded + "/" + robot
+    let poses = read(folder + "/poses.json")
+    assert_eq(
+      (field(poses, "format") : String),
+      "moonrobo.physical-poses.f32le.v1",
+    )
+    assert_eq((field(poses, "control_hz") : Int32), 50)
+    let joints : Array[String] = field(poses, "joints")
+    assert_eq(joints.length(), if robot == "g1" { 29 } else { 23 })
+    let scene : String = field(
+      refs,
+      if robot == "g1" {
+        "g1_scene_sha256"
+      } else {
+        "target_scene_sha256"
+      },
+    )
+    robots[robot] = {
+      "joints": Json(joints),
+      "scene_sha256": Json(scene),
+      "actor_sha256": (field(result, "actor_archive_sha256") : Json),
+    }
+    let tracks : Array[Json] = field(poses, "clips")
+    assert_eq(tracks.length(), pins.length())
+    assert_eq(outcomes.length(), pins.length())
+    @fs.mkdir(output + "/" + robot, recursive=true)
+    for i, track in tracks {
+      let row = outcomes[i]
+      assert_eq((field(track, "id") : Json), motions[i]["id"])
+      assert_eq((field(row, "clip_id") : Json), motions[i]["id"])
+      assert_eq(
+        (field(row, "expected_steps") : Json),
+        motions[i]["expected_steps"],
+      )
+      let steps : Int32 = field(row, "executed_steps")
+      assert_eq((field(track, "frames") : Int32), steps + 1)
+      let file = i.to_string() + ".f32"
+      assert_eq(file, (field(track, "file") : String))
+      let data = @fs.read_file(folder + "/" + file).binary()
+      let sha = digest(data)
+      assert_eq(sha, (field(track, "sha256") : String))
+      assert_eq(data.length(), (steps + 1) * (joints.length() + 7) * 4)
+      @fs.write_file(
+        output + "/" + robot + "/" + file,
+        data,
+        create_mode=CreateNew,
+      )
+      let stop : Int32? = field(row, "termination_frame")
+      let completed : Bool = field(row, "completed_full_duration")
+      assert_eq(stop, if completed { None } else { Some(steps) })
+      motions[i][robot] = {
+        "file": Json(robot + "/" + file),
+        "sha256": Json(sha),
+        "steps": Json(steps),
+        "completed": (field(row, "completed_full_duration") : Json),
+        "termination_frame": match stop {
+          Some(n) => Json(n)
+          None => Json::null()
+        },
+        "score": (field(row, "normalized_return") : Json),
+      }
+    }
+  }
+  let manifest : Json = {
+    "format": "moonrobo.heldout-pair.v1",
+    "control_hz": 50,
+    "iteration": Json(iteration),
+    "dataset": (field(panel, "dataset") : Json),
+    "revision": (field(panel, "revision") : Json),
+    "panel_sha256": Json(panel_hash),
+    "robots": Json(robots),
+    "clips": Json(motions),
+  }
+  @fs.write_file(
+    output + "/manifest.json",
+    @utf8.encode(manifest.stringify(indent=2)),
+    create_mode=CreateNew,
+  )
+}

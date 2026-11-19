@@ -1,0 +1,27 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+async fn edit(p : String,a : String,b : String) -> Unit {
+  let s=@fs.read_file(p).text();guard s.contains(a)else{fail(p+": "+a)};@fs.write_file(p,s.replace_all(old=a,new=b))
+}
+async fn main {
+  let g="src/learning_aligned_gpu/";let t="src/learning_tensor/"
+  let old=@fs.read_file(t+"geometry_vjp_loader.inc").text()
+  let extra=old[old.find("MOONBIT_FFI_EXPORT int32_t mr_tensor_has_coefficient_forward").unwrap():].to_owned().replace_all(old="coefficient_forward",new="coefficient_full_forward")
+  @fs.write_file(t+"geometry_vjp_loader.inc",old+"\n"+extra)
+  let old=@fs.read_file(t+"geometry_vjp.mbt").text()
+  let extra=old[old.find("///|\n#borrow(backend)\nextern \"c\" fn coefficient_forward_available").unwrap():].to_owned().replace_all(old="coefficient_forward",new="coefficient_full_forward").replace_all(old="fused assembly, ATen transcendental functions",new="fused scalar sqrt/sin/cos and coefficient assembly")
+  @fs.write_file(t+"geometry_vjp.mbt",old+"\n"+extra)
+  edit(g+"execution_optimizations.mbt","  fused_so3_coefficients_forward : Bool","  fused_so3_coefficients_forward : Bool\n  fused_so3_coefficients_full : Bool")
+  edit(g+"execution_optimizations.mbt","    fused_so3_coefficients_forward: false,","    fused_so3_coefficients_forward: false,\n    fused_so3_coefficients_full: false,")
+  edit(g+"cmd/optimizations.mbt","    split_actor_return: setting","    fused_so3_coefficients_full: setting(config, \"fused_so3_coefficients_full\", false),\n    split_actor_return: setting")
+  edit(g+"cmd/optimizations.mbt","  if s.optimizations.split_actor_return {","  if s.optimizations.fused_so3_coefficients_full { values[\"execution_coefficient_full\"] = 33554432L }\n  if s.optimizations.split_actor_return {")
+  for f in ["geometry/rotations.mbt","geometry/state.mbt"] {
+    edit(g+f,"  fused_so3_coefficients_forward~ : Bool = false,","  fused_so3_coefficients_forward~ : Bool = false,\n  fused_so3_coefficients_full~ : Bool = false,")
+  }
+  edit(g+"geometry/rotations.mbt","(!fused_so3_coefficients_forward && !split_so3_coefficients)","(!fused_so3_coefficients_full && !fused_so3_coefficients_forward && !split_so3_coefficients)")
+  edit(g+"geometry/rotations.mbt","    let coefficients = if fused_so3_coefficients_forward {","    let coefficients = if fused_so3_coefficients_full {\n      theta2.so3_coefficient_full_forward()\n    } else if fused_so3_coefficients_forward {")
+  edit(g+"geometry/state.mbt","        fused_so3_coefficients_forward~,","        fused_so3_coefficients_forward~,\n        fused_so3_coefficients_full~,")
+  for f in ["learning.mbt","microbatch.mbt","actor_microbatch.mbt"] {edit(g+f,"fused_so3_coefficients_forward=self.optimizations.fused_so3_coefficients_forward,","fused_so3_coefficients_forward=self.optimizations.fused_so3_coefficients_forward,\n        fused_so3_coefficients_full=self.optimizations.fused_so3_coefficients_full,")}
+  edit(g+"learning.mbt","  if optimizations.compact_skew {","  if optimizations.fused_so3_coefficients_full {\n    guard optimizations.fused_so3_coefficients && backend.has_coefficient_full_forward() else { fail(\"full coefficient assembly requires accepted VJP and matching plugin\") }\n  }\n  if optimizations.compact_skew {")
+  edit(g+"cmd/optimizations_wbtest.mbt","  assert_false(execution_optimizations({}).split_actor_return)","  assert_false(execution_optimizations({}).fused_so3_coefficients_full)\n  assert_true(execution_optimizations({ \"fused_so3_coefficients_full\": true }).fused_so3_coefficients_full)\n  assert_false(execution_optimizations({}).split_actor_return)")
+  edit(g+"cmd/optimizations_wbtest.mbt","    { \"split_actor_return\": \"true\" },","    { \"fused_so3_coefficients_full\": \"true\" },\n    { \"split_actor_return\": \"true\" },")
+}

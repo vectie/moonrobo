@@ -1,0 +1,75 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(o) && o.get(key) is Some(value) else { fail("missing " + key) }
+  value
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, root] else { fail("campaign artifact directory required") }
+  let protocol = @json.parse(@fs.read_file(root + "/protocol.json").text())
+  let rows : Array[Json] = []
+  let mut completed = 0
+  for (name, gates) in [
+    ("apic", ["exact-gate.json"]),
+    ("inspection", ["protocol-gate.json"]),
+    ("layernorm", ["unit-gate.json", "numeric-gate.json"]),
+    ("cross", ["numeric-gate.json"]),
+    ("reference_fk", ["gather-gate.json", "numeric-gate.json"]),
+  ] {
+    let folder = root + "/" + name
+    let proofs : Array[Json] = []
+    let mut gate_passed = true
+    for gate in gates {
+      let path = folder + "/" + gate
+      if @fs.exists(path) {
+        let result = @json.parse(@fs.read_file(path).text())
+        let passed = field(result, "passed") == Json(true)
+        gate_passed = gate_passed && passed
+        proofs.push({ "file": Json(path), "passed": Json(passed) })
+      } else {
+        gate_passed = false
+        proofs.push({ "file": Json(path), "passed": Json::null() })
+      }
+    }
+    let brief_path = folder + "/brief.json"
+    let mut brief = Json::null()
+    let mut faster_both = false
+    if @fs.exists(brief_path) {
+      brief = @json.parse(@fs.read_file(brief_path).text())
+      guard field(brief, "accepted") == Json(true) && field(brief, "adjacent_ratios") is Array(ratios) && ratios.length() == 2 else {
+        fail("complete accepted ABBA required: " + name)
+      }
+      faster_both = ratios.all(r => match r { Number(v, ..) => v > 1.0; _ => false })
+      completed += 1
+    }
+    rows.push({
+      "candidate": Json(name),
+      "numerical_checks_passed": Json(gate_passed),
+      "numerical_evidence": Json(proofs),
+      "measurements": brief,
+      "candidate_faster_in_both_adjacent_pairs": Json(faster_both),
+      "decision_scope": "Observed short-run timings only. Direction agreement is not a confidence interval or a long-training quality result. Independent candidate gains are not compounded.",
+    })
+  }
+  let result : Json = {
+    "format": "moonrobo.hotspot-campaign-summary.v1",
+    "complete_abba_groups": Json(completed),
+    "expected_groups": 5,
+    "guards": field(protocol, "guards"),
+    "results": Json(rows),
+    "original_implementations_retained": true,
+    "production_defaults_unchanged": true,
+    "old_smc_ratio_not_recomputed_from_unpaired_new_measurements": true,
+  }
+  @fs.write_file(root + "/results.json", result.stringify(indent=2) + "\n", create_mode=CreateOrTruncate)
+  println("Recorded complete ABBA groups: " + completed.to_string() + "/5")
+}

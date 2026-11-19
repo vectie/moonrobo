@@ -1,0 +1,106 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/math",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn[T : FromJson] field(value : Json, key : String) -> T raise {
+  guard value is Object(fields) && fields.get(key) is Some(v) else {
+    fail("missing " + key)
+  }
+  @json.from_json(v)
+}
+
+///|
+fn budget(
+  envs : Int32,
+  utd : Double,
+  wm_batches : Int32,
+  wm_batch : Int32,
+  policy_batch : Int32,
+  window : Int32,
+  horizon : Int32,
+  replay_steps : Int32,
+) -> Json {
+  let fresh = envs.to_double() / utd
+  let windows = wm_batches * wm_batch
+  {
+    "environments": envs,
+    "utd_vector_steps": utd,
+    "fresh_physical_transitions_per_iteration": fresh,
+    "world_windows_per_iteration": windows,
+    "world_transition_slots_per_iteration": windows * window,
+    "policy_imagined_transitions_per_iteration": policy_batch * horizon,
+    "world_windows_per_fresh_transition": windows.to_double() / fresh,
+    "world_slots_per_fresh_transition": (windows * window).to_double() / fresh,
+    "imagined_steps_per_fresh_transition": (policy_batch * horizon).to_double() /
+    fresh,
+    "replay_transition_capacity": envs * replay_steps,
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, config_file, output] else {
+    fail("compare_e1_paper_budget.mbtx RUNNING_CONFIG NEW_REPORT")
+  }
+  let bytes = @fs.read_file(config_file).binary()
+  let hash = @crypto.SHA256::new()
+  hash.update(bytes)
+  let digest = @crypto.bytes_to_hex_string(hash.finalize())
+  assert_eq(
+    digest, "22fb16af5797cc77b2294b423be0df8aa088bd8301b64ad1e9b760d62684aa44",
+  )
+  let config = @json.parse(@utf8.decode(bytes))
+  let learner : Json = field(config, "learner")
+  let actual = budget(
+    field(config, "environments"),
+    field(config, "update_to_data"),
+    field(learner, "wm_batches"),
+    field(learner, "wm_batch"),
+    field(learner, "policy_batch"),
+    field(learner, "wm_window"),
+    field(learner, "horizon"),
+    field(config, "replay_steps"),
+  )
+  // SuperMimic v1, Table A.5, one-GPU setup. UTD's vector-step meaning is
+  // confirmed against the local reference train.py and our TrainingRunner.
+  let paper = budget(4096, 0.4, 10, 2048, 4096, 8, 32, 1000)
+  let actual_world : Double = field(
+    actual, "world_windows_per_fresh_transition",
+  )
+  let paper_world : Double = field(paper, "world_windows_per_fresh_transition")
+  let actual_policy : Double = field(
+    actual, "imagined_steps_per_fresh_transition",
+  )
+  let paper_policy : Double = field(
+    paper, "imagined_steps_per_fresh_transition",
+  )
+  assert_eq(actual_world / paper_world, 32.0)
+  assert_eq(actual_policy / paper_policy, 16.0)
+  let result : Json = {
+    "format": "moonrobo.e1-paper-budget-comparison.v1",
+    "paper_source": "https://arxiv.org/pdf/2610.28480#page=16",
+    "running_config_sha256": digest,
+    "paper": paper,
+    "ours": actual,
+    "world_sampling_reuse_relative_to_paper": actual_world / paper_world,
+    "policy_imagination_relative_to_paper": actual_policy / paper_policy,
+    "learning_rate_fraction_at_14000": 0.03 +
+    0.97 * 0.5 * (1.0 + @math.cos(@math.PI * 14000.0 / 250000.0)),
+    "scope": "nominal steady-state schedule; excludes initial warmup, world-only policy suppression and extra actor-readiness collection; sampled windows can overlap and are not unique information",
+    "interpretation": "same numerical UTD does not preserve learning/data balance when environment and global batch sizes change",
+  }
+  @fs.write_file(
+    output,
+    @utf8.encode(result.stringify(indent=2)),
+    create_mode=CreateNew,
+  )
+  println(result.stringify())
+}

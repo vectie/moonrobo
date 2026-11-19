@@ -1,0 +1,86 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let root = repo +
+    "/output/spark-runtime-20261024/layernorm-full-retest-20261026"
+  let prefix = @fs.read_file(
+    repo + "/scripts/advise_combo_closed_cuda_cache_b.mbtx",
+  )
+  .text()
+  .split("///|\nasync fn main {")
+  .to_array()[0].to_owned()
+  let body =
+    #|///|
+    #|async fn main {
+    #|  guard @env.args() is [_, label] && component(label) else { fail("fresh label") }
+    #|  let report = base + "/full-ln-shared-cache-" + label + ".json"
+    #|  guard !@fs.exists(report) else { fail("fresh report") }
+    #|  idle("")
+    #|  let survey = read_json(base + "/full-ln-residency-b.json")
+    #|  guard field(survey, "resident_files") is Array(files) else { fail("survey") }
+    #|  let roots : Map[String, Bool] = Map([])
+    #|  for file in files {
+    #|    let parts = text(field(file, "file")).split("/").map(x => x.to_owned()).to_array()
+    #|    if parts.length() > 6 && parts[4] == "runs" && (parts[5].has_prefix("hotspot-shared-") || parts[5].has_prefix("hotspot-mlp-")) {
+    #|      roots[parts[:6].join("/")] = true
+    #|    }
+    #|  }
+    #|  let records : Array[Json] = []
+    #|  let mut reclaimed = 0L
+    #|  for root, _ in roots {
+    #|    idle("")
+    #|    guard read_json(root + "/training-docker-final.json") is [saved] else { fail("completed job receipt") }
+    #|    let actual = inspect(text(field(saved, "Id")))
+    #|    stopped(actual)
+    #|    for key in ["Id", "Image", "Config", "State"] { guard field(saved, key) == field(actual, key) else { fail("changed owner") } }
+    #|    guard field(actual,"Mounts") is Array(mounts) && mounts.any(m => field(m,"Source")==Json(root) && field(m,"Destination")==Json("/pair") && field(m,"RW")==Json(true)) else { fail("task output ownership") }
+    #|    let entries = inventory(command("find", ["-P", root, "-xdev", "-maxdepth", "14", "-printf", "%y\t%s\t%n\t%U\t%D\t%i\t%T@\t%C@\t%P\\0"]))
+    #|    for i, entry in entries {
+    #|      if !(entry.path.has_suffix(".f64") || entry.path.has_suffix(".pt") || entry.path.has_prefix("cuda-cache/") || entry.path.has_prefix("triton-cache/") || entry.path.has_prefix("inductor-cache/")) { continue }
+    #|      if entry.size < 65536L { continue }
+    #|      if i % 32 == 0 { idle("") }
+    #|      let path = root + "/" + entry.path
+    #|      guard @fs.realpath(path)==path && @fs.kind(path,follow_symlink=false)==Regular else { fail("canonical file") }
+    #|      let stamp = command("stat", ["-c", "%u:%h:%d:%i:%s:%Y:%Z", path])
+    #|      let before = @json.parse(command(fincore,["--json","--bytes","--output","FILE,SIZE,RES",path]))
+    #|      guard field(before,"fincore") is [b] else { fail("before") }
+    #|      if num(field(b,"res")) == 0L { continue }
+    #|      ignore(command("sync",["--data","--",path]))
+    #|      ignore(command("dd",["if="+path,"iflag=nocache,nofollow","count=0","status=none"]))
+    #|      guard command("stat",["-c","%u:%h:%d:%i:%s:%Y:%Z",path])==stamp else { fail("changed file") }
+    #|      let after = @json.parse(command(fincore,["--json","--bytes","--output","FILE,SIZE,RES",path]))
+    #|      guard field(after,"fincore") is [a] else { fail("after") }
+    #|      reclaimed += num(field(b,"res"))-num(field(a,"res"))
+    #|      records.push({"path":Json(path),"owner":field(saved,"Id"),"before":b,"after":a})
+    #|    }
+    #|  }
+    #|  idle("")
+    #|  @fs.write_file(report,Json({"reclaimed_bytes":Json(reclaimed),"records":Json(records),"files_deleted":0,"global_cache_drop":false,"guards_changed":false}).stringify(indent=2),create_mode=CreateNew)
+    #|  println("RECLAIMED " + reclaimed.to_string())
+    #|}
+  let source = (prefix + body).replace_all(
+    old="/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a",
+    new="/home/wlc004s/moonrobo/private/shared-compute-20261026-a",
+  )
+  @fs.write_file(
+    root + "/advise_full_ln_shared_a.mbtx",
+    source,
+    create_mode=CreateNew,
+  )
+  guard @process.run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      root + "/advise_full_ln_shared_a.mbtx",
+      "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/advise_full_ln_shared_a.mbtx",
+    ]) ==
+    0 else {
+    fail("publish")
+  }
+}

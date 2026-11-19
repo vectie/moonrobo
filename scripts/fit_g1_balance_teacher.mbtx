@@ -1,0 +1,148 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: fit_g1_balance_teacher.mbtx REPO CONFIG_JSON OUTPUT",
+  )
+  let root = args[1]
+  let output = args[3]
+  assert_true(!@fs.exists(output), msg="choose a fresh study directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for name in ["balance_teacher.py", "cpu_physics.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let experiment = read(root + "/examples/learning/g1-goal-collection.json")
+  guard experiment is Object(fields) else { fail("expected experiment") }
+  fields.set("duration_s", 10)
+  fields.set("action_noise_std_rad", 0)
+  @fs.write_file(
+    output + "/collection-experiment.json",
+    experiment.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/evaluation-experiment.json",
+    @fs.read_file(root + "/examples/learning/g1-long-experiment.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/config.json",
+    @fs.read_file(args[2]).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  for phase in ["diagnose", "fit", "evaluate", "collect"] {
+    if phase == "evaluate" || phase == "collect" {
+      let fitted = read(output + "/fit/report.json")
+      if field(field(fitted, "development"), "falls") != (0 : Json) {
+        println(
+          "Development still falls; independent evaluation and collection are not run.",
+        )
+        break
+      }
+    }
+    let command = [
+      output + "/provider-sources/balance_teacher.py",
+      phase,
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--experiment",
+      output +
+      (if phase == "evaluate" {
+        "/evaluation-experiment.json"
+      } else {
+        "/collection-experiment.json"
+      }),
+      "--config",
+      output + "/config.json",
+      "--output",
+      output + "/" + phase,
+    ]
+    if phase == "evaluate" || phase == "collect" {
+      command.append(["--teacher", output + "/fit/report.json"])
+    }
+    let (code, out, err) = @process.collect_output(
+      "moon",
+      native_args(root, command),
+    )
+    @fs.write_file(
+      output + "/" + phase + ".log",
+      out.text() + err.text(),
+      create_mode=CreateOrTruncate,
+    )
+    assert_eq(code, 0, msg=err.text())
+    if phase == "fit" {
+      let fitted = read(output + "/fit/report.json")
+      println(
+        (
+          {
+            "phase": "fit",
+            "parameters": field(fitted, "parameters"),
+            "development": field(fitted, "development"),
+            "baseline": field(fitted, "baseline"),
+          } : Json).stringify(),
+      )
+    } else if phase != "diagnose" {
+      println(out.text())
+    }
+  }
+}
+
+///|
+/// Historical .py names are inert routing descriptors. Each target parses
+/// original flags and calls real native APIs; unknown descriptors fail closed.
+fn native_args(root : String, command : Array[String]) -> Array[String] raise {
+  guard !command.is_empty() else { fail("missing native provider descriptor") }
+  let descriptor = command[0].split("/").last().unwrap_or("").to_owned()
+  let training = [
+    "policy.py", "dynamics.py", "cpu_physics.py", "teacher_step_verification.py",
+    "compare_dynamics.py",
+  ].contains(descriptor)
+  let package = if training {
+    "src/learning_training/launch/cmd"
+  } else {
+    "src/learning_balance/launch"
+  }
+  [
+    "run",
+    "--quiet",
+    "--warn-list",
+    "-a",
+    root + "/scripts/run_native_learning.mbtx",
+    root,
+    package,
+    ..command,
+    ..if training {
+      []
+    } else {
+      ["--repo", root]
+    },
+  ]
+}

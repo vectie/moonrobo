@@ -1,0 +1,23 @@
+{
+  "seeds": [0, 1, 2],
+  "training_reset_seeds": [6900, 6901],
+  "selection_seed_base": 7100,
+  "audit_seed_base": 7200,
+  "canonical_reset_seeds": [10200, 10201, 10202],
+  "variants": [
+    {"name": "range03-ankle", "representation": "range", "output_bound": 0.3, "control_waist": false},
+    {"name": "range45-ankle", "representation": "range", "output_bound": 0.45, "control_waist": false},
+    {"name": "range45-waist", "representation": "range", "output_bound": 0.45, "control_waist": true},
+    {"name": "pose45-ankle", "representation": "pose_rate", "output_bound": 0.45, "control_waist": false},
+    {"name": "pose45-waist", "representation": "pose_rate", "output_bound": 0.45, "control_waist": true}
+  ],
+  "duration_s": 30,
+  "fall_height_m": 0.35,
+  "fall_upright_z": 0.5,
+  "uncensored_margin_rad": 0.000002,
+  "max_mean_joint_rmse_rad": 0.15,
+  "maximum_feature_alignment_error": 0.00002,
+  "maximum_action_alignment_error_rad": 0.00008,
+  "cpu_threads": 2,
+  "scope": "Fresh eighteen-episode teacher collection on nine train cases only. Fit two shared ankle laws, each with a fitted clipped-pitch waist coupling; no teacher gains copied. Compare five fixed representations/channel/output-range variants across three frozen parents on 27 train-family selection conditions per variant. Select globally by fewer falls, longer survival, lower RMSE, then fewer active coefficients before any final canonical/audit run. Final selected policies each run nine canonical and nine separate training-family audit conditions; privileged teacher runs the nine unique canonical and 27 audit conditions once. All transitions retained, no final-data fitting, release qualification, model-based/PPO efficiency or hardware authority."
+}

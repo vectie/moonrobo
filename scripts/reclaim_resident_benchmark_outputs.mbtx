@@ -1,0 +1,69 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let source = @fs.read_file(dir + "/reclaim_compiled_outputs_a.mbtx").text()
+  let start = source.find("  let dirs=").unwrap()
+  let end = source[start:].find("\n").unwrap() + start
+  let code = (source[:start].to_owned() +
+    "  let dirs=@fs.readdir(root).filter(s=>s.has_prefix(\"hotspot-shared-\"));dirs.sort()" +
+    source[end:].to_owned())
+    .replace_all(
+      old="compiled-mlp-closed-output-reclaim-a.json",
+      new="compiled-resident-output-advice-a.json",
+    )
+    .replace_all(old="47185920.0", new="33554432.0")
+    .replace_all(
+      old="    if bytes+size>17179869184L{break}",
+      new=(
+        #|    if files.is_empty(){continue}
+        #|    let residency="/home/wlc004s/moonrobo/private/shared-compute-20261026-a/resident-aoti-"+name+".json"
+        #|    assert_eq(@process.run("/home/wlc004s/moonrobo/private/fincore-official-20261024-a/root/usr/bin/fincore",["--json","--bytes","--output","FILE,SIZE,RES,PAGES",..files],stdout=@process.redirect_to_file(residency,create_mode=CreateNew)),0)
+        #|    guard field(read(residency),"fincore") is Array(resident) else {fail("fincore format")}
+        #|    let mut pages=0.0
+        #|    for row in resident {match field(row,"res") {Number(n,..)=>pages+=n;String(s)=>pages+=@string.parse_double(s);_=>fail("resident bytes")}}
+        #|    if pages==0.0{continue}
+        #|    if bytes+size>17179869184L{break}
+      ),
+    )
+  @fs.write_file(dir + "/reclaim_resident_a.mbtx", code, create_mode=CreateNew)
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      dir + "/reclaim_resident_a.mbtx",
+      "wlc004s@192.168.2.179:" + base + "/reclaim_resident_a.mbtx",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179",
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/reclaim_resident_a.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        dir + "/reclaim-resident.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        dir + "/reclaim-resident.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+}

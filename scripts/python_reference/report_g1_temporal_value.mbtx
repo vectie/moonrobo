@@ -1,0 +1,268 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=out.text() + err.text())
+  out.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: report_g1_temporal_value.mbtx REPO STUDY MOONDATA_ROOT OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let data_sha = digest(study + "/dataset.json.gz")
+  let cells : Array[Json] = []
+  let mut model_sha : Json = ""
+  let mut replay_sha : Json = ""
+  for variant in ["frame", "preview"] {
+    let off = read(study + "/" + variant + "-value-off/policy/report.json")
+    let on = read(study + "/" + variant + "-value-on/policy/report.json")
+    assert_eq(field(off, "dynamics_sha256"), field(on, "dynamics_sha256"))
+    assert_eq(
+      field(off, "shared_teacher_points_sha256"),
+      field(on, "shared_teacher_points_sha256"),
+    )
+    let a = array(field(off, "runs"))
+    let b = array(field(on, "runs"))
+    assert_eq(a.length(), 3)
+    assert_eq(b.length(), 3)
+    for seed in 0..<3 {
+      assert_eq(field(a[seed], "baseline"), field(b[seed], "baseline"))
+      assert_eq(
+        field(array(field(a[seed], "history"))[0], "validation"),
+        field(array(field(b[seed], "history"))[0], "validation"),
+      )
+      let x = array(field(field(a[seed], "critic_physics"), "batches"))[0]
+      let y = array(field(field(b[seed], "critic_physics"), "batches"))[0]
+      for
+        key in [
+          "actor_state_sha256", "dataset_sha256", "reset_seed", "episodes", "transitions",
+          "falls", "time_limits", "training", "independent_audit_before", "independent_audit_after",
+        ] {
+        assert_eq(
+          field(x, key),
+          field(y, key),
+          msg="initial paired calibration differs: " + key,
+        )
+      }
+    }
+    for (suffix, report, bootstrap) in [("off", off, false), ("on", on, true)] {
+      let id = variant + "-value-" + suffix
+      let source = study + "/" + id
+      assert_eq(
+        field(report, "training_kind"),
+        "temporal-physical-finite-value-model-refinement",
+      )
+      assert_eq(
+        field(field(report, "config"), "actor_critic_bootstrap"),
+        Json(bootstrap),
+      )
+      if model_sha == ("" : Json) {
+        model_sha = field(report, "dynamics_sha256")
+        replay_sha = field(report, "shared_teacher_points_sha256")
+      } else {
+        assert_eq(field(report, "dynamics_sha256"), model_sha)
+        assert_eq(field(report, "shared_teacher_points_sha256"), replay_sha)
+      }
+      assert_eq(Json(digest(source + "/fit/dynamics-seed-0.pt")), model_sha)
+      assert_eq(digest(source + "/collection/dataset.json.gz"), data_sha)
+      let imported = @json.parse(
+        run(
+          root +
+          "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe",
+          [
+            "import",
+            args[3],
+            source,
+            "temporal-" + id,
+            @env.now().reinterpret_as_int64().to_string(),
+          ],
+        ),
+      )
+      assert_eq(field(imported, "physical_execution_allowed"), false)
+      let payloads = array(field(imported, "payloads"))
+      let rows : Array[Json] = []
+      for result in array(field(report, "runs")) {
+        let seed = num(field(result, "seed")).to_int()
+        assert_eq(field(result, "reload_matches"), true)
+        assert_eq(field(result, "dynamics_unchanged"), true)
+        assert_eq(
+          array(field(result, "history")).map(r => field(r, "update")),
+          ([0, 1, 5, 10, 20, 40, 60, 80, 100] : Array[Json]),
+        )
+        let physics = field(result, "critic_physics")
+        let batches = array(field(physics, "batches"))
+        assert_eq(batches.length(), 5)
+        for index, batch in batches {
+          assert_eq(field(batch, "actor_update"), Json(index * 20))
+          assert_eq(field(batch, "episodes"), 9)
+          assert_eq(field(batch, "optimizer_steps"), 600)
+        }
+        let probe = field(batches[0], "initial_direction")
+        assert_true(num(field(probe, "maximum_restore_error")) <= 0.00000001)
+        guard field(probe, "file") is String(direction) else {
+          fail("missing direction file")
+        }
+        assert_eq(
+          field(probe, "sha256"),
+          Json(digest(source + "/policy/" + direction)),
+        )
+        let relative = "policy/critic-physics-seed-\{seed}.jsonl.gz"
+        ignore(run("gzip", ["-t", source + "/" + relative]))
+        let hash = digest(source + "/" + relative)
+        assert_eq(field(physics, "sha256"), Json(hash))
+        let registered = payloads.filter(p => {
+          field(p, "relative_path") == Json(relative)
+        })
+        assert_eq(registered.length(), 1)
+        assert_eq(
+          field(field(registered[0], "data_ref"), "checksum"),
+          Json("sha256:" + hash),
+        )
+        let actual = read(source + "/policy/physics-seed-\{seed}.json")
+        assert_eq(
+          field(field(actual, "baseline"), "summary"),
+          field(result, "baseline"),
+        )
+        assert_eq(
+          field(field(actual, "candidate"), "summary"),
+          field(result, "candidate"),
+        )
+        let case_counts : Array[Json] = []
+        for case_id in ["stand", "sway", "wave"] {
+          let trials = array(field(field(actual, "candidate"), "trials")).filter(t => {
+              field(t, "case_id") == Json(case_id)
+            },
+          )
+          assert_eq(trials.length(), 3)
+          case_counts.push({
+            "case": Json(case_id),
+            "trials": Json(trials.length()),
+            "falls": Json(
+              trials.filter(t => field(t, "failed") == (true : Json)).length(),
+            ),
+          })
+        }
+        let initial = batches[0]
+        let row : Json = {
+          "seed": Json(seed),
+          "selected_update": field(result, "selected_update"),
+          "baseline": field(result, "baseline"),
+          "candidate": field(result, "candidate"),
+          "qualifies": field(result, "qualifies"),
+          "case_counts": Json(case_counts),
+          "initial_audit_before": field(initial, "independent_audit_before"),
+          "initial_audit_after": field(initial, "independent_audit_after"),
+          "initial_direction": probe,
+          "selected_value": field(result, "temporal_value"),
+          "calibration_batches": Json(batches),
+          "validation_history": field(result, "history"),
+          "critic_payload": registered[0],
+        }
+        rows.push(row)
+        println(
+          (
+            {
+              "cell": Json(id),
+              "seed": Json(seed),
+              "selected_update": field(result, "selected_update"),
+              "candidate": field(result, "candidate"),
+              "initial_value_mae_before": field(
+                field(initial, "independent_audit_before"),
+                "mae",
+              ),
+              "initial_value_mae_after": field(
+                field(initial, "independent_audit_after"),
+                "mae",
+              ),
+              "direction_local_change": field(probe, "local_physical_change"),
+              "direction_full_change": field(probe, "full_physical_change"),
+              "case_counts": Json(case_counts),
+            } : Json).stringify(),
+        )
+      }
+      cells.push({
+        "id": Json(id),
+        "config": field(report, "config"),
+        "runs": Json(rows),
+        "registered": imported,
+        "shared_teacher_sha256": field(report, "shared_teacher_sha256"),
+        "shared_teacher_actor_starts": field(
+          report, "shared_teacher_actor_starts",
+        ),
+        "dynamics_training_batch_sha256": field(
+          report, "dynamics_training_batch_sha256",
+        ),
+      })
+    }
+  }
+  let validation = @json.parse(
+    run(root + "/_build/native/debug/build/cmd/moondata/moondata.exe", [
+      "validate",
+      args[3],
+    ]),
+  )
+  assert_eq(field(validation, "status"), "passed")
+  assert_eq(field(validation, "finding_count"), 0)
+  @fs.write_file(
+    args[4],
+    (
+      {
+        "format": "moonrobo.g1-temporal-value-study.v1",
+        "cells": Json(cells),
+        "initial_paired_training_and_audits_identical": true,
+        "shared_dynamics_sha256": model_sha,
+        "shared_teacher_points_sha256": replay_sha,
+        "compressed_teacher_dataset_sha256": Json(data_sha),
+        "validation": validation,
+        "physical_execution_allowed": false,
+        "scope": "Finite remaining task value, both arms calibrated identically initially and at matched collection/fit frequencies. Same frozen model and shared starts, later own-policy data diverges. Independent value audit and physical parameter-direction changes remain separate from nine-trial canonical policy qualification.",
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

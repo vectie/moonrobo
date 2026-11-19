@@ -1,0 +1,190 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn count(value : Json) -> Int64 raise {
+  match value {
+    String(value) => @string.parse_int64(value)
+    Number(value, ..) if value >= 0.0 && value < 9007199254740992.0 =>
+      value.to_int64()
+    _ => fail("invalid audited integer")
+  }
+}
+
+///|
+async fn read_json(path : String) -> Json {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size < 4194304L else { fail("audit input exceeds 4 MiB") }
+  @json.parse(@utf8.decode(file.read_exactly_at(size.to_int(), position=0L)))
+}
+
+///|
+fn required(peak : Int64) -> Int64 {
+  ((peak * 100L + 79L) / 80L).max(peak + 17179869184L)
+}
+
+///|
+fn budget(remaining : Int64) -> Int64 {
+  (remaining * 80L / 100L).min((remaining - 17179869184L).max(0L))
+}
+
+///|
+fn scenario(name : String, peak : Int64, host_free_proxy : Int64) -> Json raise {
+  let needed = required(peak)
+  assert_true(budget(needed) >= peak)
+  assert_true(budget(needed - 1L) < peak)
+  {
+    "name": Json(name),
+    "peak_bytes": Json(peak.to_string()),
+    "required_min_host_remaining_and_cuda_free_bytes": Json(needed.to_string()),
+    "gap_against_host_free_proxy_bytes": Json(
+      (needed - host_free_proxy).max(0L).to_string(),
+    ),
+    "threshold_boundary_checked": true,
+  }
+}
+
+///|
+async fn main {
+  let base = "output/spark-runtime-20261024/"
+  let report_path = base +
+    "smc-native-logical4096-20261024-e/monitor-evidence/run-0/train/report.json"
+  let candidate_path = base +
+    "smc-native-aligned-20261024-g/native-candidate-config.json"
+  let f_path = base +
+    "smc-native-optimized512-20261024-f2/monitor-evidence/run-1/train/report.json"
+  let report = read_json(report_path)
+  let config = read_json(candidate_path)
+  guard config is Object(config_fields) &&
+    !config_fields.contains("max_motion_sampler_bins") else {
+    fail(
+      "this historical G calculator requires the original uncapped sampler configuration; use the cap regression evidence for the revised binary",
+    )
+  }
+  let f = read_json(f_path)
+  for
+    (key, expected) in [
+      ("pi_batch", 4096),
+      ("pi_microbatch", 512),
+      ("num_envs", 256),
+      ("wm_batch", 2048),
+      ("wm_window", 8),
+      ("horizon", 32),
+      ("goal_frames", 10),
+      ("memory_admission_percent", 80),
+      ("resident_reference_max_mib", 1376),
+      ("world_staging_max_mib", 128),
+    ] {
+    assert_eq(field(config, key), Json(expected))
+  }
+  for
+    flag in [
+      "reuse_geometry", "body_orientation_batched", "resident_reference_cache", "adam_checked_norm",
+      "defer_scalar_metrics", "world_staging_batch", "serial_optimizer_save_workspace",
+    ] {
+    assert_eq(field(config, flag), Json(true))
+  }
+  assert_eq(field(config, "layer_norm_mode"), Json("expanded"))
+  assert_eq(field(config, "amp"), Json("none"))
+  assert_eq(field(config, "critic_cuda_graph"), Json(false))
+  let baseline = count(field(field(report, "memory_plan"), "peak_bytes"))
+  let post = count(
+    field(field(report, "post_catalog_memory_plan"), "peak_bytes"),
+  )
+  assert_eq(baseline, 61485916048L)
+  assert_eq(post, 57862086328L)
+  let world = 32L * 205L * 2048L * 8L + 65536L
+  let geometry = 2L * 64L * 18L * 4L * 32L * 512L
+  let orientation = 67108864L + 128L * 4L * 64L * 32L * 512L
+  let cache_fixed = 2L * 1376L * 1048576L +
+    32L * 256L * (71L + 73L * 10L) +
+    65536L * 267L +
+    40L * 256L
+  let cache = cache_fixed + (40L * 33L + 8L) * 4096L
+  let cache512 = cache_fixed + (40L * 33L + 8L) * 512L
+  let metrics = 1048576L
+  let extra = world + geometry + orientation + cache + metrics
+  let extra512 = world + geometry + orientation + cache512 + metrics
+  let profile = 67108864L + 65536L * 4096L
+  assert_eq(world, 107544576L)
+  assert_true(world <= 128L * 1048576L)
+  assert_eq(cache, 2915190784L)
+  assert_eq(extra, 3778758656L)
+  assert_eq(profile, 335544320L)
+  assert_eq(
+    count(field(field(f, "memory_plan"), "peak_bytes")) - extra512,
+    58799493008L,
+  )
+  let host_free_proxy = 79620468736L
+  let scenarios = [
+    scenario("baseline4096_initial", baseline, host_free_proxy),
+    scenario("candidate4096_initial", baseline + extra, host_free_proxy),
+    scenario(
+      "baseline4096_profile_initial",
+      baseline + profile,
+      host_free_proxy,
+    ),
+    scenario(
+      "candidate4096_profile_initial",
+      baseline + extra + profile,
+      host_free_proxy,
+    ),
+    scenario("baseline4096_post_catalog", post, host_free_proxy),
+    scenario("candidate4096_post_catalog", post + extra, host_free_proxy),
+  ]
+  // Anchor against the accepted shared512 diagnostic, then count extra staging
+  // uploads and all eleven scopes per additional actor microbatch.
+  let baseline512_spans = 28248L
+  let extra_actor_uploads = 4L * (16L - 2L) * (70L + 32L)
+  let baseline4096_spans = baseline512_spans +
+    2L * extra_actor_uploads +
+    4L * (8L - 1L) * 11L
+  assert_eq(baseline4096_spans, 39980L)
+  assert_true(baseline4096_spans < 65536L)
+  println(
+    (
+      {
+        "format": "moonrobo.native4096-memory-audit.v1",
+        "scope": "offline arithmetic and evidence checks only; not hardware admission or a measured memory maximum",
+        "baseline_report": Json(report_path),
+        "candidate_config": Json(candidate_path),
+        "crosscheck_accepted512_report": Json(f_path),
+        "candidate_extra_bytes": Json(extra.to_string()),
+        "execution_world_logical_staging": Json(world.to_string()),
+        "execution_geometry_reuse": Json(geometry.to_string()),
+        "execution_batched_body_orientation": Json(orientation.to_string()),
+        "execution_resident_reference_cache": Json(cache.to_string()),
+        "execution_deferred_scalar_metrics": Json(metrics.to_string()),
+        "execution_profile_events_and_report": Json(profile.to_string()),
+        "host_free_proxy_bytes": Json(host_free_proxy.to_string()),
+        "scenarios": Json(scenarios),
+        "baseline_profile_expected_spans_without_extra_collection": Json(
+          baseline4096_spans.to_string(),
+        ),
+        "baseline_profile_expected_upload_count": Json(
+          (11304L + extra_actor_uploads).to_string(),
+        ),
+        "unchanged": [
+          "80-percent admission", "16 GiB remaining reserve", "100 GiB container",
+          "zero container swap", "12 CPU", "1-second sampled memory guard",
+        ],
+        "hardware_executed": false,
+      } : Json).stringify(indent=2),
+  )
+}

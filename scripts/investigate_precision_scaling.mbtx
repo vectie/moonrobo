@@ -1,0 +1,246 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+let dir = "output/spark-runtime-20261024/precision-scaling-20261028-a"
+
+///|
+let prior = "output/spark-runtime-20261024/bf16-original-20261028"
+
+///|
+let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+
+///|
+let host = "wlc004s@192.168.2.179"
+
+///|
+let socket = "/tmp/moonrobo-operator-179.sock"
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail(key) }
+  v
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] else { fail("prepare|off|events|eager") }
+  if mode == "reclaim" {
+    let old = @fs.read_file(prior + "/reclaim_closed_outputs_b.mbtx").text()
+    let s = old
+      .replace_all(
+        old="s.has_prefix(\"hotspot-shared-coefficient-\")||s.has_prefix(\"hotspot-shared-return-split-\")||s.has_prefix(\"hotspot-shared-heading-body-\")",
+        new="s.has_prefix(\"hotspot-shared-pscale-native-\")||s.has_prefix(\"hotspot-shared-bf16-native-\")",
+      )
+      .replace_all(
+        old="  guard field(read(\"/home/wlc004s/moonrobo/private/shared-compute-20261026-a/bf16-original-closed-output-reclaim-a.json\"),\"records\") is Array(prior) else { fail(\"prior advice receipt\") }\n  let visited=prior.map(x=>field(x,\"directory\"))",
+        new="  let visited : Array[Json] = []",
+      )
+      .replace_all(
+        old="bf16-original-closed-output-reclaim-b.json",
+        new="precision-scaling-closed-output-reclaim-a.json",
+      )
+    @fs.write_file(
+      dir + "/reclaim_precision_outputs.mbtx",
+      s,
+      create_mode=CreateNew,
+    )
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        dir + "/reclaim_precision_outputs.mbtx",
+        host + ":" + base + "/reclaim_precision_outputs.mbtx",
+      ]),
+      0,
+    )
+    assert_eq(
+      @process.run("ssh", [
+        "-S",
+        socket,
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/reclaim_precision_outputs.mbtx",
+      ]),
+      0,
+    )
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        host + ":" + base + "/precision-scaling-closed-output-reclaim-a.json",
+        dir + "/cache-advice.json",
+      ]),
+      0,
+    )
+    return
+  }
+  if mode == "prepare" {
+    guard !@fs.exists(dir) else { fail("fresh investigation required") }
+    @fs.mkdir(dir)
+    let runner = @fs.read_file(prior + "/run_bf16_original_c.mbtx")
+      .text()
+      .replace_all(
+        old="run_bf16_original_c.mbtx",
+        new="run_precision_scaling_a.mbtx",
+      )
+      .replace_all(
+        old="e[\"SHARED_NATIVE_BASELINE\"] = Json(\"/workspace/moonrobo/runs/hotspot-shared-bf16-native-\" + phase + \"-\" + variant + (if phase == \"actor\" && variant == \"bf16-full\" {\"-gate-b\"}else{\"-gate-a\"}))",
+        new="e[\"SHARED_NATIVE_BASELINE\"] = Json(if amp == \"none\" {\"/workspace/moonrobo/runs/hotspot-shared-pscale-native-fp32-off-a\"} else {\"/workspace/moonrobo/runs/hotspot-shared-bf16-native-world-bf16-full-gate-a\"})",
+      )
+    assert_true(runner.contains("pscale-native-fp32-off-a"))
+    let invoke = @fs.read_file(prior + "/invoke_bf16_original_c.mbtx")
+      .text()
+      .replace_all(
+        old="run_bf16_original_c.mbtx",
+        new="run_precision_scaling_a.mbtx",
+      )
+    for
+      (name, content) in [
+        ("run_precision_scaling_a.mbtx", runner),
+        ("invoke_precision_scaling_a.mbtx", invoke),
+      ] {
+      @fs.write_file(dir + "/" + name, content, create_mode=CreateNew)
+      assert_eq(
+        @process.run("scp", [
+          "-o",
+          "ControlPath=" + socket,
+          dir + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let cases = match mode {
+    "off" =>
+      [
+        ("native", "fp32", "a"),
+        ("smc", "fp32", "a"),
+        ("smc", "bf16", "a"),
+        ("native", "bf16", "a"),
+        ("native", "bf16", "b"),
+        ("smc", "bf16", "b"),
+        ("smc", "fp32", "b"),
+        ("native", "fp32", "b"),
+      ]
+    "events" =>
+      [
+        ("native", "fp32", "a"),
+        ("smc", "fp32", "a"),
+        ("smc", "bf16", "a"),
+        ("native", "bf16", "a"),
+      ]
+    "eager" => [("smc-eager", "fp32", "a"), ("smc-eager", "bf16", "a")]
+    _ => fail("mode")
+  }
+  let observer = if mode == "off" { "off" } else { "events" }
+  for (implementation, amp, suffix) in cases {
+    let label = "pscale-" +
+      implementation +
+      "-" +
+      amp +
+      "-" +
+      mode +
+      "-" +
+      suffix
+    let folder = dir + "/" + label
+    guard !@fs.exists(folder) else { fail("existing evidence: " + label) }
+    @fs.mkdir(folder)
+    println("START " + label)
+    let code = @process.run(
+      "ssh",
+      [
+        "-S",
+        socket,
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/invoke_precision_scaling_a.mbtx -- world " +
+        implementation +
+        " " +
+        observer +
+        " 13 " +
+        label +
+        " " +
+        amp +
+        "-full",
+      ],
+      stdout=@process.redirect_to_file(
+        folder + "/controller.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        folder + "/controller.stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    assert_eq(code, 0)
+    for
+      name in [
+        "result.json", "protocol.json", "completion.json", "training-guard.json",
+        "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+      ] {
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=" + socket,
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-" +
+          label +
+          "/" +
+          name,
+          folder + "/" + name,
+        ]),
+        0,
+      )
+    }
+    let r = @json.parse(@fs.read_file(folder + "/result.json").text())
+    assert_eq(
+      field(r, "amp"),
+      Json(if amp == "fp32" { "none" } else { "bf16" }),
+    )
+    assert_eq(field(r, "observer"), Json(observer))
+    guard field(r, "rows") is Array(rows) && rows.length() == 13 else {
+      fail("complete repeat set")
+    }
+    assert_eq(
+      field(
+        @json.parse(@fs.read_file(folder + "/training-guard.json").text()),
+        "reason",
+      ),
+      Json("completed"),
+    )
+    guard @json.parse(
+        @fs.read_file(folder + "/training-docker-final.json").text(),
+      )
+      is [
+        { "State": { "OOMKilled": False, "Running": False, "Pid": 0, .. }, .. },
+      ] else {
+      fail("container not closed")
+    }
+    // Cross-language numerical failures are retained separately; diagnostic
+    // timing is not permission to promote an optimization.
+    println(
+      "DONE " +
+      label +
+      " " +
+      Json(
+        rows
+        .filter(x => field(x, "steady") == Json(true))
+        .map(x => field(x, "wall_ms")),
+      ).stringify(),
+    )
+  }
+}

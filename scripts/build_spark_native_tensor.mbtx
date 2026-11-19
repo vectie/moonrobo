@@ -1,0 +1,103 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+/// Build only the native adapter against the fixed aarch64 LibTorch runtime.
+/// The build context contains only native adapter sources, optional execution
+/// extensions, CUDA headers and Dockerfile, never datasets or checkpoints.
+async fn main {
+  let args = @env.args()
+  guard args.length() >= 3 && args.length() <= 5 else {
+    fail(
+      "usage: build_spark_native_tensor.mbtx REPO_ABSOLUTE FRESH_BUILD_DIRECTORY [FRESH_IMAGE_TAG [MATCHING_CUDA_INCLUDE_DIRECTORY]]",
+    )
+  }
+  let repo = args[1]
+  let context = args[2]
+  let image_tag = if args.length() >= 4 {
+    args[3]
+  } else {
+    "moonrobo-isaaclab:46d6cc3-kitless-native"
+  }
+  guard repo.has_prefix("/") && context.has_prefix("/") else {
+    fail("absolute repository and build paths are required")
+  }
+  guard !@fs.exists(context) else { fail("build directory already exists") }
+  @fs.mkdir(context)
+  @fs.mkdir(context + "/cuda-include")
+  if args.length() == 5 {
+    guard args[4].has_prefix("/") && @fs.exists(args[4] + "/cuda_runtime_api.h") else {
+      fail(
+        "matching CUDA include directory must be absolute and contain cuda_runtime_api.h",
+      )
+    }
+    guard @process.run("cp", ["-a", args[4] + "/.", context + "/cuda-include/"]) ==
+      0 else {
+      fail("CUDA header staging failed")
+    }
+  }
+  for
+    name in [
+      "layer_norm.inc", "profiling.inc", "graph.inc", "precision.inc", "adam_checked_norm.inc",
+    ] {
+    @fs.write_file(
+      context + "/" + name,
+      @fs.read_file(repo + "/src/learning_tensor/" + name).binary(),
+      create_mode=CreateNew,
+    )
+  }
+  @fs.write_file(
+    context + "/collective.inc",
+    @fs.read_file(repo + "/src/learning_tensor/collective.inc").binary(),
+    create_mode=CreateNew,
+  )
+  @fs.write_file(
+    context + "/telemetry.inc",
+    @fs.read_file(repo + "/src/learning_tensor/telemetry.inc").binary(),
+    create_mode=CreateNew,
+  )
+  @fs.write_file(
+    context + "/tf32.inc",
+    @fs.read_file(repo + "/src/learning_tensor/tf32.inc").binary(),
+    create_mode=CreateNew,
+  )
+  @fs.write_file(
+    context + "/adapter.cpp",
+    @fs.read_file(repo + "/src/learning_tensor/adapter.cpp").binary(),
+    create_mode=CreateNew,
+  )
+  @fs.write_file(
+    context + "/Dockerfile",
+    @fs.read_file(repo + "/docker/Dockerfile.spark-native-tensor").binary(),
+    create_mode=CreateNew,
+  )
+  let code = @process.run("docker", [
+    "buildx",
+    "build",
+    "--resource",
+    "memory=8g",
+    "--resource",
+    "memory-swap=8g",
+    "--resource",
+    "cpu-quota=200000",
+    "--platform",
+    "linux/arm64",
+    "--build-arg",
+    "BASE_IMAGE=moonrobo-isaaclab:46d6cc3-kitless-rdma",
+    "--build-arg",
+    "CUDA_GRAPH=" + (if args.length() == 5 { "1" } else { "0" }),
+    "--tag",
+    image_tag,
+    context,
+  ])
+  guard code == 0 else { fail("native adapter image build failed: \{code}") }
+  let inspected = @process.run("docker", [
+    "image", "inspect", image_tag, "--format", "{{.Id}} {{.Architecture}}",
+  ])
+  guard inspected == 0 else { fail("native adapter image inspection failed") }
+}

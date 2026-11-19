@@ -1,0 +1,202 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail(key)
+  }
+  value
+}
+
+///|
+fn rows(value : Json) -> Array[Json] raise {
+  guard value is Array(items) else { fail("array") }
+  items
+}
+
+///|
+fn number(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("number") }
+  n
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/world-backward-boundaries-20261029-a"
+  let read = async fn(path : String) -> Json {
+    @json.parse(@fs.read_file(root + "/" + path).text())
+  }
+  let gate = field(
+    read("world-reference-smc-gate-f/result.json"),
+    "numerical_comparison",
+  )
+  assert_eq(field(gate, "passed"), Json(true))
+  let tensors = rows(field(gate, "tensors"))
+  assert_eq(tensors.length(), 145)
+  let gradients = tensors.filter(t => {
+    field(t, "name") is String(name) && name.has_suffix("-gradient")
+  })
+  assert_eq(gradients.length(), 14)
+  for t in tensors {
+    assert_eq(field(t, "violations"), Json(0))
+  }
+  for t in gradients {
+    assert_eq(field(t, "max_abs"), Json(0))
+  }
+  let local_control = read("world-boundary-j/joint-normalization-control.json")
+  assert_eq(
+    field(local_control, "checks"),
+    (
+      {
+        "native_reproduces_captured_joint_output": true,
+        "smc_reproduces_captured_joint_output": true,
+      } : Json),
+  )
+  assert_eq(field(local_control, "unequal"), Json(4))
+  let reference = read("world-boundary-f/result.json")
+  for run in ["world-boundary-h", "world-boundary-j"] {
+    let repeat = read(run + "/result.json")
+    assert_eq(
+      field(reference, "smc_loaded_kernels"),
+      field(repeat, "smc_loaded_kernels"),
+    )
+    assert_eq(field(reference, "gradients"), field(repeat, "gradients"))
+  }
+  let native : Array[Double] = []
+  let smc : Array[Double] = []
+  let runs : Array[Json] = []
+  for
+    (side, block) in [
+      ("native", "a"),
+      ("smc", "a"),
+      ("smc", "b"),
+      ("native", "b"),
+    ] {
+    let label = "world-reference-bench-" + side + "-" + block
+    let result = read(label + "/result.json")
+    assert_eq(field(read(label + "/completion.json"), "passed"), Json(true))
+    assert_eq(field(result, "includes_sampling_or_upload"), Json(false))
+    assert_eq(field(result, "same_initial_state_each_repeat"), Json(true))
+    assert_eq(field(result, "observer"), Json("off"))
+    let guard_log = read(label + "/training-guard.json")
+    assert_eq(field(guard_log, "reason"), Json("completed"))
+    assert_eq(field(guard_log, "host_start_free_kib"), Json(25165824))
+    assert_eq(field(guard_log, "host_stop_free_kib"), Json(12582912))
+    guard read(label + "/training-docker-final.json")
+      is [{ "State": { "OOMKilled": False, "Running": False, .. }, .. }] else {
+      fail("finished without OOM")
+    }
+    let all = rows(field(result, "rows"))
+    assert_eq(all.length(), 13)
+    let times = all
+      .filter(r => field(r, "steady") == Json(true))
+      .map(r => number(field(r, "wall_ms")))
+    times.sort()
+    assert_eq(times.length(), 10)
+    let median = (times[4] + times[5]) / 2.0
+    if side == "native" {
+      native.push(median)
+    } else {
+      smc.push(median)
+      let check = field(result, "numerical_comparison")
+      assert_eq(field(check, "passed"), Json(true))
+      for t in rows(field(check, "tensors")) {
+        if field(t, "name") is String(name) && name.has_suffix("-gradient") {
+          assert_eq(field(t, "max_abs"), Json(0))
+        }
+      }
+      assert_eq(
+        field(
+          read(label + "/compilation-audit.json"),
+          "new_kernel_or_selection_files",
+        ),
+        Json(0),
+      )
+    }
+    let peak = rows(field(guard_log, "samples")).fold(init=0.0, (m, r) => {
+      m.max(number(field(r, "cgroup_peak_bytes")))
+    })
+    runs.push({
+      "run": Json(label),
+      "median_ms": Json(median),
+      "minimum_ms": Json(times[0]),
+      "maximum_ms": Json(times[9]),
+      "steady_samples": 10,
+      "cgroup_sampled_peak_bytes": Json(peak),
+      "memory": if side == "native" {
+        field(result, "memory")
+      } else {
+        {
+          "torch_allocated_peak_bytes": field(result, "allocated_peak"),
+          "torch_reserved_peak_bytes": field(result, "reserved_peak"),
+        }
+      },
+    })
+  }
+  let n = (native[0] + native[1]) / 2.0
+  let s = (smc[0] + smc[1]) / 2.0
+  let audit = read("world-benchmark-final-audit-a.json")
+  assert_eq(field(audit, "exported_artifacts_unchanged"), Json(true))
+  for record in rows(field(audit, "native_steady_exports_vs_gate")) {
+    assert_eq(field(record, "bitwise_equal_output_records"), Json(134))
+  }
+  let report : Json = {
+    "schema": "moonrobo.world-reference-benchmark.v1",
+    "scope": "one complete world optimizer update, batch2048 x unroll8; forward, loss, backward, gradient clipping, Adam; excludes actor/critic, physics, replay preparation and upload",
+    "precision": "original SMC BF16 MLP autocast, FP32 parameters/Adam/state integration",
+    "reference_smc_source_unchanged": true,
+    "timing_protocol": "native A / SMC A / SMC B / native B; each process 3 warmups and 10 steady updates; no profiler or CUDA event observer; fixed checkpoint and exogenous inputs restored outside timed window",
+    "runs": Json(runs),
+    "native_mean_block_median_ms": Json(n),
+    "smc_mean_block_median_ms": Json(s),
+    "native_excess_ms": Json(n - s),
+    "native_over_smc": Json(n / s),
+    "native_excess_percent": Json((n / s - 1.0) * 100.0),
+    "timing_limit": "small excess is below native block-median spread; no confidence interval or stable speed advantage claimed",
+    "numerical_gate": {
+      "passed": true,
+      "gradient_tensors_exact": 14,
+      "checked_records": 145,
+      "atol": field(gate, "atol"),
+      "rtol": field(gate, "rtol"),
+      "parameters_and_Adam_passed": true,
+    },
+    "confirmed_findings": [
+      "198 saved forward tensors bitwise equal; 181 matched matrix calls per side; four weight-matrix gradient joins reconstruct exactly on each side",
+      "7 BF16 recurrent input-gradient GEMMs: matching original SMC 133->136 padding reduces clipped gradient violations from4944 to48; 16 BMM padding changes alone do not change that count",
+      "First remaining q/qd discrepancy reproduced exactly using same-input native split kernels versus original SMC fused kernel: four BF16 values, maxabs1.1641532182693481e-10",
+      "SASS confirms separate reciprocal multiplication/store then addition in native versus reciprocal multiplication plus addition contracted into FFMA in original SMC",
+      "Re-exporting identical reference FX through aot_compile leaves the same48 gradient/1 Adam-moment failures; direct compile_fx_inner(is_backward=True) with get_cpp_wrapper_config passes, retaining original forward and error binaries",
+    ],
+    "joint_boundary_control": local_control,
+    "artifact_audit": audit,
+    "accepted_world_package": "/home/wlc004s/moonrobo/runs/hotspot-mlp-world-reference-export-k",
+    "training_default_changed": false,
+    "full_training_benchmark_performed": false,
+    "full_training_not_admitted": "The retained original-SMC BF16 actor comparison has not passed; this world-only fix does not alter or validate that actor execution. See ../bf16-original-20261028/numerical-summary.json. No new actor check or complete-training timing is claimed.",
+    "memory_thresholds_changed": false,
+    "OOM_observed": false,
+    "original_implementations_and_failed_candidates_retained": true,
+    "memory_scope": "Torch allocator and sampled cgroup figures overlap on UMA; do not sum them or call them a full-training memory peak",
+    "reproduction": "frozen run_world_reference_bench_a.mbtx, original native executable/plugin and export-k artifacts; new labels/output directories required; benchmark_world_reference.mbtx gates before measurement",
+  }
+  @fs.write_file(
+    root + "/benchmark-findings.json",
+    report.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(
+    "Native " +
+    n.to_string() +
+    " ms; SMC " +
+    s.to_string() +
+    " ms; excess " +
+    (n - s).to_string() +
+    " ms (world update only)",
+  )
+}

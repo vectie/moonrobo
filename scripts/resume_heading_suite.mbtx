@@ -1,0 +1,19 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-heading-body-20261028"
+  let mut s=@fs.read_file(root+"/heading_body_suite_b.mbtx").text()
+  let labels="kind+(if phase==\"actor\"&&v==\"heading\"&&kind==\"gate\"{\"-d\"}else{\"-c\"})"
+  s=rep(s,"kind+\"-c\"",labels)
+  s=rep(s,"heading-body-preflight-c","heading-body-preflight-d")
+  s=rep(s,"heading_body_suite_b.mbtx","heading_body_suite_c.mbtx")
+  s=rep(s,"let name=label(phase,v,\"gate\");invoke", "let name=label(phase,v,\"gate\");if @fs.exists(runs+name+\"/completion.json\") && (v==\"baseline\" || @fs.exists(base+\"/\"+name+\".numeric.json\")){println(\"Retained completed gate \"+name);continue};invoke")
+  @fs.write_file(root+"/heading_body_suite_c.mbtx",s,create_mode=CreateNew)
+  let events=rep(@fs.read_file(root+"/heading_events.mbtx").text(),"kind+\"-c\"",labels)
+  @fs.write_file(root+"/heading_events.mbtx",events)
+  let report=rep(@fs.read_file(root+"/report_heading_body.mbtx").text(),"kind+\"-c\"","kind+(if phase==\"actor\"&&variant==\"heading\"&&kind==\"gate\"{\"-d\"}else{\"-c\"})")
+  @fs.write_file(root+"/report_heading_body.mbtx",report)
+  for file in ["heading_body_suite_c.mbtx","heading_events.mbtx"]{
+    guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",root+"/"+file,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/"+file])==0 else{fail("stage")}
+  }
+}

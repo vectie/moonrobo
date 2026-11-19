@@ -1,0 +1,133 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() == 4 || args.length() == 5,
+    msg="usage: probe_g1_critic.mbtx REPO POLICY_DIRECTORY OUTPUT [CONFIG]",
+  )
+  let root = args[1]
+  @fs.mkdir(args[3], recursive=true)
+  @fs.write_file(
+    args[3] + "/critic_probe.py",
+    @fs.read_file(root + "/providers/motion_learning/critic_probe.py").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let (code, stdout, stderr) = native_collect_output(
+    root + "/scripts/run_native_learning.mbtx",
+    [
+      root + "/providers/motion_learning/critic_probe.py",
+      "--policies",
+      args[2],
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--config",
+      if args.length() == 5 {
+        args[4]
+      } else {
+        root + "/examples/learning/g1-critic-probe.json"
+      },
+      "--experiment",
+      root + "/examples/learning/g1-long-experiment.json",
+      "--output",
+      args[3],
+    ],
+  )
+  @fs.write_file(
+    args[3] + "/probe.log",
+    stdout.text() + stderr.text(),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(code, 0, msg=stderr.text())
+  println(stdout.text())
+}
+
+///|
+/// Checkpoint copies are validated or converted by the reviewed native loader.
+fn native_checkpoint_copy_command(
+  exe : String,
+  args : Array[String],
+) -> (String, Array[String])? raise {
+  if exe != "/bin/cp" || args.length() < 2 {
+    return None
+  }
+  if !args[0].has_suffix(".moon.json") &&
+    !args[0].has_suffix(".pt") &&
+    !args[1].has_suffix(".moon.json") {
+    return None
+  }
+  guard args.length() == 2 && args[1].has_suffix(".moon.json") else {
+    fail("checkpoint copies require SOURCE and native .moon.json DESTINATION")
+  }
+  let name = args[0].split("/").last().unwrap_or("").to_owned()
+  let kind = if name.contains("dynamics-seed-") {
+    "residual-dynamics"
+  } else if name.contains("actor-seed-") {
+    "g1-actor"
+  } else {
+    fail("unreviewed checkpoint copy kind: " + name)
+  }
+  let root = @env.args()[1]
+  Some(
+    (
+      root,
+      [
+        "run",
+        root + "/scripts/run_native_learning.mbtx",
+        root,
+        "src/learning_training/launch/cmd",
+        "checkpoint-copy",
+        args[0],
+        args[1],
+        kind,
+      ],
+    ),
+  )
+}
+
+///|
+/// Structured native dispatch. A .py argument is a reviewed provider descriptor, never an executable or an interpreter fallback.
+async fn native_collect_output(
+  exe : String,
+  args : Array[String],
+) -> (Int32, &@io.Data, &@io.Data) {
+  let suffix = "/scripts/run_native_learning.mbtx"
+  if exe.has_suffix(suffix) {
+    let root = exe[:exe.length() - suffix.length()].to_owned()
+    let command = ["run", exe, root, "src/learning_training/launch/cmd"]
+    command.append(args)
+    return @process.collect_output("moon", command, cwd=root)
+  }
+  if native_checkpoint_copy_command(exe, args) is Some((root, command)) {
+    return @process.collect_output("moon", command, cwd=root)
+  }
+  @process.collect_output(exe, args)
+}
+
+///|
+async fn native_process_run(
+  exe : String,
+  args : Array[String],
+  stdout? : &@process.ProcessOutput,
+  stderr? : &@process.ProcessOutput,
+) -> Int32 {
+  let suffix = "/scripts/run_native_learning.mbtx"
+  if exe.has_suffix(suffix) {
+    let root = exe[:exe.length() - suffix.length()].to_owned()
+    let command = ["run", exe, root, "src/learning_training/launch/cmd"]
+    command.append(args)
+    return @process.run("moon", command, cwd=root, stdout?, stderr?)
+  }
+  if native_checkpoint_copy_command(exe, args) is Some((root, command)) {
+    return @process.run("moon", command, cwd=root, stdout?, stderr?)
+  }
+  @process.run(exe, args, stdout?, stderr?)
+}

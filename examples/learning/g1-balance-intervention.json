@@ -1,0 +1,11 @@
+{
+  "seeds": [0, 1, 2],
+  "modes": ["student", "ankle", "ankle_waist", "lower", "teacher", "teacher_no_memory", "teacher_h10", "teacher_h50"],
+  "duration_s": 10,
+  "fall_height_m": 0.35,
+  "fall_upright_z": 0.5,
+  "train_reset_seed_base": 6500,
+  "canonical_reset_seeds": [9700, 9701],
+  "cpu_threads": 2,
+  "scope": "Selected disturbance-supervised preview actors, fixed weights. Nine train cases at one reset per actor, plus stand/sway/wave at two shared fresh development resets. Eight predeclared control interventions; no added exploration noise. Teacher windows retain 1/10/50 error frames (0/9/49 finite-difference terms), zero filter state at the oldest retained frame. No training, variant selection or deployment qualification."
+}

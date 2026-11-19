@@ -1,0 +1,119 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(o) && o.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+async fn command(program : String, args : Array[String]) -> String {
+  let (reader, redirect) = @process.read_from_process()
+  defer reader.close()
+  @async.with_timeout(30000, () => @async.with_task_group() <| group => {
+    let child = group.spawn(() => @process.run(program, args, stdout=redirect))
+    let buf = FixedArray::make(8192, b'\x00')
+    let mut offset = 0
+    for ;; {
+      let n = reader.read(buf, offset~, max_len=8192 - offset)
+      if n == 0 { break }
+      offset += n
+      guard offset < 8192 else { fail("bounded child output exceeded") }
+    }
+    guard child.wait() == 0 else { fail("command failed: " + program) }
+    @utf8.decode(Bytes::from_array(buf[:offset])).trim().to_owned()
+  })
+}
+
+///|
+async fn idle() -> Unit {
+  guard command("docker", ["--host", "unix:///var/run/docker.sock", "ps", "--quiet"]) == "" &&
+    command("nvidia-smi", ["--query-compute-apps=pid", "--format=csv,noheader,nounits"]) == "" else {
+    fail("active Docker/GPU job; no numeric cache advice")
+  }
+}
+
+///|
+async fn read_json(path : String) -> Json {
+  guard @fs.kind(path, follow_symlink=false) == Regular && @fs.realpath(path) == path else { fail("canonical metadata required") }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size < 1048576L else { fail("bounded metadata required") }
+  @json.parse(@utf8.decode(file.read_exactly_at(size.to_int(), position=0L)))
+}
+
+///|
+fn closed(state : Json) -> Bool raise {
+  field(state, "Running") == Json(false) && field(state, "OOMKilled") == Json(false) && field(state, "ExitCode") == Json(0) && field(state, "Status") == Json("exited")
+}
+
+///|
+async fn scan(path : String, depth : Int, files : Array[(String, String)]) -> Unit {
+  guard depth < 8 && @fs.kind(path, follow_symlink=false) == Directory && @fs.realpath(path) == path else { fail("bounded canonical cache directory required") }
+  let entries = @fs.opendir(path)
+  defer entries.close()
+  while entries.next(include_hidden=true, include_special=false) is Some(entry) {
+    guard !entry.name.contains("/") && !entry.name.contains("\\") && entry.name.iter().all(c => c >= ' ' && c != '\u007f') else { fail("unsafe filename") }
+    let name = path + "/" + entry.name
+    match @fs.kind(name, follow_symlink=false) {
+      Directory => scan(name, depth + 1, files)
+      Regular => {
+        guard @fs.realpath(name) == name else { fail("canonical cache payload required") }
+        let identity = command("stat", ["--format=%u %h %s %d %i %Y %Z", "--", name])
+        let parts = identity.split(" ").to_array()
+        guard parts.length() == 7 && parts[0] == "1000" && parts[1] == "1" else { fail("single-link owned payload required") }
+        let size = @string.parse_int64(parts[2])
+        guard size >= 0L && size <= 536870912L && files.length() < 1024 else { fail("cache payload bound") }
+        if size >= 1048576L { files.push((name, identity)) }
+      }
+      _ => fail("special file or symlink rejected")
+    }
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, label] && label.length() > 0 && label.length() < 80 && label.iter().all(c => c is ('a'..<='z' | '0'..<='9' | '-')) else { fail("fresh lowercase receipt label required") }
+  let root = "/home/wlc004s/moonrobo"
+  let report = root + "/private/operator-diagnostic-20261025-a/cache-apic-gate-" + label + ".json"
+  guard !@fs.exists(report) else { fail("receipt already exists") }
+  idle()
+  let files : Array[(String, String)] = []
+  let evidence : Array[Json] = []
+  for _ in 0..<1 {
+    let run = root + "/runs/hotspot-apic-exact-gate-20261025-b"
+    let result = read_json(run + "/result.json")
+    guard field(result, "passed") == Json(true) && field(result, "spec_sha256") == Json("72c950034fc9c9189fcf14972e7eec623b0b6a4a16276fe93b39527c322f95b8") else { fail("exact completed APIC gate required") }
+    let stderr = @fs.read_file(run + "/training.stderr.log").text()
+    guard stderr.length() < 1048576 && stderr.contains("APIC_EXACT_IO_GATE") && stderr.contains("\"verified_reads\":1046") && stderr.contains("\"verified_writes\":346") && stderr.contains("\"scalar_fallbacks\":0") else { fail("APIC exact comparison completion required") }
+    guard read_json(run + "/training-docker-final.json") is Array([container]) && field(container, "Id") is String(id) else { fail("container receipt required") }
+    guard @json.parse(command("docker", ["--host", "unix:///var/run/docker.sock", "inspect", "--format", "{{json .State}}", id])) == field(container, "State") && closed(field(container, "State")) && field(field(container, "Config"), "User") == Json("1000:1000") else { fail("same closed owned container required") }
+    guard field(field(container, "Config"), "Env") is Array(env) && env.filter(e => e is String(s) && s.has_prefix("CUDA_CACHE_PATH=")) == [Json("CUDA_CACHE_PATH=/pair/cuda-cache")] && field(container, "Mounts") is Array(mounts) else { fail("private CUDA path required") }
+    guard mounts.filter(m => field(m, "Destination") == Json("/pair")) is [mount] && field(mount, "Source") == Json(run) && field(mount, "Type") == Json("bind") && field(mount, "RW") == Json(true) && mounts.all(m => match field(m, "Destination") { String(s) => !s.has_prefix("/pair/"); _ => false }) else { fail("exact unshadowed private run bind required") }
+    scan(run + "/cuda-cache", 0, files)
+    evidence.push({ "run": Json(run), "container": Json(id), "completed": true })
+  }
+  let mut total = 0L
+  for (_, identity) in files { total += @string.parse_int64(identity.split(" ").to_array()[2]) }
+  guard total <= 2147483648L else { fail("all numeric cache payloads exceed2GiB") }
+  idle()
+  for (path, identity) in files {
+    guard command("stat", ["--format=%u %h %s %d %i %Y %Z", "--", path]) == identity else { fail("payload identity changed") }
+    ignore(command("sync", ["--data", "--", path]))
+    ignore(command("dd", ["if=" + path, "of=/dev/null", "count=0", "iflag=nocache,nofollow", "status=none"]))
+    guard command("stat", ["--format=%u %h %s %d %i %Y %Z", "--", path]) == identity else { fail("cache file metadata changed") }
+  }
+  @fs.write_file(report, ({ "format": "moonrobo.completed-numeric-cache-advice.v1", "completed_gates": Json(evidence), "files": Json(files.map(pair => ({ "path": Json(pair.0), "stat_identity": Json(pair.1) } : Json))), "advised_file_bytes": Json(total), "contents_retained": true, "scope": "File-specific page advice after closed-owner identity checks. File bytes are not a measurement of RAM reclaimed. No global cache clear." } : Json).stringify(indent=2), create_mode=CreateNew)
+  println(report)
+}

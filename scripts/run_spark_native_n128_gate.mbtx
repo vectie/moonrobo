@@ -1,0 +1,761 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/x/crypto",
+}
+
+///|
+// Native Linux executable, inside an already limited, fresh container. The host
+// verifies its image ID and mounts the repository read-only and /gate writable.
+// GNU timeout encloses this helper, including hashing and checkpoint checks.
+let repo = "/workspace/moonrobo"
+
+///|
+let config : String = repo +
+  "/examples/learning/g1-native-tensor-apic-n128-scale-gate.json"
+
+///|
+let config_sha = "6913ba684c3f07b0398665668e9c3b3773ecdc89accd4cf4cfa50522c1aa2643"
+
+///|
+let trainer_sha = "1dd7a5f95017e3865489dbb65cec490934a82c87acaac5da7aad11fe971c4c27"
+
+///|
+let image_id = "sha256:9d517324498da0ab109841d666bd49b9e9838bf3878e678c226c15848cbcac3b"
+
+///|
+let manifest : String = repo + "/data/manifest.json"
+
+///|
+let manifest_sha = "760c59585d792da74e9437f12dced4d216afd5d17411cf4bfa507ed51e6bc60f"
+
+///|
+let bundle : String = repo +
+  "/runs/apic-n128-20261024-a/g1-128env-apic/manifest.json"
+
+///|
+let bundle_sha = "bcca38b63ba4fe8f933a8c808ec94092630d30bccbbfae89fb4b41dddbf95774"
+
+///|
+let tensor : String = repo +
+  "/private/native-tensor-nccl/libmoonrobo_learning_tensor.so"
+
+///|
+let tensor_sha = "a1176bb28ce4fb928006c7e5db20fbe1b693bcabab6d482e0f766a00ad802f1f"
+
+///|
+let physics = "/opt/moonrobo/apic-runtime/libmoonrobo_aligned_apic.so"
+
+///|
+let physics_sha = "6c5df912291754b37ac2c60a0b0c13253d2486e87c42ca20fb0ad19e910099e1"
+
+///|
+let mujoco = "/opt/isaaclab-venv/lib/python3.12/site-packages/mujoco/libmujoco.so.3.15.0"
+
+///|
+let mujoco_sha = "76845f2712200efaa5a38da7a004e944ecdb7397c41fd8b8ea7684a82d3e4bd0"
+
+///|
+let scene : String = repo + "/data/g1_description/scene-no-self-collision.xml"
+
+///|
+let scene_sha = "34cf0cf3c5fa5452fc24d33d9f31fb4a4435f3050366041e1dc853b39bdd20ee"
+
+///|
+let memory_limit = 68719476736L
+
+///|
+let batch_execution : Json = { "world_microbatch": 16, "actor_microbatch": 16 }
+
+///|
+fn field(value : Json, name : String) -> Json raise {
+  guard value is Object(fields) && fields.get(name) is Some(result) else {
+    fail("missing JSON field: " + name)
+  }
+  result
+}
+
+///|
+fn integer(value : Json) -> Int64 raise {
+  match value {
+    String(text) => @string.parse_int64(text)
+    Number(n, ..) => {
+      guard n >= 0 && n <= 9007199254740991.0 && n.to_int64().to_double() == n else {
+        fail("expected exact nonnegative integer")
+      }
+      n.to_int64()
+    }
+    _ => fail("expected integer/string")
+  }
+}
+
+///|
+fn required_some(value : Json) -> Json raise {
+  // Existing reports explicitly encode Json(Some(value)) as [value].
+  guard value is Array(values) && values.length() == 1 else {
+    fail("missing or malformed report Some value")
+  }
+  values[0]
+}
+
+///|
+async fn file_sha(path : String, max_bytes : Int64) -> String {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected regular file: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= max_bytes else { fail("file byte bound: " + path) }
+  let hash = @crypto.SHA256::new()
+  for offset = 0L; offset < size; {
+    let count = (size - offset).min(65536L).to_int()
+    hash.update(file.read_exactly_at(count, position=offset))
+    continue offset + count.to_int64()
+  }
+  guard file.size() == size else { fail("file size changed: " + path) }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn bounded_text(path : String, limit : Int64) -> String {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected regular text file: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= limit else { fail("text byte bound: " + path) }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else { fail("text size changed: " + path) }
+  @utf8.decode(bytes)
+}
+
+///|
+async fn bounded_json(path : String, limit : Int64) -> Json {
+  @json.parse(bounded_text(path, limit))
+}
+
+///|
+async fn write_json(path : String, value : Json) -> Unit {
+  @fs.write_file(
+    path,
+    value.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+}
+
+///|
+async fn cgroup() -> Json {
+  let values : Map[String, String] = Map([])
+  let errors : Map[String, String] = Map([])
+  for
+    name in [
+      "memory.max", "memory.current", "memory.peak", "memory.events", "memory.swap.max",
+      "memory.swap.current", "cpu.max",
+    ] {
+    try {
+      let file = @fs.open("/sys/fs/cgroup/" + name, mode=ReadOnly)
+      defer file.close()
+      let bytes = FixedArray::make(16385, b'\x00')
+      let n = file.read_at(bytes, position=0L)
+      guard n > 0 && n <= 16384 else { fail("missing/oversized cgroup metric") }
+      values[name] = @utf8.decode(Bytes::makei(n, i => bytes[i]))
+        .trim()
+        .to_owned()
+    } catch {
+      error => errors[name] = error.to_string()
+    }
+  }
+  { "values": Json(values), "errors": Json(errors) }
+}
+
+///|
+fn verify_cgroup(value : Json) -> Int64 raise {
+  let values : Map[String, String] = @json.from_json(field(value, "values"))
+  guard values.get("memory.max") == Some(memory_limit.to_string()) &&
+    values.get("memory.swap.max") == Some("0") &&
+    values.get("cpu.max") is Some(cpu) else {
+    fail("requires 64 GiB memory, zero swap and four CPUs")
+  }
+  let parts = cpu.split(" ").filter(x => x != "").to_array()
+  guard parts.length() == 2 &&
+    @string.parse_int64(parts[1]) > 0L &&
+    @string.parse_int64(parts[0]) == 4L * @string.parse_int64(parts[1]) &&
+    values.get("memory.peak") is Some(peak) &&
+    values.get("memory.events") is Some(events) else {
+    fail("missing/invalid cgroup quota, peak or OOM evidence")
+  }
+  let parsed : Map[String, Int64] = Map([])
+  for line in events.split("\n") {
+    let parts = line.split(" ").filter(x => x != "").to_array()
+    guard parts.length() == 2 else { fail("invalid memory.events") }
+    parsed[parts[0].to_owned()] = @string.parse_int64(parts[1])
+  }
+  guard parsed.get("oom") == Some(0L) &&
+    parsed.get("oom_kill") == Some(0L) &&
+    parsed.get("oom_group_kill").unwrap_or(0L) == 0L else {
+    fail("observed cgroup OOM event")
+  }
+  let result = @string.parse_int64(peak)
+  guard result > 0L else { fail("invalid cgroup peak") }
+  // Kernel peak can briefly exceed its limit; preserve it instead of clamping.
+  result
+}
+
+///|
+fn verify_memory(plan : Json) -> Unit raise {
+  let host = integer(field(plan, "host_free_bytes"))
+  let cuda = integer(field(plan, "cuda_free_bytes"))
+  let budget = integer(field(plan, "budget_bytes"))
+  guard host > 0L &&
+    cuda > 0L &&
+    host <= 1099511627776L &&
+    cuda <= 1099511627776L &&
+    budget == host.min(cuda) * 65L / 100L &&
+    integer(field(plan, "peak_bytes")) == 36531105856L &&
+    integer(field(plan, "peak_bytes")) <= budget &&
+    integer(field(field(plan, "components"), "physics_scene_reserve")) ==
+    25769803776L &&
+    integer(
+      field(field(plan, "components"), "distributed_communicator_staging"),
+    ) ==
+    0L else {
+    fail("N128 memory plan differs or fails unchanged 65%/24 GiB admission")
+  }
+}
+
+///|
+async fn verify_inputs(trainer : String) -> Json {
+  guard trainer.has_prefix("/") &&
+    @fs.realpath(trainer) == trainer &&
+    @fs.realpath(repo) == repo &&
+    @fs.realpath("/gate") == "/gate" else {
+    fail("canonical trainer/repository/gate paths required")
+  }
+  let pins = [
+    (trainer, trainer_sha, 1073741824L),
+    (config, config_sha, 1048576L),
+    (manifest, manifest_sha, 4194304L),
+    (bundle, bundle_sha, 268435456L),
+    (tensor, tensor_sha, 1073741824L),
+    (physics, physics_sha, 268435456L),
+    (mujoco, mujoco_sha, 268435456L),
+    (scene, scene_sha, 16777216L),
+  ]
+  let actual : Map[String, Json] = Map([])
+  for (path, expected, limit) in pins {
+    guard file_sha(path, limit) == expected else {
+      fail("pinned SHA mismatch: " + path)
+    }
+    actual[path] = Json(expected)
+  }
+  Json(actual)
+}
+
+///|
+fn command(
+  trainer : String,
+  mode : String,
+  seconds : Int32,
+) -> Array[String] raise {
+  guard ["preflight", "train"].contains(mode) && seconds > 0 && seconds <= 850 else {
+    fail("invalid bounded gate phase")
+  }
+  // Keep phase children in the outer watchdog's process group, so its hard
+  // deadline covers the trainer as well as the MoonBit coordinator.
+  let args = [
+    "--foreground",
+    "--signal=TERM",
+    "--kill-after=5s",
+    "\{seconds}s",
+    trainer,
+    mode,
+  ]
+  args.append([
+    "--tensor-library", tensor, "--library", mujoco, "--scene", scene,
+  ])
+  args.append(["--manifest", manifest, "--config", config])
+  args.append(["--physics-library", physics, "--physics-artifact", bundle])
+  args.append(["--output", "/gate/train", "--checkpoint-format", "stream-v2"])
+  if mode == "train" {
+    args.append(["--iterations", "1"])
+  }
+  args
+}
+
+///|
+fn verify_readiness(value : Json) -> Int64 raise {
+  let extra = integer(field(value, "extra_collection_steps"))
+  let rows = integer(field(value, "replay_rows"))
+  let initial = integer(field(value, "initial_candidates"))
+  let candidates = integer(field(value, "candidates"))
+  guard extra >= 0L &&
+    extra <= 256L &&
+    extra % 8L == 0L &&
+    integer(field(value, "extra_physical_transitions")) == 128L * extra &&
+    integer(field(value, "collection_step_budget")) == 256L &&
+    integer(field(value, "horizon")) == 32L &&
+    integer(field(value, "max_remaining_steps")) >= 32L &&
+    rows == (66L + extra).min(256L) &&
+    initial >= 0L &&
+    initial <= 8448L &&
+    (extra > 0L || initial > 0L) &&
+    candidates > 0L &&
+    candidates <= 128L * rows else {
+    fail("N128 actor readiness/refill differs from finite H32 contract")
+  }
+  extra
+}
+
+///|
+async fn readiness() -> Json {
+  let mut found : Json? = None
+  for line in bounded_text("/gate/trainer.stdout.log", 4194304L).split("\n") {
+    if !line.has_prefix("{") {
+      continue
+    }
+    let row = @json.parse(line.to_owned()) catch { _ => continue }
+    if row
+      is {
+        "iteration": Number(1.0, ..),
+        "world": Object(_),
+        "policy": Object(_),
+        "actor_readiness": candidate,
+        ..
+      } {
+      guard found is None else { fail("multiple iteration-1 metrics") }
+      let value = required_some(candidate)
+      ignore(verify_readiness(value))
+      found = Some(value)
+    }
+  }
+  guard found is Some(value) else { fail("missing actor readiness metrics") }
+  value
+}
+
+///|
+async fn verify_report(extra : Int64) -> Json {
+  let report = bounded_json("/gate/train/report.json", 4194304L)
+  guard report
+    is {
+      "format": "moonrobo.native-tensor-training-report.v1",
+      "iteration": Number(1.0, ..),
+      "distributed": False,
+      "resume_kind": "fresh",
+      "precision": "float32",
+      "amp": "none",
+      "learner_execution": {
+        "device": "cuda:0",
+        "backend": "libtorch",
+        "device_resident": True,
+        ..
+      },
+      "physics_execution": {
+        "backend": "isaac-newton-warp-apic-native",
+        "device": "cuda:0",
+        ..
+      },
+      "robot_hardware_execution": False,
+      "training_complete_for_requested_iterations": True,
+      "convergence_verified": False,
+      "checkpoint_format": "stream-v2",
+      ..
+    } else {
+    fail("unexpected N128 native CUDA/APIC one-iteration report")
+  }
+  let identity = field(report, "identity")
+  guard field(identity, "config") == bounded_json(config, 1048576L) &&
+    field(identity, "batch_execution") == batch_execution &&
+    field(report, "batch_execution") == batch_execution &&
+    field(identity, "split") == Json("train") &&
+    field(identity, "seed") == Json(179) &&
+    field(identity, "distributed_session") == Json::null() else {
+    fail("report configuration/seed/batch/single-host identity differs")
+  }
+  for
+    (key, expected) in [
+      ("manifest_sha256", manifest_sha),
+      ("physics_artifact_sha256", bundle_sha),
+      ("physics_library_sha256", physics_sha),
+      ("scene_sha256", scene_sha),
+      ("mujoco_library_sha256", mujoco_sha),
+      ("native_executable_sha256", trainer_sha),
+      ("tensor_library_sha256", tensor_sha),
+    ] {
+    guard field(identity, key) == Json(expected) else {
+      fail("report identity differs: " + key)
+    }
+  }
+  for key in ["memory_plan", "post_catalog_memory_plan"] {
+    verify_memory(field(report, key))
+  }
+  for label in ["counters", "global_counters"] {
+    for
+      (key, expected) in [
+        ("physical_transitions", 8448L + 128L * extra),
+        ("imagined_transitions", 4096L),
+        ("model_updates", 10L),
+        ("actor_updates", 1L),
+        ("critic_updates", 20L),
+        ("model_fit_transition_slots", 10240L),
+      ] {
+      guard integer(field(field(report, label), key)) == expected else {
+        fail("unexpected " + label + "." + key)
+      }
+    }
+  }
+  report
+}
+
+///|
+// Byte integrity/save verification only. Actual optimizer reload and warm
+// physics restore remain a separately executed audit, not implied here.
+async fn verify_checkpoint(report : Json, extra : Int64) -> Json {
+  let pointer = bounded_json("/gate/train/current.json", 65536L)
+  guard pointer
+    is {
+      "format": "moonrobo.native-tensor-checkpoint-pointer.v2",
+      "iteration": Number(1.0, ..),
+      "generation": String(generation),
+      "files": Object(files),
+      ..
+    } &&
+    files.length() == 14 &&
+    generation.has_prefix("generation-1-") &&
+    generation.length() <= 128 &&
+    generation
+    .iter()
+    .all(c => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') &&
+    pointer == required_some(field(report, "checkpoint")) &&
+    field(pointer, "shared_state_digest") ==
+    required_some(field(report, "shared_state_digest")) else {
+    fail("stream-v2 checkpoint receipt differs from training report")
+  }
+  let root = "/gate/train/" + generation
+  guard @fs.realpath(root) == root &&
+    pointer == bounded_json(root + "/receipt.json", 65536L) else {
+    fail("generation path/immutable receipt differs")
+  }
+  let mut total = 0L
+  for
+    name in [
+      "world.pt", "policy.pt", "critic.pt", "state.json", "catalog.json", "history.lengths.i32le",
+      "history.values.f64le", "replay.values.f64le", "replay.indices.i32le", "replay.flags.u8",
+      "environment.xi.f64le", "sampler.returns.f64le", "sampler.average.f64le", "sampler.completed.i32le",
+    ] {
+    guard files.get(name) is Some(String(expected)) &&
+      expected.length() == 64 &&
+      file_sha(root + "/" + name, 536870912L) == expected else {
+      fail("missing/corrupt stream-v2 member: " + name)
+    }
+    let file = @fs.open(root + "/" + name, mode=ReadOnly)
+    defer file.close()
+    total += file.size()
+    guard total <= 1073741824L else {
+      fail("checkpoint exceeds 1 GiB gate bound")
+    }
+  }
+  let saved = bounded_json(root + "/state.json", 4194304L)
+  let runtime = field(saved, "runtime")
+  let env = field(field(saved, "environment"), "metadata")
+  guard field(saved, "format") ==
+    Json("moonrobo.native-tensor-training-generation.v2") &&
+    field(saved, "identity") == field(report, "identity") &&
+    field(saved, "shared_state_digest") == field(pointer, "shared_state_digest") &&
+    field(runtime, "format") == Json("moonrobo-aligned-gpu-runtime-v2") &&
+    field(runtime, "iteration") == Json(1) &&
+    field(runtime, "num_envs") == Json(128) &&
+    field(runtime, "capacity") == Json(256) &&
+    field(runtime, "catalog_count") == Json(40) &&
+    integer(field(field(runtime, "replay"), "rows")) == (66L + extra).min(256L) &&
+    field(env, "format") == Json("moonrobo.aligned.isaac-warm-stream.v2") &&
+    field(env, "num_envs") == Json(128) &&
+    field(env, "exact_resume") == Json(false) &&
+    field(env, "replay_refill_required") == Json(true) else {
+    fail("saved stream-v2 runtime metadata differs from N128/40-motion gate")
+  }
+  {
+    "generation": Json(generation),
+    "verified_member_count": 14,
+    "verified_member_bytes": Json(total),
+    "catalog_count": 40,
+    "optimizer_reload_verified": false,
+    "exact_physics_resume_verified": false,
+  }
+}
+
+///|
+async fn inside(trainer : String) -> Unit {
+  let started = @async.now()
+  guard !@fs.exists("/gate/train") &&
+    !@fs.exists("/gate/inside-summary.json") &&
+    !@fs.exists("/gate/command-plan.json") else {
+    fail("fresh /gate required; no overwrites")
+  }
+  let before = cgroup()
+  write_json("/gate/cgroup-before.json", before)
+  let mut preflight_code : Int32? = None
+  let mut train_code : Int32? = None
+  let mut failure : String? = None
+  let mut pins : Json? = None
+  let mut result : Json? = None
+  try {
+    ignore(verify_cgroup(before))
+    pins = Some(verify_inputs(trainer))
+    let preflight = command(trainer, "preflight", 120)
+    write_json("/gate/command-plan.json", {
+      "format": "moonrobo.native-n128-gate-plan.v1",
+      "expected_image_id": Json(image_id),
+      "image_id_verification": "host-required; not verified inside container",
+      "preflight": Json(preflight),
+      "trainer": Json(trainer),
+      "whole_helper_deadline_seconds": 895,
+      "kill_grace_seconds": 5,
+      "memory_limit_bytes": Json(memory_limit),
+      "swap_limit_bytes": 0,
+      "cpu_quota": 4,
+      "max_iterations": 1,
+      "checkpoint_format": "stream-v2",
+      "num_envs": 128,
+      "world_batch": 128,
+      "actor_batch": 128,
+      "microbatch": 16,
+    })
+    preflight_code = Some(
+      @shell.Cmd(
+        "/usr/bin/timeout",
+        preflight,
+        stdout=ToFile("/gate/preflight.stdout.log"),
+        stderr=ToFile("/gate/preflight.stderr.log"),
+      ).status(timeout_ms=130000),
+    )
+    guard preflight_code == Some(0) else {
+      fail("preflight refused/failed; training was not started")
+    }
+    let plan = bounded_json("/gate/preflight.stdout.log", 4194304L)
+    guard field(plan, "format") == Json("moonrobo.native-tensor-memory-plan.v1") &&
+      field(plan, "batch_execution") == batch_execution &&
+      field(plan, "checkpoint_format") == Json("stream-v2") &&
+      field(plan, "compiled_mujoco_header_version") == Json(3015000) else {
+      fail("preflight identity/batch/checkpoint/ABI differs")
+    }
+    verify_memory(field(plan, "plan"))
+    // Reserve time for streamed integrity checks and final evidence; the outer
+    // watchdog also bounds them if any filesystem operation stalls.
+    let seconds = ((850000L - (@async.now() - started)) / 1000L).to_int()
+    guard seconds >= 1 else { fail("total deadline exhausted before training") }
+    let train = command(trainer, "train", seconds)
+    write_json("/gate/training-command.json", Json(train))
+    train_code = Some(
+      @shell.Cmd(
+        "/usr/bin/timeout",
+        train,
+        stdout=ToFile("/gate/trainer.stdout.log"),
+        stderr=ToFile("/gate/trainer.stderr.log"),
+      ).status(timeout_ms=(seconds + 10) * 1000),
+    )
+    guard train_code == Some(0) else {
+      fail("bounded one-iteration trainer failed")
+    }
+    let ready = readiness()
+    let extra = verify_readiness(ready)
+    let report = verify_report(extra)
+    result = Some({
+      "counters": field(report, "counters"),
+      "actor_readiness": ready,
+      "checkpoint": verify_checkpoint(report, extra),
+    })
+  } catch {
+    error => failure = Some(error.to_string())
+  }
+  let after = cgroup()
+  write_json("/gate/cgroup-after.json", after)
+  let peak : Int64? = Some(verify_cgroup(after)) catch {
+    error => {
+      if failure is None {
+        failure = Some(error.to_string())
+      }
+      None
+    }
+  }
+  write_json("/gate/inside-summary.json", {
+    "format": "moonrobo.native-n128-gate-result.v1",
+    "preflight_exit_code": preflight_code
+    .map(x => Json(x))
+    .unwrap_or(Json::null()),
+    "trainer_exit_code": train_code.map(x => Json(x)).unwrap_or(Json::null()),
+    "error": failure.map(x => Json(x)).unwrap_or(Json::null()),
+    "verified_pins": pins.unwrap_or(Json::null()),
+    "result": result.unwrap_or(Json::null()),
+    "elapsed_ms": Json(@async.now() - started),
+    "actual_cgroup_memory_peak_bytes": peak
+    .map(x => Json(x))
+    .unwrap_or(Json::null()),
+    "peak_above_limit": peak
+    .map(x => Json(x > memory_limit))
+    .unwrap_or(Json::null()),
+    "memory_metrics_scope": "kernel cgroup before helper exit; not full container lifetime",
+    "checkpoint_semantic_audit_deferred": true,
+    "physics_equivalence_certified": false,
+    "paper_exact_motion_set": false,
+    "convergence_verified": false,
+  })
+  guard failure is None && result is Some(_) && peak is Some(_) else {
+    fail("N128 gate failed; /gate contains retained evidence")
+  }
+}
+
+///|
+async fn self_test() -> Unit {
+  let trainer = "/bounded/trainer"
+  let preflight = command(trainer, "preflight", 120)
+  let train = command(trainer, "train", 700)
+  assert_eq(preflight[0], "--foreground")
+  assert_eq(preflight[3], "120s")
+  assert_eq(train[3], "700s")
+  assert_true(!preflight.contains("--iterations"))
+  assert_true(train.contains("--iterations") && train.contains("stream-v2"))
+  assert_eq(train[train.length() - 1], "1")
+  let invalid = try {
+    ignore(command(trainer, "train", 851))
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(invalid)
+  let base : Json = {
+    "extra_collection_steps": 0,
+    "extra_physical_transitions": 0,
+    "collection_step_budget": 256,
+    "horizon": 32,
+    "max_remaining_steps": 50,
+    "replay_rows": 66,
+    "initial_candidates": 8000,
+    "candidates": 8000,
+  }
+  assert_eq(verify_readiness(base), 0L)
+  let last : Json = {
+    "extra_collection_steps": 256,
+    "extra_physical_transitions": 32768,
+    "collection_step_budget": 256,
+    "horizon": 32,
+    "max_remaining_steps": 50,
+    "replay_rows": 256,
+    "initial_candidates": 0,
+    "candidates": 128,
+  }
+  assert_eq(verify_readiness(last), 256L)
+  let invalid : Json = {
+    "extra_collection_steps": 264,
+    "extra_physical_transitions": 33792,
+    "collection_step_budget": 256,
+    "horizon": 32,
+    "max_remaining_steps": 50,
+    "replay_rows": 256,
+    "initial_candidates": 0,
+    "candidates": 128,
+  }
+  assert_true(
+    try {
+      ignore(verify_readiness(invalid))
+      false
+    } catch {
+      _ => true
+    },
+  )
+  let snapshot : Json = {
+    "values": {
+      "memory.max": "68719476736",
+      "memory.swap.max": "0",
+      "cpu.max": "400000 100000",
+      "memory.peak": "68719484928",
+      "memory.events": "low 0\nhigh 0\nmax 1\noom 0\noom_kill 0\noom_group_kill 0",
+    },
+  }
+  assert_eq(verify_cgroup(snapshot), 68719484928L)
+  let plan : Json = {
+    "host_free_bytes": "60000000000",
+    "cuda_free_bytes": "61000000000",
+    "budget_bytes": "39000000000",
+    "peak_bytes": "36531105856",
+    "components": {
+      "physics_scene_reserve": "25769803776",
+      "distributed_communicator_staging": "0",
+    },
+  }
+  verify_memory(plan)
+  guard plan is Object(plan_fields) else { fail("self-test plan object") }
+  plan_fields["budget_bytes"] = Json("40000000000")
+  assert_true(
+    try {
+      verify_memory(Json(plan_fields))
+      false
+    } catch {
+      _ => true
+    },
+  )
+  assert_eq(required_some(Json(Some(1))), Json(1))
+  let local_config = "examples/learning/g1-native-tensor-apic-n128-scale-gate.json"
+  assert_eq(file_sha(local_config, 1048576L), config_sha)
+  let cfg = bounded_json(local_config, 1048576L)
+  for
+    (name, expected) in [
+      ("num_envs", 128),
+      ("wm_batch", 128),
+      ("pi_batch", 128),
+      ("wm_microbatch", 16),
+      ("pi_microbatch", 16),
+      ("buffer_steps", 256),
+      ("wm_batches", 10),
+      ("critic_epochs", 5),
+      ("critic_minibatches", 4),
+      ("iterations", 1),
+    ] {
+    assert_eq(field(cfg, name), Json(expected))
+  }
+  println(
+    "N128 gate CPU self-test passed; no CUDA, physics or remote execution",
+  )
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args.length() == 2 && args[1] == "--self-test" {
+    self_test()
+    return
+  }
+  if args.length() == 3 && args[1] == "--inside" {
+    inside(args[2])
+    return
+  }
+  guard args.length() == 2 && args[1].has_prefix("/") else {
+    fail(
+      "usage: run_spark_native_n128_gate TRAINER_ABSOLUTE_PATH | --self-test",
+    )
+  }
+  // Resolve here: passing literal /proc/self/exe to timeout would refer to
+  // timeout itself once it executes, not to this native MoonBit helper.
+  let executable = @fs.realpath("/proc/self/exe")
+  let code = @shell.Cmd("/usr/bin/timeout", [
+    "--signal=TERM",
+    "--kill-after=5s",
+    "895s",
+    executable,
+    "--inside",
+    args[1],
+  ]).status(timeout_ms=905000)
+  guard code == 0 else {
+    fail(
+      "N128 whole-helper exit \{code}; retain logs; hard timeout can leave summary absent",
+    )
+  }
+}

@@ -1,0 +1,91 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, rev] && ["e", "f", "g", "h", "i", "j"].contains(rev) else {
+    fail("retained revision e..j")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let label = "actor-full-snapshot-" + rev
+  let adapter = "compare_actor_full_snapshots_" + rev + ".py"
+  let runner = "compare_actor_full_snapshots_" + rev + ".mbtx"
+  let prefix = @fs.read_file(out + "/build_actor_boundary_a.mbtx")
+    .text()
+    .split("async fn main {")
+    .to_array()[0]
+    .to_owned()
+    .replace_all(
+      old="      \"--workdir\",",
+      new="      \"--mount\",\"type=bind,src=/home/wlc004s/moonrobo/runs,dst=/data,readonly\",\n      \"--workdir\",",
+    )
+  let code = prefix +
+    "async fn main {container(\"" +
+    label +
+    "\",\"/opt/isaaclab-venv/bin/python\",[\"/build/" +
+    adapter +
+    "\",\"/data/hotspot-shared-actor-geometry-native-" +
+    rev +
+    "\",\"/data/hotspot-shared-actor-frozen-reference-h\",\"/build/" +
+    label +
+    ".json\"])}\n"
+  for
+    (name, content) in [
+      (runner, code),
+      (
+        adapter,
+        @fs.read_file(
+          "providers/motion_learning/compare_actor_full_snapshots.py",
+        ).text(),
+      ),
+    ] {
+    @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/" + name,
+        host + ":" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      runner,
+    ],
+    stdout=@process.redirect_to_file(
+      out + "/" + label + ".stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      out + "/" + label + ".stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  ignore(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      host + ":" + base + "/" + label + ".json",
+      out + "/" + label + ".json",
+    ]),
+  )
+  assert_eq(code, 0)
+}

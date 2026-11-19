@@ -1,0 +1,241 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] &&
+    ["prepare", "build", "native", "smc"].contains(mode) else {
+    fail("prepare/build/native/smc")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  if mode == "prepare" {
+    @fs.mkdir(out)
+    let probe =
+      #|///|
+      #|let actor_boundary_records : Array[(String, Array[Int], Array[Double])] = []
+      #|///|
+      #|pub fn actor_boundaries() -> Array[(String, Array[Int], Array[Double])] { actor_boundary_records }
+      #|///|
+      #|fn actor_boundary(name : String, value : @tensor.Tensor) -> Unit raise {
+      #|  guard actor_boundary_records.length()<512 else {fail("bounded actor capture")}
+      #|  let flat=value.stop_gradient().reshape([-1]);let count=flat.shape()[0]
+      #|  guard count<=16777216 else {fail("actor member bound")}
+      #|  let values:Array[Double]=[]
+      #|  for offset=0; offset<count; {let n=(count-offset).min(8192);values.append(flat.narrow(0,offset,n).values());continue offset+n}
+      #|  actor_boundary_records.push((name,value.shape(),values))
+      #|}
+    let learning = @fs.read_file("src/learning_aligned_gpu/learning.mbt")
+      .text()
+      .replace_all(
+        old="    states.push(state)",
+        new=(
+          #|    states.push(state)
+          #|    actor_boundary("step-\{t}-action",action)
+          #|    for (name,value) in [("p",state.p),("r",state.rotation),("v",state.v),("w",state.w),("q",state.q),("qd",state.qd)] {actor_boundary("step-\{t}-\{name}",value)}
+        ),
+      )
+      .replace_all(
+        old="    history = self.backend.concat(",
+        new="    actor_boundary(\"step-\\{t}-observation\",obs)\n    history = self.backend.concat(",
+      )
+      .replace_all(
+        old="  let return_range =",
+        new="  actor_boundary(\"rewards\",rewards)\n  actor_boundary(\"failures\",failures)\n  let return_range =",
+      )
+      .replace_all(
+        old="  let adam_range = @tensor.operator_range_begin(\"diag.actor.adam\")",
+        new="  for i,p in self.policy.parameters() {actor_boundary(\"raw-policy-\\{i}\",p.gradient())}\n  let adam_range = @tensor.operator_range_begin(\"diag.actor.adam\")",
+      )
+    assert_true(learning.contains("actor_boundary(\"step-\\{t}-action\""))
+    @fs.write_file(
+      out + "/actor_learning_a.mbt",
+      learning + "\n" + probe,
+      create_mode=CreateNew,
+    )
+    let fixture = @fs.read_file(
+        "output/spark-runtime-20261024/bf16-original-20261028/bf16_original_fixture_a.mbt",
+      )
+      .text()
+      .replace_all(
+        old="  hotspot_gate_memory(backend, \"shared-after\")",
+        new=(
+          #|  let boundaries:Array[SharedTensor]=[]
+          #|  for (name,shape,values) in @gpu.actor_boundaries() {
+          #|    let blob=@stream.write_f64le(output,name+".f64",shape,(offset,count)=>values[offset.to_int():offset.to_int()+count].to_owned())
+          #|    boundaries.push({name,blob})
+          #|  }
+          #|  shared_json(output+"/boundaries.json",{"records":Json(boundaries)})
+          #|  hotspot_gate_memory(backend, "shared-after")
+        ),
+      )
+    @fs.write_file(out + "/actor_fixture_a.mbt", fixture, create_mode=CreateNew)
+    let prefix = @fs.read_file(
+      "output/spark-runtime-20261024/compiled-mlp-20261028-a/build_compiled_window_plugin_b.mbtx",
+    )
+    .text()
+    .split("async fn main {")
+    .to_array()[0].to_owned()
+    @fs.write_file(
+      out + "/build_actor_boundary_a.mbtx",
+      prefix +
+      (
+        #|async fn main {
+        #|  require_idle()
+        #|  let ws=base+"/workspace/moonrobo-actor-boundary-a"
+        #|  guard !@fs.exists(ws) else {fail("fresh workspace")}
+        #|  run("actor-boundary-copy-a","cp",["-a","--reflink=auto",base+"/workspace/moonrobo-compiled-window-a",ws])
+        #|  run("actor-boundary-source-a","cp",[base+"/actor_learning_a.mbt",ws+"/src/learning_aligned_gpu/learning.mbt"])
+        #|  run("actor-boundary-fixture-a","cp",[base+"/actor_fixture_a.mbt",ws+"/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"])
+        #|  container("actor-boundary-build-a","/toolchain/bin/moon",["test","--build-only","--release","--target","native","-j","2","--frozen","src/learning_aligned_gpu/cmd"],workdir="/workspace/moonrobo-actor-boundary-a")
+        #|  run("actor-boundary-binary-a","cp",[ws+"/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/cmd/cmd.whitebox_test.exe",base+"/actor-boundary-gate-a"])
+        #|}
+      ),
+      create_mode=CreateNew,
+    )
+    let prior = @fs.read_file(
+      "output/spark-runtime-20261024/compiled-vjp-detail-20261029-a/run_frozen_compilation_b.mbtx",
+    ).text()
+    let helper = "async fn clone_compilation_tree" +
+      prior.split("async fn clone_compilation_tree").to_array()[1]
+      .to_owned()
+      .split("async fn main {")
+      .to_array()[0].to_owned()
+    let runner = @fs.read_file(
+        "output/spark-runtime-20261024/bf16-original-20261028/run_bf16_original_c.mbtx",
+      )
+      .text()
+      .replace_all(old="async fn main {", new=helper + "\nasync fn main {")
+      .replace_all(
+        old="run_bf16_original_c.mbtx",
+        new="run_actor_boundary_a.mbtx",
+      )
+      .replace_all(old="bf16-original-gate-a", new="actor-boundary-gate-a")
+      .replace_all(
+        old="libmoonrobo_coefficient_full_a.so",
+        new="libmoonrobo_compiled_window_e.so",
+      )
+      .replace_all(
+        old="[mapped + \"/shared_smc_probe_bf16_original.py\"]",
+        new="[mapped + \"/actor_boundary_probe_a.py\"]",
+      )
+      .replace_all(
+        old="if implementation == \"smc\" && @fs.exists(cache_source + \"/inductor-cache\") {",
+        new="if false {",
+      )
+      .replace_all(
+        old="  let pins : Map[String, Json] = {}",
+        new=(
+          #|  let records:Array[Json]=[]
+          #|  if implementation=="smc" {for name in ["inductor-cache","triton-cache"] {if @fs.exists(cache_source+"/"+name){clone_compilation_tree(cache_source+"/"+name,root+"/"+name,records)}}}
+          #|  write_json(root+"/compilation-snapshot.json",{"source":Json(cache_source),"files":Json(records)})
+          #|  e["ACTOR_NATIVE_BOUNDARIES"]="/workspace/moonrobo/runs/hotspot-shared-actor-boundary-native-a"
+          #|  let pins : Map[String, Json] = {}
+          #|  pins[base+"/actor_boundary_probe_a.py"]=Json(hash_file(base+"/actor_boundary_probe_a.py"))
+          #|  pins[base+"/actor_learning_a.mbt"]=Json(hash_file(base+"/actor_learning_a.mbt"))
+        ),
+      )
+      .replace_all(
+        old="  let trace_present =",
+        new=(
+          #|  let changed:Array[Json]=[]
+          #|  for row in records {if Json(hash_file(text(field(row,"target"))))!=field(row,"sha256"){changed.push(row)}}
+          #|  write_json(root+"/compilation-audit.json",{"changed":Json(changed),"copied":Json(records.length())})
+          #|  guard changed.is_empty() else {fail("reference cache mutated")}
+          #|  let trace_present =
+        ),
+      )
+    @fs.write_file(
+      out + "/run_actor_boundary_a.mbtx",
+      runner,
+      create_mode=CreateNew,
+    )
+    for
+      name in [
+        "actor_learning_a.mbt", "actor_fixture_a.mbt", "build_actor_boundary_a.mbtx",
+        "run_actor_boundary_a.mbtx",
+      ] {
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        "providers/motion_learning/actor_boundary_probe.py",
+        host + ":" + base + "/actor_boundary_probe_a.py",
+      ]),
+      0,
+    )
+    return
+  }
+  let command = if mode == "build" {
+    "build_actor_boundary_a.mbtx"
+  } else {
+    "run_actor_boundary_a.mbtx -- actor " +
+    mode +
+    " off 1 actor-boundary-" +
+    mode +
+    "-a bf16-full"
+  }
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      command,
+    ],
+    stdout=@process.redirect_to_file(
+      out + "/" + mode + ".stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      out + "/" + mode + ".stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  if mode != "build" {
+    let folder = out + "/" + mode
+    @fs.mkdir(folder)
+    for
+      name in [
+        "result.json", "boundaries.json", "completion.json", "training-guard.json",
+        "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+        "protocol.json", "compilation-snapshot.json", "compilation-audit.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-boundary-" +
+          mode +
+          "-a/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+  }
+  assert_eq(code, 0)
+}

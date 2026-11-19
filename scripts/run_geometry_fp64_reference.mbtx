@@ -1,0 +1,102 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-math-179.sock"
+  let put = async fn(name : String, content : String) {
+    @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        out + "/" + name,
+        host + ":" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  put(
+    "geometry_reference_constants_b.py",
+    @fs.read_file("providers/motion_learning/geometry_reference_constants.py").text(),
+  )
+  put(
+    "geometry_training_reference_m.py",
+    @fs.read_file("providers/motion_learning/geometry_training_reference.py").text(),
+  )
+  let runner = @fs.read_file(out + "/run_geometry_math_gate_i.mbtx")
+    .text()
+    .replace_all(
+      old="run_geometry_math_gate_i.mbtx",
+      new="run_geometry_math_gate_m.mbtx",
+    )
+    .replace_all(
+      old="geometry_training_reference_i.py",
+      new="geometry_training_reference_m.py",
+    )
+    .replace_all(
+      old="hotspot-shared-geometry-math-native-gate-h",
+      new="hotspot-shared-geometry-math-native-gate-l",
+    )
+    .replace_all(
+      old="if implementation==\"smc\" {let cache_source=\"/home/wlc004s/moonrobo/runs/hotspot-shared-training-smc-gate-t\"",
+      new="if implementation==\"smc\" {let cache_source=\"/home/wlc004s/moonrobo/runs/hotspot-shared-geometry-math-reference-gate-i\"",
+    )
+    .replace_all(
+      old="  e[\"GEOMETRY_CAPTURE_CODE\"]=\"1\"",
+      new="  e[\"GEOMETRY_CAPTURE_CODE\"]=\"1\"\n  e[\"GEOMETRY_FP64_ROBOT_CONSTANTS\"]=\"1\"\n  e[\"GEOMETRY_FROZEN_ALL\"]=\"/workspace/moonrobo/runs/hotspot-shared-geometry-math-reference-gate-i\"",
+    )
+    .replace_all(
+      old="  pins[base+\"/geometry_training_reference_m.py\"]",
+      new="  pins[base+\"/geometry_reference_constants_b.py\"]=Json(hash_file(base+\"/geometry_reference_constants_b.py\"))\n  pins[base+\"/geometry_training_reference_m.py\"]",
+    )
+  put("run_geometry_math_gate_m.mbtx", runner)
+  let folder = out + "/geometry-math-reference-gate-m"
+  @fs.mkdir(folder)
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      socket,
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/run_geometry_math_gate_m.mbtx -- train smc off 1 geometry-math-reference-gate-m bf16-full",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "completion.json", "compute-completed.json", "training-guard.json",
+      "training.stdout.log", "training.stderr.log", "all-kernel-decisions.json",
+      "world-padding-decisions.json", "protocol.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-shared-geometry-math-reference-gate-m/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(status, 0)
+}

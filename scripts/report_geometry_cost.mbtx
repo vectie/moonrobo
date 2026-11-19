@@ -1,0 +1,299 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+let root = "output/spark-runtime-20261024/geometry-cost-20261030-a"
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(m) && m.get(k) is Some(v) else { fail(k) }
+  v
+}
+
+///|
+fn number(j : Json) -> Double raise {
+  match j {
+    Number(v, ..) => v
+    String(v) => @string.parse_double(v)
+    _ => fail("number")
+  }
+}
+
+///|
+fn array(j : Json) -> Array[Json] raise {
+  guard j is Array(a) else { fail("array") }
+  a
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(root + "/" + path).text())
+}
+
+///|
+fn report(rows : Array[Json], label : String) -> Json raise {
+  guard rows.filter(r => field(r, "label") == Json(label)) is [r] else {
+    fail("one summary for " + label)
+  }
+  r
+}
+
+///|
+fn wall(rows : Array[Json], label : String) -> Double raise {
+  number(field(report(rows, label), "wall_ms"))
+}
+
+///|
+fn abba(rows : Array[Json], label : String) -> Json raise {
+  let blocks = array(field(report(rows, label), "abba_blocks"))
+  assert_eq(blocks.length(), 4)
+  let values = blocks.map(b => number(field(b, "wall_ms")))
+  let baseline = (values[0] + values[3]) / 2.0
+  let candidate = (values[1] + values[2]) / 2.0
+  {
+    "label": Json(label),
+    "baseline_ms": Json(baseline),
+    "candidate_ms": Json(candidate),
+    "saved_ms": Json(baseline - candidate),
+    "saved_percent": Json((baseline - candidate) / baseline * 100.0),
+    "forward_order_saved_ms": Json(values[0] - values[1]),
+    "reverse_order_saved_ms": Json(values[3] - values[2]),
+    "steady_samples_per_arm": 20,
+    "blocks": Json(blocks),
+  }
+}
+
+///|
+fn phase(rows : Array[Json], label : String, name : String) -> Double raise {
+  let phases = array(field(report(rows, label), "phases"))
+  match phases.filter(p => field(p, "phase") == Json(name)) {
+    [p] => number(field(p, "stream_elapsed_ms"))
+    [] => 0.0
+    _ => fail("duplicate phase")
+  }
+}
+
+///|
+async fn main {
+  let math_log = @fs.read_file(root + "/independent-math-tests.log").text()
+  assert_true(math_log.contains("Ran 8 tests") && math_log.contains("\nOK\n"))
+  assert_true(
+    @fs.read_file(root + "/math-tests.log")
+    .text()
+    .contains("Total tests: 2, passed: 2, failed: 0."),
+  )
+  assert_true(
+    @fs.read_file(root + "/reference-cache-tests.log")
+    .text()
+    .contains("Total tests: 1, passed: 1, failed: 0."),
+  )
+  let labels = [
+    "cost-native-events-a", "cost-smc-events-a", "cost-corrected-events-a", "cost-ieee-events-d",
+    "cost-ieee-off-a", "cost-tail-abba-a", "cost-layout-abba-a", "cost-both-abba-a",
+    "cost-both-events-a", "cost-smc-off-c", "cost-smc-off-b", "cost-corrected-off-a",
+  ]
+  let memory : Array[Json] = []
+  for label in labels {
+    assert_eq(
+      field(read(label + "/controller.receipt.json"), "exit_code"),
+      Json(0),
+    )
+    let guard_record = read(label + "/training-guard.json")
+    assert_eq(field(guard_record, "passed"), Json(true))
+    assert_eq(
+      array(field(read(label + "/compilation-audit.json"), "changed")).length(),
+      0,
+    )
+    let protocol = read(label + "/protocol.json")
+    let prior_protocol = read(
+      "../geometry-math-20261029-a/geometry-math-native-bench-a/protocol.json",
+    )
+    let prior_guard = read(
+      "../geometry-math-20261029-a/geometry-math-native-bench-a/training-guard.json",
+    )
+    assert_eq(
+      field(protocol, "startup_guard_change"),
+      field(prior_protocol, "startup_guard_change"),
+    )
+    for
+      key in [
+        "host_start_available_kib", "host_start_free_kib", "host_stop_available_kib",
+        "host_stop_free_kib", "cgroup_stop_bytes",
+      ] {
+      assert_eq(field(guard_record, key), field(prior_guard, key))
+    }
+    let result = read(label + "/result.json")
+    let repetitions = array(field(result, "rows"))
+    let expected_metrics = field(repetitions[0], "metrics")
+    for row in repetitions {
+      assert_eq(field(row, "metrics"), expected_metrics)
+    }
+    if label.has_prefix("cost-smc") ||
+      label.has_prefix("cost-corrected") ||
+      label.has_prefix("cost-ieee") {
+      assert_eq(field(field(result, "numerical_gate"), "exact"), Json(true))
+      assert_eq(
+        field(field(result, "numerical_gate"), "exact_required"),
+        Json(true),
+      )
+    } else {
+      assert_eq(
+        field(read(label + "/unchanged-snapshot.json"), "passed"),
+        Json(true),
+      )
+    }
+    memory.push({
+      "label": Json(label),
+      "allocator": field(result, "memory"),
+      "guard": guard_record,
+    })
+  }
+  assert_eq(
+    @process.run(
+      "moon",
+      [
+        "run", "--target", "native", "scripts/summarize_geometry_cost.mbtx", "--",
+        ..labels,
+      ],
+      stdout=@process.redirect_to_file(
+        root + "/all-phase-summaries.json",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+  let rows = array(read("all-phase-summaries.json"))
+  let combined = abba(rows, "cost-both-abba-a")
+  let native = number(field(combined, "candidate_ms"))
+  let baseline = number(field(combined, "baseline_ms"))
+  let original = (wall(rows, "cost-smc-off-c") + wall(rows, "cost-smc-off-b")) /
+    2.0
+  let corrected = wall(rows, "cost-corrected-off-a")
+  let ieee = wall(rows, "cost-ieee-off-a")
+  let ledger : Array[Json] = []
+  for
+    name in [
+      "world.forward", "world.backward", "world.adam", "actor.setup", "actor.forward",
+      "actor.pack", "actor.reward", "actor.return", "actor.tail", "actor.loss_zero_grad",
+      "actor.backward", "actor.adam", "actor.restore", "critic.prepare", "critic.forward",
+      "critic.zero_grad", "critic.backward", "critic.adam",
+    ] {
+    let o = phase(rows, "cost-smc-events-a", name)
+    let p = phase(rows, "cost-ieee-events-d", name)
+    let c = phase(rows, "cost-corrected-events-a", name)
+    let n = phase(rows, "cost-native-events-a", name)
+    let b = phase(rows, "cost-both-events-a", name)
+    ledger.push({
+      "phase": Json(name),
+      "original_smc_ms": Json(o),
+      "ieee_smc_ms": Json(p),
+      "corrected_smc_ms": Json(c),
+      "native_before_ms": Json(n),
+      "native_after_ms": Json(b),
+      "old_gap_ms": Json(n - o),
+      "precision_control_delta_ms": Json(p - o),
+      "geometry_bundle_delta_ms": Json(c - p),
+      "remaining_execution_delta_ms": Json(b - c),
+    })
+  }
+  let gates : Array[Json] = []
+  for label in ["cost-tail-gate-a", "cost-layout-gate-a", "cost-both-gate-a"] {
+    let gate = read(label + "/unchanged-snapshot.json")
+    assert_eq(field(gate, "bitwise_tensor_files"), Json(160))
+    gates.push({ "label": Json(label), "gate": gate })
+  }
+  let binary = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a/actor-step-gate-geometry-cost-b"
+  let result : Json = {
+    "schema": "moonrobo.geometry-cost-causal-comparison.v1",
+    "date": "2026-10-30",
+    "single_agent": true,
+    "scope": "trained-checkpoint fixed-input compute cycle: 10 world updates (B2048,H8), one full B4096/H32 actor backward, 20 critic updates; BF16 MLP; physics, sampling, upload, checkpoint restoration and compilation excluded",
+    "fixed_binary_sha256": field(
+      field(read("cost-both-abba-a/protocol.json"), "pins"),
+      binary,
+    ),
+    "unprofiled": {
+      "native_baseline_ms": Json(baseline),
+      "native_optimized_ms": Json(native),
+      "original_smc_ms": Json(original),
+      "corrected_smc_ms": Json(corrected),
+      "ieee_only_smc_ms": Json(ieee),
+      "original_gap_before_ms": Json(baseline - original),
+      "original_gap_after_ms": Json(native - original),
+      "original_gap_after_percent": Json((native / original - 1.0) * 100.0),
+      "precision_control_cost_ms": Json(ieee - original),
+      "geometry_bundle_control_cost_ms": Json(corrected - ieee),
+      "math_and_precision_bundle_cost_ms": Json(corrected - original),
+      "execution_gap_after_ms": Json(native - corrected),
+      "paired_order": "corrected SMC A, original SMC C (first accepted arm), native baseline/candidate/candidate/baseline, original SMC B",
+      "steady_samples": {
+        "native_baseline": 20,
+        "native_candidate": 20,
+        "original_smc": 20,
+        "ieee_control": 10,
+        "corrected_math_control": 10,
+      },
+    },
+    "single_factor_abba": Json([
+      abba(rows, "cost-tail-abba-a"),
+      abba(rows, "cost-layout-abba-a"),
+      combined,
+    ]),
+    "low_observer_phase_ledger": Json(ledger),
+    "observer_on_minus_off_ms": {
+      "native_candidate": Json(wall(rows, "cost-both-events-a") - native),
+      "original_smc": Json(wall(rows, "cost-smc-events-a") - original),
+      "corrected_smc": Json(wall(rows, "cost-corrected-events-a") - corrected),
+      "ieee_smc": Json(wall(rows, "cost-ieee-events-d") - ieee),
+    },
+    "gates": Json(gates),
+    "all_warmup_and_measured_row_metrics_identical_within_each_run": true,
+    "independent_math_checks": {
+      "python_tests": 8,
+      "moonbit_math_tests": 2,
+      "cached_reference_vjp_test": 1,
+      "coverage": "full pitch/roll and vertical heading; orthogonality and yaw equivariance; near-zero and near-pi geodesic value/gradient; chart seam contract; independent matrix exponential, finite differences and 32-step analytic propagation",
+      "logs": [
+        "independent-math-tests.log", "math-tests.log", "reference-cache-tests.log",
+        "config-tests.log",
+      ],
+    },
+    "memory_evidence": Json(memory),
+    "preserved": [
+      "original smc source", "legacy MoonBit path and binary", "original actor AOTI packages",
+      "all memory guards from the accepted preceding geometry benchmark",
+    ],
+    "implementation": {
+      "tail_reference_fk_cache": "opt-in; reuse detached immutable reference positions; robot FK and differentiable tail unchanged",
+      "actor_saved_layout": "same derivative FX graph and forward package; real saved-view offset/alias metadata instead of aligned fake allocation; separate versioned package",
+    },
+    "remaining_source_observation": {
+      "world_backward_alignment_copies_per_cycle": 220,
+      "evidence": "cost-both-gate-a/training.stderr.log: 22 distinct inputs in c5molvizdbcwoxy7whm2thhz7p3p6t7om3k6kvzjsbn4jhmkalij.wrapper.cpp, each warned ten times",
+      "timing_attribution": "not isolated by an intervention in this iteration; no claim that these copies explain all remaining world backward time",
+    },
+    "limitations": [
+      "Stream intervals include launch gaps and dependencies; CPU inclusive time overlaps GPU and must not be added. No per-operator profiler is used.",
+      "On/off differences include run-to-run drift; not a universal profiler correction factor.",
+      "Math control bundle includes orthonormal heading atlas, principal geodesic reward, corrected model constants and IEEE geometry. This implementation cost is not an unavoidable mathematical lower bound.",
+      "Native accepted reward export and naturally compiled corrected SMC have different FP32 rounding boundaries. Independent mathematical tests remain the oracle; equality with original buggy SMC is not required.",
+      "Heading chart seams and exact pi lack a unique two-sided derivative; no global smoothness claim.",
+      "Paired compute timings do not demonstrate end-to-end environment throughput or learned-policy quality.",
+      "Failed layout export A and IEEE warm-cache capture A are excluded from accepted timings; their artifacts are retained.",
+      "IEEE events B/C, original-SMC off A and the additional corrected-SMC off B replication stopped at the unchanged CUDA-free guard and contribute no timing. No OOM occurred. The accepted corrected-math control has one ten-sample unprofiled run and one ten-sample event run; its second replication is not claimed complete.",
+      "Inherited protocol blocks=1 describes one worker process; native ABBA is four internal blocks, verified from the 52 result rows. The inherited original_guards_unchanged=false refers to an earlier user-approved admission revision, not a threshold change in this task; actual guard values are checked against the preceding accepted benchmark.",
+    ],
+  }
+  @fs.write_file(
+    root + "/validated-result.json",
+    result.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(field(result, "unprofiled").stringify(indent=2))
+}

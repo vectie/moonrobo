@@ -1,0 +1,343 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+fn string(value : Json) -> String raise {
+  guard value is String(s) else { fail("expected string") }
+  s
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (code, out, err) = @process.collect_output("/usr/bin/shasum", [
+    "-a", "256", path,
+  ])
+  assert_eq(code, 0, msg=err.text())
+  let digest = out.text().split(" ").to_array()[0].to_owned()
+  assert_eq(digest.length(), 64)
+  digest
+}
+
+///|
+fn check_summary(value : Json, trials : Array[Json]) -> Unit raise {
+  assert_eq(num(field(value, "trials")).to_int(), trials.length())
+  assert_eq(
+    num(field(value, "falls")).to_int(),
+    trials.filter(t => field(t, "failed") == (true : Json)).length(),
+  )
+  let mut survival = 0.0
+  let mut rmse = 0.0
+  for trial in trials {
+    survival += num(field(trial, "simulated_seconds"))
+    rmse += num(field(trial, "joint_rmse_rad"))
+  }
+  assert_true(
+    (num(field(value, "mean_survival_s")) -
+    survival / trials.length().to_double()).abs() <
+    1.0e-12,
+  )
+  assert_true(
+    (num(field(value, "mean_joint_rmse_rad")) -
+    rmse / trials.length().to_double()).abs() <
+    1.0e-12,
+  )
+}
+
+///|
+fn pool_shadow(
+  rows : Array[Json],
+  mode : Json,
+  scope : Json,
+  phase : String,
+) -> Json raise {
+  let mut points = 0.0
+  let mut velocity = 0.0
+  let mut saturated = 0.0
+  let mut oracle_saturated = 0.0
+  let actions : Map[String, Double] = Map([])
+  for key in ["parent_ankle", "derived_ankle", "learned_ankle", "parent_other"] {
+    actions[key] = 0.0
+  }
+  for row in rows.filter(r => field(r, "mode") == mode) {
+    for
+      trial in array(field(row, "segments")).filter(t => {
+        field(t, "scope") == scope
+      }) {
+      guard trial is Object(fields) else { fail("expected segment object") }
+      if fields.get(phase) is Some(segment) {
+        let count = num(field(segment, "feature_points"))
+        if count > 0.0 {
+          points += count
+          velocity += num(field(segment, "velocity_squared"))
+          saturated += num(field(segment, "ankle_saturated"))
+          oracle_saturated += num(field(segment, "oracle_ankle_saturated"))
+          for key, value in actions {
+            actions[key] = value +
+              num(field(field(segment, "action_squared"), key))
+          }
+        }
+      }
+    }
+  }
+  let errors : Map[String, Json] = Map([])
+  if points > 0.0 {
+    for key, value in actions {
+      errors[key] = Json(
+        (value / (points * (if key == "parent_other" { 25.0 } else { 4.0 }))).sqrt(),
+      )
+    }
+  }
+  {
+    "mode": mode,
+    "scope": scope,
+    "phase": Json(phase),
+    "points": Json(points.to_int()),
+    "action_rmse_rad": Json(errors),
+    "velocity_rmse_m_s": if points > 0.0 {
+      Json((velocity / (3.0 * points)).sqrt())
+    } else {
+      Json::null()
+    },
+    "ankle_saturation_fraction": if points > 0.0 {
+      Json(saturated / (4.0 * points))
+    } else {
+      Json::null()
+    },
+    "oracle_ankle_saturation_fraction": if points > 0.0 {
+      Json(oracle_saturated / (4.0 * points))
+    } else {
+      Json::null()
+    },
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: report_g1_balance_long_intervention.mbtx REPO STUDY OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let report = read(study + "/report.json")
+  let charter = read(study + "/charter.json")
+  assert_eq(field(report, "format"), "moonrobo.g1-balance-long-intervention.v1")
+  assert_eq(field(report, "config"), field(charter, "config"))
+  assert_eq(field(report, "exact_prior_learned_episodes"), 15)
+  assert_eq(field(report, "actor_and_head_unchanged"), true)
+  assert_eq(field(report, "learned_policy_qualified"), false)
+  assert_eq(field(report, "physical_execution_allowed"), false)
+  assert_eq(
+    field(report, "provider_sha256"),
+    Json(sha(study + "/provider-sources/balance_long_intervention.py")),
+  )
+  let fit = string(field(charter, "fit_study"))
+  let long = string(field(charter, "long_study"))
+  assert_eq(field(report, "fit_report_sha256"), Json(sha(fit + "/report.json")))
+  assert_eq(
+    field(report, "long_report_sha256"),
+    Json(sha(long + "/report.json")),
+  )
+  assert_eq(field(report, "teacher_sha256"), Json(sha(fit + "/teacher.json")))
+  let original = read(fit + "/report.json")
+  assert_eq(
+    field(original, "feature_provider_sha256"),
+    Json(sha(study + "/provider-sources/balance_features.py")),
+  )
+  assert_eq(
+    field(original, "head_provider_sha256"),
+    Json(sha(study + "/provider-sources/learned_balance.py")),
+  )
+  assert_eq(
+    field(read(fit + "/teacher.json"), "provider_sha256"),
+    Json(sha(study + "/provider-sources/teacher_feedback.py")),
+  )
+  let rows = array(field(report, "rows"))
+  assert_eq(rows.length(), 16)
+  let log = study + "/intervention-physics.jsonl.gz"
+  assert_eq(field(report, "physics_log_sha256"), Json(sha(log)))
+  let chunks : Array[Json] = []
+  let ids : Map[String, Bool] = Map([])
+  let mut total_points = 0
+  @async.with_task_group() <| group => {
+    let (reader, output) = @process.read_from_process()
+    let process = @process.spawn(group, "gzip", ["-cd", log], stdout=output)
+    while reader.read_until("\n") is Some(line) {
+      if line.trim().is_empty() {
+        continue
+      }
+      let record = @json.parse(line)
+      let row = rows[chunks.length()]
+      let mode = field(row, "mode")
+      assert_eq(mode, field(record, "mode"))
+      assert_eq(field(row, "seed"), field(record, "seed"))
+      if field(row, "seed") is Number(seed, ..) {
+        assert_eq(
+          field(row, "checkpoint_sha256"),
+          Json(sha(fit + "/policy/actor-full-seed-\{seed.to_int()}.pt")),
+        )
+      }
+      let dataset = field(record, "dataset")
+      let episodes = array(field(dataset, "episodes"))
+      let trials = array(field(record, "trials"))
+      let diagnostics = array(field(record, "diagnostics"))
+      assert_eq(trials, array(field(row, "trials")))
+      assert_eq(
+        episodes.length(),
+        if mode == ("teacher_all" : Json) {
+          11
+        } else {
+          5
+        },
+      )
+      assert_eq(diagnostics.length(), episodes.length())
+      let mut points = 0
+      for i, episode in episodes {
+        let id = string(field(episode, "id"))
+        assert_false(ids.contains(id))
+        ids.set(id, true)
+        assert_eq(field(trials[i], "episode_id"), Json(id))
+        assert_eq(field(trials[i], "case_id"), field(episode, "case_id"))
+        let steps = array(field(episode, "steps"))
+        assert_eq(num(field(trials[i], "steps")).to_int(), steps.length())
+        assert_eq(
+          field(trials[i], "failed"),
+          field(steps.last().unwrap(), "terminated"),
+        )
+        assert_eq(
+          field(episode, "split"),
+          if field(episode, "case_id") == ("wave" : Json) {
+            "test"
+          } else {
+            "train"
+          },
+        )
+        let samples = array(field(diagnostics[i], "measurements"))
+        assert_eq(field(samples[0], "step"), 0)
+        assert_eq(
+          num(field(samples.last().unwrap(), "step")).to_int(),
+          steps.length() - 1,
+        )
+        guard field(diagnostics[i], "segments") is Object(segments) else {
+          fail("missing phase diagnostics")
+        }
+        let mut counted = 0
+        for _, segment in segments {
+          counted += num(field(segment, "points")).to_int()
+          assert_eq(
+            field(segment, "feature_points"),
+            if mode == ("teacher_all" : Json) {
+              Json(0)
+            } else {
+              field(segment, "points")
+            },
+          )
+        }
+        assert_eq(counted, steps.length())
+        points += steps.length()
+      }
+      assert_eq(num(field(row, "transitions")).to_int(), points)
+      total_points += points
+      for scope in ["wave-development", "sine-training-family-audit"] {
+        check_summary(
+          field(field(row, "summaries"), scope),
+          trials.filter(t => field(t, "scope") == Json(scope)),
+        )
+      }
+      let scratch = study + "/native-chunk.json"
+      @fs.write_file(scratch, dataset.stringify(), create_mode=CreateOrTruncate)
+      let (code, out, err) = @process.collect_output(
+        root +
+        "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+        [scratch, "train", "1", "1000000"],
+      )
+      assert_eq(code, 0, msg=err.text())
+      assert_eq(field(@json.parse(out.text()), "window_length"), 1)
+      @fs.remove(scratch)
+      chunks.push({
+        "mode": mode,
+        "seed": field(row, "seed"),
+        "episodes": Json(episodes.length()),
+        "transitions": Json(points),
+        "all_splits_native_checked": true,
+      })
+      println("Native checked long-intervention chunk \{chunks.length()}/16")
+    }
+    reader.close()
+    assert_eq(process.wait(), 0)
+  }
+  assert_eq(chunks.length(), 16)
+  assert_eq(ids.length(), 86)
+  let pooled = array(field(report, "pooled"))
+  assert_eq(pooled.length(), 12)
+  let shadow : Array[Json] = []
+  for cell in pooled {
+    let trials : Array[Json] = []
+    for row in rows.filter(r => field(r, "mode") == field(cell, "mode")) {
+      trials.append(
+        array(field(row, "trials")).filter(t => {
+          field(t, "scope") == field(cell, "scope")
+        }),
+      )
+    }
+    check_summary(cell, trials)
+    for phase in ["first-ten-seconds", "after-ten-seconds"] {
+      shadow.push(
+        pool_shadow(rows, field(cell, "mode"), field(cell, "scope"), phase),
+      )
+    }
+  }
+  guard report is Object(fields) else { fail("expected report object") }
+  fields.set("native_chunks", Json(chunks))
+  fields.set("native_episodes", Json(ids.length()))
+  fields.set("transitions", Json(total_points))
+  fields.set("shadow_by_scope_and_phase", Json(shadow))
+  fields.set("source_report_sha256", Json(sha(study + "/report.json")))
+  @fs.write_file(
+    args[3],
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    (
+      {
+        "pooled": Json(pooled),
+        "episodes": Json(ids.length()),
+        "transitions": Json(total_points),
+      } : Json).stringify(),
+  )
+}

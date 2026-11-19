@@ -1,0 +1,149 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+fn[T : FromJson] field(value : Json, key : String) -> T raise {
+  guard value is Object(fields) && fields.get(key) is Some(v) else {
+    fail("missing " + key)
+  }
+  @json.from_json(v)
+}
+
+///|
+async fn main {
+  let previous = "/home/wlc004s/moonrobo/private/e1-native-20261110"
+  let retrain = "/home/wlc004s/moonrobo/private/e1-anatomical-retrain-20261112"
+  let anatomical = @fs.exists(retrain + "/train-launch.json")
+  let root = if anatomical { retrain } else { previous }
+  let (h, host, _) = @process.collect_output("hostname", [])
+  guard h == 0 && host.text().trim() == "spark-368c" else {
+    fail("status must run on Spark 179")
+  }
+  let qualified = anatomical ||
+    @fs.exists(root + "/qualified-training-launch.json")
+  let name = if anatomical {
+    "e1-anatomical-train-20261112"
+  } else if qualified {
+    "moonrobo-e1-qualified-20261111"
+  } else {
+    "moonrobo-e1-23-training-20261110"
+  }
+  let run = if anatomical {
+    "/train"
+  } else if qualified {
+    "/out/train-qualified"
+  } else {
+    "/out/train-23"
+  }
+  let config_file = if qualified {
+    "/qualified-training.json"
+  } else {
+    "/training.json"
+  }
+  let config = @json.parse(
+    @utf8.decode(@fs.read_file(root + config_file).binary()),
+  )
+  let environments : Int32 = field(config, "environments")
+  let learner : Json = field(config, "learner")
+  let (code, inspection, _) = @process.collect_output("docker", [
+    "inspect", name,
+  ])
+  guard code == 0 else { fail("training container unavailable") }
+  let containers : Array[Json] = @json.from_json(@json.parse(inspection.text()))
+  let state : Json = field(containers[0], "State")
+  let (log_code, logs, _) = @process.collect_output("docker", [
+    "logs", "--timestamps", "--tail", "1800", name,
+  ])
+  guard log_code == 0 else { fail("training log unavailable") }
+  let points : Array[Json] = []
+  let mut iteration = 0
+  for line in logs.text().split("\n") {
+    let parts = line.split(" ").collect()
+    if parts.length() < 2 {
+      continue
+    }
+    let timestamp = parts[0].to_owned()
+    let row = @json.parse(parts[1:].join(" ")) catch { _ => continue }
+    if row
+      is { "iteration": Number(i, ..), "world": { "wm_loss": loss, .. }, .. } {
+      if i.to_int() <= iteration {
+        continue
+      }
+      iteration = i.to_int()
+      points.push({
+        "iteration": i,
+        "at": timestamp,
+        "world_loss": loss,
+        "policy": match row {
+          { "policy": p, .. } => p
+          _ => Json(())
+        },
+      })
+    }
+  }
+  let checkpoint = @json.parse(
+    @utf8.decode(@fs.read_file(root + run + "/current.json").binary()),
+  ) catch {
+    _ => Json(())
+  }
+  if checkpoint is { "iteration": Number(saved, ..), .. } {
+    // Container stdout can still be buffered after an atomic checkpoint.
+    iteration = iteration.max(saved.to_int())
+  }
+  let (d, date, _) = @process.collect_output("date", [
+    "-u", "+%Y-%m-%dT%H:%M:%SZ",
+  ])
+  assert_eq(d, 0)
+  let running : Bool = field(state, "Running")
+  let oom : Bool = field(state, "OOMKilled")
+  let result : Json = {
+    "format": "moonrobo.e1-showcase-status.v1",
+    "observed_at": date.text().trim().to_owned(),
+    "iteration": iteration,
+    "target_iterations": 14000,
+    "world_only_iterations": 500,
+    "state": if oom || (!running && (field(state, "ExitCode") : Int32) != 0) {
+      "failed"
+    } else if running {
+      "running"
+    } else if iteration == 14000 {
+      "completed"
+    } else {
+      "stopped"
+    },
+    "started_at": (field(state, "StartedAt") : String),
+    "oom_killed": oom,
+    "phase": if iteration < 500 {
+      "world-only"
+    } else {
+      "world-actor-critic"
+    },
+    "points": points,
+    "checkpoint": checkpoint,
+    "training_host": 179,
+    "data_host": 178,
+    "source": "spark-179-docker-log",
+    "qualified_dataset": qualified,
+    "anatomical_retrain": anatomical,
+    "environments": environments,
+    "world_batch": (field(learner, "wm_batch") : Int32),
+    "actor_batch": (field(learner, "policy_batch") : Int32),
+    "world_window": (field(learner, "wm_window") : Int32),
+    "horizon": (field(learner, "horizon") : Int32),
+    "scope": if anatomical {
+      "from-scratch E1 training on the elbow-calibrated qualified catalog; historical 7k replays are labeled separately"
+    } else if qualified {
+      "admitted complete-motion curriculum; checkpoint evaluation covers every admitted training and validation clip; simulation only"
+    } else {
+      "archived unqualified baseline: two training and two validation vendor clips; stopped for workflow correction"
+    },
+  }
+  println(result.stringify())
+}

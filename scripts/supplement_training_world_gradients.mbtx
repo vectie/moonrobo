@@ -1,0 +1,61 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  // Native actor entry deliberately clears the completed world gradients.
+  // Keep handles only for the one-repeat numerical gate, before that clear.
+  // Timing repetitions do not retain these tensors or perform diagnostic IO.
+  let fixture = @fs.read_file(out + "/training_fixture_am.mbt")
+    .text()
+    .replace_all(
+      old="  for iteration in 0..<",
+      new="  let completed_world_gradients : Array[@tensor.Tensor] = []\n  for iteration in 0..<",
+    )
+    .replace_all(
+      old="      let m=learner.update_policy(policy)",
+      new="      if repetitions==1 {for p in learner.world.net.parameters() {completed_world_gradients.push(p.gradient())}}\n      let m=learner.update_policy(policy)",
+    )
+    .replace_all(
+      old="  shared_json(\n    output + \"/final.json\",\n    shared_snapshot(",
+      new="  let completed_snapshot = shared_snapshot(",
+    )
+    .replace_all(
+      old="    ),\n  )\n  shared_json(output + \"/result.json\"",
+      new="    )\n  guard completed_snapshot is Object(snapshot) && snapshot.get(\"records\") is Some(Array(records)) else {fail(\"complete snapshot records\")}\n  for i,g in completed_world_gradients {records.push(Json(shared_write(output,\"world-\\{i}-gradient\",g)))}\n  shared_json(output+\"/final.json\",Json(snapshot))\n  shared_json(output + \"/result.json\"",
+    )
+  guard fixture.contains("let completed_snapshot") &&
+    fixture.contains("world-\\{i}-gradient") else {
+    fail("bounded world-gradient capture")
+  }
+  let build = @fs.read_file(out + "/build_aligned_training_ap.mbtx")
+    .text()
+    .replace_all(
+      old="training_fixture_ap.mbt",
+      new="training_fixture_ap_complete.mbt",
+    )
+  for
+    (name, value) in [
+      ("training_fixture_ap_complete.mbt", fixture),
+      ("build_aligned_training_ap_complete.mbtx", build),
+    ] {
+    @fs.write_file(out + "/" + name, value, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/" + name,
+        host + ":" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+}

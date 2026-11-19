@@ -1,0 +1,92 @@
+///|
+async fn main {
+  guard @env.args() is [_, phase, implementation, observation, repetitions, label] &&
+    ["export", "export-trained", "world", "actor"].contains(phase) && ["native", "smc", "smc-eager", "smc-adam-replay", "smc-log-eager", "smc-expanded-eager"].contains(implementation) &&
+    ["off", "events", "ranges", "aten", "cuda-trace", "aten-trace"].contains(observation) && ["1", "13"].contains(repetitions) &&
+    label.length() <= 64 && label.all(c => c is ('a'..<='z' | '0'..<='9' | '-')) else { fail("fixed shared-compute arguments required") }
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let collector = observation == "cuda-trace" || observation == "aten-trace"
+  let observer = match observation { "cuda-trace" => "ranges"; "aten-trace" => "aten"; other => other }
+  let mapped = "/workspace/moonrobo/private/shared-compute-20261026-a"
+  let parent = "/home/wlc004s/moonrobo/runs/native-hotspot-vs-smc512-20261026-b/spec.json"
+  guard hash_file(parent) == "5197095bd124a4e212cd4b5c8ed07a14323c9d7d1f56115a47967489105e757f" else { fail("parent changed") }
+  let spec = read_json(parent)
+  verify_pins(spec)
+  let side = @json.parse(field(spec, if implementation == "native" { "a" } else { "b" }).stringify())
+  guard side is Object(s) && field(side, "env") is Object(e) && field(side, "mounts") is Array(mounts) else { fail("side") }
+  if implementation != "native" {
+    mounts.clear()
+    mounts.append([
+      { "source": Json("/home/wlc004s/moonrobo"), "target": Json("/workspace/moonrobo"), "readonly": Json(true) },
+      { "source": Json(base), "target": Json("/workspace/supermimic"), "readonly": Json(true) },
+      { "source": Json("/home/wlc004s/moonrobo/data"), "target": Json("/workspace/supermimic/data"), "readonly": Json(true) },
+    ])
+    e["PYTHONPATH"] = Json("/workspace/supermimic")
+    e["SHARED_SMC_TRAIN"] = Json("/workspace/supermimic/supermimic/train.py")
+    e["SHARED_SMC_CHUNKS"] = Json("/workspace/moonrobo/private/operator-diagnostic-20261025-a/smc-phase-chunk-d/supermimic/policy_microbatch_fullcritic.py")
+    e["SHARED_NATIVE_BASELINE"] = Json("/workspace/moonrobo/runs/hotspot-shared-trained-native-" + phase + "-gate-a")
+    e["SHARED_SMC_COMPILED"] = Json(if implementation == "smc" { "1" } else { "0" })
+    e["SHARED_REPLAY_NATIVE_GRADIENTS"] = Json(if implementation == "smc-adam-replay" { "1" } else { "0" })
+    e["SHARED_ROTATION_CONTROL"] = Json(if implementation == "smc-log-eager" { "quaternion-log" } else { "original-acos" })
+    e["SHARED_LAYERNORM_CONTROL"] = Json(if implementation == "smc-expanded-eager" { "expanded" } else { "original-native" })
+    e["SHARED_CAPTURE_BACKWARD_DRAIN"] = Json(if collector && phase == "actor" && observer == "aten" { "1" } else { "0" })
+  }
+  e["MOONROBO_TENSOR_LIBRARY"] = Json(mapped + "/libmoonrobo_learning_tensor.so")
+  e["MOONROBO_SHARED_MODE"] = Json(phase)
+  e["MOONROBO_SHARED_OBSERVER"] = Json(observer)
+  e["MOONROBO_SHARED_REPETITIONS"] = Json(repetitions)
+  e["MOONROBO_SHARED_INPUT"] = Json("/workspace/moonrobo/runs/hotspot-shared-trained-export-b")
+  e["MOONROBO_SHARED_OUTPUT"] = Json("/pair")
+  s["entrypoint"] = Json(if implementation == "native" { mapped + "/numeric-gate-v3" } else { "python" })
+  s["argv"] = Json(if implementation == "native" { ["shared_fixture_wbtest.mbt:0-1"] } else { [mapped + "/shared_smc_probe.py"] })
+  let capture = if phase == "actor" && observer == "aten" {
+    if implementation == "native" { "actor.backward" } else { "diag.actor.backward" }
+  } else { "shared.compute.capture" }
+  let nsys = "/opt/nvidia/nsight-systems/2025.3.2/target-linux-sbsa-armv8/nsys"
+  if collector {
+    guard repetitions == "13" else { fail("capture requires three warmups") }
+    e["NSYS_NVTX_PROFILER_REGISTER_ONLY"] = "0"
+    guard hash_file(nsys) == "f8eabc8c88cf08b874401fba616321cbe418cc3a815cbf3140edece6339c74dd" else { fail("Nsight changed") }
+    mounts.push({ "source": Json("/opt/nvidia/nsight-systems/2025.3.2"), "target": Json("/opt/nvidia/nsight-systems/2025.3.2"), "readonly": true })
+    let args = ["profile", "--trace=cuda,nvtx", "--sample=none", "--backtrace=none", "--cpuctxsw=none", "--cuda-memory-usage=false", "--cuda-event-trace=false", "--cuda-graph-trace=node", "--cuda-flush-interval=0", "--capture-range=nvtx", "--nvtx-capture=" + capture + "@*", "--capture-range-end=stop", "--kill=none", "--stats=false", "--export=none", "--output=/pair/trace", if implementation == "native" { mapped + "/numeric-gate-v3" } else { "python" }]
+    args.append(if implementation == "native" { ["shared_fixture_wbtest.mbt:0-1"] } else { [mapped + "/shared_smc_probe.py"] })
+    s["entrypoint"] = Json(nsys)
+    s["argv"] = Json(args)
+  }
+  let root = "/home/wlc004s/moonrobo/runs/hotspot-shared-" + label
+  guard !@fs.exists(root) else { fail("fresh shared output required") }
+  @fs.mkdir(root)
+  let cache_source = "/home/wlc004s/moonrobo/runs/hotspot-shared-trained-smc-compiled-" + phase + "-gate-a"
+  if implementation == "smc" && @fs.exists(cache_source + "/inductor-cache") {
+    // Reuse only compiler artifacts from this fixture, never model/optimizer data.
+    // Each process still executes all three warmup updates before measurement.
+    guard @process.run("cp", ["-a", "--reflink=auto", cache_source + "/inductor-cache", root + "/inductor-cache"]) == 0 else { fail("compiler cache copy failed") }
+  }
+  let pins : Map[String, Json] = {}
+  if collector { pins[nsys] = Json(hash_file(nsys)) }
+  for path in [base + "/numeric-gate-v3", base + "/libmoonrobo_learning_tensor.so", base + "/shared_smc_probe.py", base + "/run_shared_compute.mbtx", base + "/overlay.tar.gz", base + "/smc-source.tar.gz", base + "/shared_fixture_v3_wbtest.mbt", base + "/build_shared_probe_v3.mbtx"] {
+    pins[path] = Json(hash_file(path))
+  }
+  for name in ["networks", "kinematics", "mdp", "motion", "rotations", "robot", "train"] {
+    let path = base + "/supermimic/" + name + ".py"
+    pins[path] = Json(hash_file(path))
+  }
+  if phase != "export" && phase != "export-trained" {
+    for name in ["fixture.json", "initial.json", "world.pt", "policy.pt", "critic.pt"] {
+      let path = "/home/wlc004s/moonrobo/runs/hotspot-shared-trained-export-b/" + name
+      pins[path] = Json(hash_file(path))
+    }
+  }
+  let checkpoint = "/home/wlc004s/moonrobo/runs/hotspot-followup-measured-world-20261026-c/run-0/train/generation-60-1792982719679/"
+  for name in ["state.json", "world.pt", "policy.pt", "critic.pt", "replay.values.f64le", "replay.indices.i32le", "replay.flags.u8", "catalog.json", "receipt.json"] {
+    pins[checkpoint + name] = Json(hash_file(checkpoint + name))
+  }
+  write_json(root + "/protocol.json", { "phase": Json(phase), "implementation": Json(implementation), "observer": Json(observer), "observation": Json(observation), "collector": Json(collector), "capture_range": Json(capture), "compiler_cache_source_if_present": Json(cache_source), "full_observer_scope": "all measured repetitions; collector limited to one matched NVTX range", "repetitions": Json(repetitions), "pins": Json(pins), "side": side, "trained_checkpoint_fixed_input_microbenchmark": true, "diagnostic_only_no_optimization_promotion": true, "original_guards_unchanged": true })
+  let passed = guarded(side, root, false)
+  for path, expected in pins { guard Json(hash_file(path)) == expected else { fail("source changed during shared probe") } }
+  let trace_present = @fs.exists(root + "/trace.nsys-rep")
+  write_json(root + "/completion.json", { "passed": Json(passed), "result_present": Json(@fs.exists(root + "/result.json")), "collector_requested": Json(collector), "trace_present": Json(trace_present) })
+  guard !collector || trace_present else { fail("collector did not produce a report; not a valid trace") }
+  guard passed && @fs.exists(root + "/result.json") else { fail("shared probe failed; evidence retained") }
+  println("SHARED_COMPLETED " + root)
+}

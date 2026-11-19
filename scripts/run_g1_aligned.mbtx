@@ -1,0 +1,132 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() >= 3 else {
+    fail("usage: run_g1_aligned.mbtx REPO [aligned.train options]")
+  }
+  let root = args[1]
+  guard args[2] != "--python" else {
+    fail(
+      "historical Python runner retained at scripts/python_reference/run_g1_aligned.mbtx; native entry has no interpreter fallback",
+    )
+  }
+  let options : Map[String, String] = {}
+  let flags : Array[String] = []
+  for i = 2; i < args.length(); {
+    if args[i] == "--evaluate" {
+      flags.push(args[i])
+      continue i + 1
+    }
+    guard i + 1 < args.length() else { fail("missing value " + args[i]) }
+    guard !options.contains(args[i]) else {
+      fail("duplicate option " + args[i])
+    }
+    options[args[i]] = args[i + 1]
+    continue i + 2
+  }
+  guard options.get("--output") is Some(output) &&
+    options.get("--config") is Some(config) else {
+    fail("required --output DIRECTORY and --config JSON")
+  }
+  guard !options.contains("--device") || options["--device"] == "cpu" else {
+    fail(
+      "native learner uses CPU Float64; select GPU physics separately with --physics-device-id and native adapter",
+    )
+  }
+  guard !options.contains("--usd-path") else {
+    fail(
+      "use native --usd-asset-manifest with its pinned APIC artifact; raw Python USD flags are not interpreted",
+    )
+  }
+  let library = match options.get("--library") {
+    Some(value) => value
+    None => @env.get_env_var("MOONROBO_MUJOCO_LIBRARY").unwrap_or("")
+  }
+  guard library != "" else {
+    fail("provide --library or MOONROBO_MUJOCO_LIBRARY")
+  }
+  if !@fs.exists(output) {
+    @fs.mkdir(output, recursive=true)
+  }
+  let config_bytes = @fs.read_file(config).binary()
+  guard @json.parse(@fs.read_file(config).text()) is Object(effective) else {
+    fail("aligned config must be object")
+  }
+  if options.get("--backend") is Some(backend) {
+    guard ["mujoco", "isaac"].contains(backend) else {
+      fail("unsupported backend")
+    }
+    effective["backend"] = Json(backend)
+  }
+  if options.get("--device") is Some(device) {
+    effective["device"] = Json(device)
+  }
+  if options.get("--physics-device-id") is Some(text) {
+    guard @json.parse(text) is Number(value, ..) &&
+      value >= 0 &&
+      value < 2147483648.0 &&
+      value.to_int().to_double() == value else {
+      fail("physics device id must be nonnegative integer")
+    }
+    effective["physics_device_id"] = Json(value)
+  }
+  @fs.write_file(
+    output + "/source-config.json",
+    config_bytes,
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/config.json",
+    Json(effective).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let command = [
+    "-C",
+    root,
+    "run",
+    "--quiet",
+    "--warn-list",
+    "-a",
+    "--target",
+    "native",
+    "src/learning_aligned/cmd",
+    "--",
+    "train",
+    "--library",
+    library,
+    "--output",
+    output + "/checkpoint.json",
+    "--config",
+    output + "/config.json",
+    "--report",
+    output + "/report.json",
+    "--evaluation-output",
+    output + "/evaluation.json",
+  ]
+  for key, value in options {
+    if [
+        "--output", "--config", "--library", "--device", "--backend", "--physics-device-id",
+      ].contains(key) {
+      continue
+    }
+    guard [
+      "--motion-dir", "--manifest", "--split", "--scene", "--resume", "--weights",
+      "--weights-sha256", "--iterations", "--physics-library", "--physics-artifact",
+      "--evaluation-manifest", "--evaluation-split",
+    ].contains(key) else {
+      fail("unsupported native aligned option " + key)
+    }
+    command.append([key, value])
+  }
+  command.append(flags)
+  assert_eq(@process.run("moon", command), 0)
+}

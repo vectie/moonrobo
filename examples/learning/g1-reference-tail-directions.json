@@ -1,0 +1,18 @@
+{
+  "format": "moonrobo.g1-reference-tail-directions-charter.v1",
+  "source_report_sha256": "8f95fdad0f0d0b0b7f20bee654f0ceaae13093230ee32ae5e5bccbe3ab973ada",
+  "model_source_report_sha256": "512bb2ed61d9ba77e3117465c9f5d4933ed6570a909bc1aae90095ea747e7fa8",
+  "seeds": [0, 1, 2],
+  "variants": ["free", "root-integrated"],
+  "tail_modes": ["with-tail", "prefix-only"],
+  "model_updates": 900,
+  "probe_clip_indices": [0, 3, 6],
+  "logit_rms_steps": [0.001, 0.005],
+  "probe_signs": [-1, 1],
+  "expected_runs": 12,
+  "expected_physical_records": 147,
+  "expected_new_physical_records": 72,
+  "comparison": "Use all six frozen models and per-seed common-data critics from the root-integration study. Reuse its 75 deterministic baseline/with-tail physical records, immutable directions and existing calibration. Compute six new prefix-only H32 actor gradients from the same nine physical reset starts, calibrate on the same full common collections, and evaluate both signs at both fixed amplitudes on the identical three known reset clips. No new model/value fit, actor optimization, checkpoint selection, unseen-motion claim or quality qualification.",
+  "costs": "Only 72 prefix-only probes are new physics; the paired report references 75 existing episodes without copying or counting them as new collection. Historical data/model/value fitting costs stay separate. This diagnostic cannot establish successful cost-to-target.",
+  "physical_execution_allowed": false
+}

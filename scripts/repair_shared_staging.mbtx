@@ -1,0 +1,44 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/shared-compute-20261026"
+  let remote = "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/"
+  let stage = @fs.read_file(root + "/stage_hotspot_fixture_workspace.mbtx")
+    .text()
+    .replace_all(old="selected.length() == 3", new="selected.length() == 4")
+    .replace_all(
+      old="expected three target test files",
+      new="expected four target test files",
+    )
+  let build = @fs.read_file(root + "/build_shared_compute.mbtx")
+    .text()
+    .replace_all(old="moonrobo-fixtures", new="moonrobo-fixtures-b")
+    .replace_all(
+      old="stage_hotspot_fixture_workspace.mbtx",
+      new="stage_shared_v2.mbtx",
+    )
+    .replace_all(old="\"fixture-stage\"", new="\"fixture-stage-b\"")
+    .replace_all(old="\"fixture-packages\"", new="\"fixture-packages-b\"")
+  for
+    (name, contents) in [
+      ("stage_shared_v2.mbtx", stage),
+      ("build_shared_v2.mbtx", build),
+    ] {
+    @fs.write_file(root + "/" + name, contents, create_mode=CreateNew)
+    guard @process.run("scp", [
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        root + "/" + name,
+        remote + name,
+      ]) ==
+      0 else {
+      fail("copy failed")
+    }
+  }
+}

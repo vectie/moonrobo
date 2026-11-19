@@ -1,0 +1,206 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let revision = match @env.args() {
+    [_] => "a"
+    [_, "b"] => "b"
+    _ => fail("only original or b revision")
+  }
+  let out = repo +
+    "/output/spark-runtime-20261024/world-ln-fk-20261026/" +
+    (if revision == "a" { "ln" } else { "ln-b" })
+  let old = "/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a"
+  let base = "/home/wlc004s/moonrobo/private/hotspot-followup-ln-20261026-" +
+    revision
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-operator-179.sock"
+  guard !@fs.exists(out) else { fail("fresh local stage required") }
+  @fs.mkdir(out)
+  async fn run(program : String, args : Array[String]) -> Unit {
+    guard @process.run(program, args) == 0 else { fail("failed " + program) }
+  }
+  let builder = @fs.read_file(
+      repo + "/scripts/build_hotspot_candidates_v2.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="/home/wlc004s/moonrobo/private/hotspot-optimization-20261025-b",
+      new=base,
+    )
+    .replace_all(
+      old="\"--env\",\n      \"PATH=",
+      new="\"--mount\",\n      \"type=bind,src=/usr/local/cuda-13.0,dst=/cuda-toolkit,readonly\",\n      \"--env\",\n      \"PATH=",
+    )
+    .replace_all(
+      old="if mode == \"plugin\" {",
+      new=(
+        #|if mode == "cuda" {
+        #|    container("cuda-build", "/cuda-toolkit/bin/nvcc", [
+        #|      "-std=c++17", "-O3", "-arch=sm_121", "--fmad=false", "--prec-div=true", "--prec-sqrt=true", "--ftz=false",
+        #|      "-Xcompiler=-fPIC", "-D_GLIBCXX_USE_CXX11_ABI=1",
+        #|      "-I/opt/isaaclab-venv/lib/python3.12/site-packages/torch/include",
+        #|      "-I/opt/isaaclab-venv/lib/python3.12/site-packages/torch/include/torch/csrc/api/include",
+        #|      "-c", "/workspace/moonrobo/src/learning_tensor/ln_silu_tail.cu", "-o", "/build/ln_silu_tail.o",
+        #|    ])
+        #|    return
+        #|  }
+        #|  if mode == "plugin" {
+      ),
+    )
+    .replace_all(
+      old="\"-DMR_ENABLE_NVTX3=1\",",
+      new="\"-DMR_ENABLE_POINTWISE_FUSION=1\", \"-DMR_ENABLE_NVTX3=1\",",
+    )
+    .replace_all(
+      old="\"/workspace/moonrobo/src/learning_tensor/adapter.cpp\", \"-o\",",
+      new="\"/workspace/moonrobo/src/learning_tensor/adapter.cpp\", \"/build/ln_silu_tail.o\", \"-o\",",
+    )
+  guard builder.contains("cuda-build") && builder.contains("dst=/cuda-toolkit") else {
+    fail("CUDA build derivation")
+  }
+  let runner = @fs.read_file(
+      repo +
+      "/output/spark-runtime-20261024/world-ln-fk-20261026/run_followup_pairs.mbtx",
+    )
+    .text()
+    .replace_all(old~, new=base)
+    .replace_all(
+      old="/workspace/moonrobo/private/hotspot-followup-world-20261026-a",
+      new="/workspace/moonrobo/private/hotspot-followup-ln-20261026-" + revision,
+    )
+    .replace_all(
+      old="value == Json(\"expanded\") ||",
+      new="value == Json(\"fused_tail\") || value == Json(\"expanded\") ||",
+    )
+    .replace_all(
+      old="\"world_packed\", \"world-fields\",",
+      new="\"world_packed\", \"world-fields\", \"fused_tail\", \"fused-tail-unit\",",
+    )
+    .replace_all(
+      old="let (binary, test_name, marker) = match mode {",
+      new="let (binary, test_name, marker) = match mode {\n    \"fused-tail-unit\" => (\"tensor-gate\", \"ln_silu_tail_test.mbt:0-1\", \"FUSED_LN_TAIL_GATE_PASS\")",
+    )
+  let fixture = @fs.read_file(
+      repo + "/scripts/stage_hotspot_fixture_workspace.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="\"src/learning_tensor/layer_norm_submitted_test.mbt\",",
+      new="\"src/learning_tensor/layer_norm_submitted_test.mbt\", \"src/learning_tensor/ln_silu_tail_test.mbt\",",
+    )
+    .replace_all(old="selected.length() == 3", new="selected.length() == 4")
+  let spec = @fs.read_file(repo + "/scripts/prepare_followup_world_spec.mbtx")
+    .text()
+    .replace_all(old~, new=base)
+    .replace_all(
+      old="/workspace/moonrobo/private/hotspot-followup-world-20261026-a",
+      new="/workspace/moonrobo/private/hotspot-followup-ln-20261026-" + revision,
+    )
+    .replace_all(
+      old="config[\"world_packed_replay\"] = Json(side == \"b\")",
+      new="config[\"world_packed_replay\"] = Json(false)\n    config[\"layer_norm_mode\"] = Json(if side == \"b\" { \"fused_tail\" } else { \"expanded\" })",
+    )
+    .replace_all(
+      old="\"appledouble-quarantine.json\", \"quarantine_followup_metadata_v3.mbtx\", \"trainer-clean-build.receipt.json\", \"gate-build-clean.receipt.json\"",
+      new="\"cuda-build.receipt.json\", \"plugin-build.receipt.json\", \"trainer-build.receipt.json\", \"gate-build.receipt.json\", \"ln_silu_tail.o\"",
+    )
+    .replace_all(
+      old="[\"world-fields\", \"world_packed\"]",
+      new="[\"fused-tail-unit\", \"fused_tail\"]",
+    )
+    .replace_all(old="build_followup_world.mbtx", new="build_followup_ln.mbtx")
+    .replace_all(
+      old="prepare_followup_world_spec.mbtx",
+      new="prepare_followup_ln_spec.mbtx",
+    )
+    .replace_all(old="run_followup_world.mbtx", new="run_followup_ln.mbtx")
+    .replace_all(old="world-packed", new="ln-pointwise-tail")
+    .replace_all(
+      old="Only world_packed_replay differs.",
+      new="Only layer_norm_mode differs. World packed is disabled on both sides.",
+    )
+    .replace_all(
+      old="Packed sampler retains start/env RNG order, block validation boundary, original masks and Float64-to-Float32 conversion.",
+      new="Mean/variance ATen reductions retained; only LN pointwise tail and SiLU are fused. Extra1GiB conservative admission reserve applies to fused candidate.",
+    )
+    .replace_all(
+      old="unchanged tensor plugin",
+      new="same rebuilt tensor plugin",
+    )
+    .replace_all(old="\"-20261026-a\"", new="\"-20261026-" + revision + "\"")
+  let controller = @fs.read_file(repo + "/scripts/run_followup_world.mbtx")
+    .text()
+    .replace_all(old~, new=base)
+    .replace_all(
+      old="[\"stage\", \"fixture-stage\", \"trainer\", \"gate-build\"]",
+      new="[\"stage\", \"fixture-stage\", \"cuda\", \"plugin\", \"trainer\", \"gate-build\"]",
+    )
+    .replace_all(
+      old="[\"world-fields\", \"world_packed\"]",
+      new="[\"fused-tail-unit\", \"fused_tail\"]",
+    )
+    .replace_all(old="followup_world", new="followup_ln")
+    .replace_all(old="world-packed", new="ln-pointwise-tail")
+    .replace_all(old="[root])", new="[root, root + \"/summary.json\"])")
+    .replace_all(old="\"-20261026-a\"", new="\"-20261026-" + revision + "\"")
+    .replace_all(
+      old="hotspot-ln-pointwise-tail-abba-20261026-a",
+      new="hotspot-ln-pointwise-tail-abba-20261026-" + revision,
+    )
+  for
+    (name, source) in [
+      ("build_followup_ln.mbtx", builder),
+      ("run_followup_pairs.mbtx", runner),
+      ("stage_hotspot_fixture_workspace.mbtx", fixture),
+      ("prepare_followup_ln_spec.mbtx", spec),
+      ("run_followup_ln.mbtx", controller),
+    ] {
+    @fs.write_file(out + "/" + name, source, create_mode=CreateNew)
+  }
+  run("env", [
+    "COPYFILE_DISABLE=1",
+    "tar",
+    "--exclude=_build",
+    "--exclude=.mooncakes",
+    "--exclude=target",
+    "--exclude=._*",
+    "-czf",
+    out + "/overlay.tar.gz",
+    "-C",
+    repo,
+    "moon.mod",
+    "src/learning_aligned",
+    "src/learning_aligned_gpu",
+    "src/learning_tensor",
+  ])
+  run("ssh", ["-S", socket, host, "mkdir " + base])
+  for
+    name in [
+      "build_followup_ln.mbtx", "run_followup_pairs.mbtx", "stage_hotspot_fixture_workspace.mbtx",
+      "prepare_followup_ln_spec.mbtx", "run_followup_ln.mbtx", "overlay.tar.gz",
+    ] {
+    run("scp", [
+      "-o",
+      "ControlPath=" + socket,
+      out + "/" + name,
+      host + ":" + base + "/" + name,
+    ])
+  }
+  run("scp", [
+    "-o",
+    "ControlPath=" + socket,
+    repo + "/scripts/summarize_hotspot_pairs.mbtx",
+    host + ":" + base + "/summarize_hotspot_pairs.mbtx",
+  ])
+  println(
+    "Prepared separate LN CUDA candidate; no GPU execution or baseline change",
+  )
+}

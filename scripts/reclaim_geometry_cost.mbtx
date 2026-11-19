@@ -1,0 +1,54 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() >= 3 else {
+    fail("receipt tag and closed output labels required")
+  }
+  let tag = args[1]
+  let owners = args[2:].to_owned()
+  let kind = @env.get_env_var("GEOMETRY_COST_CACHE_KIND").unwrap_or("shared")
+  guard ["shared", "mlp"].contains(kind) else { fail("known task output kind") }
+  guard tag.all(c => c is ('a'..<='z' | '0'..<='9' | '_')) &&
+    owners.all(x => x.all(c => c is ('a'..<='z' | '0'..<='9' | '-'))) else {
+    fail("safe labels")
+  }
+  let root = "output/spark-runtime-20261024/geometry-cost-20261030-a"
+  let old = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let source = @fs.read_file("scripts/reclaim_geometry_history.mbtx").text()
+  let lines = source
+    .split("\n")
+    .filter(s => s.contains("let names=["))
+    .to_array()
+  assert_eq(lines.length(), 1)
+  let updated = source
+    .replace_all(
+      old=lines[0].to_owned(),
+      new="    #| let names=" + Json(owners).stringify(),
+    )
+    .replace_all(
+      old="let out = \"" + old + "\"",
+      new="let out = \"" + root + "\"",
+    )
+    .replace_all(
+      old="out + \"/advise_heading_inputs_source.mbtx\"",
+      new="\"" + old + "/advise_heading_inputs_source.mbtx\"",
+    )
+    .replace_all(old="history_b", new="cost_" + tag)
+    .replace_all(old="history-advice-b", new="cost-" + tag + "-advice")
+    .replace_all(old="hotspot-shared-", new="hotspot-" + kind + "-")
+    .replace_all(
+      old="/tmp/moonrobo-math-179.sock",
+      new="/tmp/moonrobo-cost-179.sock",
+    )
+  let path = root + "/reclaim_" + tag + ".mbtx"
+  @fs.write_file(path, updated, create_mode=CreateNew)
+  assert_eq(@process.run("moon", ["run", "--target", "native", path]), 0)
+}

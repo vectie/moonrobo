@@ -1,0 +1,1791 @@
+// Dedicated 4096/micro512 diagnostic launcher, derived from the frozen
+// run_smc_native_pairs.mbtx SHA256
+// 52be50c8dc774283473a79d8cc7c5fb2b176308a3ab3f67938c5b8223dafede0.
+// Process guards, launch argv, immutable pins and terminal-race handling are
+// preserved. Only diagnostic protocol, coverage and CLI exposure differ.
+
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/async@0.20.2/os_error",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/x/crypto",
+}
+
+///|
+let allowed_root = "/home/wlc004s/moonrobo/"
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing " + key)
+  }
+  value
+}
+
+///|
+fn text(value : Json) -> String raise {
+  guard value is String(value) else { fail("string required") }
+  value
+}
+
+///|
+fn integer(value : Json) -> Int64 raise {
+  guard value is Number(n, ..) &&
+    n >= 0.0 &&
+    n <= 9007199254740991.0 &&
+    n.to_int64().to_double() == n else {
+    fail("exact nonnegative JSON number required")
+  }
+  n.to_int64()
+}
+
+///|
+fn recorded_integer(value : Json) -> Int64 raise {
+  match value {
+    String(s) => {
+      let n = @string.parse_int64(s)
+      guard n >= 0L else { fail("negative recorded integer") }
+      n
+    }
+    _ => integer(value)
+  }
+}
+
+///|
+fn sha(value : String) -> Bool {
+  value.length() == 64 &&
+  value.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+fn safe_path(path : String) -> Bool {
+  path.has_prefix("/") &&
+  !path.contains(",") &&
+  path.iter().all(c => c >= ' ' && c != '\u007f') &&
+  !path.split("/").any(p => p == "." || p == "..")
+}
+
+///|
+fn strings(value : Json) -> Array[String] raise {
+  guard value is Array(values) && values.length() <= 256 else {
+    fail("bounded string array required")
+  }
+  values.map(text)
+}
+
+///|
+fn flag(argv : Array[String], key : String) -> String raise {
+  let indices = [ for i in 0..<argv.length() if argv[i] == key => i ]
+  guard indices.length() == 1 && indices[0] + 1 < argv.length() else {
+    fail("exactly one valued argument required: " + key)
+  }
+  argv[indices[0] + 1]
+}
+
+///|
+fn common_protocol(pi_batch~ : Int32 = 512) -> Json {
+  {
+    "num_envs": 256,
+    "seed": 0,
+    "iterations": 60,
+    "warmup_steps": 64,
+    "wm_only_iters": 20,
+    "buffer_steps": 1000,
+    "utd": 0.4,
+    "hist": 10,
+    "goal_frames": 10,
+    "horizon": 32,
+    "wm_window": 8,
+    "wm_batches": 10,
+    "wm_batch": 2048,
+    "pi_batch": Json(pi_batch),
+    "lr": 0.0002,
+    "gamma": 0.99,
+    "lam": 0.95,
+    "action_noise": 0.1,
+    "critic_epochs": 5,
+    "critic_minibatches": 4,
+    "lr_decay_iters": 250000,
+    "amp": "none",
+  }
+}
+
+///|
+fn expected_counts(protocol : Json) -> Array[(String, Int64)] raise {
+  let n = integer(field(protocol, "num_envs"))
+  let iterations = integer(field(protocol, "iterations"))
+  let actor = iterations - integer(field(protocol, "wm_only_iters"))
+  let model = iterations * integer(field(protocol, "wm_batches"))
+  // This bounded protocol uses UTD .4: cumulative collection alternates 2/3.
+  guard field(protocol, "utd") == Json(0.4) else { fail("unsupported UTD") }
+  [
+    (
+      "physical_transitions",
+      (integer(field(protocol, "warmup_steps")) + iterations * 5L / 2L) * n,
+    ),
+    ("model_updates", model),
+    (
+      "model_fit_transition_slots",
+      model *
+      integer(field(protocol, "wm_batch")) *
+      integer(field(protocol, "wm_window")),
+    ),
+    ("actor_updates", actor),
+    (
+      "imagined_transitions",
+      actor *
+      integer(field(protocol, "pi_batch")) *
+      integer(field(protocol, "horizon")),
+    ),
+    (
+      "critic_updates",
+      actor *
+      integer(field(protocol, "critic_epochs")) *
+      integer(field(protocol, "critic_minibatches")),
+    ),
+  ]
+}
+
+///|
+fn valid_microbatch(value : Json, logical : Json) -> Bool raise {
+  let micro = integer(value)
+  let batch = integer(logical)
+  micro == 0L || (micro <= batch && batch % micro == 0L)
+}
+
+///|
+fn batch_layout(spec : Json) -> Json raise {
+  let sides : Map[String, Json] = Map([])
+  for key in ["a", "b"] {
+    let side = field(spec, key)
+    let config = field(side, "expected_config")
+    let logical = integer(field(config, "pi_batch"))
+    let micro = if field(side, "kind") == Json("native") {
+      integer(field(config, "pi_microbatch"))
+    } else {
+      0L
+    }
+    let actual = if micro == 0L { logical } else { micro }
+    sides[key] = {
+      "logical_actor_batch": Json(logical.to_double()),
+      "physical_actor_chunk": Json(actual.to_double()),
+      "actor_chunks": Json((logical / actual).to_double()),
+    }
+  }
+  Json::object(sides)
+}
+
+///|
+fn native_invariants() -> Json {
+  {
+    "wm_hidden": [2048, 2048, 2048],
+    "pi_hidden": [2048, 1024, 512, 256],
+    "critic_hidden": [256, 128],
+    "context_resampling": "environment",
+    "reset_noise": true,
+    "observation_noise": true,
+    "randomization": true,
+    "physics_dt": 0.005,
+    "max_episode_steps": 500,
+  }
+}
+
+///|
+fn native_optimization_bounds(config : Json) -> Unit raise {
+  guard config is Object(fields) else { fail("native config object required") }
+  for
+    key in [
+      "reuse_geometry", "reuse_critic_normalization", "critic_cuda_graph", "adam_checked_norm",
+      "defer_scalar_metrics", "body_orientation_batched", "resident_reference_cache",
+      "serial_optimizer_save_workspace", "world_staging_batch",
+    ] {
+    if fields.get(key) is Some(value) {
+      guard value is (True | False) else {
+        fail("optimization requires boolean: " + key)
+      }
+    }
+  }
+  if fields.get("serial_optimizer_save_workspace") == Some(Json(true)) {
+    guard fields.get("memory_admission_percent") == Some(Json(80)) &&
+      fields.get("telemetry_max_samples") == Some(Json(512)) else {
+      fail(
+        "serial optimizer save planner requires80-percent admission and512-sample telemetry",
+      )
+    }
+  }
+  if fields.get("resident_reference_max_mib") is Some(value) {
+    let cap = integer(value)
+    guard cap >= 1L && cap <= 2048L else {
+      fail("paired resident cache cap must be within 1..2048 MiB")
+    }
+  }
+  if fields.get("resident_reference_cache") == Some(Json(true)) {
+    guard fields.contains("resident_reference_max_mib") else {
+      fail("enabled resident cache requires explicit bounded cap")
+    }
+  }
+  if fields.get("world_staging_max_mib") is Some(value) {
+    let cap = integer(value)
+    guard cap >= 1L && cap <= 128L else {
+      fail("paired world staging cap must be within 1..128 MiB")
+    }
+  }
+  if fields.get("world_staging_batch") == Some(Json(true)) {
+    let cap = integer(field(config, "world_staging_max_mib")) * 1048576L
+    guard field(config, "wm_batch") == Json(2048) &&
+      field(config, "wm_window") == Json(8) &&
+      cap >= 107544576L else {
+      fail(
+        "paired world staging requires B2048/window8 and its full additional reserve",
+      )
+    }
+  }
+  if fields.get("layer_norm_mode") is Some(value) {
+    guard value == Json("expanded") || value == Json("native") else {
+      fail("invalid LayerNorm mode")
+    }
+  }
+}
+
+///|
+fn template() -> Json raise {
+  let native = common_protocol()
+  guard native is Object(config) else { fail("template") }
+  for
+    (key, value) in [
+      ("checkpoint_every", Json(60)),
+      ("precision", Json("float32")),
+      ("allow_tf32", Json(true)),
+      ("observation_mode", Json("smc")),
+      ("self_collisions", Json(false)),
+      ("wm_microbatch", Json(0)),
+      ("pi_microbatch", Json(0)),
+      ("memory_admission_percent", Json(80)),
+      ("telemetry_max_samples", Json(512)),
+    ] {
+    config[key] = value
+  }
+  guard native_invariants() is Object(invariants) else { fail("invariants") }
+  for key, value in invariants {
+    config[key] = value
+  }
+  let smc_argv = ["-u", "/workspace/supermimic/supermimic/train.py"]
+  guard common_protocol() is Object(common) else { fail("template protocol") }
+  for key, value in common {
+    smc_argv.push("--" + key)
+    smc_argv.push(
+      if value is String(value) {
+        value
+      } else {
+        value.stringify()
+      },
+    )
+  }
+  for
+    arg in [
+      "--log_every", "1", "--ckpt_every", "60", "--log_dir", "/pair/logs", "--motion_dir",
+      "/workspace/supermimic/data/lafan1_g1",
+    ] {
+    smc_argv.push(arg)
+  }
+  {
+    "format": "moonrobo.smc-native-pairs.spec.v1",
+    "name": "replace-with-comparison-name",
+    "node_machine_id_sha256": "REPLACE_WITH_179_MACHINE_ID_FILE_SHA256",
+    "abba_blocks": 1,
+    "timeout_seconds": 1800,
+    "steady_first_iteration": 41,
+    "steady_last_iteration": 60,
+    "protocol": common_protocol(),
+    "known_differences": [
+      "Same seed does not align RNG streams or initial weights.", "Native and original SMC logging/synchronization boundaries differ.",
+      "Record audited orientation, reset sampling, data preparation and physics implementation differences before use.",
+    ],
+    "pins": [
+      {
+        "path": "/home/wlc004s/moonrobo/REPLACE_EACH_FROZEN_SOURCE_BINARY_DATA_ASSET_FILE",
+        "sha256": "REPLACE_SHA256",
+        "role": "replace-role; list every consumed local source/data file",
+      },
+    ],
+    "a": {
+      "kind": "native",
+      "label": "native-aligned",
+      "image_id": "sha256:REPLACE_IMAGE_ID",
+      "entrypoint": "/workspace/moonrobo/REPLACE_FROZEN_TRAINER",
+      "workdir": "/workspace/moonrobo",
+      "env": {},
+      "expected_config": native,
+      "argv": [
+        "train", "--config", "/pair/native-config.json", "--output", "/pair/train",
+        "--checkpoint-format", "stream-v2", "--cuda-memory-telemetry", "--tensor-library",
+        "REPLACE", "--physics-library", "REPLACE", "--scene", "REPLACE", "--manifest",
+        "REPLACE", "--physics-artifact", "REPLACE", "--library", "REPLACE",
+      ],
+      "mounts": [
+        {
+          "source": "/home/wlc004s/moonrobo",
+          "target": "/workspace/moonrobo",
+          "readonly": true,
+        },
+        {
+          "source": "/home/wlc004s/moonrobo/REPLACE_MOTION_CACHE",
+          "target": "/motion-cache",
+          "readonly": false,
+        },
+      ],
+    },
+    "b": {
+      "kind": "smc",
+      "label": "smc-fp32-compiled",
+      "image_id": "sha256:REPLACE_IMAGE_ID",
+      "entrypoint": "python",
+      "workdir": "/workspace/supermimic",
+      "env": {
+        "SM_PROFILE": "0",
+        "TORCHDYNAMO_DISABLE": "0",
+        "TORCH_COMPILE_DISABLE": "0",
+        "TORCHINDUCTOR_COMPILE_THREADS": "2",
+      },
+      "expected_config": common_protocol(),
+      "argv": Json(smc_argv),
+      "mounts": [
+        {
+          "source": "/home/wlc004s/moonrobo/REPLACE_FROZEN_SMC_SOURCE",
+          "target": "/workspace/supermimic",
+          "readonly": true,
+        },
+        {
+          "source": "/home/wlc004s/moonrobo/data",
+          "target": "/workspace/supermimic/data",
+          "readonly": true,
+        },
+      ],
+    },
+    "template_note": "not runnable until placeholders are replaced, native expected_config includes the full concrete frozen config, all source/data/asset pins are provided, and offline Isaac assets are mounted read-only",
+  }
+}
+
+///|
+fn validate_side(side : Json, protocol : Json) -> Unit raise {
+  let kind = text(field(side, "kind"))
+  guard ["native", "smc"].contains(kind) else {
+    fail("only native or smc sides supported")
+  }
+  let image = text(field(side, "image_id"))
+  guard image.has_prefix("sha256:") && sha(image[7:].to_owned()) else {
+    fail("immutable image ID required")
+  }
+  let entrypoint = text(field(side, "entrypoint"))
+  guard !["sh", "bash", "/bin/sh", "/bin/bash", "/usr/bin/env"].contains(
+      entrypoint,
+    ) &&
+    entrypoint != "" &&
+    !entrypoint.contains("\u0000") else {
+    fail("direct trainer/interpreter entrypoint required")
+  }
+  guard safe_path(text(field(side, "workdir"))) else {
+    fail("absolute workdir required")
+  }
+  let argv = strings(field(side, "argv"))
+  guard !argv.contains("--resume") &&
+    !argv.contains("--execution-profile") &&
+    !argv.contains("--distributed") else {
+    fail("fresh single-node throughput only")
+  }
+  let expected = field(side, "expected_config")
+  guard protocol is Object(common) && expected is Object(_) else {
+    fail("config objects required")
+  }
+  for key, value in common {
+    guard field(expected, key) == value else {
+      fail("shared protocol differs: " + key)
+    }
+    if kind == "smc" {
+      let argument = flag(argv, "--" + key)
+      let parsed = if key == "amp" {
+        Json(argument)
+      } else {
+        @json.parse(argument)
+      }
+      guard parsed == value else { fail("SMC argv differs: " + key) }
+    }
+  }
+  guard field(side, "env") is Object(environment) && environment.length() <= 32 else {
+    fail("bounded env object required")
+  }
+  for key, value in environment {
+    guard key != "" &&
+      key
+      .iter()
+      .all(c => (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') &&
+      !text(value).contains("\u0000") else {
+      fail("invalid environment entry")
+    }
+    guard ![
+      "CUDA_CACHE_PATH", "TORCHINDUCTOR_CACHE_DIR", "PYTHONDONTWRITEBYTECODE", "PYTHONUNBUFFERED",
+      "TORCHDYNAMO_SUPPRESS_ERRORS", "NVIDIA_TF32_OVERRIDE", "TORCH_ALLOW_TF32_CUBLAS_OVERRIDE",
+    ].contains(key) else {
+      fail("cache/log/TF32/fallback environment is runner-owned")
+    }
+  }
+  if kind == "smc" {
+    guard flag(argv, "--log_every") == "1" &&
+      flag(argv, "--log_dir") == "/pair/logs" &&
+      flag(argv, "--ckpt_every") == "60" &&
+      !argv.contains("--no_critic") &&
+      environment.get("SM_PROFILE") == Some(Json("0")) &&
+      environment.get("NVIDIA_TF32_OVERRIDE") != Some(Json("0")) else {
+      fail("SMC throughput logging/profile/checkpoint/TF32 differs")
+    }
+    let disabled = environment.get("TORCHDYNAMO_DISABLE")
+    guard (disabled == Some(Json("0")) || disabled == Some(Json("1"))) &&
+      environment.get("TORCH_COMPILE_DISABLE") == disabled else {
+      fail("explicit consistent compile disable switches required")
+    }
+  } else {
+    native_optimization_bounds(expected)
+    guard argv.length() > 0 &&
+      argv[0] == "train" &&
+      flag(argv, "--config") == "/pair/native-config.json" &&
+      flag(argv, "--output") == "/pair/train" &&
+      flag(argv, "--checkpoint-format") == "stream-v2" &&
+      argv.contains("--cuda-memory-telemetry") &&
+      field(expected, "checkpoint_every") == Json(60) &&
+      field(expected, "precision") == Json("float32") &&
+      field(expected, "allow_tf32") == Json(true) &&
+      field(expected, "observation_mode") == Json("smc") &&
+      field(expected, "self_collisions") == Json(false) &&
+      valid_microbatch(
+        field(expected, "pi_microbatch"),
+        field(protocol, "pi_batch"),
+      ) &&
+      valid_microbatch(
+        field(expected, "wm_microbatch"),
+        field(protocol, "wm_batch"),
+      ) &&
+      field(expected, "memory_admission_percent") == Json(80) else {
+      fail("native aligned configuration/microbatch differs")
+    }
+    guard native_invariants() is Object(invariants) else { fail("invariants") }
+    for key, value in invariants {
+      guard field(expected, key) == value else {
+        fail("native SMC-fixed invariant differs: " + key)
+      }
+    }
+  }
+  guard field(side, "mounts") is Array(mounts) &&
+    mounts.length() > 0 &&
+    mounts.length() <= 12 else {
+    fail("1..12 mounts required")
+  }
+  let destinations : Map[String, Unit] = Map([])
+  for mount in mounts {
+    let source = text(field(mount, "source"))
+    let destination = text(field(mount, "target"))
+    guard safe_path(source) &&
+      (
+        source.has_prefix(allowed_root) ||
+        source == allowed_root[:allowed_root.length() - 1].to_owned()
+      ) &&
+      safe_path(destination) &&
+      destination != "/" &&
+      destination != "/pair" &&
+      !destination.has_prefix("/pair/") &&
+      !destinations.contains(destination) else {
+      fail("unsafe/duplicate bind mount")
+    }
+    destinations[destination] = ()
+    guard field(mount, "readonly") is (True | False) else {
+      fail("readonly boolean required")
+    }
+    if field(mount, "readonly") == Json(false) {
+      guard kind == "native" && destination == "/motion-cache" else {
+        fail("only native reference-lock cache may be writable")
+      }
+    }
+  }
+}
+
+///|
+fn validate(spec : Json) -> Unit raise {
+  let batch = integer(field(field(spec, "protocol"), "pi_batch")).to_int()
+  guard field(spec, "format") == Json("moonrobo.smc-native-pairs.spec.v1") &&
+    (batch == 512 || batch == 4096) &&
+    field(spec, "protocol") == common_protocol(pi_batch=batch) &&
+    field(spec, "steady_first_iteration") == Json(41) &&
+    field(spec, "steady_last_iteration") == Json(60) &&
+    integer(field(spec, "abba_blocks")) >= 1L &&
+    integer(field(spec, "abba_blocks")) <= 2L &&
+    field(spec, "timeout_seconds") == Json(1800) &&
+    sha(text(field(spec, "node_machine_id_sha256"))) else {
+    fail("unsupported bounded short-run protocol")
+  }
+  guard field(spec, "known_differences") is Array(differences) &&
+    differences.length() <= 32 else {
+    fail("explicit known_differences array required")
+  }
+  for difference in differences {
+    ignore(text(difference))
+  }
+  validate_side(field(spec, "a"), field(spec, "protocol"))
+  validate_side(field(spec, "b"), field(spec, "protocol"))
+  if field(field(spec, "a"), "kind") == field(field(spec, "b"), "kind") {
+    for key in ["image_id", "entrypoint", "workdir", "argv", "mounts"] {
+      guard field(field(spec, "a"), key) == field(field(spec, "b"), key) else {
+        fail("same-runtime pair changes frozen launch identity: " + key)
+      }
+    }
+    if field(field(spec, "a"), "kind") == Json("smc") {
+      guard field(field(spec, "a"), "expected_config") ==
+        field(field(spec, "b"), "expected_config") else {
+        fail("SMC compile pair config differs")
+      }
+      guard field(field(spec, "a"), "env") is Object(a_env) &&
+        field(field(spec, "b"), "env") is Object(b_env) &&
+        a_env.length() == b_env.length() else {
+        fail("SMC env shape differs")
+      }
+      for key, value in a_env {
+        if !["TORCHDYNAMO_DISABLE", "TORCH_COMPILE_DISABLE"].contains(key) {
+          guard b_env.get(key) == Some(value) else {
+            fail("SMC compile pair changes unrelated env: " + key)
+          }
+        }
+      }
+    } else {
+      guard field(field(spec, "a"), "env") == field(field(spec, "b"), "env") else {
+        fail("native optimization pair env differs")
+      }
+    }
+  }
+  if field(field(spec, "a"), "kind") == Json("native") &&
+    field(field(spec, "b"), "kind") == Json("native") {
+    guard field(field(spec, "a"), "expected_config") is Object(a) &&
+      field(field(spec, "b"), "expected_config") is Object(b) else {
+      fail("native configs required")
+    }
+    let keys : Map[String, Unit] = Map([])
+    for key, _ in a {
+      keys[key] = ()
+    }
+    for key, _ in b {
+      keys[key] = ()
+    }
+    for key, _ in keys {
+      if a.get(key) != b.get(key) {
+        guard [
+          "reuse_geometry", "reuse_critic_normalization", "layer_norm_mode", "critic_cuda_graph",
+          "adam_checked_norm", "defer_scalar_metrics", "resident_reference_cache",
+          "resident_reference_max_mib", "body_orientation_batched", "world_staging_batch",
+        ].contains(key) else {
+          fail("native comparison changes a non-optimization field: " + key)
+        }
+      }
+    }
+  }
+  guard field(spec, "pins") is Array(pins) &&
+    pins.length() >= 1 &&
+    pins.length() <= 4096 else {
+    fail("1..4096 explicit immutable file pins required")
+  }
+  let paths : Map[String, Unit] = Map([])
+  for pin in pins {
+    let path = text(field(pin, "path"))
+    guard safe_path(path) &&
+      path.has_prefix(allowed_root) &&
+      sha(text(field(pin, "sha256"))) &&
+      !paths.contains(path) else {
+      fail("invalid/duplicate file pin")
+    }
+    paths[path] = ()
+    ignore(text(field(pin, "role")))
+  }
+}
+
+///|
+async fn read(path : String, limit~ : Int64 = 33554432L) -> Bytes {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("regular file required: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let n = file.size()
+  guard n > 0L && n <= limit else { fail("file exceeds byte bound") }
+  let bytes = file.read_exactly_at(n.to_int(), position=0L)
+  guard file.size() == n else { fail("file changed while reading") }
+  bytes
+}
+
+///|
+async fn read_json(path : String) -> Json {
+  @json.parse(@utf8.decode(read(path)))
+}
+
+///|
+async fn write_json(path : String, value : Json) -> Unit {
+  @fs.write_file(
+    path,
+    value.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+}
+
+///|
+async fn hash_file(path : String) -> String {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("regular pin required")
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let n = file.size()
+  guard n >= 0L && n <= 1073741824L else { fail("pin exceeds 1 GiB") }
+  let hash = @crypto.SHA256::new()
+  for offset = 0L; offset < n; {
+    let count = (n - offset).min(65536L).to_int()
+    hash.update(file.read_exactly_at(count, position=offset))
+    continue offset + count.to_int64()
+  }
+  guard file.size() == n else { fail("pin size changed") }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn verify_pins(spec : Json) -> Unit {
+  guard hash_file("/etc/machine-id") ==
+    text(field(spec, "node_machine_id_sha256")) else {
+    fail("wrong physical node")
+  }
+  guard field(spec, "pins") is Array(pins) else { fail("pins required") }
+  for pin in pins {
+    let path = text(field(pin, "path"))
+    guard @fs.realpath(path) == path &&
+      hash_file(path) == text(field(pin, "sha256")) else {
+      fail("frozen pin differs: " + path)
+    }
+  }
+  for key in ["a", "b"] {
+    guard field(field(spec, key), "mounts") is Array(mounts) else {
+      fail("mounts required")
+    }
+    for mount in mounts {
+      let path = text(field(mount, "source"))
+      guard @fs.realpath(path) == path else { fail("noncanonical mount") }
+    }
+  }
+}
+
+///|
+fn schedule(blocks : Int32) -> Array[String] {
+  let result : Array[String] = []
+  for _ in 0..<blocks {
+    for side in ["a", "b", "b", "a"] {
+      result.push(side)
+    }
+  }
+  result
+}
+
+///|
+fn launch(
+  side : Json,
+  folder : String,
+  preflight : Bool,
+) -> Array[String] raise {
+  let args = [
+    "create", "--gpus", "all", "--network", "none", "--memory", "107374182400", "--memory-swap",
+    "107374182400", "--cpus", "12", "--pids-limit", "1024", "--user", "1000:1000",
+  ]
+  guard field(side, "mounts") is Array(mounts) &&
+    field(side, "env") is Object(environment) else {
+    fail("launch fields")
+  }
+  for mount in mounts {
+    args.push("--mount")
+    args.push(
+      "type=bind,src=" +
+      text(field(mount, "source")) +
+      ",dst=" +
+      text(field(mount, "target")) +
+      (if field(mount, "readonly") == Json(true) { ",readonly" } else { "" }),
+    )
+  }
+  args.push("--mount")
+  args.push("type=bind,src=" + folder + ",dst=/pair")
+  for key, value in environment {
+    args.push("--env")
+    args.push(key + "=" + text(value))
+  }
+  for
+    env in [
+      "CUDA_CACHE_PATH=/pair/cuda-cache", "TORCHINDUCTOR_CACHE_DIR=/pair/inductor-cache",
+      "PYTHONDONTWRITEBYTECODE=1", "PYTHONUNBUFFERED=1",
+    ] {
+    args.push("--env")
+    args.push(env)
+  }
+  for
+    arg in [
+      "--workdir",
+      text(field(side, "workdir")),
+      "--entrypoint",
+      "/usr/bin/timeout",
+      text(field(side, "image_id")),
+      "--signal=TERM",
+      "--kill-after=10s",
+      "1800s",
+      "/usr/bin/env",
+      "-u",
+      "TORCHDYNAMO_SUPPRESS_ERRORS",
+      "-u",
+      "NVIDIA_TF32_OVERRIDE",
+      "-u",
+      "TORCH_ALLOW_TF32_CUBLAS_OVERRIDE",
+      text(field(side, "entrypoint")),
+    ] {
+    args.push(arg)
+  }
+  let command = strings(field(side, "argv"))
+  for i, arg in command {
+    args.push(if preflight && i == 0 { "preflight" } else { arg })
+  }
+  args
+}
+
+///|
+async fn pipe(reader : &@io.Reader) -> String {
+  let bytes = FixedArray::make(1048577, b'\x00')
+  let mut n = 0
+  for ;; {
+    let count = reader.read(bytes, offset=n, max_len=1048577 - n)
+    if count == 0 {
+      break
+    }
+    n += count
+    guard n <= 1048576 else { fail("Docker output exceeds 1 MiB") }
+  }
+  @utf8.decode(Bytes::from_array(bytes[:n]))
+}
+
+///|
+async fn docker(args : Array[String]) -> String {
+  @async.with_timeout(15000, () => {
+    let (out, stdout) = @process.read_from_process()
+    let (err, stderr) = @process.read_from_process()
+    @async.with_task_group() <| group => {
+      let argv = ["--host", "unix:///var/run/docker.sock"]
+      for arg in args {
+        argv.push(arg)
+      }
+      let child = group.spawn(() => {
+        @process.run("docker", argv, stdout~, stderr~)
+      })
+      let output = group.spawn(() => {
+        defer out.close()
+        pipe(out)
+      })
+      let errors = group.spawn(() => {
+        defer err.close()
+        pipe(err)
+      })
+      let code = child.wait()
+      let value = output.wait()
+      let error = errors.wait()
+      guard code == 0 else { fail("Docker command failed: " + error) }
+      value.trim().to_owned()
+    }
+  })
+}
+
+///|
+fn mem_kib(value : String, key : String) -> Int64 raise {
+  for line in value.split("\n") {
+    if line.has_prefix(key + ":") {
+      let cells = line.split(" ").filter(x => x != "").to_array()
+      guard cells.length() == 3 && cells[2] == "kB" else {
+        fail("invalid meminfo")
+      }
+      return @string.parse_int64(cells[1])
+    }
+  }
+  fail("missing host memory counter")
+}
+
+///|
+async fn small(path : String) -> String {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let bytes = FixedArray::make(65537, b'\x00')
+  let count = file.read_at(bytes, position=0L)
+  guard count > 0 && count <= 65536 else {
+    fail("empty/oversized proc or cgroup metadata")
+  }
+  @utf8.decode(Bytes::from_array(bytes[:count]))
+}
+
+///|
+fn pressure(events : String) -> Bool raise {
+  let counts : Map[String, Int64] = Map([])
+  for line in events.trim().split("\n") {
+    let cells = line.split(" ").filter(x => x != "").to_array()
+    guard cells.length() == 2 else { fail("invalid cgroup events") }
+    counts[cells[0].to_owned()] = @string.parse_int64(cells[1])
+  }
+  for key in ["max", "oom", "oom_kill"] {
+    guard counts.get(key) is Some(value) else {
+      fail("incomplete cgroup events")
+    }
+    if value != 0L {
+      return true
+    }
+  }
+  counts.get("oom_group_kill").unwrap_or(0L) != 0L
+}
+
+///|
+async fn stop(id : String) -> Unit {
+  ignore(docker(["stop", "--time", "2", id]))
+}
+
+///|
+fn terminal_container(container : Json, id : String) -> Bool raise {
+  let state = field(container, "State")
+  let finished = text(field(state, "FinishedAt"))
+  field(container, "Id") == Json(id) &&
+  field(state, "Running") == Json(false) &&
+  field(state, "Pid") == Json(0) &&
+  field(state, "Status") == Json("exited") &&
+  finished != "" &&
+  !finished.has_prefix("0001-")
+}
+
+///|
+fn terminal_completion_passed(
+  container : Json,
+  id : String,
+  process_exit : Int32,
+  reason : String,
+) -> Bool raise {
+  terminal_container(container, id) &&
+  reason == "completed" &&
+  process_exit == 0 &&
+  field(field(container, "State"), "ExitCode") == Json(0) &&
+  field(field(container, "State"), "OOMKilled") == Json(false)
+}
+
+///|
+async fn terminal_sampling_record(
+  id : String,
+  error : String,
+  elapsed : Int64,
+  samples : Array[Json],
+) -> Json {
+  guard @json.parse(docker(["inspect", id])) is Array([container]) &&
+    terminal_container(container, id) else {
+    fail(
+      "proc/cgroup disappeared but exact container is not confirmed terminal",
+    )
+  }
+  let state = field(container, "State")
+  {
+    "reason": "process_or_cgroup_disappeared_after_running_inspect",
+    "sampling_error": Json(error),
+    "observed_elapsed_ms": Json(elapsed.to_double()),
+    "container_id": Json(id),
+    "terminal_finished_at": field(state, "FinishedAt"),
+    "terminal_exit_code": field(state, "ExitCode"),
+    "terminal_oom_killed": field(state, "OOMKilled"),
+    "previous_sample": if samples.is_empty() {
+      Json::null()
+    } else {
+      samples[samples.length() - 1]
+    },
+    "interpretation": "terminal sample unavailable; prior observations preserved; actual attach exit code and final Docker OOM/exit state remain required, no lifetime-memory guarantee",
+  }
+}
+
+///|
+async fn read_cgroup_observation(pid : Int64, id : String) -> Json {
+  let membership = small("/proc/" + pid.to_string() + "/cgroup")
+  let matches = membership
+    .split("\n")
+    .filter(s => s.has_prefix("0::/") && s.contains(id) && !s.contains(".."))
+    .to_array()
+  guard matches.length() == 1 else { fail("cannot attribute cgroup") }
+  let path = "/sys/fs/cgroup" + matches[0][3:].to_owned()
+  {
+    "current": Json(
+      @string.parse_int64(small(path + "/memory.current").trim()).to_double(),
+    ),
+    "peak": Json(
+      @string.parse_int64(small(path + "/memory.peak").trim()).to_double(),
+    ),
+    "swap": Json(
+      @string.parse_int64(small(path + "/memory.swap.current").trim()).to_double(),
+    ),
+    "events": Json(small(path + "/memory.events")),
+  }
+}
+
+///|
+fn verify_container(
+  value : Json,
+  side : Json,
+  argv : Array[String],
+  folder : String,
+) -> Unit raise {
+  guard value is Array([container]) else {
+    fail("one Docker inspection required")
+  }
+  let host = field(container, "HostConfig")
+  let config = field(container, "Config")
+  let image = text(field(side, "image_id"))
+  let positions = [ for i in 0..<argv.length() if argv[i] == image => i ]
+  guard positions.length() == 1 &&
+    field(container, "Image") == Json(image) &&
+    integer(field(host, "Memory")) == 107374182400L &&
+    integer(field(host, "MemorySwap")) == 107374182400L &&
+    integer(field(host, "NanoCpus")) == 12000000000L &&
+    field(host, "NetworkMode") == Json("none") &&
+    field(config, "User") == Json("1000:1000") &&
+    field(config, "Entrypoint") == Json([Json("/usr/bin/timeout")]) &&
+    field(config, "Cmd") == Json(argv[positions[0] + 1:].to_owned()) else {
+    fail("live Docker resources/image/argv differ")
+  }
+  guard field(container, "Mounts") is Array(mounts) else {
+    fail("live mounts missing")
+  }
+  let pairs = mounts.filter(m => field(m, "Destination") == Json("/pair"))
+  guard pairs.length() == 1 &&
+    field(pairs[0], "Source") == Json(folder) &&
+    field(pairs[0], "RW") == Json(true) else {
+    fail("live output bind mismatch")
+  }
+}
+
+///|
+async fn guarded(side : Json, folder : String, preflight : Bool) -> Bool {
+  let prefix = if preflight { "preflight" } else { "training" }
+  guard docker(["ps", "--quiet"]) == "" else {
+    fail("another Docker workload is running")
+  }
+  let before = small("/proc/meminfo")
+  guard mem_kib(before, "MemAvailable") >= 67108864L &&
+    mem_kib(before, "MemFree") >= 41943040L else {
+    fail("starting memory admission rejected")
+  }
+  let argv = launch(side, folder, preflight)
+  write_json(folder + "/" + prefix + "-launch.json", {
+    "program": "docker",
+    "argv": Json(argv),
+  })
+  let id = docker(argv)
+  guard sha(id) else { fail("full container ID required") }
+  errdefer (stop(id) catch { _ => () })
+  let initial = @json.parse(docker(["inspect", id]))
+  write_json(folder + "/" + prefix + "-docker-before.json", initial)
+  verify_container(initial, side, argv, folder)
+  let samples : Array[Json] = []
+  let begin = @async.now()
+  let mut reason = "completed"
+  let mut failure : String? = None
+  let mut terminal_race : Json = Json::null()
+  let exit_code = @async.with_timeout(1830000, () => {
+    @async.with_task_group() <| group => {
+      let training = group.spawn(() => {
+        @process.run(
+          "docker",
+          ["--host", "unix:///var/run/docker.sock", "start", "--attach", id],
+          stdout=@process.redirect_to_file(
+            folder + "/" + prefix + ".stdout.log",
+            create_mode=CreateNew,
+          ),
+          stderr=@process.redirect_to_file(
+            folder + "/" + prefix + ".stderr.log",
+            create_mode=CreateNew,
+          ),
+        )
+      })
+      for ;; {
+        @async.sleep(1000)
+        guard @json.parse(docker(["inspect", id])) is Array([container]) else {
+          fail("missing container state")
+        }
+        let state = field(container, "State")
+        if field(state, "Running") == Json(false) {
+          guard terminal_container(container, id) else {
+            fail("nonrunning container is not terminal")
+          }
+          break
+        }
+        let running_ids = docker(["ps", "--no-trunc", "--quiet"])
+        if running_ids != id {
+          guard running_ids == "" else {
+            fail("concurrent Docker workload appeared")
+          }
+          terminal_race = terminal_sampling_record(
+            id,
+            "docker ps became empty after running inspect",
+            @async.now() - begin,
+            samples,
+          )
+          break
+        }
+        let pid = integer(field(state, "Pid"))
+        guard pid > 0L else { fail("running PID missing") }
+        let observed : Json? = Some(read_cgroup_observation(pid, id)) catch {
+          @os_error.OSError(_) as error if error.is_ENOENT() => {
+            terminal_race = terminal_sampling_record(
+              id,
+              error.to_string(),
+              @async.now() - begin,
+              samples,
+            )
+            None
+          }
+          error => raise error
+        }
+        guard observed is Some(observation) else { break }
+        let current = integer(field(observation, "current"))
+        let peak = integer(field(observation, "peak"))
+        let swap = integer(field(observation, "swap"))
+        let events = text(field(observation, "events"))
+        let host = small("/proc/meminfo")
+        let available = mem_kib(host, "MemAvailable")
+        let free = mem_kib(host, "MemFree")
+        let elapsed = @async.now() - begin
+        guard samples.length() < 1900 else {
+          fail("resource sample count exceeds bound")
+        }
+        samples.push({
+          "elapsed_ms": Json(elapsed),
+          "host_available_kib": Json(available.to_double()),
+          "host_free_kib": Json(free.to_double()),
+          "cgroup_current_bytes": Json(current.to_double()),
+          "cgroup_peak_bytes": Json(peak.to_double()),
+          "cgroup_swap_bytes": Json(swap.to_double()),
+          "memory_events": Json(events),
+        })
+        if available < 25165824L ||
+          free < 12582912L ||
+          current > 90194313216L ||
+          swap != 0L ||
+          pressure(events) {
+          reason = "memory_guard"
+          stop(id)
+          break
+        }
+        if elapsed >= 1800000 {
+          reason = "deadline"
+          stop(id)
+          break
+        }
+      }
+      training.wait()
+    }
+  }) catch {
+    error => {
+      reason = "guard_error"
+      failure = Some(error.to_string())
+      stop(id) catch {
+        _ => ()
+      }
+      -1
+    }
+  }
+  let final_state = @json.parse(docker(["inspect", id]))
+  write_json(folder + "/" + prefix + "-docker-final.json", final_state)
+  verify_container(final_state, side, argv, folder)
+  let elapsed = @async.now() - begin
+  let passed = match final_state {
+    Array([container]) =>
+      terminal_completion_passed(container, id, exit_code, reason)
+    _ => false
+  }
+  write_json(folder + "/" + prefix + "-guard.json", {
+    "format": "moonrobo.smc-native-pairs.guard.v1",
+    "passed": Json(passed),
+    "reason": Json(reason),
+    "exit_code": Json(exit_code),
+    "container_id": Json(id),
+    "elapsed_ms": Json(elapsed),
+    "samples": Json(samples),
+    "terminal_sampling_race": terminal_race,
+    "error": match failure {
+      Some(value) => Json(value)
+      None => Json::null()
+    },
+    "host_start_available_kib": 67108864,
+    "host_start_free_kib": 41943040,
+    "host_stop_available_kib": 25165824,
+    "host_stop_free_kib": 12582912,
+    "cgroup_stop_bytes": 90194313216,
+    "scope": "one-second sampled host/cgroup observations; transient allocation peaks may occur between samples; no guarantee after last sample; UMA counters must not be added",
+  })
+  passed
+}
+
+///|
+async fn prepare(spec_path : String, root : String) -> Unit {
+  let spec = read_json(spec_path)
+  validate(spec)
+  guard safe_path(root) &&
+    root.has_prefix(allowed_root + "runs/") &&
+    !@fs.exists(root) else {
+    fail("fresh scoped output root required")
+  }
+  verify_pins(spec)
+  @fs.mkdir(root)
+  guard @fs.realpath(root) == root else {
+    fail("output root must be canonical")
+  }
+  write_json(root + "/spec.json", spec)
+  let order = schedule(integer(field(spec, "abba_blocks")).to_int())
+  let commands = [
+    for i, side in order => {
+      (
+        {
+          "index": Json(i),
+          "side": Json(side),
+          "argv": Json(
+            launch(field(spec, side), root + "/run-" + i.to_string(), false),
+          ),
+        } : Json)
+    }
+  ]
+  write_json(root + "/plan.json", {
+    "format": "moonrobo.smc-native-pairs.plan.v1",
+    "spec_sha256": Json(hash_file(root + "/spec.json")),
+    "order": Json(order),
+    "launches": Json(commands),
+    "memory_bytes": 107374182400,
+    "memory_swap_bytes": 107374182400,
+    "cpus": 12,
+    "network": "none",
+    "resource_guard_sample_ms": 1000,
+    "steady_iterations": [41, 60],
+    "batch_layout": batch_layout(spec),
+    "excluded_world_only_iterations": [1, 20],
+    "excluded_actor_warmup_iterations": [21, 40],
+    "automatic_retry": false,
+    "automatic_batch_reduction": false,
+    "automatic_memory_escalation": false,
+    "semantic_equivalence_claim": false,
+    "timing_boundary_difference": "native synchronized stage-boundary telemetry vs original SMC CSV reciprocal it_per_s; SMC current logging means excluded and prior tail included; compare complete wall windows with this limitation",
+  })
+  let lock = @fs.open(
+    root + "/series.lock",
+    mode=ReadWrite,
+    create_mode=CreateNew,
+  )
+  lock.close()
+  println("Prepared immutable short-run ABBA plan: " + root)
+}
+
+///|
+async fn run_one(root : String, index : Int32) -> Unit {
+  guard safe_path(root) &&
+    root.has_prefix(allowed_root + "runs/") &&
+    @fs.realpath(root) == root else {
+    fail("canonical scoped series root required")
+  }
+  let spec = read_json(root + "/spec.json")
+  validate(spec)
+  let plan = read_json(root + "/plan.json")
+  guard field(plan, "spec_sha256") == Json(hash_file(root + "/spec.json")) else {
+    fail("plan/spec changed")
+  }
+  let order = schedule(integer(field(spec, "abba_blocks")).to_int())
+  guard index >= 0 && index < order.length() else { fail("invalid run index") }
+  let lock = @fs.open(
+    root + "/series.lock",
+    mode=ReadWrite,
+    create_mode=OpenExisting,
+  )
+  defer lock.close()
+  guard lock.try_lock(Exclusive) else { fail("series is active") }
+  if index > 0 {
+    guard field(
+        read_json(root + "/run-" + (index - 1).to_string() + "/result.json"),
+        "passed",
+      ) ==
+      Json(true) else {
+      fail("previous run failed or incomplete")
+    }
+  }
+  let folder = root + "/run-" + index.to_string()
+  guard !@fs.exists(folder) else {
+    fail("run directory already exists; no retries")
+  }
+  @fs.mkdir(folder)
+  let side = field(spec, order[index])
+  write_json(folder + "/native-config.json", field(side, "expected_config"))
+  let mut failure : String? = None
+  let passed = try {
+    verify_pins(spec)
+    if field(side, "kind") == Json("native") {
+      guard guarded(side, folder, true) else {
+        fail("native preflight rejected")
+      }
+    }
+    guard guarded(side, folder, false) else { fail("training/guard failed") }
+    // Runtime output completeness and timing are checked independently by summary.
+    if field(side, "kind") == Json("native") {
+      let report = read_json(folder + "/train/report.json")
+      guard field(report, "training_complete_for_requested_iterations") ==
+        Json(true) &&
+        field(report, "iteration") == Json(60) &&
+        field(field(report, "identity"), "config") ==
+        field(side, "expected_config") else {
+        fail("native final report/config incomplete")
+      }
+      let telemetry = field(report, "cuda_memory_telemetry")
+      guard field(telemetry, "status") == Json("complete") &&
+        recorded_integer(field(telemetry, "omitted_sample_count")) == 0L else {
+        fail("native telemetry incomplete/truncated")
+      }
+      let counts = field(report, "counters")
+      for (key, expected) in expected_counts(field(spec, "protocol")) {
+        guard recorded_integer(field(counts, key)) == expected else {
+          fail("native workload/readiness extra transitions differ: " + key)
+        }
+      }
+    } else {
+      let args = read_json(folder + "/logs/args.json")
+      guard field(side, "expected_config") is Object(expected) else {
+        fail("expected args object")
+      }
+      for key, value in expected {
+        guard field(args, key) == value else {
+          fail("SMC runtime args differ: " + key)
+        }
+      }
+      guard @fs.kind(folder + "/logs/last.pt", follow_symlink=false) == Regular &&
+        @fs.kind(folder + "/logs/ckpt_000060.pt", follow_symlink=false) ==
+        Regular else {
+        fail("final SMC checkpoints missing")
+      }
+      let lines = @utf8.decode(
+          read(folder + "/logs/train_log.csv", limit=4194304L),
+        )
+        .trim()
+        .split("\n")
+        .to_array()
+      guard lines.length() == 61 && lines[60].has_prefix("60,") else {
+        fail("60 SMC log rows required")
+      }
+    }
+    verify_pins(spec)
+    true
+  } catch {
+    error => {
+      failure = Some(error.to_string())
+      false
+    }
+  }
+  write_json(folder + "/result.json", {
+    "format": "moonrobo.smc-native-pairs.run.v1",
+    "index": Json(index),
+    "side": Json(order[index]),
+    "kind": field(side, "kind"),
+    "spec_sha256": field(plan, "spec_sha256"),
+    "passed": Json(passed),
+    "error": match failure {
+      Some(error) => Json(error)
+      None => Json::null()
+    },
+    "source_modified": false,
+    "performance_validated": false,
+  })
+  guard passed else { fail("paired run failed; evidence retained: " + folder) }
+  println(
+    "Completed run " +
+    index.to_string() +
+    "; independent summary validation required",
+  )
+}
+
+///|
+fn diagnostic_config(source : Json, key : String) -> Json raise {
+  let side = field(source, key)
+  guard field(side, "kind") == Json("native") &&
+    field(field(side, "expected_config"), "pi_batch") == Json(4096) else {
+    fail("diagnostic requires the logical4096 native baseline")
+  }
+  let config = @json.parse(field(side, "expected_config").stringify())
+  guard config is Object(values) else { fail("config object") }
+  guard field(config, "wm_microbatch") == Json(0) &&
+    field(config, "pi_microbatch") == Json(512) else {
+    fail(
+      "diagnostic coverage requires logical4096 actor with micro512 and full world batches",
+    )
+  }
+  for
+    option in [
+      "reuse_geometry", "reuse_critic_normalization", "body_orientation_batched",
+      "resident_reference_cache", "adam_checked_norm", "defer_scalar_metrics", "critic_cuda_graph",
+      "world_staging_batch",
+    ] {
+    guard values.get(option).unwrap_or(Json(false)) == Json(false) else {
+      fail("diagnostic baseline optimization enabled: " + option)
+    }
+  }
+  guard values.get("layer_norm_mode").unwrap_or(Json("expanded")) ==
+    Json("expanded") else {
+    fail("diagnostic baseline requires expanded LayerNorm")
+  }
+  values["iterations"] = Json(24)
+  values["checkpoint_every"] = Json(24)
+  values["profile_max_spans"] = Json(65536)
+  values["scope"] = Json(
+    "standalone logical4096/micro512 execution-profile diagnostic:20 world-only+4 actor iterations; not steady-state throughput or paired performance",
+  )
+  config
+}
+
+///|
+fn diagnostic_side(spec : Json) -> Json raise {
+  guard field(spec, "format") ==
+    Json("moonrobo.native4096-execution-diagnostic.spec.v1") &&
+    field(spec, "paired_comparison") == Json(false) else {
+    fail("separate diagnostic format required")
+  }
+  let source = field(spec, "source_pair_spec")
+  validate(source)
+  let key = text(field(spec, "native_side_key"))
+  guard ["a", "b"].contains(key) else { fail("diagnostic native side") }
+  let config = diagnostic_config(source, key)
+  guard field(spec, "diagnostic_config") == config else {
+    fail(
+      "diagnostic may only change24iterations/checkpoint,65536spans and scope",
+    )
+  }
+  let side = @json.parse(field(source, key).stringify())
+  guard side is Object(fields) && field(side, "argv") is Array(argv) else {
+    fail("diagnostic side")
+  }
+  fields["expected_config"] = config
+  fields["label"] = Json("native-F-baseline-logical4096-micro512-profile24")
+  argv.push(Json("--execution-profile"))
+  side
+}
+
+///|
+async fn make_diagnostic(pair_path : String, output : String) -> Unit {
+  let source = read_json(pair_path)
+  validate(source)
+  let key = if field(field(source, "a"), "kind") == Json("native") {
+    "a"
+  } else {
+    "b"
+  }
+  let spec : Json = {
+    "format": "moonrobo.native4096-execution-diagnostic.spec.v1",
+    "launcher_derivation_source_sha256": "52be50c8dc774283473a79d8cc7c5fb2b176308a3ab3f67938c5b8223dafede0",
+    "source_pair_spec": source,
+    "source_pair_spec_sha256": Json(hash_file(pair_path)),
+    "native_side_key": Json(key),
+    "diagnostic_config": diagnostic_config(source, key),
+    "paired_comparison": false,
+    "purpose": "logical4096/micro512 actor/critic diagnostic; split replay/packing/upload/forward/backward/Adam;20 world-only+4 actor rounds, not steady41–60",
+    "capacity": {
+      "max_spans": 65536,
+      "cuda_event_count_bound": 131072,
+      "additional_admission_bytes": 335544320,
+      "full60_minimum_spans_world_and_reference_uploads_only": 150800,
+      "short24_estimated_spans_without_extra_collection": 39980,
+    },
+    "limitations": [
+      "Profiler accumulates from process startup and drops new spans at capacity; no late-window reset exists in frozen F.",
+      "CPU durations are inclusive submission times; CUDA events report inclusive stream intervals, not kernel-active time; nested totals must not be summed.",
+      "Per-span event allocation/record/query and finalJSON serialization perturb timing; no unprofiled throughput ratio or speedup is reported.",
+      "Require dropped_spans=0, all24iteration scopes and targetlabel counts; otherwise preserve partial evidence and reject complete coverage.",
+      "Existing80-percent admission includes320MiB profiling allowance. Runtime guards remain100GiB/zeroSwap/12CPU and host/cgroup thresholds. No automatic growth or batch reduction.",
+      "Each logical actor update uses eight512-row chunks, one actor Adam update and twenty critic Adam updates. Forward-order chunk reconstruction has no explicit chunk parent span; uninstrumented subphases remain unattributed.",
+    ],
+  }
+  ignore(diagnostic_side(spec))
+  write_json(output, spec)
+  println("Created standalone 24-round diagnostic spec; no hardware execution")
+}
+
+///|
+async fn prepare_diagnostic(spec_path : String, root : String) -> Unit {
+  let spec = read_json(spec_path)
+  let side = diagnostic_side(spec)
+  guard safe_path(root) &&
+    root.has_prefix(allowed_root + "runs/") &&
+    !@fs.exists(root) else {
+    fail("fresh scoped diagnostic root required")
+  }
+  verify_pins(field(spec, "source_pair_spec"))
+  @fs.mkdir(root)
+  guard @fs.realpath(root) == root else { fail("canonical diagnostic root") }
+  write_json(root + "/spec.json", spec)
+  write_json(root + "/plan.json", {
+    "format": "moonrobo.native4096-execution-diagnostic.plan.v1",
+    "spec_sha256": Json(hash_file(root + "/spec.json")),
+    "launcher_source_sha256": Json(
+      hash_file(allowed_root + "scripts/run_native4096_diagnostic.mbtx"),
+    ),
+    "training_argv": Json(launch(side, root + "/run", false)),
+    "preflight_argv": Json(launch(side, root + "/run", true)),
+    "memory_bytes": 107374182400,
+    "memory_swap_bytes": 107374182400,
+    "cpus": 12,
+    "network": "none",
+    "resource_guard_sample_ms": 1000,
+    "paired_comparison": false,
+    "steady_measurement": false,
+    "automatic_retry": false,
+    "automatic_batch_reduction": false,
+    "scope": "independent single diagnostic; cannot be consumed as ABBA run evidence",
+  })
+  let lock = @fs.open(
+    root + "/diagnostic.lock",
+    mode=ReadWrite,
+    create_mode=CreateNew,
+  )
+  lock.close()
+  println("Prepared standalone 24-round diagnostic plan; no trainer launched")
+}
+
+///|
+fn diagnostic_coverage(profile : Json) -> Json raise {
+  guard field(profile, "schema") == Json("moonrobo.execution-profile.v1") &&
+    field(profile, "enabled") == Json(true) &&
+    integer(field(profile, "max_spans")) == 65536L &&
+    integer(field(profile, "dropped_spans")) == 0L &&
+    integer(field(profile, "open_spans")) == 0L &&
+    field(profile, "spans") is Array(spans) &&
+    spans.length() <= 65536 &&
+    integer(field(profile, "recorded_spans")) == spans.length().to_int64() else {
+    fail("profile missing, dropped, open or out of bounds")
+  }
+  let counts : Map[String, Int32] = Map([])
+  for span in spans {
+    guard field(span, "cancelled") == Json(false) &&
+      field(span, "gpu_status") == Json("complete") else {
+      fail("profile has incomplete or cancelled CUDA intervals")
+    }
+    for key in ["cpu_start_us", "cpu_submit_us", "gpu_elapsed_ms"] {
+      guard field(span, key) is Number(value, ..) &&
+        value >= 0.0 &&
+        value < 1.0e15 else {
+        fail("profile timestamp or duration is invalid: " + key)
+      }
+    }
+    let label = text(field(span, "label"))
+    counts[label] = counts.get(label).unwrap_or(0) + 1
+  }
+  for
+    (label, count) in [
+      ("iteration.training", 24),
+      ("world.sample_prepare_upload", 240),
+      ("batch.world.replay", 1920),
+      ("batch.world.pack", 1920),
+      ("batch.world.concatenate", 240),
+      ("world.forward", 240),
+      ("world.backward", 240),
+      ("world.adam", 240),
+      ("actor.sample_prepare_upload", 4),
+      ("actor.forward", 32),
+      ("actor.reward", 32),
+      ("actor.tail", 32),
+      ("actor.backward", 32),
+      ("actor.critic_features", 32),
+      ("actor.adam", 4),
+      ("critic.prepare", 4),
+      ("critic.forward", 80),
+      ("critic.backward", 80),
+      ("critic.adam", 80),
+      ("geometry.robot_fk", 96),
+      ("geometry.reference_fk", 96),
+    ] {
+    guard counts.get(label) == Some(count) else {
+      fail("diagnostic coverage differs: " + label)
+    }
+  }
+  guard counts.get("batch.upload") == Some(17016) &&
+    counts.get("batch.upload") == counts.get("batch.validate_values") else {
+    fail("upload/validation coverage missing")
+  }
+  {
+    "complete": true,
+    "label_counts": Json::object(counts.map((_, v) => Json(v))),
+    "recorded_spans": field(profile, "recorded_spans"),
+    "dropped_spans": field(profile, "dropped_spans"),
+    "nvtx_available": field(profile, "nvtx_available"),
+    "paired_comparison": false,
+    "steady_measurement": false,
+    "gpu_scope": "inclusive stream intervals, not kernel-active durations",
+  }
+}
+
+///|
+async fn run_diagnostic(root : String) -> Unit {
+  guard safe_path(root) &&
+    root.has_prefix(allowed_root + "runs/") &&
+    @fs.realpath(root) == root else {
+    fail("canonical scoped diagnostic root")
+  }
+  let spec = read_json(root + "/spec.json")
+  let side = diagnostic_side(spec)
+  let plan = read_json(root + "/plan.json")
+  guard field(plan, "format") ==
+    Json("moonrobo.native4096-execution-diagnostic.plan.v1") &&
+    field(plan, "spec_sha256") == Json(hash_file(root + "/spec.json")) &&
+    field(plan, "launcher_source_sha256") ==
+    Json(hash_file(allowed_root + "scripts/run_native4096_diagnostic.mbtx")) else {
+    fail("diagnostic plan/spec/launcher changed")
+  }
+  let lock = @fs.open(
+    root + "/diagnostic.lock",
+    mode=ReadWrite,
+    create_mode=OpenExisting,
+  )
+  defer lock.close()
+  guard lock.try_lock(Exclusive) else { fail("diagnostic active") }
+  let folder = root + "/run"
+  guard !@fs.exists(folder) else { fail("diagnostic run exists; no retry") }
+  @fs.mkdir(folder)
+  write_json(folder + "/native-config.json", field(side, "expected_config"))
+  let mut failure : Json = Json::null()
+  let mut coverage : Json = Json::null()
+  let passed = try {
+    let original = field(spec, "source_pair_spec")
+    verify_pins(original)
+    guard guarded(side, folder, true) else {
+      fail("diagnostic memory preflight rejected")
+    }
+    guard guarded(side, folder, false) else {
+      fail("diagnostic trainer or guard failed")
+    }
+    let report = read_json(folder + "/train/report.json")
+    guard field(report, "training_complete_for_requested_iterations") ==
+      Json(true) &&
+      integer(field(report, "iteration")) == 24L &&
+      field(field(report, "identity"), "config") ==
+      field(side, "expected_config") else {
+      fail("diagnostic report/config incomplete")
+    }
+    let telemetry = field(report, "cuda_memory_telemetry")
+    guard field(telemetry, "status") == Json("complete") &&
+      recorded_integer(field(telemetry, "omitted_sample_count")) == 0L else {
+      fail("diagnostic telemetry incomplete")
+    }
+    for (key, count) in expected_counts(field(side, "expected_config")) {
+      guard recorded_integer(field(field(report, "counters"), key)) == count else {
+        fail("diagnostic workload/readiness differs: " + key)
+      }
+    }
+    coverage = diagnostic_coverage(
+      @json.parse(
+        @utf8.decode(
+          read(folder + "/train/execution-profile.json", limit=67108864L),
+        ),
+      ),
+    )
+    verify_pins(original)
+    true
+  } catch {
+    error => {
+      failure = Json(error.to_string())
+      false
+    }
+  }
+  write_json(root + "/result.json", {
+    "format": "moonrobo.native4096-execution-diagnostic.result.v1",
+    "passed": Json(passed),
+    "spec_sha256": field(plan, "spec_sha256"),
+    "coverage": coverage,
+    "error": failure,
+    "paired_comparison": false,
+    "speedup_claim": false,
+    "steady_measurement": false,
+    "profile_path": Json(folder + "/train/execution-profile.json"),
+    "frozen_pins": field(field(spec, "source_pair_spec"), "pins"),
+  })
+  guard passed else { fail("diagnostic failed/partial; all evidence retained") }
+  println(
+    "Completed independent 24-round execution diagnostic; not a throughput result",
+  )
+}
+
+///|
+fn self_test() -> Unit raise {
+  let terminal : Json = {
+    "Id": "a",
+    "State": {
+      "Running": false,
+      "Pid": 0,
+      "Status": "exited",
+      "FinishedAt": "2026-10-24T00:00:01Z",
+      "ExitCode": 0,
+      "OOMKilled": false,
+    },
+  }
+  let running : Json = {
+    "Id": "a",
+    "State": {
+      "Running": true,
+      "Pid": 123,
+      "Status": "running",
+      "FinishedAt": "0001-01-01T00:00:00Z",
+      "ExitCode": 0,
+      "OOMKilled": false,
+    },
+  }
+  assert_true(terminal_container(terminal, "a"))
+  assert_false(terminal_container(running, "a"))
+  assert_false(terminal_container(terminal, "b"))
+  assert_true(terminal_completion_passed(terminal, "a", 0, "completed"))
+  assert_false(terminal_completion_passed(terminal, "a", 1, "completed"))
+  assert_false(terminal_completion_passed(terminal, "a", 0, "guard_error"))
+  guard field(terminal, "State") is Object(terminal_state) else {
+    fail("terminal fixture")
+  }
+  terminal_state["ExitCode"] = Json(1)
+  assert_true(terminal_container(terminal, "a"))
+  assert_false(terminal_completion_passed(terminal, "a", 0, "completed"))
+  terminal_state["ExitCode"] = Json(0)
+  terminal_state["OOMKilled"] = Json(true)
+  assert_false(terminal_completion_passed(terminal, "a", 0, "completed"))
+  native_optimization_bounds({
+    "serial_optimizer_save_workspace": true,
+    "memory_admission_percent": 80,
+    "telemetry_max_samples": 512,
+  })
+  native_optimization_bounds({
+    "body_orientation_batched": true,
+    "resident_reference_cache": true,
+    "resident_reference_max_mib": 2048,
+  })
+  native_optimization_bounds({
+    "world_staging_batch": true,
+    "world_staging_max_mib": 128,
+    "wm_batch": 2048,
+    "wm_window": 8,
+  })
+  let invalid_options : Array[Json] = [
+    { "serial_optimizer_save_workspace": "true" },
+    {
+      "serial_optimizer_save_workspace": true,
+      "memory_admission_percent": 81,
+      "telemetry_max_samples": 512,
+    },
+    {
+      "serial_optimizer_save_workspace": true,
+      "memory_admission_percent": 80,
+      "telemetry_max_samples": 128,
+    },
+    { "body_orientation_batched": "true" },
+    { "resident_reference_cache": true },
+    { "resident_reference_max_mib": 2049 },
+    { "world_staging_batch": "true" },
+    { "world_staging_batch": true },
+    { "world_staging_max_mib": 129 },
+    { "world_staging_max_mib": 1.5 },
+    { "world_staging_max_mib": "128" },
+    {
+      "world_staging_batch": true,
+      "world_staging_max_mib": 102,
+      "wm_batch": 2048,
+      "wm_window": 8,
+    },
+  ]
+  for invalid in invalid_options {
+    try native_optimization_bounds(invalid) catch {
+      _ => ()
+    } noraise {
+      _ => fail("accepted unbounded/untyped native optimization")
+    }
+  }
+  let fixture = template()
+  let diagnostic_fixture = @json.parse(fixture.stringify())
+  guard field(field(diagnostic_fixture, "a"), "expected_config")
+    is Object(diagnostic_fields) else {
+    fail("diagnostic fixture")
+  }
+  diagnostic_fields["pi_batch"] = Json(4096)
+  diagnostic_fields["pi_microbatch"] = Json(512)
+  let diagnostic = diagnostic_config(diagnostic_fixture, "a")
+  assert_eq(field(diagnostic, "iterations"), Json(24))
+  assert_eq(field(diagnostic, "wm_only_iters"), Json(20))
+  assert_eq(field(diagnostic, "pi_batch"), Json(4096))
+  assert_eq(field(diagnostic, "pi_microbatch"), Json(512))
+  assert_eq(field(diagnostic, "profile_max_spans"), Json(65536))
+  assert_eq(
+    field(field(field(fixture, "a"), "expected_config"), "iterations"),
+    Json(60),
+  )
+  assert_eq(expected_counts(diagnostic)[4].1, 524288L)
+  for key in ["a", "b"] {
+    let side = field(fixture, key)
+    guard side is Object(fields) else { fail("fixture side") }
+    fields["image_id"] = Json("sha256:" + "a".repeat(64))
+    validate_side(side, common_protocol())
+  }
+  let profiled_side = @json.parse(field(fixture, "a").stringify())
+  guard field(profiled_side, "argv") is Array(profiled_args) else {
+    fail("profile rejection fixture")
+  }
+  profiled_args.push(Json("--execution-profile"))
+  try validate_side(profiled_side, common_protocol()) catch {
+    _ => ()
+  } noraise {
+    _ => fail("throughput validator accepted profiling")
+  }
+  assert_eq(schedule(1), ["a", "b", "b", "a"])
+  assert_eq(flag(["--x", "60"], "--x"), "60")
+  for args in [["--x"], ["--x", "1", "--x", "2"]] {
+    try flag(args, "--x") catch {
+      _ => ()
+    } noraise {
+      _ => fail("accepted ambiguous flag")
+    }
+  }
+  assert_eq(integer(@json.parse("107374182400")), 107374182400L)
+  assert_eq(mem_kib("MemAvailable:  67108864 kB\n", "MemAvailable"), 67108864L)
+  assert_false(pressure("low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n"))
+  assert_true(pressure("max 0\noom 1\noom_kill 0\n"))
+  assert_false(safe_path("/home/../etc"))
+  assert_eq(field(common_protocol(), "iterations"), Json(60))
+  assert_eq(expected_counts(common_protocol())[4].1, 655360L)
+  assert_eq(expected_counts(common_protocol(pi_batch=4096))[4].1, 5242880L)
+  assert_true(valid_microbatch(Json(512), Json(4096)))
+  assert_true(valid_microbatch(Json(0), Json(512)))
+  assert_false(valid_microbatch(Json(768), Json(4096)))
+  println(
+    "Dedicated 4096 diagnostic launcher CPU self-tests passed; no Docker/GPU",
+  )
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  match args[1:].to_owned() {
+    ["--self-test"] => self_test()
+    ["--make-profile-spec", source, output] => make_diagnostic(source, output)
+    ["--validate-profile-spec", path] => {
+      ignore(diagnostic_side(read_json(path)))
+      println("Diagnostic spec valid; no hardware execution")
+    }
+    ["--prepare-profile", spec, root] => prepare_diagnostic(spec, root)
+    ["--run-profile", root] => run_diagnostic(root)
+    ["--plan", root] =>
+      println(read_json(root + "/plan.json").stringify(indent=2))
+    _ =>
+      fail(
+        "usage: --make-profile-spec SOURCE_PAIR_SPEC FRESH_SPEC | --validate-profile-spec SPEC | --prepare-profile SPEC FRESH_ROOT | --run-profile ROOT | --plan ROOT | --self-test; use moon run --target native SCRIPT -- FLAGS",
+      )
+  }
+}

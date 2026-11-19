@@ -1,0 +1,620 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+struct Ticket {
+  format : String
+  session_id : String
+  world_size : Int32
+  created_unix_ms : Int64
+  expires_unix_ms : Int64
+  id : Array[Int32]
+} derive(ToJson, FromJson)
+
+///|
+struct DataReady {
+  format : String
+  session_id : String
+  world_size : Int32
+  rank : Int32
+  coordinator_created_unix_ms : Int64
+  created_unix_ms : Int64
+  expires_unix_ms : Int64
+  launch_identity_sha256 : String
+} derive(ToJson, FromJson)
+
+///|
+fn validate_route(repo : String, session : String) -> Unit raise {
+  guard repo == "/home/wlc003s/moonrobo" else {
+    fail("forwarder runs only on 178 from /home/wlc003s/moonrobo")
+  }
+  guard session.length() >= 16 &&
+    session.length() <= 96 &&
+    session
+    .iter()
+    .all(c => {
+      (c >= 'a' && c <= 'z') ||
+      (c >= 'A' && c <= 'Z') ||
+      (c >= '0' && c <= '9') ||
+      c == '-' ||
+      c == '_'
+    }) else {
+    fail(
+      "session must be a fresh 16..96 character ASCII identifier: letters, digits, hyphen, underscore",
+    )
+  }
+}
+
+///|
+fn validate_ticket(
+  ticket : Ticket,
+  session : String,
+  now : Int64,
+  started : Int64,
+  margin : Int64,
+) -> Unit raise {
+  guard ticket.format == "moonrobo.native-nccl-rendezvous.v1" &&
+    ticket.session_id == session &&
+    ticket.world_size == 2 &&
+    ticket.id.length() == 128 &&
+    ticket.id.all(v => v >= 0 && v <= 255) else {
+    fail("rendezvous JSON format/session/world/128-byte ID mismatch")
+  }
+  guard now > 0L &&
+    ticket.created_unix_ms >= started &&
+    ticket.created_unix_ms <= now + 10000L &&
+    ticket.expires_unix_ms >= now + margin &&
+    ticket.expires_unix_ms - ticket.created_unix_ms >= 1000L &&
+    ticket.expires_unix_ms - ticket.created_unix_ms <= 60000L else {
+    fail(
+      "rendezvous is stale, expired, or too close to expiry; start a fresh session",
+    )
+  }
+}
+
+///|
+async fn unix_ms() -> Int64 {
+  let (status, output) = @async.with_timeout(2000, () => {
+    @process.collect_stdout("/usr/bin/date", ["+%s"])
+  })
+  let bytes = output.binary()
+  guard status == 0 && bytes.length() <= 32 else {
+    fail("cannot read bounded UNIX time")
+  }
+  let seconds = @string.parse_int64(@utf8.decode(bytes).trim_space())
+  guard seconds > 0L && seconds < 9000000000000L else {
+    fail("invalid UNIX time")
+  }
+  seconds * 1000L
+}
+
+///|
+fn ssh_options(socket : String) -> Array[String] {
+  [
+    "-n", "-S", socket, "-oBatchMode=yes", "-oControlMaster=no", "-oConnectTimeout=5",
+    "-oConnectionAttempts=1", "-oServerAliveInterval=3", "-oServerAliveCountMax=2",
+    "-oStrictHostKeyChecking=yes",
+  ]
+}
+
+///|
+async fn remote(socket : String, command : Array[String]) -> Unit {
+  let args = ssh_options(socket)
+  args.push("wlc004s@10.0.0.2")
+  args.append(command)
+  let result = @async.with_timeout(8000, () => {
+    @process.run("/usr/bin/ssh", args, cancel_handler=@process.hard_cancel())
+  })
+  guard result == 0 else {
+    fail("fixed remote operation failed: " + command[0] + " (\{result})")
+  }
+}
+
+///|
+async fn remote_exists(socket : String, path : String) -> Bool {
+  let args = ssh_options(socket)
+  args.append(["wlc004s@10.0.0.2", "test", "-e", path])
+  let status = @async.with_timeout(8000, () => {
+    @process.run("/usr/bin/ssh", args, cancel_handler=@process.hard_cancel())
+  })
+  guard status == 0 || status == 1 else { fail("SSH readiness probe failed") }
+  status == 0
+}
+
+///|
+async fn local_small(path : String) -> Bytes {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("data-ready input is not a regular file")
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 4096L else {
+    fail("data-ready record exceeds 4 KiB")
+  }
+  file.read_exactly_at(size.to_int(), position=0L)
+}
+
+///|
+async fn remote_small(socket : String, path : String) -> Bytes {
+  remote(socket, ["test", "-f", path])
+  remote(socket, ["test", "!", "-L", path])
+  let args = ssh_options(socket)
+  args.append(["wlc004s@10.0.0.2", "/usr/bin/head", "-c", "4097", "--", path])
+  let (status, output) = @async.with_timeout(8000, () => {
+    @process.collect_stdout("/usr/bin/ssh", args)
+  })
+  let bytes = output.binary()
+  guard status == 0 && bytes.length() > 0 && bytes.length() <= 4096 else {
+    fail("remote data-ready record unavailable or larger than 4 KiB")
+  }
+  bytes
+}
+
+///|
+async fn publish_pair(
+  socket : String,
+  local_path : String,
+  remote_path : String,
+  value : Json,
+) -> Unit {
+  let bytes = @utf8.encode(value.stringify() + "\n")
+  guard bytes.length() <= 4096 else { fail("coordinator record exceeds 4 KiB") }
+  // Publish rank one first. Rank zero can create the short-lived ID as soon as
+  // its local release appears; copying its peer's release must precede that.
+  guard !@fs.exists(local_path) else {
+    fail("coordinator record already exists; do not reuse session")
+  }
+  @fs.write_file(
+    local_path + ".partial",
+    bytes,
+    create_mode=CreateNew,
+    permission=0o600,
+    sync=Full,
+  )
+  for path in [remote_path, remote_path + ".partial"] {
+    remote(socket, ["test", "!", "-e", path])
+    remote(socket, ["test", "!", "-L", path])
+  }
+  let rsh = "/usr/bin/ssh " +
+    ssh_options(socket).filter(option => option != "-n").join(" ")
+  let status = @async.with_timeout(15000, () => {
+    @process.run(
+      "/usr/bin/rsync",
+      [
+        "--timeout=10",
+        "--chmod=F600",
+        "-e",
+        rsh,
+        "--",
+        local_path + ".partial",
+        "wlc004s@10.0.0.2:" + remote_path + ".partial",
+      ],
+      cancel_handler=@process.hard_cancel(),
+    )
+  })
+  guard status == 0 else { fail("coordinator record transfer failed") }
+  remote(socket, ["ln", "-T", "--", remote_path + ".partial", remote_path])
+  remote(socket, ["rm", "--", remote_path + ".partial"])
+  @fs.rename(local_path + ".partial", local_path, replace=false)
+}
+
+///|
+fn validate_ready(
+  value : DataReady,
+  rank : Int32,
+  session : String,
+  started : Int64,
+  expires : Int64,
+  now : Int64,
+) -> Unit raise {
+  guard value.format == "moonrobo.native-data-ready.v1" &&
+    value.rank == rank &&
+    value.world_size == 2 &&
+    value.session_id == session &&
+    value.coordinator_created_unix_ms == started &&
+    value.created_unix_ms >= started - 10000L &&
+    value.created_unix_ms <= now + 10000L &&
+    value.expires_unix_ms == expires &&
+    expires > now &&
+    value.launch_identity_sha256.length() == 64 &&
+    value.launch_identity_sha256
+    .iter()
+    .all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) else {
+    fail("rank data-ready session/identity/deadline invalid")
+  }
+}
+
+///|
+async fn coordinate_data_ready(
+  socket : String,
+  source : String,
+  destination : String,
+  session : String,
+  created : Int64,
+  seconds : Int32,
+) -> Unit {
+  let expires = created + seconds.to_int64() * 1000L
+  let deadline = @async.now() + (expires - unix_ms()).max(0L)
+  let local_ready = source + ".rank-0.data-ready.json"
+  let peer_ready = destination + ".rank-1.data-ready.json"
+  while true {
+    guard unix_ms() < expires && @async.now() < deadline else {
+      fail("bounded data preparation deadline expired")
+    }
+    guard !@fs.exists(source) && !remote_exists(socket, destination) else {
+      fail("NCCL ticket appeared before both ranks were released")
+    }
+    guard !@fs.exists(source + ".rank-0.data-ready-failed.json") &&
+      !remote_exists(socket, destination + ".rank-1.data-ready-failed.json") else {
+      fail("a native rank failed during preparation; inspect its retained log")
+    }
+    if @fs.exists(local_ready) && remote_exists(socket, peer_ready) {
+      break
+    }
+    @async.sleep(5000)
+  }
+  let own : DataReady = @json.from_json(
+    @json.parse(@utf8.decode(local_small(local_ready))),
+  )
+  let peer_bytes = remote_small(socket, peer_ready)
+  let peer : DataReady = @json.from_json(@json.parse(@utf8.decode(peer_bytes)))
+  let now = unix_ms()
+  validate_ready(own, 0, session, created, expires, now)
+  validate_ready(peer, 1, session, created, expires, now)
+  guard own.launch_identity_sha256 == peer.launch_identity_sha256 else {
+    fail(
+      "prepared ranks disagree on executable/configuration/assets/effective launch identity",
+    )
+  }
+  @fs.write_file(
+    source + ".rank-1.data-ready-received.json",
+    peer_bytes,
+    create_mode=CreateNew,
+    permission=0o600,
+    sync=Full,
+  )
+  publish_pair(
+    socket,
+    source + ".data-ready-release.json",
+    destination + ".data-ready-release.json",
+    {
+      "format": "moonrobo.native-data-ready-release.v1",
+      "session_id": session,
+      "world_size": 2,
+      "created_unix_ms": Json(now),
+      "expires_unix_ms": Json(now + 60000L),
+      "ready": Json([own, peer]),
+    },
+  )
+  println(
+    (
+      {
+        "stage": "native-both-ranks-data-ready-released",
+        "session_id": session,
+        "launch_identity_sha256": own.launch_identity_sha256,
+        "nccl_ticket_ttl_extended": false,
+      } : Json).stringify(),
+  )
+}
+
+///|
+async fn forward(
+  repo : String,
+  session : String,
+  data_ready_seconds : Int32?,
+) -> Unit {
+  validate_route(repo, session)
+  for path in ["/home", "/home/wlc003s", repo, repo + "/private"] {
+    guard @fs.kind(path, follow_symlink=false) == Directory else {
+      fail(
+        "repository/private ancestry must be canonical directories without symlink redirection",
+      )
+    }
+  }
+  let socket = repo + "/private/ssh-179.sock"
+  guard @fs.kind(socket, follow_symlink=false) == Socket else {
+    fail("existing 178-to-179 SSH control socket is missing")
+  }
+  let source = repo + "/private/" + session + ".id.json"
+  let destination = "/home/wlc004s/moonrobo/private/" + session + ".id.json"
+  let partial = destination + ".partial"
+  guard !@fs.exists(source) else {
+    fail("ID file already exists: start the forwarder before a fresh rank zero")
+  }
+  let started = unix_ms()
+  // An exclusive durable marker prevents another local forwarder from using
+  // this session or overwriting its remote partial. It is retained on failure.
+  @fs.write_file(
+    source + ".forwarder-started",
+    "started\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+  let check_args = ssh_options(socket)
+  check_args.append(["-O", "check", "wlc004s@10.0.0.2"])
+  let check = @async.with_timeout(8000, () => {
+    @process.run(
+      "/usr/bin/ssh",
+      check_args,
+      cancel_handler=@process.hard_cancel(),
+    )
+  })
+  guard check == 0 else { fail("SSH master is not alive") }
+  remote(socket, ["test", "!", "-e", destination])
+  remote(socket, ["test", "!", "-L", destination])
+  remote(socket, ["test", "!", "-e", partial])
+  remote(socket, ["test", "!", "-L", partial])
+  let coordinator_created = unix_ms()
+  if data_ready_seconds is Some(seconds) {
+    publish_pair(
+      socket,
+      source + ".data-ready-coordinator.json",
+      destination + ".data-ready-coordinator.json",
+      {
+        "format": "moonrobo.native-data-ready-coordinator.v1",
+        "session_id": session,
+        "world_size": 2,
+        "timeout_seconds": seconds,
+        "created_unix_ms": Json(coordinator_created),
+        "expires_unix_ms": Json(
+          coordinator_created + seconds.to_int64() * 1000L,
+        ),
+      },
+    )
+  }
+  // Publish a small readiness receipt to both hosts before either launcher is
+  // allowed to start. This reuses the existing SSH master; no authentication is
+  // created. The receipt proves ordering, not continuing peer liveness.
+  let ready = repo + "/private/" + session + ".forwarder-ready.json"
+  let remote_ready = "/home/wlc004s/moonrobo/private/" +
+    session +
+    ".forwarder-ready.json"
+  let ready_at = unix_ms()
+  let ready_json : Json = {
+    "format": "moonrobo.native-nccl-forwarder-ready.v1",
+    "session_id": session,
+    "source_node": "178",
+    "destination_node": "179",
+    "world_size": 2,
+    "created_unix_ms": Json(ready_at),
+    "expires_unix_ms": Json(ready_at + 180000L),
+  }
+  @fs.write_file(
+    ready + ".partial",
+    @utf8.encode(ready_json.stringify() + "\n"),
+    create_mode=CreateNew,
+    permission=0o600,
+    sync=Full,
+  )
+  remote(socket, ["test", "!", "-e", remote_ready])
+  remote(socket, ["test", "!", "-L", remote_ready])
+  remote(socket, ["test", "!", "-e", remote_ready + ".partial"])
+  remote(socket, ["test", "!", "-L", remote_ready + ".partial"])
+  let ready_rsh = "/usr/bin/ssh " +
+    ssh_options(socket).filter(option => option != "-n").join(" ")
+  let ready_copy = @async.with_timeout(15000, () => {
+    @process.run(
+      "/usr/bin/rsync",
+      [
+        "--timeout=10",
+        "--chmod=F600",
+        "-e",
+        ready_rsh,
+        "--",
+        ready + ".partial",
+        "wlc004s@10.0.0.2:" + remote_ready + ".partial",
+      ],
+      cancel_handler=@process.hard_cancel(),
+    )
+  })
+  guard ready_copy == 0 else {
+    fail("forwarder readiness receipt transfer failed")
+  }
+  remote(socket, ["ln", "-T", "--", remote_ready + ".partial", remote_ready])
+  remote(socket, ["rm", "--", remote_ready + ".partial"])
+  @fs.rename(ready + ".partial", ready, replace=false)
+  println("native NCCL forwarder ready: " + session)
+  if data_ready_seconds is Some(seconds) {
+    coordinate_data_ready(
+      socket, source, destination, session, coordinator_created, seconds,
+    ) catch {
+      error => {
+        let aborted : Json = {
+          "format": "moonrobo.native-data-ready-aborted.v1",
+          "session_id": session,
+          "world_size": 2,
+          "created_unix_ms": Json(unix_ms()),
+          "reason": match error {
+            Failure(message) => message
+            _ => error.to_string()
+          },
+        }
+        publish_pair(
+          socket,
+          source + ".data-ready-aborted.json",
+          destination + ".data-ready-aborted.json",
+          aborted,
+        ) catch {
+          _ =>
+            // A disconnected peer cannot receive an abort. Preserve local
+            // failure evidence; each rank still has a finite coordinator deadline.
+            if !@fs.exists(source + ".data-ready-aborted.json") {
+              @fs.write_file(
+                source + ".data-ready-aborted.json",
+                @utf8.encode(aborted.stringify() + "\n"),
+                create_mode=CreateNew,
+                sync=Full,
+              )
+            }
+        }
+        raise error
+      }
+    }
+  }
+  let deadline = @async.now() + 180000L
+  while !@fs.exists(source) {
+    guard @async.now() < deadline else {
+      fail("no fresh rank-zero ID after 180 seconds")
+    }
+    @async.sleep(100)
+  }
+  guard @fs.kind(source, follow_symlink=false) == Regular else {
+    fail("rendezvous must be a regular file at the expected canonical path")
+  }
+  let file = @fs.open(source, mode=ReadOnly)
+  let size = file.size()
+  guard size > 0L && size <= 4096L else {
+    file.close()
+    fail("rendezvous exceeds 4 KiB")
+  }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  file.close()
+  let ticket : Ticket = @json.from_json(@json.parse(@utf8.decode(bytes)))
+  validate_ticket(ticket, session, unix_ms(), started, 5000L)
+  let snapshot = source + ".forwarded-source"
+  @fs.write_file(
+    snapshot,
+    bytes,
+    create_mode=CreateNew,
+    permission=0o600,
+    sync=Full,
+  )
+  // rsync transports its protocol over SSH stdin; -n would close that stream.
+  let rsh = "/usr/bin/ssh " +
+    ssh_options(socket).filter(option => option != "-n").join(" ")
+  let copied = @async.with_timeout(15000, () => {
+    @process.run(
+      "/usr/bin/rsync",
+      [
+        "--timeout=10",
+        "--chmod=F600",
+        "-e",
+        rsh,
+        "--",
+        snapshot,
+        "wlc004s@10.0.0.2:" + partial,
+      ],
+      cancel_handler=@process.hard_cancel(),
+    )
+  })
+  guard copied == 0 else {
+    fail(
+      "rendezvous rsync failed (\{copied}); partial retained, session must not be reused",
+    )
+  }
+  validate_ticket(ticket, session, unix_ms(), started, 2000L)
+  // -T rejects an existing destination directory as well as an existing file.
+  // Hard-link publication is atomic and cannot overwrite a previous ID.
+  remote(socket, ["ln", "-T", "--", partial, destination])
+  remote(socket, ["rm", "--", partial])
+  @fs.remove(snapshot)
+  println(
+    (
+      {
+        "stage": "native-nccl-id-forwarded",
+        "session_id": session,
+        "source_node": "178",
+        "destination_node": "179",
+        "destination": destination,
+        "bytes": Json(size),
+        "expires_unix_ms": Json(ticket.expires_unix_ms),
+      } : Json).stringify(),
+  )
+}
+
+///|
+fn self_test() -> Unit raise {
+  let session = "native-forward-test-20261024"
+  validate_route("/home/wlc003s/moonrobo", session)
+  for invalid in ["native;rm-command", "native/other-path-20261024", "short"] {
+    try validate_route("/home/wlc003s/moonrobo", invalid) catch {
+      _ => ()
+    } noraise {
+      _ => fail("unsafe session accepted")
+    }
+  }
+  let ticket : Ticket = {
+    format: "moonrobo.native-nccl-rendezvous.v1",
+    session_id: session,
+    world_size: 2,
+    created_unix_ms: 100000L,
+    expires_unix_ms: 160000L,
+    id: Array::makei(128, i => i),
+  }
+  validate_ticket(ticket, session, 110000L, 99000L, 5000L)
+  let prepared : DataReady = {
+    format: "moonrobo.native-data-ready.v1",
+    session_id: session,
+    world_size: 2,
+    rank: 0,
+    coordinator_created_unix_ms: 100000L,
+    created_unix_ms: 110000L,
+    expires_unix_ms: 3700000L,
+    launch_identity_sha256: "a".repeat(64),
+  }
+  validate_ready(prepared, 0, session, 100000L, 3700000L, 3600000L)
+  for
+    invalid in [
+      { ..prepared, rank: 1, },
+      { ..prepared, coordinator_created_unix_ms: 90000L, },
+      { ..prepared, expires_unix_ms: 7200000L, },
+      { ..prepared, launch_identity_sha256: "bad", },
+    ] {
+    try validate_ready(invalid, 0, session, 100000L, 3700000L, 3600000L) catch {
+      _ => ()
+    } noraise {
+      _ => fail("invalid prepared rank record accepted")
+    }
+  }
+  for
+    invalid in [
+      { ..ticket, world_size: 3, },
+      { ..ticket, id: [1], },
+      { ..ticket, session_id: "other-session-20261024", },
+      { ..ticket, expires_unix_ms: 111000L, },
+      { ..ticket, created_unix_ms: 98000L, },
+    ] {
+    try validate_ticket(invalid, session, 110000L, 99000L, 5000L) catch {
+      _ => ()
+    } noraise {
+      _ => fail("invalid rendezvous accepted")
+    }
+  }
+  println("native NCCL forwarder bounded-input self-test passed")
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args.length() == 2 && args[1] == "--self-test" {
+    self_test()
+    return
+  }
+  guard args.length() == 3 ||
+    (args.length() == 5 && args[3] == "--data-ready-timeout-seconds") else {
+    fail(
+      "usage: forward_native_nccl_id.mbtx /home/wlc003s/moonrobo FRESH_SESSION_ID [--data-ready-timeout-seconds 60..21600]",
+    )
+  }
+  let data_ready_seconds = if args.length() == 5 {
+    let value = @string.parse_int(args[4])
+    guard value >= 60 && value <= 21600 else {
+      fail("data-ready timeout must be 60..21600 seconds")
+    }
+    Some(value)
+  } else {
+    None
+  }
+  @async.with_timeout(220000 + data_ready_seconds.unwrap_or(0) * 1000, () => {
+    forward(args[1], args[2], data_ready_seconds)
+  })
+}

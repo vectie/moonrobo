@@ -1,0 +1,41 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/world-ln-fk-20261026"
+  let source = @fs.read_file(root + "/advise_followup_old_phase_cuda.mbtx")
+    .text()
+    .replace_all(
+      old="field(owner,\"Image\") == Json(image)",
+      new="[Json(image), Json(\"sha256:c76815627562a180052cef8e7e07edb37fe8547d83158eed6182ebd99bb8385d\")].contains(field(owner,\"Image\"))",
+    )
+    .replace_all(
+      old="  for short_id in [",
+      new="  let mut failure : String? = None\n  let success = try {\n  for short_id in [",
+    )
+    .replace_all(
+      old="  @fs.write_file(report, ({\"passed\":true",
+      new="  true\n  } catch { e => { failure = Some(e.to_string()); false } }\n  @fs.write_file(report, ({\"prior_attempt\":\"Earlier helper safely stopped before the ninth owner because three tiny SMC runs used the native image. Eight preceding owned closed containers received cache advice; no aggregate receipt survived that failed helper. This fresh pass revalidates all exact owners and records only its own before/after residency. Both image digests were independently inspected before this pass.\",\"error\":failure.map(Json).or(Json::null()),\"passed\":Json(success)",
+    )
+    .replace_all(
+      old="  println(\"Observed ended-task",
+      new="  guard success else { fail(\"cache advice stopped; partial receipt retained\") }\n  println(\"Observed ended-task",
+    )
+    .replace_all(
+      old="failure.map(Json).or(Json::null())",
+      new="failure.map(s => Json(s)).unwrap_or(Json::null())",
+    )
+  let path = root + "/advise_followup_old_phase_cuda_v2.mbtx"
+  @fs.write_file(path, source, create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o", "ControlPath=/tmp/moonrobo-operator-179.sock", path, "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_followup_old_phase_cuda_v2.mbtx",
+    ]) ==
+    0 else {
+    fail("copy")
+  }
+}

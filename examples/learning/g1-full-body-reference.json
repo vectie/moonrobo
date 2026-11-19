@@ -1,0 +1,10 @@
+{
+  "source_reset_seed": 7300,
+  "duration_s": 30,
+  "fall_height_m": 0.35,
+  "fall_upright_z": 0.5,
+  "replay_origins_s": [0, 10, 20],
+  "modes": ["source-setpoint", "joint-position"],
+  "maximum_exact_replay_state_component_error": 0.00000001,
+  "scope": "Nine new thirty-second successful teacher references from existing training families only. Reapply saved controls or reference joint positions from three restored origins. Full-body targets and metrics, no actor training, evaluation-data fitting or model-based/PPO efficiency claim."
+}

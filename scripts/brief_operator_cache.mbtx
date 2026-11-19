@@ -1,0 +1,64 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(m) && m.get(k) is Some(v) else { fail(k) }
+  v
+}
+
+///|
+fn total(j : Json) -> Double raise {
+  guard j is Array(a) else { fail("array") }
+  let mut n = 0.0
+  for row in a {
+    guard field(row, "res") is Number(v, ..) else { fail("res") }
+    n += v
+  }
+  n
+}
+
+///|
+async fn main {
+  for p in @env.args()[1:] {
+    let f = @fs.open(p, mode=ReadOnly)
+    defer f.close()
+    guard f.size() < 16777216L else { fail("metadata bound") }
+    let j = @json.parse(
+      @utf8.decode(f.read_exactly_at(f.size().to_int(), position=0L)),
+    )
+    let b : Json = match j {
+      { "operations": Array(ops), .. } => {
+        let rows = ops.map(op => {
+          match op {
+            { "before": before, "after": after, "source": source, .. } =>
+              (
+                {
+                  "source": source,
+                  "resident_before": Json(total(before)),
+                  "resident_after": Json(total(after)),
+                  "passed": field(op, "passed"),
+                } : Json)
+            _ => op
+          }
+        })
+        { "file": p, "passed": field(j, "passed"), "operations": rows }
+      }
+      { "total_resident_bytes": n, "file_count": count, .. } =>
+        {
+          "file": p,
+          "resident_bytes": n,
+          "files": count,
+          "by_directory": field(j, "resident_bytes_by_directory"),
+        }
+      _ => j
+    }
+    println(b.stringify(indent=2))
+  }
+}

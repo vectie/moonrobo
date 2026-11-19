@@ -1,0 +1,255 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+///|
+fn digest(bytes : Bytes) -> String {
+  let mut out = ""
+  for byte in @crypto.sha256(bytes) {
+    out += byte.to_hex()
+  }
+  out
+}
+
+///|
+fn destination(path : String) -> String {
+  let name = path.split("/").last().unwrap().to_owned()
+  let name = name.strip_prefix("test_").unwrap_or(name[:]).to_owned()
+  if path.has_prefix("bridges/") {
+    return "src/sdk_e1_native"
+  }
+  if path.contains("/aligned/") ||
+    name.has_prefix("aligned_") ||
+    name.has_prefix("smc_") {
+    return "src/learning_aligned"
+  }
+  if [
+      "reference_root_integration.py", "reference_root_decomposition.py", "reference_root_export.py",
+    ].contains(name) {
+    return "src/learning_reference_roots"
+  }
+  if [
+      "reference_final_route_training.py", "reference_gradient_route.py", "reference_tail_directions.py",
+    ].contains(name) {
+    return "src/learning_reference_routes"
+  }
+  if [
+      "reference_action_response.py", "reference_feedback_response.py", "reference_feedback_response_export.py",
+    ].contains(name) {
+    return "src/learning_reference_directions"
+  }
+  if name.has_prefix("reference") {
+    return "src/learning_reference"
+  }
+  if name == "temporal_ppo_noise.py" {
+    return "src/learning_calibration"
+  }
+  if name == "temporal_ppo_verification.py" {
+    return "src/learning_calibration/verification"
+  }
+  if name == "temporal_refinement.py" || name == "temporal_value_training.py" {
+    return "src/learning_refinement"
+  }
+  if path.has_suffix("/temporal_probe.py") {
+    return "src/learning_probes"
+  }
+  if name.has_prefix("temporal") {
+    return "src/learning_temporal"
+  }
+  if name == "sustained_balance_export.py" {
+    return "src/learning_registry"
+  }
+  if name == "learned_balance_export.py" {
+    return "src/learning_registry/learned"
+  }
+  if [
+      "learned_balance_study.py", "learned_balance_long.py", "sustained_balance_study.py",
+    ].contains(name) {
+    return "src/learning_studies"
+  }
+  if name == "full_body_reference_study.py" {
+    return "src/learning_balance/reference_study"
+  }
+  if name == "sustained_balance_verify.py" {
+    return "src/learning_balance/verification"
+  }
+  if name.has_prefix("balance") ||
+    name.has_prefix("learned_balance") ||
+    name.has_prefix("sustained_balance") ||
+    name.has_prefix("full_body_reference") {
+    return "src/learning_balance"
+  }
+  if name == "cpu_physics.py" || name == "pose_goals.py" {
+    return "src/learning_physics"
+  }
+  if name == "compare_dynamics.py" {
+    return "src/learning_comparison"
+  }
+  if name.contains("probe") ||
+    name == "compare_dynamics.py" ||
+    name == "teacher_step_verification.py" {
+    return "src/learning_probes"
+  }
+  if name == "window_batch.py" {
+    return "src/learning_artifacts"
+  }
+  "src/learning_training"
+}
+
+///|
+async fn collect(
+  root : String,
+  directory : String,
+  files : Array[String],
+) -> Unit {
+  for name in @fs.readdir(root + "/" + directory, sort=true) {
+    let relative = directory + "/" + name
+    match @fs.kind(root + "/" + relative, follow_symlink=false) {
+      Directory => if name != "__pycache__" { collect(root, relative, files) }
+      Regular => if name.has_suffix(".py") { files.push(relative) }
+      _ => ()
+    }
+  }
+}
+
+///|
+/// Only the files array's order is ignored. Every top-level field and every
+/// complete source row remains part of the immutable baseline comparison.
+fn inventory_view(
+  value : Json,
+  label : String,
+) -> (Json, Map[String, Json]) raise {
+  guard value is Object(fields) && fields.get("files") is Some(Array(rows)) else {
+    fail(label + " inventory must be an object with a files array")
+  }
+  let metadata : Map[String, Json] = {}
+  for key, item in fields {
+    if key != "files" {
+      metadata[key] = item
+    }
+  }
+  let sources : Map[String, Json] = {}
+  for row in rows {
+    guard row is { "source": String(source), .. } && !source.is_empty() else {
+      fail(label + " inventory row requires a nonempty source string")
+    }
+    guard !sources.contains(source) else {
+      fail(label + " inventory has duplicate source: " + source)
+    }
+    sources[source] = row
+  }
+  (Json(metadata), sources)
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  let root = if args.length() > 1 { args[1] } else { "." }
+  let verify = args.contains("--verify")
+  let files : Array[String] = []
+  collect(root, "providers/motion_learning", files)
+  collect(root, "bridges/sdk_e1", files)
+  files.sort()
+  let rows : Array[Json] = []
+  let mut source_lines = 0
+  let mut tests = 0
+  let mut table = "| Python source | Lines | MoonBit destination | Status |\n| --- | ---: | --- | --- |\n"
+  for file in files {
+    let bytes = @fs.read_file(root + "/" + file).binary()
+    let content = @utf8.decode(bytes)
+    let lines = content.split("\n").count() -
+      (if content.has_suffix("\n") { 1 } else { 0 })
+    let is_test = file.split("/").last().unwrap().has_prefix("test_")
+    if is_test {
+      tests += 1
+    }
+    source_lines += lines
+    let target = destination(file)
+    rows.push({
+      "source": file.to_json(),
+      "lines": lines.to_json(),
+      "sha256": digest(bytes).to_json(),
+      "is_test": is_test.to_json(),
+      "destination": target.to_json(),
+      "status": "partial-unverified",
+    })
+    table += "| `" +
+      file +
+      "` | " +
+      lines.to_string() +
+      " | `" +
+      target +
+      "` | partial; see package migration notes |\n"
+  }
+  let manifest : Json = {
+    "format": "moonrobo.python-migration-inventory.v1",
+    "source_files": files.length().to_json(),
+    "test_files": tests.to_json(),
+    "source_lines": source_lines.to_json(),
+    "tests_executed": false,
+    "python_preserved": true,
+    "files": rows.to_json(),
+  }
+  let path = root + "/docs/PYTHON_MIGRATION_INVENTORY.json"
+  if verify {
+    let previous = @json.parse(@fs.read_file(path).text())
+    let (expected_metadata, expected) = inventory_view(previous, "baseline")
+    let (actual_metadata, actual) = inventory_view(manifest, "current")
+    let mut changed = expected_metadata != actual_metadata
+    if changed {
+      println("Python inventory metadata changed (all fields except files)")
+    }
+    let expected_sources = expected.keys().collect()
+    expected_sources.sort()
+    for source in expected_sources {
+      match actual.get(source) {
+        None => {
+          changed = true
+          println("Missing Python source: " + source)
+        }
+        Some(row) =>
+          if row != expected[source] {
+            changed = true
+            println("Changed Python source row: " + source)
+          }
+      }
+    }
+    let actual_sources = actual.keys().collect()
+    actual_sources.sort()
+    for source in actual_sources {
+      if !expected.contains(source) {
+        changed = true
+        println("Added Python source: " + source)
+      }
+    }
+    guard !changed else {
+      fail(
+        "Python inventory changed; baseline preserved; inspect source differences before any refresh",
+      )
+    }
+    println(
+      "Python sources unchanged: " + files.length().to_string() + " files",
+    )
+  } else {
+    @fs.write_file(
+      path,
+      manifest.stringify(indent=2) + "\n",
+      create_mode=CreateOrTruncate,
+    )
+    let intro = "# Python parallel migration inventory\n\nGenerated by `moon run scripts/python_migration_inventory.mbtx .`. Scope excludes dependencies, build outputs and archived experiment copies. Source hashes preserve the Python baseline for later differential checks.\n\nEvery row remains **partial-unverified** until its complete callable surface, file formats, CLI behavior and corresponding tests have been compared. Destination names indicate ownership, not proof of full translation. No runtime parity is claimed by this inventory.\n\n"
+    @fs.write_file(
+      root + "/docs/PYTHON_MIGRATION_FILES.md",
+      intro + table,
+      create_mode=CreateOrTruncate,
+    )
+    println(
+      "Inventory: \{files.length()} Python files, \{tests} tests, \{source_lines} lines",
+    )
+  }
+}

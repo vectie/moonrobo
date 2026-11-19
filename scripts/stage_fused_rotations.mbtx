@@ -1,0 +1,43 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn run(p : String,a : Array[String]) -> Unit {guard @process.run(p,a)==0 else{fail(p)}}
+async fn main {
+  let repo="/Users/kq/Workspace/moonrobo";let old=repo+"/output/spark-runtime-20261024/smc-heading-body-20261028"
+  let dir=repo+"/output/spark-runtime-20261024/fused-rotation-20261028"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a";let host="wlc004s@192.168.2.179";let sock="/tmp/moonrobo-operator-179.sock"
+  guard @env.args() is [_,mode]else{fail("prepare|stage|build")}
+  if mode=="prepare" {
+    @fs.mkdir(dir,recursive=true)
+    let mut f=@fs.read_file(old+"/heading_body_fixture_b.mbt").text()
+    f=rep(f,"compact_heading: [Some(\"heading\"),Some(\"both\")].contains(@env.get_env_var(\"MOONROBO_TOP3_VARIANT\")),","compact_heading: true,\n      fused_axis_rotation: [Some(\"axis\"),Some(\"both\")].contains(@env.get_env_var(\"MOONROBO_TOP3_VARIANT\")),\n      fused_skew: [Some(\"skew\"),Some(\"both\")].contains(@env.get_env_var(\"MOONROBO_TOP3_VARIANT\")),")
+    f=rep(f,"split_world_delta: [Some(\"split\"),Some(\"both\")].contains(@env.get_env_var(\"MOONROBO_TOP3_VARIANT\")),","split_world_delta: true,")
+    f=rep(f,"body_errors_batched: false,","")
+    f=rep(f,"let heading = enabled && (factor == \"heading\" || factor == \"both\")","let axis = enabled && (factor == \"axis\" || factor == \"both\")")
+    f=rep(f,"let split = enabled && (factor == \"split\" || factor == \"both\")","let skew = enabled && (factor == \"skew\" || factor == \"both\")")
+    f=rep(f,"compact_heading: heading, split_world_delta: split,","compact_heading: true, split_world_delta: true, fused_axis_rotation: axis, fused_skew: skew,")
+    f=rep(f,"context: learner.context.with_compact_heading(heading).with_body_errors_batched(false),","context: learner.context.with_compact_heading(true).with_fused_axis_rotation(axis),")
+    @fs.write_file(dir+"/fused_rotation_fixture_a.mbt",f,create_mode=CreateNew)
+    let mut b=@fs.read_file(old+"/build_heading_body_b.mbtx").text()
+    for (a,v) in [("moonrobo-smc-heading-body-b","moonrobo-fused-rotation-a"),("smc-heading-body-gate-b","fused-rotation-gate-a"),("smc-heading-body-tensor-b","fused-rotation-tensor-a"),("smc-heading-body-runtime-b","fused-rotation-runtime-a"),("smc-heading-body-tests-b","fused-rotation-tests-a"),("smc-heading-body-plugin-b","fused-rotation-plugin-a"),("-heading-body-cpu-b","-fused-rotation-cpu-a"),("libmoonrobo_smc_heading_body_b.so","libmoonrobo_fused_rotation_a.so")] {b=rep(b,a,v)}
+    b=rep(b,"if mode == \"cuda\" {","if mode == \"fused-cuda\" {\n    container(\"fused-rotation-cuda-build-a\", \"/cuda-toolkit/bin/nvcc\", [\n      \"-std=c++17\",\"-O3\",\"-arch=sm_121\",\"--fmad=false\",\"--prec-div=true\",\"--prec-sqrt=true\",\"--ftz=false\",\"-Xcompiler=-fPIC\",\"-D_GLIBCXX_USE_CXX11_ABI=1\",\"-I/opt/isaaclab-venv/lib/python3.12/site-packages/torch/include\",\"-I/opt/isaaclab-venv/lib/python3.12/site-packages/torch/include/torch/csrc/api/include\",\"-c\",\"/workspace/moonrobo-fused-rotation-a/src/learning_tensor/fused_rotation.cu\",\"-o\",\"/build/fused_rotation_a.o\",\n    ]);return\n  }\n  if mode == \"cpu\" {\n    container(\"fused-rotation-cpu-a\",\"/workspace/moonrobo-fused-rotation-a/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/geometry/geometry.whitebox_test.exe\",[\"fused_rotation_wbtest.mbt:0-2\"]);return\n  }\n  if mode == \"cuda\" {")
+    b=rep(b,"\"/build/compact_heading_a.o\", \"-o\"","\"/build/compact_heading_a.o\", \"/build/fused_rotation_a.o\", \"-o\"")
+    @fs.write_file(dir+"/build_fused_rotation_a.mbtx",b,create_mode=CreateNew)
+    let mut driver=@fs.read_file(old+"/run_heading_body_d.mbtx").text()
+    for (a,v) in [("smc-heading-body-gate-b","fused-rotation-gate-a"),("run_heading_body_d.mbtx","run_fused_rotation_a.mbtx"),("build_heading_body_b.mbtx","build_fused_rotation_a.mbtx"),("heading_body_fixture_b.mbt","fused_rotation_fixture_a.mbt"),("libmoonrobo_smc_heading_body_b.so","libmoonrobo_fused_rotation_a.so")] {driver=rep(driver,a,v)}
+    @fs.write_file(dir+"/run_fused_rotation_a.mbtx",driver,create_mode=CreateNew)
+    @fs.write_file(dir+"/invoke_fused_rotation_a.mbtx",rep(@fs.read_file(old+"/invoke_heading_body_d.mbtx").text(),"run_heading_body_d.mbtx","run_fused_rotation_a.mbtx"),create_mode=CreateNew)
+    let test_source=@fs.read_file(repo+"/src/learning_aligned_gpu/geometry/compact_rotation_wbtest.mbt").text().replace_all(old="compact",new="fused")
+    @fs.write_file(repo+"/src/learning_aligned_gpu/geometry/fused_rotation_wbtest.mbt",test_source,create_mode=CreateNew);return
+  }
+  if mode=="stage" {
+    for f in ["fused_rotation_fixture_a.mbt","build_fused_rotation_a.mbtx","run_fused_rotation_a.mbtx","invoke_fused_rotation_a.mbtx"] {run("scp",["-o","ControlPath="+sock,dir+"/"+f,host+":"+base+"/"+f])}
+    run("ssh",["-S",sock,host,"test ! -e "+base+"/workspace/moonrobo-fused-rotation-a"])
+    run("ssh",["-S",sock,host,"cp -a --reflink=auto "+base+"/workspace/moonrobo-smc-heading-body-b "+base+"/workspace/moonrobo-fused-rotation-a"])
+    for f in ["execution_optimizations.mbt","learning.mbt","microbatch.mbt","actor_microbatch.mbt","geometry/state.mbt","geometry/context.mbt","geometry/rotations.mbt","geometry/fused_rotation.mbt","geometry/fused_rotation_wbtest.mbt","geometry/moon.pkg","geometry/compact_heading.mbt","cmd/optimizations.mbt","cmd/optimizations_wbtest.mbt"] {run("scp",["-o","ControlPath="+sock,repo+"/src/learning_aligned_gpu/"+f,host+":"+base+"/workspace/moonrobo-fused-rotation-a/src/learning_aligned_gpu/"+f])}
+    for f in ["body_errors.mbt","body_errors_test.mbt"] {let p=base+"/workspace/moonrobo-fused-rotation-a/src/learning_aligned_gpu/geometry/"+f;run("ssh",["-S",sock,host,"mv "+p+" "+p+".rejected-previous"])}
+    for f in ["fused_rotation.inc","fused_rotation_loader.inc","fused_rotation.mbt","fused_rotation.cu","adapter.cpp","loader.c","moon.pkg"] {run("scp",["-o","ControlPath="+sock,repo+"/src/learning_tensor/"+f,host+":"+base+"/workspace/moonrobo-fused-rotation-a/src/learning_tensor/"+f])}
+    run("ssh",["-S",sock,host,"cp "+base+"/fused_rotation_fixture_a.mbt "+base+"/workspace/moonrobo-fused-rotation-a/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"]);return
+  }
+  guard mode=="build"else{fail("mode")}
+  for m in ["fused-cuda","plugin","gate-build-fused-rotation-a","cpu"] {run("ssh",["-S",sock,host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/build_fused_rotation_a.mbtx -- "+m])}
+}

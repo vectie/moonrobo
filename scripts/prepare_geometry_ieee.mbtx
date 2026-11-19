@@ -1,0 +1,105 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let runner = @fs.read_file(out + "/run_geometry_math_export_b.mbtx")
+    .text()
+    .replace_all(
+      old="run_geometry_math_export_b.mbtx",
+      new="run_geometry_heads_ieee.mbtx",
+    )
+    .replace_all(
+      old="export_geometry_math_b.py",
+      new="geometry_finalize_heads.py",
+    )
+  let runner = runner.replace_all(
+    old="let passed=guarded(side,root,false)",
+    new=(
+      #|for part in ["reward","features"] {assert_eq(@process.run("cp",["-a","--reflink=auto","/home/wlc004s/moonrobo/runs/hotspot-mlp-geometry-math-heads-b/"+part,root+"/"+part]),0)}
+      #| let passed=guarded(side,root,false)
+    ),
+  )
+  let fixture = @fs.read_file(out + "/geometry_math_fixture_b.mbt")
+    .text()
+    .replace_all(old="geometry-math-heads-b", new="geometry-math-heads-c")
+    .replace_all(old="matmul=true,", new="matmul=false,")
+  let reference = @fs.read_file(
+      "providers/motion_learning/geometry_training_reference.py",
+    )
+    .text()
+    .replace_all(
+      old="        probe.prepare_actor();",
+      new="        torch.backends.cuda.matmul.allow_tf32=False\n        probe.prepare_actor();",
+    )
+  let files = [
+    (
+      "geometry_finalize_heads.py",
+      @fs.read_file("providers/motion_learning/geometry_finalize_heads.py").text(),
+    ),
+    ("run_geometry_heads_ieee.mbtx", runner),
+    ("geometry_math_fixture_c.mbt", fixture),
+    ("geometry_training_reference_c.py", reference),
+    (
+      "build_geometry_math_c.mbtx",
+      @fs.read_file(out + "/build_geometry_math_b.mbtx")
+      .text()
+      .replace_all(old="geometry-math-b", new="geometry-math-c")
+      .replace_all(
+        old="geometry_math_fixture_b.mbt",
+        new="geometry_math_fixture_c.mbt",
+      ),
+    ),
+    (
+      "run_geometry_math_training_c.mbtx",
+      @fs.read_file(out + "/run_geometry_math_training_b.mbtx")
+      .text()
+      .replace_all(
+        old="run_geometry_math_training_b.mbtx",
+        new="run_geometry_math_training_c.mbtx",
+      )
+      .replace_all(old="geometry-math-heads-b", new="geometry-math-heads-c")
+      .replace_all(
+        old="actor-step-gate-geometry-math-b",
+        new="actor-step-gate-geometry-math-c",
+      ),
+    ),
+    (
+      "run_geometry_math_gate_c.mbtx",
+      @fs.read_file(out + "/run_geometry_math_gate_b.mbtx")
+      .text()
+      .replace_all(
+        old="run_geometry_math_gate_b.mbtx",
+        new="run_geometry_math_gate_c.mbtx",
+      )
+      .replace_all(old="geometry-math-heads-b", new="geometry-math-heads-c")
+      .replace_all(
+        old="actor-step-gate-geometry-math-b",
+        new="actor-step-gate-geometry-math-c",
+      )
+      .replace_all(
+        old="geometry_training_reference.py",
+        new="geometry_training_reference_c.py",
+      ),
+    ),
+  ]
+  for (name, content) in files {
+    @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-math-179.sock",
+        out + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+}

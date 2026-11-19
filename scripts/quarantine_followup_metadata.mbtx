@@ -1,0 +1,53 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+  "moonbitlang/x/crypto",
+}
+///|
+let base = "/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a"
+///|
+async fn visit(root : String, relative : String, records : Array[Json], depth : Int32, existing~ : Bool = false) -> Unit {
+  guard depth <= 12 && records.length() < 4096 else { fail("inventory bound") }
+  let prefix = if existing { "/appledouble-quarantine/" } else { "/workspace/" }
+  let directory = @fs.opendir(base + prefix + root + "/" + relative)
+  defer directory.close()
+  while directory.next(include_hidden=true, include_special=false) is Some(entry) {
+    let rel = relative + "/" + entry.name
+    let source = base + prefix + root + "/" + rel
+    match @fs.kind(source, follow_symlink=false) {
+      Directory => if !["_build", ".mooncakes", "target", ".git"].contains(entry.name) {
+        visit(root, rel, records, depth + 1, existing~)
+      }
+      Regular => if entry.name.has_prefix("._") {
+        let file = @fs.open(source, mode=ReadOnly)
+        defer file.close()
+        let size = file.size()
+        guard size >= 4L && size <= 65536L else { fail("not bounded AppleDouble") }
+        let bytes = file.read_exactly_at(size.to_int(), position=0L)
+        guard bytes[0] == b'\x00' && bytes[1] == b'\x05' && bytes[2] == b'\x16' && bytes[3] == b'\x07' else { fail("not AppleDouble magic") }
+        let target = base + "/appledouble-quarantine/" + root + "/" + rel
+        let parent = base + "/appledouble-quarantine/" + root + "/" + relative
+        if !@fs.exists(parent) { @fs.mkdir(parent, recursive=true) }
+        guard existing || !@fs.exists(target) else { fail("quarantine target exists") }
+        let hash = @crypto.SHA256::new()
+        hash.update(bytes)
+        if !existing { guard @process.run("mv", [source, target]) == 0 else { fail("quarantine move failed") } }
+        records.push({ "from": Json(base + "/workspace/" + root + "/" + rel), "to": Json(target), "sha256": Json(@crypto.bytes_to_hex_string(hash.finalize())), "bytes": Json(size) })
+      }
+      _ => fail("unexpected source kind")
+    }
+  }
+}
+///|
+async fn main {
+  let records : Array[Json] = []
+  for root in ["moonrobo", "moonrobo-fixtures"] {
+    if @fs.exists(base + "/appledouble-quarantine/" + root + "/src") { visit(root, "src", records, 0, existing=true) }
+  }
+  for root in ["moonrobo", "moonrobo-fixtures"] { visit(root, "src", records, 0) }
+  @fs.write_file(base + "/appledouble-quarantine.json", ({ "files": Json(records), "source_code_contents_changed": false, "files_deleted": false } : Json).stringify(indent=2), create_mode=CreateNew)
+  println("Preserved " + records.length().to_string() + " AppleDouble metadata files outside compiler source paths")
+}

@@ -1,0 +1,53 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let root = repo +
+    "/output/spark-runtime-20261024/layernorm-full-retest-20261026"
+  let prefix = @fs.read_file(
+    repo + "/scripts/advise_combo_closed_cuda_cache_b.mbtx",
+  )
+  .text()
+  .split("///|\nasync fn main {")
+  .to_array()[0].to_owned()
+  let old = @fs.read_file(repo + "/scripts/mlp_cache_main.txt").text()
+  let begin = old.split("  let labels = ").to_array()[0].to_owned()
+  let end = old.split("  let mut reclaimed = ").to_array()[1].to_owned()
+  let source = (prefix +
+    begin +
+    "  let labels = [\"trained-export-b\", \"full-ln-native-world-gate-a\", \"full-ln-native-actor-gate-a\", \"full-ln-smc-eager-world-gate-a\", \"full-ln-smc-eager-world-gate-b\", \"full-ln-smc-world-gate-b\", \"full-ln-smc-eager-actor-gate-b\", \"full-ln-smc-actor-gate-b\"]\n  let mut reclaimed = " +
+    end)
+    .replace_all(
+      old="/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a",
+      new="/home/wlc004s/moonrobo/private/shared-compute-20261026-a",
+    )
+    .replace_all(old="/mlp-cuda-cache-", new="/full-ln-cache-")
+    .replace_all(old="/runs/hotspot-mlp-", new="/runs/hotspot-shared-")
+    .replace_all(old=" || !@fs.exists(root + \"/cuda-cache\")", new="")
+    .replace_all(
+      old="let source = root + \"/cuda-cache\"",
+      new="let source = root",
+    )
+    .replace_all(
+      old="      let path = source + \"/\" + entry.path",
+      new="      if !(entry.path.has_suffix(\".f64le\") || entry.path.has_suffix(\".pt\") || entry.path.has_prefix(\"cuda-cache/\")) { continue }\n      let path = source + \"/\" + entry.path",
+    )
+    .replace_all(
+      old="      ignore(command(\"dd\"",
+      new="      ignore(command(\"sync\", [\"--data\", \"--\", path]))\n      ignore(command(\"dd\"",
+    )
+  let out = root + "/advise_full_ln_a.mbtx"
+  @fs.write_file(out, source, create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o", "ControlPath=/tmp/moonrobo-operator-179.sock", out, "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/advise_full_ln_a.mbtx",
+    ]) ==
+    0 else {
+    fail("publish")
+  }
+}

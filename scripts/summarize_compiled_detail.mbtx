@@ -1,0 +1,160 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, name : String) -> Json raise {
+  guard value is Object(fields) && fields.get(name) is Some(item) else {
+    fail("missing " + name)
+  }
+  item
+}
+
+///|
+fn rows(value : Json) -> Array[Json] raise {
+  guard value is Array(items) else { fail("array") }
+  items
+}
+
+///|
+fn numeric(value : Json) -> Double raise {
+  guard value is Number(number, ..) else { fail("number") }
+  number
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/compiled-vjp-detail-20261029-a"
+  let read = async fn(path : String) -> Json {
+    @json.parse(@fs.read_file(root + "/" + path).text())
+  }
+  let pad = read("causal-pad-a/result.json")
+  let nopad = read("causal-nopad-a/result.json")
+  assert_eq(field(pad, "inputs"), field(nopad, "inputs"))
+  assert_eq(field(pad, "settings"), field(nopad, "settings"))
+  let controls : Array[Json] = []
+  for (name, data) in [("pad", pad), ("nopad", nopad)] {
+    let r = rows(field(data, "rows"))
+    assert_eq(r.length(), 61)
+    for row in r {
+      assert_eq(field(field(row, "first"), "max_abs"), Json(0))
+      assert_eq(field(row, "dx_sha256"), field(r[0], "dx_sha256"))
+    }
+    for c in rows(field(data, "checks")) {
+      assert_eq(field(c, "max_abs"), Json(0))
+    }
+    controls.push({
+      "padding": Json(name),
+      "recorded_snapshots": 61,
+      "dx_check": field(r[0], "native"),
+      "within_process_exact": true,
+    })
+  }
+  let audit = read("cache-audit.json")
+  for item in rows(field(audit, "runs")) {
+    assert_eq(rows(field(item, "changes")).length(), 0)
+  }
+  let timings : Array[Json] = []
+  let native : Array[Double] = []
+  let smc : Array[Double] = []
+  for
+    (side, suffix) in [("aoti", "a"), ("smc", "a"), ("smc", "b"), ("aoti", "b")] {
+    let name = "frozen2-" + side + "-bf16-" + suffix
+    let data = read(name + "/result.json")
+    assert_eq(field(read(name + "/completion.json"), "passed"), Json(true))
+    assert_eq(
+      field(read(name + "/training-guard.json"), "reason"),
+      Json("completed"),
+    )
+    if side == "smc" {
+      assert_eq(field(data, "passed"), Json(true))
+      for c in rows(field(data, "checks")) {
+        assert_eq(field(c, "max_abs"), Json(0))
+      }
+    }
+    let times = rows(field(data, "rows")).filter_map(row => {
+      match row {
+        { "steady": True, "wall_ms": Number(ms, ..), .. } => Some(ms)
+        _ => None
+      }
+    })
+    times.sort()
+    assert_eq(times.length(), 50)
+    let median = (times[24] + times[25]) / 2.0
+    if side == "smc" {
+      smc.push(median)
+    } else {
+      native.push(median)
+    }
+    timings.push({ "run": Json(name), "median_ms": Json(median), "samples": 50 })
+  }
+  let world = read("detail-world-c/result.json")
+  let sections = field(world, "sections")
+  let section_rows : Array[Json] = []
+  for
+    name in [
+      "rollout_forward",
+      "rollout_forward_steps",
+      "error_same_input_value",
+      "error_same_input_vjp",
+      "rollout_same_cotangent_vjp",
+      "error_contribution_to_native_vjp",
+      "complete_clipped_vjp",
+      ..Array::makei(8, i => "rollout_impulse_" + i.to_string()),
+    ] {
+    let r = rows(field(sections, name))
+    let mut violations = 0.0
+    let mut maximum = 0.0
+    for v in r {
+      violations += numeric(field(v, "violations"))
+      let d = numeric(field(v, "max_abs"))
+      if d > maximum {
+        maximum = d
+      }
+    }
+    section_rows.push({
+      "section": Json(name),
+      "violations": Json(violations),
+      "max_abs": Json(maximum),
+    })
+  }
+  let native_mean = (native[0] + native[1]) / 2.0
+  let smc_mean = (smc[0] + smc[1]) / 2.0
+  let report : Json = {
+    "single_agent": true,
+    "guards_changed": false,
+    "production_enabled": false,
+    "scope": "MLP BF16 batch2048 fixed trained weights, no optimizer; full world numerical diagnosis only",
+    "padding_controls": Json(controls),
+    "frozen_compilation_audit": audit,
+    "mlp_timing": Json(timings),
+    "native_mean_block_median_ms": Json(native_mean),
+    "smc_mean_block_median_ms": Json(smc_mean),
+    "native_time_reduction_fraction_in_this_pair": Json(
+      1.0 - native_mean / smc_mean,
+    ),
+    "smc_block_median_change_fraction": Json(smc[1] / smc[0] - 1.0),
+    "world_sections": Json(section_rows),
+    "world_reserved_peak_bytes": field(world, "reserved_peak"),
+    "whole_world_gate_passed": false,
+    "whole_world_enabled": false,
+    "new_full_training_speed_measured": false,
+    "paired_matmul_capture_complete": false,
+    "matmul_capture_limitation": "Python dispatch observed 63 SMC mm calls and 0 AOTI mm calls; no paired operator attribution is claimed",
+  }
+  @fs.write_file(
+    root + "/findings.json",
+    report.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(
+    "native=" +
+    native_mean.to_string() +
+    " ms smc=" +
+    smc_mean.to_string() +
+    " ms; controls and cache audit passed",
+  )
+}

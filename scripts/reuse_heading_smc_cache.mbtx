@@ -1,0 +1,23 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-heading-body-20261028"
+  let mut s=rep(@fs.read_file(root+"/run_heading_body_c.mbtx").text(),"run_heading_body_c.mbtx","run_heading_body_d.mbtx")
+  s=rep(s,"  let cache_source = \"/home/wlc004s/moonrobo/runs/hotspot-shared-trained-smc-compiled-\" + phase + \"-gate-b\"",(
+    #|  let cache_source = if implementation=="smc" && observation=="events" {
+    #|    let completed="/home/wlc004s/moonrobo/runs/hotspot-shared-heading-body-smc-"+phase+"-off-c"
+    #|    let result=read_json(completed+"/result.json")
+    #|    guard field(result,"observer")==Json("off") && field(result,"compiled")==Json(true) && field(result,"same_initial_state_each_repeat")==Json(true) && field(result,"rows") is Array(rows)&&rows.length()==13 else{fail("complete matching SMC timing source required")}
+    #|    let g=read_json(completed+"/training-guard.json")
+    #|    guard field(g,"reason")==Json("completed") && field(g,"error")==Json::null() else{fail("SMC cache producer guard")}
+    #|    guard read_json(completed+"/training-docker-final.json") is [saved] else{fail("producer")}
+    #|    let inspected=@json.parse(docker(["inspect",text(field(saved,"Id"))]))
+    #|    guard inspected is [actual] && field(actual,"State")==field(saved,"State") && field(actual,"Image")==field(side,"image_id") && field(field(actual,"State"),"Running")==Json(false) && field(field(actual,"State"),"OOMKilled")==Json(false) else{fail("closed matching cache producer required")}
+    #|    completed
+    #|  } else { "/home/wlc004s/moonrobo/runs/hotspot-shared-trained-smc-compiled-" + phase + "-gate-b" }
+  ))
+  @fs.write_file(root+"/run_heading_body_d.mbtx",s,create_mode=CreateNew)
+  @fs.write_file(root+"/invoke_heading_body_d.mbtx",rep(@fs.read_file(root+"/invoke_heading_body_c.mbtx").text(),"run_heading_body_c.mbtx","run_heading_body_d.mbtx"),create_mode=CreateNew)
+  @fs.write_file(root+"/heading_events.mbtx",rep(@fs.read_file(root+"/heading_events.mbtx").text(),"invoke_heading_body_c.mbtx","invoke_heading_body_d.mbtx"))
+  for file in ["run_heading_body_d.mbtx","invoke_heading_body_d.mbtx","heading_events.mbtx"] {guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",root+"/"+file,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/"+file])==0 else{fail("stage")}}
+}

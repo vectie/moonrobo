@@ -1,0 +1,330 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+///|
+let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/hotspot-smc4096-20261026"
+
+///|
+fn get(j : Json, key : String) -> Json raise {
+  guard j is Object(o) && o.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn num(j : Json) -> Double raise {
+  match j {
+    Number(n, ..) => n
+    String(s) => @string.parse_double(s)
+    _ => fail("number required")
+  }
+}
+
+///|
+fn rows(j : Json) -> Array[Json] raise {
+  guard j is Array(a) else { fail("array required") }
+  a
+}
+
+///|
+async fn read(relative : String, provenance : Array[Json]) -> Json {
+  let file = @fs.open(root + "/" + relative, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 16777216L else {
+    fail("bounded metadata required")
+  }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  let h = @crypto.SHA256::new()
+  h.update(bytes)
+  provenance.push({
+    "path": Json(relative),
+    "sha256": Json(@crypto.bytes_to_hex_string(h.finalize())),
+  })
+  @json.parse(@utf8.decode(bytes))
+}
+
+///|
+fn statistics(j : Json) -> Json raise {
+  guard j is Object(m) else { fail("statistics map required") }
+  let output : Map[String, Json] = Map([])
+  for name, value in m {
+    output[name] = {
+      "count": get(value, "count"),
+      "sum_ms": Json(num(get(value, "sum_ns")) / 1000000.0),
+      "union_ms": Json(num(get(value, "union_ns")) / 1000000.0),
+      "span_gap_ms": Json(num(get(value, "span_gap_ns")) / 1000000.0),
+    }
+  }
+  Json(output)
+}
+
+///|
+fn nanoseconds_map(j : Json) -> Json raise {
+  guard j is Object(m) else { fail("nanosecond map required") }
+  let output : Map[String, Json] = Map([])
+  for name, value in m {
+    output[name] = Json(num(value) / 1000000.0)
+  }
+  Json(output)
+}
+
+///|
+async fn boundary(
+  folder : String,
+  native : Bool,
+  provenance : Array[Json],
+) -> Json {
+  let source = read(
+    folder +
+    (if native { "/operator-diagnostics.json" } else { "/capture.json" }),
+    provenance,
+  )
+  let outer = read(folder + "/outer-result.json", provenance)
+  guard get(outer, "passed") == Json(true) else {
+    fail("all observer controls must pass")
+  }
+  let timing = get(source, "boundary_timing_ms")
+  let resources = rows(get(outer, "samples"))
+  let mut peak = 0.0
+  let mut available = 1.0e100
+  for sample in resources {
+    let r = get(sample, "resources")
+    peak = peak.max(num(get(r, "peak")))
+    available = available.min(num(get(r, "host_available")))
+    guard num(get(r, "swap")) == 0.0 &&
+      get(r, "events") is String(events) &&
+      events.contains("oom 0\n") &&
+      events.contains("oom_kill 0\n") else {
+      fail("memory guard receipt failed")
+    }
+  }
+  {
+    "setup_ms": get(timing, "setup"),
+    "submit_ms": get(timing, "submit"),
+    "drain_ms": get(timing, "drain"),
+    "body_ms": Json(num(get(timing, "submit")) + num(get(timing, "drain"))),
+    "teardown_ms": get(timing, "teardown"),
+    "observed_cuda_free_minimum_bytes": get(
+      get(outer, "cuda_guard_receipt"),
+      "observed_minimum_cuda_free_bytes",
+    ),
+    "maximum_sampled_cgroup_peak_bytes": Json(peak),
+    "minimum_sampled_host_available_bytes": Json(available),
+    "single_window_not_throughput": true,
+  }
+}
+
+///|
+async fn trace(
+  folder : String,
+  native : Bool,
+  provenance : Array[Json],
+) -> Json {
+  let a = get(
+    read(folder + "/phase-attribution.json", provenance),
+    "attribution",
+  )
+  guard get(get(a, "coverage"), "partial_label_checks_passed") == Json(true) else {
+    fail("required phase counts failed")
+  }
+  let seq = get(a, "sequence_source_attribution")
+  guard get(seq, "exclusive_conservation_passed") == Json(true) else {
+    fail("exclusive kernel accounting failed")
+  }
+  let mut structure : Json = Json::null()
+  if native {
+    let evidence = read(folder + "/operator-diagnostics.json", provenance)
+    let spans = rows(get(evidence, "ranges"))
+    guard get(evidence, "completed") == Json(true) &&
+      get(evidence, "cancelled") == Json(false) &&
+      get(evidence, "open_ranges") == Json(0) &&
+      num(get(evidence, "range_count")) == spans.length().to_double() else {
+      fail("runtime structural report incomplete")
+    }
+    let counts : Map[String, Int32] = Map([])
+    for i, span in spans {
+      guard get(span, "ended") == Json(true) &&
+        get(span, "cancelled") == Json(false) &&
+        num(get(span, "id")) == (i + 1).to_double() &&
+        num(get(span, "parent")) >= 0.0 &&
+        num(get(span, "parent")) < (i + 1).to_double() &&
+        get(span, "label") is String(label) else {
+        fail("invalid closed runtime range")
+      }
+      counts[label] = counts.get(label).unwrap_or(0) + 1
+    }
+    guard get(a, "structural_counts") is Object(observed) &&
+      observed.length() == counts.length() else {
+      fail("runtime/NVTX label population differs")
+    }
+    for label, count in counts {
+      guard observed.get(label) == Some(Json(count)) else {
+        fail("runtime/NVTX count differs: " + label)
+      }
+    }
+    structure = {
+      "all_runtime_label_counts_match_nsight": true,
+      "range_count": Json(spans.length()),
+      "label_count": Json(counts.length()),
+      "ordered_parent_tree_compared": false,
+      "global_loss_free_capture_proven": false,
+    }
+  }
+  {
+    "counts": get(a, "record_counts"),
+    "coverage": get(a, "coverage"),
+    "runtime_structure_check": structure,
+    "association": get(a, "association"),
+    "nsight_diagnostics": get(a, "diagnostics"),
+    "cpu_structural_inclusive_ms": statistics(
+      get(a, "cpu_structural_inclusive"),
+    ),
+    "cpu_range_exclusive_wall_sum_ms": nanoseconds_map(
+      get(a, "cpu_range_exclusive_wall_sum_ns"),
+    ),
+    "cpu_exclusive_definition": get(a, "cpu_exclusive_definition"),
+    "cpu_cuda_api_by_name_ms": statistics(get(a, "cuda_api_by_name")),
+    "cpu_cuda_api_categories_ms": statistics(get(a, "cuda_api_category")),
+    "gpu_kernels_ms": statistics(get(a, "kernel_union_by_device")),
+    "gpu_kernel_symbols_ms": statistics(get(a, "kernel_by_symbol")),
+    "gpu_structural_inclusive_ms": statistics(
+      get(a, "kernel_by_structural_parent_inclusive"),
+    ),
+    "gpu_all_events_ms": statistics(
+      get(a, "kernel_memcpy_memset_union_by_device"),
+    ),
+    "gpu_operators_exclusive_ms": statistics(
+      get(a, "kernel_by_innermost_operator_exclusive"),
+    ),
+    "gpu_source_direct_ms": statistics(get(seq, "direct_exclusive")),
+    "gpu_source_backward_ms": statistics(
+      get(seq, "backward_source_consensus_exclusive"),
+    ),
+    "gpu_source_unknown_ms": statistics(get(seq, "unknown_exclusive")),
+    "exclusive_kernel_conservation": true,
+    "interpretation": "Nested CPU ranges overlap and CPU/GPU time must not be added. Device gaps are observed gaps, not proof of a language/FFI bottleneck. Compiled fused kernels stay opaque; unknown ownership remains unknown.",
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["pair", "all"].contains(mode) else {
+    fail("pair|all")
+  }
+  let provenance : Array[Json] = []
+  let pair = read("pair/summary.json", provenance)
+  guard get(pair, "accepted") == Json(true) &&
+    get(pair, "spec_sha256") ==
+    Json("5197095bd124a4e212cd4b5c8ed07a14323c9d7d1f56115a47967489105e757f") &&
+    rows(get(pair, "runs")).length() == 4 else {
+    fail("complete frozen pair required")
+  }
+  let result : Map[String, Json] = Map([])
+  result["format"] = Json("moonrobo.hotspot-smc-comparison-result.v1")
+  result["single_agent"] = Json(true)
+  result["benchmark"] = {
+    "native": get(pair, "a"),
+    "smc_eight512": get(pair, "b"),
+    "native_over_smc": get(pair, "a_over_b_mean_time_ratio"),
+    "native_minus_smc_ms": Json(
+      num(get(get(pair, "a"), "mean_ms")) - num(get(get(pair, "b"), "mean_ms")),
+    ),
+    "adjacent_ratios": get(pair, "adjacent_ab_ba_a_over_b_mean_time_ratios"),
+    "batch_layout": get(pair, "batch_layout"),
+    "scope": "fresh complete60-iteration ABBA,steady41-60,no profiler; prior rows not reused",
+  }
+  let native_phase_sums : Map[String, Double] = Map([])
+  let per_run : Array[Json] = []
+  let mut native_rows = 0
+  for run in rows(get(pair, "runs")) {
+    per_run.push({
+      "index": get(run, "index"),
+      "kind": get(run, "kind"),
+      "steady_41_60": get(run, "steady_41_60"),
+      "resource_observations": get(run, "resource_observations"),
+    })
+    if get(run, "kind") == Json("native") {
+      let timing_rows = rows(get(run, "rows"))
+      guard timing_rows.length() == 60 else {
+        fail("complete native rows required")
+      }
+      for row in timing_rows[40:60] {
+        for phase in ["collection_ms", "world_ms", "actor_critic_ms"] {
+          native_phase_sums[phase] = native_phase_sums.get(phase).unwrap_or(0.0) +
+            num(get(row, phase))
+        }
+        native_rows += 1
+      }
+    }
+  }
+  guard native_rows == 40 else {
+    fail("two complete native steady windows required")
+  }
+  let native_phase_means : Map[String, Json] = Map([])
+  for phase, sum in native_phase_sums {
+    native_phase_means[phase] = Json(sum / native_rows.to_double())
+  }
+  result["native_steady_phase_means_ms"] = Json(native_phase_means)
+  result["per_run"] = Json(per_run)
+  if mode == "all" {
+    let phases : Map[String, Json] = Map([])
+    for phase in ["actor", "world", "collect"] {
+      let sides : Map[String, Json] = Map([])
+      for prefix in ["n", "s"] {
+        let folder = prefix + "-" + phase
+        let off = boundary(folder + "-off", prefix == "n", provenance)
+        let observed = boundary(folder + "-trace", prefix == "n", provenance)
+        let detail : Map[String, Json] = Map([])
+        detail["off"] = off
+        detail["aten_nsys"] = observed
+        detail["observed_body_delta_ms"] = Json(
+          num(get(observed, "body_ms")) - num(get(off, "body_ms")),
+        )
+        detail["observer_delta_scope"] = Json(
+          "one fresh window per mode, not a repeated causal estimate; setup and teardown excluded from body",
+        )
+        detail["trace"] = trace(folder + "-trace", prefix == "n", provenance)
+        if phase == "world" {
+          detail["sync_details"] = read(
+            folder + "-trace/sync-attribution.json",
+            provenance,
+          )
+        }
+        if phase == "collect" {
+          detail["copy_details"] = read(
+            folder + "-trace/copy-attribution.json",
+            provenance,
+          )
+        }
+        sides[prefix] = Json(detail)
+      }
+      phases[phase] = Json(sides)
+    }
+    result["phase_diagnostics"] = Json(phases)
+  }
+  result["source_files"] = Json(provenance)
+  result["limitations"] = Json([
+    "SMC eight512 is a scheduling experiment: high-precision algorithm gate passed; strict FP32 critic-parameter equivalence did not pass. Not a numerical replacement or convergence claim.",
+    "Cross-stack RNG, initial weights and physics implementation differ; this measures configured training stacks, not a language-only gap.",
+    "Only the new ABBA establishes steady throughput. Do not sum separately captured phase windows or compound previous optimization percentages.",
+  ])
+  @fs.write_file(
+    root +
+    (if mode == "pair" {
+      "/pair-result.json"
+    } else {
+      "/comparison-result.json"
+    }),
+    Json(result).stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+  )
+  println("Recorded " + mode + " comparison")
+}

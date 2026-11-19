@@ -1,0 +1,25 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env" }
+///|
+async fn main {
+  guard @env.args() is [_,mode]&&["prepare","run"].contains(mode) else {fail("prepare/run")}
+  let out="output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host="wlc004s@192.168.2.179"
+  if mode=="prepare" {
+    let code=@fs.read_file("output/spark-runtime-20261024/world-backward-boundaries-20261029-a/run_world_reference_export_g.mbtx").text()
+      .replace_all(old="run_world_reference_export_g.mbtx",new="run_actor_normalizer_export_a.mbtx")
+      .replace_all(old="export_reference_world_backward_d.py",new="export_actor_normalizers_a.py")
+      .replace_all(old="hotspot-mlp-world-boundary-f",new="hotspot-shared-actor-first-step-e")
+      .replace_all(old="[\"rollout\",\"error\"]",new="[\"goal\",\"observation\"]")
+      .replace_all(old="scope\": \"isolated trained world MLP; world2048; actor4096=8x512 input VJP; no temporal rollout",new="scope\": \"actor normalization BF16 input and VJP export; not full actor acceptance")
+    @fs.write_file(out+"/run_actor_normalizer_export_a.mbtx",code,create_mode=CreateNew)
+    for (src,name) in [(out+"/run_actor_normalizer_export_a.mbtx","run_actor_normalizer_export_a.mbtx"),("providers/motion_learning/export_actor_normalizers.py","export_actor_normalizers_a.py")] {
+      assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",src,host+":"+base+"/"+name]),0)
+    };return
+  }
+  let folder=out+"/normalizer-export-a";@fs.mkdir(folder)
+  let code=@process.run("ssh",["-S","/tmp/moonrobo-operator-179.sock",host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/run_actor_normalizer_export_a.mbtx -- actor compiled off actor-normalizer-export-a bf16"],stdout=@process.redirect_to_file(folder+"/controller.stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(folder+"/controller.stderr.log",create_mode=CreateNew))
+  for name in ["result.json","completion.json","training-guard.json","training-docker-final.json","training.stdout.log","training.stderr.log","protocol.json","exported-artifacts.json"] {
+    ignore(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",host+":/home/wlc004s/moonrobo/runs/hotspot-mlp-actor-normalizer-export-a/"+name,folder+"/"+name]))
+  };assert_eq(code,0)
+}

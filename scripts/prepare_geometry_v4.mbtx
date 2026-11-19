@@ -1,0 +1,66 @@
+import {"moonbitlang/async@0.20.2","moonbitlang/async@0.20.2/fs","moonbitlang/async@0.20.2/process"}
+///|
+async fn main {
+ let out="output/spark-runtime-20261024/geometry-math-20261029-a"
+ let old="output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+ let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+ let put=async fn(name:String,content:String) {
+  @fs.write_file(out+"/"+name,content,create_mode=CreateNew)
+  assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-math-179.sock",out+"/"+name,"wlc004s@192.168.2.179:"+base+"/"+name]),0)
+ }
+ let header=@fs.read_file(old+"/actor_numeric_aoti_d.inc").text()
+  .replace_all(old="magic!=\"MR_AOTI_V3\")",new="magic!=\"MR_AOTI_V3\" && magic!=\"MR_AOTI_V4\")")
+  .replace_all(old="(magic==\"MR_AOTI_V3\" ? nb!=0 : nb<outputs)",new="(magic==\"MR_AOTI_V3\" ? nb!=0 : (magic==\"MR_AOTI_V4\" && nb==0 ? false : nb<outputs))")
+  .replace_all(old="inference_only=magic==\"MR_AOTI_V3\";",new="inference_only=magic==\"MR_AOTI_V3\" || (magic==\"MR_AOTI_V4\" && nb==0);")
+  .replace_all(old="    c10::cuda::CUDAGuard guard(device);",new="    std::string precision=\"tf32\";\n    if(magic==\"MR_AOTI_V4\" && (!(in>>precision) || (precision!=\"ieee\" && precision!=\"tf32\"))) throw std::invalid_argument(\"compiled block precision contract\");\n    c10::cuda::CUDAGuard guard(device);")
+  .replace_all(old="at::Float32Op::MATMUL)!=at::Float32Precision::TF32)",new="at::Float32Op::MATMUL)!=(precision==\"ieee\" ? at::Float32Precision::IEEE : at::Float32Precision::TF32))")
+  .replace_all(old="compiled package requires the exported TF32 matmul setting",new="compiled package FP32 arithmetic differs from its precision contract")
+ put("geometry_aoti_v4.inc",header)
+ let backend=@fs.read_file(old+"/build_actor_numeric_backend_d.mbtx").text()
+  .replace_all(old="moonrobo-actor-numeric-d",new="moonrobo-geometry-v4")
+  .replace_all(old="actor-numeric-copy-d",new="geometry-v4-copy")
+  .replace_all(old="actor-numeric-ddapter-a",new="geometry-v4-adapter")
+  .replace_all(old="actor-numeric-doti-a",new="geometry-v4-aoti")
+  .replace_all(old="copy-adam-d",new="geometry-v4-adam")
+  .replace_all(old="actor-numeric-plugin-build-d",new="geometry-v4-plugin-build")
+  .replace_all(old="actor_numeric_aoti_d.inc",new="geometry_aoti_v4.inc")
+  .replace_all(old="libmoonrobo_actor_numeric_d.so",new="libmoonrobo_geometry_math_v4.so")
+ put("build_geometry_backend_v4.mbtx",backend)
+ let prefix=@fs.read_file(out+"/run_geometry_math_export.mbtx").text().split("async fn main {").to_array()[0].to_owned()
+ put("package_geometry_v4.mbtx",prefix+
+  #|async fn main {
+  #| guard docker(["ps","--quiet"])=="" else {fail("idle required")}
+  #| let root="/home/wlc004s/moonrobo/runs/hotspot-geometry-math-ieee-packages-a"
+  #| guard !@fs.exists(root) else {fail("fresh versioned package")};@fs.mkdir(root)
+  #| let pins:Map[String,Json]={}
+  #| for (source,parts) in [("geometry-math-world-a",["rollout","error"]),("geometry-math-steps-a",["initial","recurrent"]),("geometry-math-heads-c",["reward","features"])] {
+  #|  let source="/home/wlc004s/moonrobo/runs/hotspot-mlp-"+source
+  #|  assert_eq(field(read_json(source+"/completion.json"),"passed"),Json(true))
+  #|  for part in parts {
+  #|   assert_eq(@process.run("cp",["-a","--reflink=auto",source+"/"+part,root+"/"+part]),0)
+  #|   for name in @fs.readdir(source+"/"+part) {if name.has_suffix(".so")||name.has_suffix(".cubin") {let p=source+"/"+part+"/"+name;let h=hash_file(p);assert_eq(hash_file(root+"/"+part+"/"+name),h);pins[p]=Json(h)}}
+  #|   let p=root+"/"+part+"/native.spec";let lines=@fs.read_file(p).text().split("\n").to_array()
+  #|   guard lines[0]=="MR_AOTI_V2" || lines[0]=="MR_AOTI_V3" else {fail("original package format")}
+  #|   let values:Array[String]=["MR_AOTI_V4"]
+  #|   for i in 1..<lines.length() {values.push(lines[i].to_owned());if i==4 {values.push("ieee")}}
+  #|   @fs.write_file(p,values.join("\n"))
+  #|   let m=read_json(root+"/"+part+"/manifest.json");guard m is Object(fields) else {fail("manifest")}
+  #|   fields["native_spec_version"]=4;fields["geometry_precision"]="ieee_fp32";fields["geometry_revision"]="orthonormal-atlas-geodesic-squared-v1"
+  #|   @fs.write_file(root+"/"+part+"/manifest.json",m.stringify(indent=2))
+  #|  }
+  #| }
+  #| write_json(root+"/source-artifacts.json",Json(pins))
+  #| write_json(root+"/completion.json",{"passed":true,"scope":"immutable binary copy; explicit IEEE admission; full coupled gate still required"})
+  #|}
+ )
+ let fix=fn(value:String)->String {
+  value.replace_all(old="hotspot-mlp-geometry-math-world-a",new="hotspot-geometry-math-ieee-packages-a")
+  .replace_all(old="hotspot-mlp-geometry-math-steps-a",new="hotspot-geometry-math-ieee-packages-a")
+  .replace_all(old="hotspot-mlp-geometry-math-heads-c",new="hotspot-geometry-math-ieee-packages-a")
+ }
+ put("geometry_math_fixture_e.mbt",fix(@fs.read_file(out+"/geometry_math_fixture_d.mbt").text()))
+ put("build_geometry_math_e.mbtx",@fs.read_file(out+"/build_geometry_math_d.mbtx").text().replace_all(old="geometry-math-d",new="geometry-math-e").replace_all(old="geometry_math_fixture_d.mbt",new="geometry_math_fixture_e.mbt").replace_all(old="libmoonrobo_actor_numeric_d.so",new="libmoonrobo_geometry_math_v4.so"))
+ for (src,name) in [("run_geometry_math_training_d.mbtx","run_geometry_math_training_e.mbtx"),("run_geometry_math_gate_d.mbtx","run_geometry_math_gate_e.mbtx")] {
+  put(name,fix(@fs.read_file(out+"/"+src).text()).replace_all(old=src,new=name).replace_all(old="actor-step-gate-geometry-math-d",new="actor-step-gate-geometry-math-e").replace_all(old="libmoonrobo_actor_numeric_d.so",new="libmoonrobo_geometry_math_v4.so"))
+ }
+}

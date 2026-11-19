@@ -1,0 +1,397 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(result) else {
+    fail("missing " + key)
+  }
+  result
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+fn str(value : Json) -> String raise {
+  guard value is String(s) else { fail("expected string") }
+  s
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (code, out, err) = @process.collect_output("/usr/bin/shasum", [
+    "-a", "256", path,
+  ])
+  assert_eq(code, 0, msg=err.text())
+  out.text().split(" ").to_array()[0].to_owned()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: report_g1_full_body_reference.mbtx REPO STUDY OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let report = read(study + "/report.json")
+  let manifest = read(study + "/manifest.json")
+  let config = field(report, "config")
+  assert_eq(field(report, "format"), "moonrobo.g1-full-body-reference-study.v1")
+  assert_eq(field(manifest, "format"), "moonrobo.g1-full-body-reference.v1")
+  assert_eq(config, field(read(study + "/charter.json"), "config"))
+  assert_eq(field(report, "training_updates"), 0)
+  assert_eq(field(report, "release_qualified"), false)
+  assert_eq(field(report, "physical_execution_allowed"), false)
+  assert_eq(
+    field(report, "manifest_sha256"),
+    Json(sha(study + "/manifest.json")),
+  )
+  for
+    (key, name) in [
+      ("provider_sha256", "full_body_reference_study.py"),
+      ("reference_provider_sha256", "full_body_reference.py"),
+    ] {
+    assert_eq(field(report, key), Json(sha(native_source(study, name))))
+  }
+  let clips = array(field(manifest, "clips"))
+  assert_eq(clips.length(), 9)
+  let layout = field(manifest, "layout")
+  let q_indices = array(field(layout, "q_indices")).map(v => num(v).to_int())
+  let goal_axes = array(field(layout, "goal_axes"))
+  let joint_count = array(field(layout, "joint_names")).length()
+  assert_eq(
+    goal_axes.length(),
+    2 * joint_count + 10 + 9 * array(field(layout, "body_names")).length(),
+  )
+  for clip in clips {
+    assert_eq(field(clip, "split"), "train")
+    assert_eq(
+      field(clip, "source_reset_seed"),
+      field(config, "source_reset_seed"),
+    )
+    assert_eq(
+      field(clip, "sha256"),
+      Json(sha(study + "/" + str(field(clip, "file")))),
+    )
+    assert_eq(field(field(clip, "source_trial"), "failed"), false)
+    assert_eq(
+      num(field(clip, "frames")).to_int(),
+      num(field(clip, "steps")).to_int() + 1,
+    )
+  }
+  let expected_trials : Map[String, Json] = Map([])
+  for
+    trial in array(field(report, "collection_trials")) +
+    array(field(report, "replay_trials")) {
+    expected_trials[str(field(trial, "episode_id"))] = trial
+  }
+  assert_eq(expected_trials.length(), 63)
+  let references : Map[String, Array[Json]] = Map([])
+  let seen : Map[String, Bool] = Map([])
+  let native : Array[Json] = []
+  let mut maximum_recomputed_joint_rmse_difference = 0.0
+  let mut maximum_recomputed_state_error_difference = 0.0
+  for
+    (file, hash_key, count, source) in [
+      ("source-physics.jsonl.gz", "source_physics_sha256", 9, true),
+      ("replay-physics.jsonl.gz", "replay_sha256", 54, false),
+    ] {
+    let hash_owner = if source { manifest } else { report }
+    assert_eq(field(hash_owner, hash_key), Json(sha(study + "/" + file)))
+    let mut episodes = 0
+    let mut transitions = 0
+    @async.with_task_group() <| group => {
+      let (reader, output) = @process.read_from_process()
+      let process = @process.spawn(
+        group,
+        "gzip",
+        ["-cd", study + "/" + file],
+        stdout=output,
+      )
+      while reader.read_until("\n") is Some(line) {
+        let record = @json.parse(line)
+        let dataset = field(record, "dataset")
+        let batch = array(field(dataset, "episodes"))
+        assert_eq(batch.length(), 1)
+        let episode = batch[0]
+        let steps = array(field(episode, "steps"))
+        let id = str(field(episode, "id"))
+        let case_id = str(field(episode, "case_id"))
+        let trial = field(record, "trial")
+        assert_false(seen.contains(id))
+        seen[id] = true
+        assert_eq(expected_trials[id], trial)
+        assert_eq(field(trial, "episode_id"), Json(id))
+        assert_eq(field(episode, "split"), "train")
+        assert_eq(num(field(trial, "steps")).to_int(), steps.length())
+        assert_eq(
+          field(trial, "failed"),
+          field(steps.last().unwrap(), "terminated"),
+        )
+        if source {
+          assert_false(references.contains(case_id))
+          references[case_id] = steps.map(s => field(s, "next_state"))
+        } else {
+          assert_eq(field(dataset, "goal_axes"), field(layout, "goal_axes"))
+          let matching = clips.filter(c => field(c, "id") == Json(case_id))
+          assert_eq(matching.length(), 1)
+          assert_eq(
+            field(record, "reference_sha256"),
+            field(matching[0], "sha256"),
+          )
+          let origin = num(field(episode, "reference_start_step")).to_int()
+          let targets = references[case_id]
+          let mut square_error = 0.0
+          let mut maximum = 0.0
+          for i, step in steps {
+            let actual = array(field(step, "next_state"))
+            let desired = array(targets[origin + i])
+            let goal = array(field(step, "goal"))
+            for j, q in q_indices {
+              assert_true((num(goal[j]) - num(desired[q])).abs() < 1.0e-14)
+              let error = num(actual[q]) - num(desired[q])
+              square_error += error * error
+            }
+            for j, value in actual {
+              maximum = maximum.max((num(value) - num(desired[j])).abs())
+            }
+          }
+          let rmse = (square_error / (steps.length() * joint_count).to_double()).sqrt()
+          maximum_recomputed_joint_rmse_difference = maximum_recomputed_joint_rmse_difference.max(
+            (rmse - num(field(trial, "joint_rmse_rad"))).abs(),
+          )
+          maximum_recomputed_state_error_difference = maximum_recomputed_state_error_difference.max(
+            (maximum - num(field(trial, "max_state_component_error"))).abs(),
+          )
+          assert_true(
+            (rmse - num(field(trial, "joint_rmse_rad"))).abs() < 1.0e-12,
+          )
+          assert_true(
+            (maximum - num(field(trial, "max_state_component_error"))).abs() <
+            1.0e-12,
+          )
+          if field(trial, "controller") == ("source-setpoint" : Json) {
+            assert_eq(field(trial, "failed"), false)
+            assert_true(
+              maximum <=
+              num(field(config, "maximum_exact_replay_state_component_error")),
+            )
+            assert_eq(
+              field(trial, "simulated_seconds"),
+              field(trial, "requested_seconds"),
+            )
+          }
+        }
+        let scratch = study + "/native-episode.json"
+        @fs.write_file(
+          scratch,
+          dataset.stringify(),
+          create_mode=CreateOrTruncate,
+        )
+        let (code, out, err) = @process.collect_output(
+          root +
+          "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+          [scratch, "train", "1", "1000000"],
+        )
+        assert_eq(code, 0, msg=err.text())
+        assert_eq(field(@json.parse(out.text()), "window_length"), 1)
+        @fs.remove(scratch)
+        episodes += 1
+        transitions += steps.length()
+        if episodes % 9 == 0 {
+          println("Native checked " + file + ": \{episodes}/\{count}")
+        }
+      }
+      reader.close()
+      assert_eq(process.wait(), 0)
+    }
+    assert_eq(episodes, count)
+    native.push({
+      "file": Json(file),
+      "episodes": Json(episodes),
+      "transitions": Json(transitions),
+      "native_validated": true,
+    })
+  }
+  assert_eq(seen.length(), 63)
+  for summary in array(field(report, "summaries")) {
+    let trials = array(field(report, "replay_trials")).filter(t => {
+      field(t, "controller") == field(summary, "controller")
+    })
+    assert_eq(num(field(summary, "trials")).to_int(), trials.length())
+    assert_eq(
+      num(field(summary, "falls")).to_int(),
+      trials.filter(t => field(t, "failed") == (true : Json)).length(),
+    )
+    let mut steps = 0.0
+    let mut seconds = 0.0
+    let mut error = 0.0
+    for trial in trials {
+      let n = num(field(trial, "steps"))
+      let e = num(field(trial, "joint_rmse_rad"))
+      steps += n
+      seconds += num(field(trial, "simulated_seconds"))
+      error += n * e * e
+    }
+    assert_eq(num(field(summary, "steps")), steps)
+    assert_true(
+      (num(field(summary, "simulated_seconds")) - seconds).abs() < 1.0e-10,
+    )
+    assert_true(
+      (num(field(summary, "joint_rmse_rad")) - (error / steps).sqrt()).abs() <
+      1.0e-12,
+    )
+  }
+  let quality = read(
+    root + "/examples/learning/g1-full-body-reference-quality.json",
+  )
+  assert_eq(
+    field(quality, "reference_manifest_sha256"),
+    field(report, "manifest_sha256"),
+  )
+  if @fs.exists(study + "/quality.json") {
+    assert_eq(read(study + "/quality.json"), quality)
+  } else {
+    @fs.write_file(
+      study + "/quality.json",
+      quality.stringify(indent=2),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  guard field(quality, "maximum_per_trial") is Object(limits) else {
+    fail("expected metric limits")
+  }
+  let assessments : Array[Json] = []
+  let expected_cells : Map[String, Bool] = Map([])
+  for case in array(field(quality, "reference_ids")) {
+    for origin in array(field(quality, "origins_s")) {
+      let index = (num(origin) / num(field(quality, "dt_s"))).to_int()
+      expected_cells[str(case) + ":\{index}"] = true
+    }
+  }
+  for mode in array(field(config, "modes")) {
+    let trials = array(field(report, "replay_trials")).filter(t => {
+      field(t, "controller") == mode
+    })
+    let seen_cells : Map[String, Bool] = Map([])
+    let failures : Array[Json] = []
+    for trial in trials {
+      let index = num(field(trial, "reference_start_step")).to_int()
+      let key = str(field(trial, "case_id")) + ":\{index}"
+      assert_true(expected_cells.contains(key))
+      assert_false(seen_cells.contains(key))
+      seen_cells[key] = true
+      let reasons : Array[Json] = []
+      if field(trial, "failed") != (false : Json) ||
+        (num(field(trial, "simulated_seconds")) -
+        num(field(trial, "requested_seconds"))).abs() >
+        1.0e-10 {
+        reasons.push("incomplete-trajectory")
+      }
+      for metric, limit in limits {
+        if num(field(trial, metric)) > num(limit) {
+          reasons.push(Json(metric))
+        }
+      }
+      if !reasons.is_empty() {
+        failures.push({
+          "episode_id": field(trial, "episode_id"),
+          "reasons": Json(reasons),
+        })
+      }
+    }
+    let complete = seen_cells.length() == expected_cells.length()
+    assessments.push({
+      "controller": mode,
+      "trials": Json(trials.length()),
+      "expected_trials": Json(expected_cells.length()),
+      "coverage_complete": Json(complete),
+      "failed_quality_trials": Json(failures.length()),
+      "failures": Json(failures),
+      "quality_passed": Json(complete && failures.is_empty()),
+      "release_qualified": false,
+      "physical_execution_allowed": false,
+    })
+  }
+  assert_eq(field(assessments[0], "quality_passed"), true)
+  assert_eq(field(assessments[1], "quality_passed"), false)
+  guard report is Object(fields) else { fail("expected report object") }
+  fields["native_archives"] = Json(native)
+  fields["quality_target"] = quality
+  fields["quality_sha256"] = Json(sha(study + "/quality.json"))
+  fields["quality_assessments"] = Json(assessments)
+  fields["native_recomputed_joint_rmse_max_difference"] = Json(
+    maximum_recomputed_joint_rmse_difference,
+  )
+  fields["native_recomputed_state_error_max_difference"] = Json(
+    maximum_recomputed_state_error_difference,
+  )
+  fields["source_report_sha256"] = Json(sha(study + "/report.json"))
+  @fs.write_file(
+    args[3],
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    (
+      {
+        "summaries": field(report, "summaries"),
+        "native_archives": Json(native),
+      } : Json).stringify(),
+  )
+}
+
+///|
+/// Hash the archived native implementation; Python copies are historical evidence.
+fn native_source(study : String, original : String) -> String raise {
+  let path = match original {
+    "reference_initialization.py" =>
+      "src/learning_reference/reference_initialization_study.mbt"
+    "reference_actor.py" => "src/learning_reference/reference_actor.mbt"
+    "reference_learning.py" => "src/learning_reference/reference_learning.mbt"
+    "reference_task.py" => "src/learning_reference/reference_task.mbt"
+    "reference_learning_study.py" =>
+      "src/learning_reference/reference_learning_study.mbt"
+    "full_body_reference.py" => "src/learning_balance/physics/reference.mbt"
+    "full_body_reference_study.py" =>
+      "src/learning_balance/reference_study/run.mbt"
+    "reference_root_integration.py" =>
+      "src/learning_reference_roots/integration.mbt"
+    "reference_tail_directions.py" => "src/learning_reference_routes/tail.mbt"
+    "reference_initialization_export.py" =>
+      "src/learning_reference/reference_initialization_export.mbt"
+    "reference_learning_export.py"
+    | "reference_learning_export-final-verify.py" =>
+      "src/learning_reference/reference_learning_export.mbt"
+    "reference_feedback_response_export.py" =>
+      "src/learning_reference_directions/export.mbt"
+    "reference_root_export.py" => "src/learning_reference_roots/export.mbt"
+    _ => fail("no native provider mapping: " + original)
+  }
+  study + "/native-provider-sources/" + path
+}

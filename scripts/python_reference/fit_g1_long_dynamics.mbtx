@@ -1,0 +1,229 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=stderr.text() + stdout.text())
+  stdout.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: fit_g1_long_dynamics.mbtx REPO BASE_DATA LONG_PPO OUTPUT",
+  )
+  let root = args[1]
+  let source = args[2]
+  let output = args[4]
+  @fs.mkdir(output, recursive=true)
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for name in ["policy.py", "cpu_physics.py", "dynamics.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let python = root + "/target/learning-venv/bin/python"
+  let original_bytes = @fs.read_file(source + "/collection/dataset.json")
+  let original = @json.parse(original_bytes.text())
+  let combined = array(field(original, "episodes")).copy()
+  let recollections : Array[Json] = []
+  let new_late_steps : Map[String, Int32] = Map([])
+  for seed in 0..<3 {
+    for index, split in ["train", "validation", "test"] {
+      let collection = @json.parse(
+        @fs.read_file(root + "/examples/learning/g1-goal-collection.json").text(),
+      )
+      guard collection is Object(config_fields) else {
+        fail("expected collection config")
+      }
+      config_fields.set("duration_s", 10)
+      config_fields.set("seeds", [70 + seed * 10 + index].to_json())
+      config_fields.set(
+        "action_noise_std_rad",
+        if split == "train" {
+          (0.02 : Json)
+        } else {
+          (0 : Json)
+        },
+      )
+      let collection_path = output + "/recollection-\{seed}-\{split}.json"
+      @fs.write_file(
+        collection_path,
+        collection.stringify(indent=2),
+        create_mode=CreateOrTruncate,
+      )
+      let destination = output + "/recollection-\{seed}-\{split}"
+      println(
+        run(python, [
+          root + "/providers/motion_learning/policy.py",
+          "collect",
+          "--checkpoint",
+          args[3] + "/actor-seed-\{seed}.pt",
+          "--scene",
+          root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+          "--experiment",
+          collection_path,
+          "--split",
+          split,
+          "--output",
+          destination,
+        ]),
+      )
+      let fresh = @json.parse(
+        @fs.read_file(destination + "/dataset.json").text(),
+      )
+      let episodes = array(field(fresh, "episodes"))
+      assert_eq(episodes.length(), if split == "train" { 6 } else { 1 })
+      for
+        key in [
+          "state_axes", "observation_axes", "action_axes", "goal_axes", "context_axes",
+          "model_ref", "dt_s", "frame_convention",
+        ] {
+        assert_eq(field(fresh, key), field(original, key))
+      }
+      for episode in episodes {
+        assert_eq(field(episode, "split"), split.to_json())
+        for step in array(field(episode, "steps")) {
+          guard field(step, "time_s") is Number(time) else {
+            fail("expected time")
+          }
+          if time >= 2.0 {
+            new_late_steps[split] = new_late_steps.get(split).unwrap_or(0) + 1
+          }
+        }
+      }
+      combined.append(episodes)
+      recollections.push(
+        field(
+          @json.parse(@fs.read_file(destination + "/report.json").text()),
+          "summary",
+        ),
+      )
+    }
+  }
+  guard original is Object(fields) else { fail("expected dataset") }
+  fields.set("dataset_id", "g1-long-goal-policy-derived")
+  fields.set(
+    "provenance", "Prior 132 episodes plus 24 ten-second-maximum policy recollections. Source-family splits preserved; new held-out episodes are appended, not training data. No padding after falls; no hardware data.",
+  )
+  fields.set("episodes", combined.to_json())
+  @fs.mkdir(output + "/collection", recursive=true)
+  let merged = output + "/collection/dataset.json"
+  @fs.write_file(merged, original.stringify(), create_mode=CreateOrTruncate)
+  let windows : Array[Json] = []
+  for split in ["train", "validation", "test"] {
+    let text = run(
+      root + "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+      [merged, split, "8"],
+    )
+    @fs.write_file(
+      output + "/" + split + "-batch.json",
+      text,
+      create_mode=CreateOrTruncate,
+    )
+    let batch = @json.parse(text)
+    let times = array(field(batch, "time_s"))
+    let count = array(field(batch, "windows")).length()
+    let mut late_count = 0
+    for index in 0..<count {
+      guard times[index * 8] is Number(time) else {
+        fail("expected window time")
+      }
+      if time >= 2.0 {
+        late_count += 1
+      }
+    }
+    windows.push({
+      "split": split.to_json(),
+      "windows": count.to_json(),
+      "after_two_seconds": late_count.to_json(),
+    })
+    if split != "train" {
+      let previous = @json.parse(
+        @fs.read_file(source + "/" + split + "-batch.json").text(),
+      )
+      for
+        key in [
+          "state", "next_state", "applied_action", "observation", "goal", "context",
+          "terminated", "truncated", "time_s",
+        ] {
+        let before = array(field(previous, key))
+        let after = array(field(batch, key))
+        assert_true(after.length() >= before.length())
+        for i in 0..<before.length() {
+          assert_eq(
+            after[i],
+            before[i],
+            msg="prior held-out prefix changed: " + key,
+          )
+        }
+      }
+    }
+  }
+  @fs.write_file(
+    output + "/refit.log",
+    run(python, [
+      root + "/providers/motion_learning/dynamics.py",
+      "--train",
+      output + "/train-batch.json",
+      "--validation",
+      output + "/validation-batch.json",
+      "--test",
+      output + "/test-batch.json",
+      "--config",
+      root + "/examples/learning/g1-dynamics-long-fit.json",
+      "--output",
+      output + "/fit",
+    ]),
+    create_mode=CreateOrTruncate,
+  )
+  let fit = @json.parse(@fs.read_file(output + "/fit/report.json").text())
+  let result : Json = {
+    "format": "moonrobo.g1-long-data-refit.v1",
+    "original_dataset_sha256": @crypto.bytes_to_hex_string(
+      @crypto.sha256(original_bytes.binary()),
+    ).to_json(),
+    "episodes": combined.length().to_json(),
+    "recollections": recollections.to_json(),
+    "new_steps_after_two_seconds": new_late_steps.to_json(),
+    "windows": windows.to_json(),
+    "prior_held_out_prefix_unchanged": true,
+    "held_out_arrays_extended": true,
+    "dynamics_diagnostics_passed": field(fit, "all_passed"),
+    "late_diagnostics_passed": field(fit, "late_all_passed"),
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    output + "/feedback-report.json",
+    result.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(result.stringify(indent=2))
+}

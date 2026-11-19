@@ -1,0 +1,342 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+  "moonbitlang/x/crypto",
+}
+
+///|
+async fn packages(directory : String, result : Array[String]) -> Unit {
+  if @fs.exists(directory + "/moon.pkg") {
+    result.push(directory)
+  }
+  for name in @fs.readdir(directory, sort=true) {
+    if ignored_directory(name) {
+      continue
+    }
+    let path = directory + "/" + name
+    if @fs.kind(path, follow_symlink=false) is Directory {
+      packages(path, result)
+    }
+  }
+}
+
+///|
+async fn script_entries(directory : String, result : Array[String]) -> Unit {
+  for name in @fs.readdir(directory, sort=true) {
+    if ignored_directory(name) {
+      continue
+    }
+    let path = directory + "/" + name
+    match @fs.kind(path, follow_symlink=false) {
+      Directory => script_entries(path, result)
+      Regular => if name.has_suffix(".mbtx") { result.push(path) }
+      _ => ()
+    }
+  }
+}
+
+///|
+fn ignored_directory(name : String) -> Bool {
+  ["_build", "target", "node_modules", "dist", ".git", ".mooncakes"].contains(
+    name,
+  )
+}
+
+///|
+async fn command(arguments : Array[String], quiet~ : Bool = false) -> Unit {
+  let (code, stdout, stderr) = @process.collect_output("moon", arguments)
+  if code != 0 {
+    let diagnostic = stdout.text() + "\n" + stderr.text()
+    let log = "/tmp/moonrobo-migration-static-failure.log"
+    @fs.write_file(log, diagnostic, create_mode=CreateOrTruncate)
+    let lines = diagnostic.split("\n").collect()
+    let mut found = false
+    for i, line in lines {
+      if line.contains("Error:") || line.has_prefix("error:") {
+        found = true
+        let end = if i + 18 < lines.length() { i + 18 } else { lines.length() }
+        for j in i..<end {
+          println(lines[j])
+        }
+      }
+    }
+    if !found {
+      println(diagnostic)
+    }
+    fail(
+      "moon command failed: " + arguments[0] + "; complete diagnostic: " + log,
+    )
+  }
+  if !quiet {
+    println("Completed moon " + arguments[0])
+  }
+}
+
+///|
+async fn source_files(directory : String, found : Map[String, Bool]) -> Unit {
+  for name in @fs.readdir(directory, sort=true) {
+    if ignored_directory(name) {
+      continue
+    }
+    let path = directory + "/" + name
+    match @fs.kind(path, follow_symlink=false) {
+      Directory => source_files(path, found)
+      Regular =>
+        if name.has_suffix(".mbt") ||
+          name.has_suffix(".mbtx") ||
+          name.has_suffix(".mbti") ||
+          name.has_suffix(".c") ||
+          name.has_suffix(".cpp") ||
+          name.has_suffix(".cu") ||
+          name.has_suffix(".hpp") ||
+          name.has_suffix(".cuh") ||
+          name.has_suffix(".inc") ||
+          name.has_suffix(".inl") ||
+          name.has_suffix(".h") ||
+          name.has_suffix(".md") ||
+          name.has_suffix(".xml") ||
+          name.has_suffix(".urdf") ||
+          name.has_suffix(".json") ||
+          name.has_suffix(".csv") ||
+          name.has_suffix(".source") ||
+          name.has_suffix(".txt") ||
+          name.has_suffix(".sh") ||
+          name.has_suffix(".cmake") ||
+          name == "moon.pkg" ||
+          name == "CMakeLists.txt" ||
+          name == "moon.mod" ||
+          name == "moon.work" ||
+          name == ".gitignore" ||
+          name == ".moonignore" ||
+          name == "LICENSE" ||
+          name == "SMC_LICENSE" {
+          found[path] = true
+        }
+      _ => ()
+    }
+  }
+}
+
+///|
+async fn write_native_inventory(
+  selected : Array[String],
+  scripts : Array[String],
+  python_sources_verified : Bool,
+  python_source_diagnostics : String,
+) -> Unit {
+  let found : Map[String, Bool] = Map([])
+  for directory in selected {
+    source_files(directory, found)
+  }
+  // Compatibility was typechecked in MoonMoon's own workspace; record its
+  // current forwarding source alongside the standalone extraction provenance.
+  source_files("../moonmoon/src/moonphys", found)
+  source_files("scripts", found)
+  source_files("docs/migration-baselines/apic-producer", found)
+  for
+    path in [
+      "moon.mod", "AGENTS.md", "scripts/python_migration_inventory.mbtx", "scripts/finalize_python_migration.mbtx",
+      "moon.work", "src/urdf_viewport/moon.pkg", "src/urdf_viewport/simulation.mbt",
+      "src/urdf_viewport/pkg.generated.mbti", "ui/rabbita-cockpit/moon.work", "scripts/capture_shared_numeric_baseline.mbtx",
+      "scripts/check_shared_numerics.mbtx", "docs/SHARED_NUMERICS.md", "docs/SHARED_NUMERICS_LUNAFLUX.md",
+      "docs/migration-baselines/shared-numerics/learning-numeric-before-moonnum.json",
+      "../moonnum/.gitignore", "../moonphys/.gitignore", "../moonmoon/moon.mod",
+      "../moonmoon/moon.work", "../moonmoon/ui/rabbita-moon/moon.work", "../moonmoon/scripts/extract_moonphys.mbtx",
+      "scripts/export_g1_aligned_apic.mbtx", "docs/PYTHON_DEPENDENCIES.md", "docs/PYTHON_DEPENDENCIES.json",
+      "docs/PYTHON_MIGRATION.md", "docs/APIC_PRODUCER_BASELINE.json", "docs/APIC_PRODUCER_PYTHON_DEPENDENCIES.md",
+      "docs/APIC_REMAINING_NATIVE_MIGRATION.md", "docs/APIC_REMAINING_SOURCE_EVIDENCE.json",
+      "docs/APIC_PHYSICS_NATIVE_DECOMPOSITION.md", "docs/APIC_PHYSICS_SOURCE_EVIDENCE.json",
+      "docs/APIC_FINALIZE_SOLVER_MIGRATION.md", "docs/APIC_FINALIZE_SOLVER_SOURCE_EVIDENCE.json",
+      "docs/APIC_MODEL_GPU_MIGRATION.md", "docs/APIC_MODEL_GPU_SOURCE_EVIDENCE.json",
+      "docs/APIC_COOKING_DEVICE_MIGRATION.md", "docs/APIC_COOKING_DEVICE_SOURCE_EVIDENCE.json",
+      "docs/PYTHON_SOURCE_PRESERVATION_STATUS.md", "docs/APIC_FULL_NATIVE_TRANSLATION.md",
+      "docs/APIC_FULL_NATIVE_SOURCE_EVIDENCE.json",
+    ] {
+    found[path] = true
+  }
+  let names = found.keys().collect()
+  names.sort()
+  let files : Array[Json] = []
+  for path in names {
+    let bytes = @fs.read_file(path).binary()
+    let mut digest = ""
+    for byte in @crypto.sha256(bytes) {
+      digest += byte.to_hex()
+    }
+    files.push({
+      "path": Json(path),
+      "bytes": Json(bytes.length()),
+      "sha256": Json(digest),
+    })
+  }
+  let (code, version, _) = @process.collect_output("moon", ["--version"])
+  guard code == 0 else { fail("cannot record MoonBit toolchain version") }
+  let inventory : Json = {
+    "format": "moonrobo.moonbit-migration-inventory.v1",
+    "packages": Json(selected),
+    "checked_script_entrypoints": Json(scripts),
+    "files": Json(files),
+    "toolchain": Json(version.text()),
+    "native_type_check_passed": true,
+    "native_type_check_scope": "MoonBit packages; optional SDK/CUDA plugins are not built or executed by this script",
+    "tests_executed": false,
+    "training_executed": false,
+    "simulation_executed": false,
+    "training_backend": "CPU/Double",
+    "numerical_and_learning_equivalence": "pending_retest",
+    "optional_sdk_runtime_validation": "deferred",
+    "python_dependency_audit": "docs/PYTHON_DEPENDENCIES.json",
+    "python_original_source_validation": {
+      "passed": Json(python_sources_verified),
+      "diagnostics": Json(python_source_diagnostics),
+      "baseline": "docs/PYTHON_MIGRATION_INVENTORY.json",
+      "details": "docs/PYTHON_SOURCE_PRESERVATION_STATUS.md",
+      "baseline_refreshed": false,
+    },
+    "apic_original_source_files_verified": 13,
+    "apic_producer_equivalence": "pending_retest",
+    "apic_native_stages": [
+      "MuJoCo-model-descriptor", "OpenUSD-preflight", "Warp-APIC-save", "NVRTC-generated-CUDA-compilation",
+      "OpenUSD-physics-IR-G1-recipe", "fixed-13-kernel-specialization", "Warp-native-launch-memory-dispatch",
+      "single-kernel-APIC-capture", "MoonBit-fixed-manager-schedule-with-explicit-SDK-backend",
+      "rigid-tree-builder-arrays-and-FK", "CPU-Double-model-constant-fragments",
+      "four-collision-sparse-kernels-and-mass-gather-layout", "native-CUB-scan-segmented-sort",
+      "native-CUDA-conditional-control-flow", "MoonBit-physics-host-order-with-explicit-SDK-kernels",
+      "typed-rigid-model-state-control-buffers-and-explicit-upload", "six-primitive-narrowphase-pairs",
+      "packed-tree-LDL-and-small-block-Cholesky", "dynamic-pyramidal-linesearch-and-Newton-CG-convergence",
+      "rigid-reference-mass-and-inverse-weights", "MoonBit-complete-set-constants-host-order-with-explicit-SDK-kernels",
+      "resolved-primitive-shape-and-contact-typed-storage", "seven-primitive-narrowphase-pairs",
+      "native-MuJoCo-MJB-rigid-collision", "mixed-compact-tiled-gather-tree-factorization-baseline",
+      "owned-native-multi-kernel-GPU-pipeline", "native-Warp-host-triangle-mesh-BVH-cooking-and-refit",
+      "finite-authored-schema-priority-and-pure-equality-storage", "GPU-GJK-simplex-witness-and-shallow-contact-stage",
+      "native-MathDx-LTOIR-fatbin-nvJitLink-tile-compile-chain", "device-Newton-CG-convergence-producer-and-multiple-iteration-WHILE",
+      "native-device-mesh-BVH-retained-context-and-GC-safe-resource-leases", "MoonBit-mesh-inertia-topology-Qhull-and-sparse-SDF-with-native-Texture3D-NanoVDB",
+      "GPU-EPA-manifold-plane-heightfield-and-complete-material-contact-writer",
+      "GPU-mixed-scalar-gather-full-CSR-tail-LDL-and-no-pivot-sparse-LU", "GPU-reference-Newton-CG-gradient-Hessian-factor-linesearch-and-real-control-initialization",
+      "GPU-native-effective-metric-preconditioner-operators", "GPU-compact-sleep-and-incremental-solver-adapter-callables",
+    ],
+    "apic_complete_native_scene_physics_closure": false,
+    "apic_remaining_source_evidence": "docs/APIC_REMAINING_SOURCE_EVIDENCE.json",
+    "apic_physics_source_evidence": "docs/APIC_PHYSICS_SOURCE_EVIDENCE.json",
+    "apic_finalize_solver_source_evidence": "docs/APIC_FINALIZE_SOLVER_SOURCE_EVIDENCE.json",
+    "apic_model_gpu_source_evidence": "docs/APIC_MODEL_GPU_SOURCE_EVIDENCE.json",
+    "apic_cooking_device_source_evidence": "docs/APIC_COOKING_DEVICE_SOURCE_EVIDENCE.json",
+    "apic_full_native_translation_evidence": "docs/APIC_FULL_NATIVE_SOURCE_EVIDENCE.json",
+    "shared_modules": ["vectie/moonnum@0.1.0", "vectie/moonphys@0.1.0"],
+  }
+  @fs.write_file(
+    "docs/MOONBIT_MIGRATION_INVENTORY.json",
+    inventory.stringify(indent=2) + "\n",
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "Recorded " +
+    names.length().to_string() +
+    " native source/interface/config hashes",
+  )
+}
+
+///|
+async fn main {
+  let selected : Array[String] = []
+  packages("../moonnum", selected)
+  packages("../moonphys", selected)
+  for name in @fs.readdir("src", sort=true) {
+    if name.has_prefix("learning_") || name == "sdk_e1_native" {
+      packages("src/" + name, selected)
+    }
+  }
+  packages("cmd/learning_compare", selected)
+  packages("cmd/learning_experiment", selected)
+  packages("cmd/motion_dataset", selected)
+  packages("src/urdf_viewport", selected)
+  for
+    directory in [
+      "cmd/main", "cmd/sdk_e1_native", "src/bridge_sidecar", "src/supervisor", "src/runtime_launcher",
+      "src/runtime_validation", "src/desktop_bundle", "src/desktop_host", "src/host_api",
+    ] {
+    packages(directory, selected)
+  }
+  for name in @fs.readdir("cmd", sort=true) {
+    if name.has_prefix("reference_") {
+      packages("cmd/" + name, selected)
+    }
+  }
+  command(["check", "--target", "native", "--warn-list", "-a", ..selected])
+  let scripts : Array[String] = []
+  for name in @fs.readdir("scripts", sort=true) {
+    if name.has_suffix(".mbtx") {
+      scripts.push("scripts/" + name)
+    }
+  }
+  // Package-local extraction probes are checked as source, never executed.
+  script_entries("src/learning_aligned/producer_native", scripts)
+  for i, script in scripts {
+    // Moon appends each standalone basename even with --target-dir. Remove
+    // that entry's compiler cache after checking so the batch stays bounded.
+    // Archives are immutable and are never formatted or executed.
+    command(
+      [
+        "check", "--target", "native", "--warn-list", "-a", "--target-dir", "_build/script-check",
+        script,
+      ],
+      quiet=true,
+    )
+    command(
+      [
+        "clean",
+        "--target-dir",
+        "_build/script-check/" + script.split("/").last().unwrap().to_owned(),
+      ],
+      quiet=true,
+    )
+    if (i + 1) % 25 == 0 {
+      println("Typechecked " + (i + 1).to_string() + " script entrypoints")
+    }
+  }
+  // Interface generation and formatting are the final source-mutating steps.
+  command(["info", ..selected])
+  command(["fmt", ..selected, ..scripts])
+  let (source_code, source_stdout, source_stderr) = @process.collect_output(
+    "moon",
+    [
+      "run", "--warn-list", "-a", "--target-dir", "_build/script-metadata", "scripts/python_migration_inventory.mbtx",
+      ".", "--verify",
+    ],
+  )
+  let python_sources_verified = source_code == 0
+  println(source_stdout.text())
+  if !python_sources_verified {
+    println(source_stderr.text())
+    println(
+      "Python baseline verification failed; retaining baseline and recording failure while completing native metadata",
+    )
+  }
+  command([
+    "run", "--warn-list", "-a", "--target-dir", "_build/script-metadata", "scripts/python_dependency_audit.mbtx",
+    ".",
+  ])
+  command([
+    "run", "--warn-list", "-a", "--target-dir", "_build/script-metadata", "scripts/capture_apic_producer_baseline.mbtx",
+    ".", "--verify", "docs/APIC_PRODUCER_BASELINE.json",
+  ])
+  write_native_inventory(
+    selected,
+    scripts,
+    python_sources_verified,
+    source_stdout.text(),
+  )
+  guard python_sources_verified else {
+    fail(
+      "Native static checks and metadata completed, but Python baseline verification failed; no baseline was refreshed",
+    )
+  }
+  println(
+    "Finalized " +
+    selected.length().to_string() +
+    " migration packages; no tests or simulation executed",
+  )
+}

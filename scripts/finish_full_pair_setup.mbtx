@@ -1,0 +1,18 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="output/spark-runtime-20261024/coefficient-full-20261028"
+  let old=@fs.read_file(dir+"/cache_retry.mbtx").text()
+  let start=old.find("  for suffix in [").unwrap();let end=old.find("] {\n    let dir=").unwrap()
+  let names="[\"primitives-baseline-world-gate-a\",\"primitives-baseline-actor-gate-a\",\"encoder-batch-baseline-actor-gate-a\",\"encoder-batch-both-actor-gate-a\",\"coefficient-assembly-forward-world-gate-b\",\"coefficient-assembly-forward-actor-gate-a\",\"coefficient-full-baseline-world-gate-a\",\"coefficient-full-both-world-gate-b\",\"coefficient-full-baseline-actor-gate-a\",\"coefficient-full-both-actor-gate-a\",\"coefficient-full-both-world-abba-a\",\"coefficient-full-both-actor-abba-a\"]"
+  let cache=(old[:start].to_owned()+"  for suffix in "+names+old[end+1:].to_owned()).replace_all(old="pre-retry-output",new="pre-final-pairs-output")
+    .replace_all(old="      guard @process.run(\"dd\",",new="      guard @process.run(\"sync\",[\"-d\",path])==0else{fail(\"flush only this ended task output\")}\n      guard @process.run(\"dd\",")
+    .replace_all(old="no_files_deleted_or_written",new="no_files_deleted_or_content_changed")
+    .replace_all(old="GNU dd iflag=nocache,nofollow count=0; POSIX DONTNEED",new="per-file sync -d followed by GNU dd iflag=nocache,nofollow count=0; POSIX DONTNEED")
+  @fs.write_file(dir+"/cache_final_pairs.mbtx",cache,create_mode=CreateNew)
+  let suite=@fs.read_file(dir+"/coefficient_full_suite_c.mbtx").text()
+    .replace_all(old="v==\"smc\"&&kind==\"off\"",new="v==\"smc\"&&(kind==\"off\"||kind==\"off-after\")")
+    .replace_all(old="  if mode==\"pairs\" {",new="  if mode==\"after\" {invoke(\"actor\",\"baseline\",\"13\",label(\"actor\",\"smc\",\"off-after\"),implementation=\"smc\");return}\n  if mode==\"pairs\" {")
+  @fs.write_file(dir+"/coefficient_full_suite_d.mbtx",suite,create_mode=CreateNew)
+  let p=dir+"/report.mbtx";let r=@fs.read_file(p).text().replace_all(old="v==\"smc\"&&k==\"off\"",new="v==\"smc\"&&(k==\"off\"||k==\"off-after\")");@fs.write_file(p,r)
+  for f in ["cache_final_pairs.mbtx","coefficient_full_suite_d.mbtx"] {guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+"/"+f,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/"+f])==0else{fail("stage")}}
+}

@@ -1,0 +1,7 @@
+{
+  "policy_seeds": [0, 1, 2],
+  "reset_seeds": [790, 791, 792],
+  "snapshot_steps": [0, 50, 75, 100],
+  "translation_shifts_m": [[1, 0], [0, 1], [-1, -1]],
+  "cpu_threads": 2
+}

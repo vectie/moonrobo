@@ -1,0 +1,66 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn[T : FromJson] field(value : Json, key : String) -> T raise {
+  guard value is Object(fields) && fields.get(key) is Some(v) else { fail(key) }
+  @json.from_json(v)
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, input, output] else {
+    fail("qualified config and new report required")
+  }
+  let bytes = @fs.read_file(input).binary()
+  let h = @crypto.SHA256::new()
+  h.update(bytes)
+  let c = @json.parse(@utf8.decode(bytes))
+  let learner : Json = field(c, "learner")
+  let envs : Int32 = field(c, "environments")
+  let utd : Double = field(c, "update_to_data")
+  let wm_batches : Int32 = field(learner, "wm_batches")
+  let wm_batch : Int32 = field(learner, "wm_batch")
+  let actor_batch : Int32 = field(learner, "policy_batch")
+  let horizon : Int32 = field(learner, "horizon")
+  let window : Int32 = field(learner, "wm_window")
+  let fresh = envs.to_double() / utd
+  let windows = wm_batches * wm_batch
+  let imagined = actor_batch * horizon
+  assert_eq(windows.to_double() / fresh, 2.0)
+  assert_eq(imagined.to_double() / fresh, 12.8)
+  assert_eq(window, 8)
+  assert_eq(horizon, 32)
+  let result : Json = {
+    "format": "moonrobo.e1-qualified-budget.v1",
+    "config_sha256": @crypto.bytes_to_hex_string(h.finalize()),
+    "paper_source": "https://arxiv.org/pdf/2610.28480",
+    "environments": envs,
+    "world_batch": wm_batch,
+    "actor_batch": actor_batch,
+    "utd": utd,
+    "fresh_transitions_per_iteration": fresh,
+    "world_windows_per_iteration": windows,
+    "imagined_steps_per_iteration": imagined,
+    "world_windows_per_new_transition": windows.to_double() / fresh,
+    "imagined_steps_per_new_transition": imagined.to_double() / fresh,
+    "world_reuse_relative_to_paper": 1,
+    "imagination_relative_to_paper": 1,
+    "learning_rate_decay_iterations": (
+      field(c, "learning_rate_decay_iterations") : Int32),
+    "scope": "nominal steady state; actual counters include warm-up, world-only iterations and actor-readiness collection; smaller configuration, not paper-identical scale",
+  }
+  @fs.write_file(
+    output,
+    @utf8.encode(result.stringify(indent=2)),
+    create_mode=CreateNew,
+  )
+  println(result.stringify())
+}

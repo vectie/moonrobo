@@ -1,0 +1,17 @@
+{
+  "seeds": [0, 1, 2],
+  "updates": 200,
+  "batch_size": 64,
+  "horizon": 32,
+  "gamma": 0.99,
+  "actor_learning_rate": 0.0001,
+  "actor_critic_bootstrap": false,
+  "target_height_m": 0.783675,
+  "sampling_seed": 6100,
+  "evaluation_updates": [1, 5, 10, 20, 50, 100, 150, 200],
+  "validation_seeds": [30, 31, 32],
+  "test_seeds": [8800, 8801, 8802],
+  "max_mean_joint_rmse_rad": 0.15,
+  "cpu_threads": 2,
+  "scope": "Three temporal-input variants refined through one shared sustained-state world model. Same physical starting points and seeded index sampling, causal histories, analytic changing goal schedules, 200 updates and H32 reward. Critic bootstrap disabled consistently because no future-aware critic is trained. Models/actor normalizations frozen; only policy parameters update. No efficiency or full SuperMimic reproduction claim."
+}

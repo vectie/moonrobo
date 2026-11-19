@@ -1,0 +1,86 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let src = @fs.read_file(out + "/reclaim_resident_b.mbtx").text()
+  let begin = src.find("    for file in @fs.readdir(dir)").unwrap()
+  let end = src.find("    if files.is_empty()").unwrap()
+  let collect =
+    #|    if !@fs.exists(dir+"/cuda-cache"){continue}
+    #|    collect(dir+"/cuda-cache",files,0)
+    #|    for path in files {let f=@fs.open(path,mode=ReadOnly);size+=f.size();f.close()}
+    #|
+  let helper =
+    #|async fn collect(dir:String,files:Array[String],depth:Int)->Unit {
+    #|  guard depth<=4&&@fs.realpath(dir)==dir&&@fs.kind(dir,follow_symlink=false)==Directory else{fail("bounded cache directory")}
+    #|  for name in @fs.readdir(dir) {
+    #|    let path=dir+"/"+name
+    #|    guard @fs.realpath(path)==path else{fail("cache symlink rejected")}
+    #|    if @fs.kind(path,follow_symlink=false)==Directory {collect(path,files,depth+1)} else {
+    #|      guard @fs.kind(path,follow_symlink=false)==Regular&&files.length()<1024 else{fail("regular bounded cache")}
+    #|      files.push(path)
+    #|    }
+    #|  }
+    #|}
+    #|
+  let code = (src[:begin].to_owned() + collect + src[end:].to_owned())
+    .replace_all(old="async fn main {", new=helper + "async fn main {")
+    .replace_all(old="hotspot-shared-", new="hotspot-mlp-")
+    .replace_all(old="resident-aoti-b-", new="resident-aoti-cuda-d-")
+    .replace_all(
+      old="compiled-resident-output-advice-b.json",
+      new="compiled-resident-cuda-advice-d.json",
+    )
+    .replace_all(
+      old="input_and_compiler_caches_retained",
+      new="input_and_compiler_cache_files_retained_on_disk",
+    )
+    .replace_all(
+      old="replay/motion inputs, checkpoints, compiler caches or other services.",
+      new="replay/motion inputs, checkpoints or other services. Compiler files remain on disk.",
+    )
+  @fs.write_file(
+    out + "/advise_closed_cuda_d.mbtx",
+    code,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/advise_closed_cuda_d.mbtx",
+      "wlc004s@192.168.2.179:" + base + "/advise_closed_cuda_d.mbtx",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179",
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/advise_closed_cuda_d.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/advise-closed-cuda-d.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/advise-closed-cuda-d.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+}

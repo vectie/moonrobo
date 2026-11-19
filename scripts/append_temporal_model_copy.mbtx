@@ -1,0 +1,26 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+async fn main {
+  if @fs.exists("docs/PYTHON_DEPENDENCIES.json") {
+    fail(
+      "One-off source migration is already audited; do not rerun its rewrite recipe",
+    )
+  }
+  let helper = @fs.read_file("scripts/temporal_model_copy_template.txt").text()
+  for
+    name in [
+      "refine_g1_temporal_inputs.mbtx", "fit_g1_teacher_value.mbtx", "fit_g1_temporal_value.mbtx",
+      "fit_g1_sustained_policy.mbtx",
+    ] {
+    let path = "scripts/" + name
+    let source = @fs.read_file(path).text()
+    if !source.contains("async fn copy_model_file(") {
+      @fs.write_file(path, source + helper, create_mode=CreateOrTruncate)
+    }
+  }
+}

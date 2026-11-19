@@ -1,0 +1,95 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let prefix = @fs.read_file(out + "/reclaim_actor_pages_f.mbtx")
+    .text()
+    .split("async fn main {")
+    .to_array()[0]
+    .to_owned()
+    .replace_all(old="depth<=8", new="depth<=16")
+  let code = prefix +
+    (
+      #|async fn main {
+      #|  idle()
+      #|  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+      #|  let before=@fs.read_file("/proc/meminfo").text()
+      #|  let records:Array[Json]=[]
+      #|  for (owner,ws) in [("actor-step-b","moonrobo-bctor-step-b"),("actor-step-c","moonrobo-actor-step-c"),("actor-step-d","moonrobo-actor-step-d"),("actor-step-e","moonrobo-actor-step-e"),("actor-reward-b","moonrobo-actor-reward-b"),("actor-normalizer-a","moonrobo-actor-normalizer-a")] {
+      #|    let parts=owner.split("-").to_array()
+      #|    let stem=parts[0].to_owned()+"-"+parts[1].to_owned()
+      #|    let rev=parts[2].to_owned()
+      #|    for stage in ["build","binary"] {guard field(read(base+"/"+stem+"-"+stage+"-"+rev+".receipt.json"),"exit_code")==Json(0) else {fail("completed build required")}}
+      #|    idle()
+      #|    let path=base+"/workspace/"+ws+"/_build/native"
+      #|    let files:Array[String]=[];collect(path,files,0)
+      #|    let report=base+"/actor-build-pages-b-"+owner+".json"
+      #|    assert_eq(@process.run("/home/wlc004s/moonrobo/private/fincore-official-20261024-a/root/usr/bin/fincore",["--json","--bytes","--output","FILE,SIZE,RES",..files],stdout=@process.redirect_to_file(report,create_mode=CreateNew)),0)
+      #|    guard field(read(report),"fincore") is Array(rows) else {fail("residency")}
+      #|    let mut resident=0.0
+      #|    for row in rows {
+      #|      let bytes=match field(row,"res") {Number(n,..)=>n;String(s)=>@string.parse_double(s);_=>fail("res bytes")}
+      #|      if bytes==0.0 {continue}
+      #|      guard field(row,"file") is String(file)&&files.contains(file)&&@fs.realpath(file)==file&&@fs.kind(file,follow_symlink=false)==Regular else {fail("owned build output")}
+      #|      resident+=bytes
+      #|      assert_eq(@process.run("sync",["-d",file]),0)
+      #|      assert_eq(@process.run("dd",["if="+file,"iflag=nocache,nofollow","count=0","status=none"]),0)
+      #|    }
+      #|    records.push({"owner":Json(owner),"path":Json(path),"resident_bytes_advised":Json(resident)})
+      #|  }
+      #|  idle()
+      #|  @fs.write_file(base+"/actor-build-pages-b.json",({"before":Json(before),"after":Json(@fs.read_file("/proc/meminfo").text()),"records":Json(records),"files_deleted":0,"contents_changed":false,"guards_changed":false}:Json).stringify(indent=2),create_mode=CreateNew)
+      #|}
+    )
+  let runner = "reclaim_actor_build_pages_b.mbtx"
+  @fs.write_file(out + "/" + runner, code, create_mode=CreateNew)
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/" + runner,
+      host + ":" + base + "/" + runner,
+    ]),
+    0,
+  )
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      runner,
+    ],
+    stdout=@process.redirect_to_file(
+      out + "/build-pages-b.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      out + "/build-pages-b.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  assert_eq(status, 0)
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      host + ":" + base + "/actor-build-pages-b.json",
+      out + "/build-pages-b.json",
+    ]),
+    0,
+  )
+}

@@ -1,0 +1,192 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+fn mean(values : Array[Double]) -> Json {
+  if values.is_empty() {
+    return Json::null()
+  }
+  Json(values.fold(init=0.0, (sum, x) => sum + x) / values.length().to_double())
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: score_g1_temporal_probe.mbtx PROBE SUPERVISED REFINEMENT OUTPUT_JSON",
+  )
+  let result : Array[Json] = []
+  let mut shared_model : Json = ""
+  for id in ["frame", "preview"] {
+    let path = args[1] + "/" + id
+    let summary = read(path + "/summary.json")
+    let report = read(path + "/report.json")
+    assert_eq(field(summary, "physical_execution_allowed"), false)
+    assert_eq(field(summary, "dynamics_unchanged"), true)
+    assert_true(num(field(summary, "maximum_restore_error")) <= 0.00000001)
+    if id == "frame" {
+      shared_model = field(summary, "dynamics_sha256")
+    } else {
+      assert_eq(field(summary, "dynamics_sha256"), shared_model)
+    }
+    let all_origins = array(field(report, "origins"))
+    let records = array(field(report, "records"))
+    let checks : Array[Json] = []
+    let prediction_rows : Array[Json] = []
+    for binding in array(field(summary, "bindings")) {
+      let seed = num(field(binding, "seed")).to_int()
+      assert_eq(
+        field(binding, "incoming_sha256"),
+        Json(
+          digest(args[2] + "/" + id + "/policy/actor-seed-\{seed}.moon.json"),
+        ),
+      )
+      assert_eq(
+        field(binding, "refined_sha256"),
+        Json(
+          digest(args[3] + "/" + id + "/policy/actor-seed-\{seed}.moon.json"),
+        ),
+      )
+      let source = all_origins.filter(o => field(o, "seed") == Json(seed))
+      assert_eq(source.length(), 1)
+      let origins = array(field(source[0], "origins"))
+      assert_eq(Json(origins.length()), field(binding, "origins"))
+      for origin in origins {
+        assert_eq(field(field(origin, "case"), "split"), "train")
+      }
+      let seed_records = records.filter(r => field(r, "seed") == Json(seed))
+      assert_eq(seed_records.length(), origins.length() * 2 * 4)
+      for row in seed_records {
+        if field(row, "multiplier") == (0 : Json) {
+          assert_eq(field(row, "baseline"), field(row, "candidate"))
+          assert_eq(
+            field(row, "predicted_before"),
+            field(row, "predicted_after"),
+          )
+        }
+      }
+      let slopes = array(field(summary, "centered")).filter(r => {
+        field(r, "seed") == Json(seed)
+      })
+      for direction in ["on_policy_adam", "selected_refinement"] {
+        let subset = slopes.filter(r => {
+          field(r, "direction") == Json(direction) &&
+          field(r, "nonzero_direction") == (true : Json)
+        })
+        for physical_key in ["local_physics_slope", "full_physics_slope"] {
+          let usable = subset.filter(r => {
+            num(field(r, "model_slope")).abs() > 0.00001 &&
+            num(field(r, physical_key)).abs() > 0.00001
+          })
+          let agrees = usable.filter(r => {
+            num(field(r, "model_slope")) * num(field(r, physical_key)) > 0
+          })
+          checks.push({
+            "seed": Json(seed),
+            "direction": Json(direction),
+            "physical_measure": Json(physical_key),
+            "nonzero_direction_origins": Json(subset.length()),
+            "nonflat_pairs": Json(usable.length()),
+            "agreeing_signs": Json(agrees.length()),
+            "mean_model_slope": mean(
+              subset.map(r => num(field(r, "model_slope"))),
+            ),
+            "mean_physics_slope": mean(
+              subset.map(r => num(field(r, physical_key))),
+            ),
+          })
+        }
+      }
+      let predictions = array(field(summary, "open_loop_predictions")).filter(r => {
+        field(r, "seed") == Json(seed)
+      })
+      assert_eq(predictions.length(), 1)
+      for motion in ["stand", "random_joint_sines"] {
+        for length in [1, 8, 32] {
+          let rows = array(field(predictions[0], "records")).filter(r => {
+            let index = num(field(r, "origin")).to_int()
+            field(r, "steps") == Json(length) &&
+            field(field(origins[index], "case"), "motion") == Json(motion)
+          })
+          prediction_rows.push({
+            "seed": Json(seed),
+            "motion": Json(motion),
+            "steps": Json(length),
+            "windows": Json(rows.length()),
+            "mean_normalized_mse": mean(
+              rows.map(r => num(field(r, "normalized_mse"))),
+            ),
+            "mean_root_height_error_m": mean(
+              rows.map(r => num(field(r, "root_height_error_m"))),
+            ),
+          })
+        }
+      }
+    }
+    let selected = array(field(summary, "summaries")).filter(r => {
+      field(r, "multiplier") == (1 : Json) &&
+      field(r, "subset") == ("all" : Json)
+    })
+    for row in selected {
+      println(id + ": " + row.stringify())
+    }
+    result.push({
+      "id": Json(id),
+      "summary": summary,
+      "summary_sha256": Json(digest(path + "/summary.json")),
+      "raw_report_sha256": Json(digest(path + "/report.json")),
+      "centered_signs": Json(checks),
+      "prediction_by_motion": Json(prediction_rows),
+    })
+  }
+  @fs.write_file(
+    args[4],
+    (
+      {
+        "format": "moonrobo.g1-temporal-probe-verification.v1",
+        "cells": Json(result),
+        "shared_dynamics_sha256": shared_model,
+        "physical_execution_allowed": false,
+        "scope": "Centered finite differences along declared parameter directions, not complete physical gradients. Near-flat slopes excluded from sign denominators. Repeated origins within each physical episode are correlated; no qualification or policy selection.",
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

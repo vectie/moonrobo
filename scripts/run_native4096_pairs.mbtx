@@ -1,0 +1,622 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+// This bounded wrapper preserves the frozen runner/summary. The optional
+// derived tools differ by exactly two names in their optimization allowlist.
+// All process, memory, counter, failure, ABBA and report code stays byte-identical.
+
+///|
+let runner_sha = "52be50c8dc774283473a79d8cc7c5fb2b176308a3ab3f67938c5b8223dafede0"
+
+///|
+let summary_sha = "82896c887471c7f041efed0679622e9850cad9a4a85d6d44418b6163dc12b711"
+
+///|
+let six : ReadOnlyArray[String] = [
+  "reuse_geometry", "body_orientation_batched", "resident_reference_cache", "adam_checked_norm",
+  "defer_scalar_metrics", "world_staging_batch",
+]
+
+///|
+let two : ReadOnlyArray[String] = ["noise_staging_batch", "actor_norm_snapshot"]
+
+///|
+fn fields(j : Json) -> Map[String, Json] raise {
+  guard j is Object(m) else { fail("JSON object required") }
+  m
+}
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard fields(j).get(k) is Some(v) else { fail("missing field " + k) }
+  v
+}
+
+///|
+fn string(j : Json) -> String raise {
+  guard j is String(s) else { fail("string required") }
+  s
+}
+
+///|
+fn digest(s : String) -> String {
+  let h = @crypto.SHA256::new()
+  h.update(@utf8.encode(s))
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+fn valid_sha(s : String) -> Bool {
+  s.length() == 64 &&
+  s.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) &&
+  s.iter().any(c => c != '0')
+}
+
+///|
+fn retarget(j : Json, suffix : String) -> Json {
+  match j {
+    String(s) =>
+      Json(s.replace(old="smc-native-aligned-20261024-f", new=suffix))
+    Array(values) => Json::array(values.map(v => retarget(v, suffix)))
+    Object(values) => Json::object(values.map((_, v) => retarget(v, suffix)))
+    _ => j
+  }
+}
+
+///|
+fn make_pair(source : Json, build : Json, kind : String) -> Json raise {
+  guard field(build, "format") == Json("moonrobo.native4096-build-pins.v1") else {
+    fail("frozen build receipt required")
+  }
+  let directory = string(field(build, "directory"))
+  let prefix = "/home/wlc004s/moonrobo/private/"
+  guard directory.has_prefix(prefix) else {
+    fail("native private build directory required")
+  }
+  let suffix = directory[prefix.length():].to_owned()
+  guard suffix.has_prefix("smc-native-aligned-20261024-g2") &&
+    suffix
+    .iter()
+    .all(c => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') else {
+    fail("new G2 build directory required")
+  }
+  let trainer = string(field(build, "trainer_sha256"))
+  let plugin = string(field(build, "plugin_sha256"))
+  let archive = string(field(build, "source_sha256"))
+  guard valid_sha(trainer) &&
+    valid_sha(archive) &&
+    trainer !=
+    "58739d902a28e65b1a7d71594ea98f78246a74d10fcdf5fa9e6bef4dcee4ab8d" &&
+    archive !=
+    "ffb66f8b83e1edda92ad9a4fcb9672728281fa466074d51108bebe2764eb2637" &&
+    plugin == "c3cfbe79777db5bcc1f4e6ee1437f597ddae49f80758ccae9ce4f227d1f42804" else {
+    fail("actual new trainer/archive and unchanged plugin SHA required")
+  }
+  let spec = retarget(source, suffix)
+  guard field(spec, "pins") is Array(pins) && pins.length() == 265 else {
+    fail("all 265 inherited pins required")
+  }
+  for
+    (role, filename, sha) in [
+      ("native-trainer", "trainer", trainer),
+      ("native-tensor-plugin", "libmoonrobo_learning_tensor.so", plugin),
+      ("frozen-native-source-archive", "source.tar.gz", archive),
+    ] {
+    let selected = pins.filter(p => field(p, "role") == Json(role))
+    guard selected.length() == 1 &&
+      field(selected[0], "path") == Json(directory + "/" + filename) else {
+      fail("new frozen pin role/path differs")
+    }
+    fields(selected[0])["sha256"] = Json(sha)
+  }
+  for side in ["a", "b"] {
+    let s = field(spec, side)
+    let c = field(s, "expected_config")
+    fields(c)["max_motion_sampler_bins"] = Json(9000)
+    fields(c)["noise_staging_max_mib"] = Json(16)
+    for key in six {
+      fields(c)[key] = Json(kind == "six_vs_noise_snapshot" || side == "b")
+    }
+    for key in two {
+      fields(c)[key] = Json(kind == "six_vs_noise_snapshot" && side == "b")
+    }
+    fields(c)["profile"] = Json(
+      "native-smc99-n256-fp32-logical4096-micro512-G2-cap9000",
+    )
+    fields(c)["scope"] = Json(
+      "G2 native execution ABBA with exact fixed logical4096/micro512 and sampler hardcap9000; not numerical equivalence or convergence",
+    )
+    fields(s)["label"] = Json(
+      if kind == "original_vs_six" && side == "a" {
+        "native-G2-original"
+      } else if kind == "six_vs_noise_snapshot" && side == "b" {
+        "native-G2-six-plus-noise-and-norm-snapshot"
+      } else {
+        "native-G2-six-switches"
+      },
+    )
+  }
+  fields(spec)["native4096_comparison"] = Json(kind)
+  fields(spec)["name"] = Json("native-G2-logical4096-micro512-" + kind)
+  fields(spec)["execution_notes"] = Json::array([])
+  fields(spec)["candidate_gate"] = {
+    "noise_staging_cuda_gate_required": true,
+    "actor_norm_snapshot_cuda_gate_required": true,
+    "gate_status_at_spec_generation": "root-owned separate correctness evidence required; no performance or gate-pass claim",
+  }
+  fields(spec)["known_differences"] = Json([
+    "Both sides use the same newly frozen G2 trainer/plugin/source archive and image. The source includes the sampler hardcap and optional execution paths. This is a fresh group; old E/F/G records remain separate.",
+    if kind == "original_vs_six" {
+      "Exactly six bools change false to true: reuse_geometry, body_orientation_batched, resident_reference_cache, adam_checked_norm, defer_scalar_metrics, world_staging_batch; noise_staging_batch and actor_norm_snapshot stay false."
+    } else {
+      "Both sides retain all six prior switches true. Only noise_staging_batch and actor_norm_snapshot change false to true; this measures the combined incremental candidate, not each feature independently."
+    },
+    "defer_scalar_metrics has no new branch in actor microbatch mode: actor and critic metric reads are already batched in that path. A six-switch comparison does not establish six separately active or individually measured speedups.",
+    "Both sides use logical actor4096 split into eight512 chunks, one accumulated actor Adam per round, then the complete logical trajectory for critic normalizer/GAE and20 critic Adam updates. Same seed does not establish identical trajectories, RNG streams, parameters or convergence.",
+    "max_motion_sampler_bins=9000 is identical on both sides and enforced before each clip's bins are built. Exceeding the explicit cap fails; the cap does not alter sampler values, admission formulas or the80-percent/16GiB policy. Absent-field legacy behavior remains in older builds.",
+    "Noise staging has an explicit16MiB cap on both sides; its additional reserve is13244416 bytes for4096x99. Actor normalization snapshot adds a fixed65536-byte production reserve, not a configurable snapshot cap. Baseline buffers are not discounted.",
+    "Resident cap1376MiB and world staging cap128MiB remain identical. Resident estimates must fit the cap; world staging adds107544576 bytes. LayerNorm expanded, critic graph false, reuse_critic_normalization false, FP32+TF32 and serial optimizer-save workspace policy stay unchanged.",
+    "All60 iterations are retained, with41-60 for throughput;1-20 world-only and21-40 actor warmup are separate. Expected work is physical54784/world600/modelslots9830400/actor40/imagined5242880/critic800. Diagnostics are not throughput samples.",
+    "Fresh preflight and runtime guards remain mandatory:100GiB, zero swap,12CPU,80-percent admission and16GiB reserve; no retries, survivor selection, batch reduction, cap growth or memory-budget escalation. Observed resource samples cannot guarantee unobserved peaks.",
+    "Checkpoint checks retain the existing native report/current metadata-consistency scope; this does not claim every checkpoint payload was reread and hashed or numerical equivalence was tested.",
+  ])
+  validate_pair(spec)
+  spec
+}
+
+///|
+async fn make_specs(
+  source_path : String,
+  build_path : String,
+  output : String,
+) -> Unit {
+  let source = read(source_path)
+  guard digest(source) ==
+    "b619eb3ba728eeb625220614603b4bb6cc139da9a696675141a1794b135d2e3c" else {
+    fail("exact preserved G planning source required")
+  }
+  let build = @json.parse(read(build_path))
+  let first = make_pair(@json.parse(source), build, "original_vs_six")
+  let second = make_pair(@json.parse(source), build, "six_vs_noise_snapshot")
+  guard output.has_prefix(
+      "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/",
+    ) &&
+    !@fs.exists(output) else {
+    fail("fresh local evidence directory required")
+  }
+  @fs.mkdir(output)
+  guard @fs.realpath(output) == output else {
+    fail("canonical output required")
+  }
+  for
+    (name, value) in [
+      ("spec-original-vs-six4096.json", first),
+      ("spec-six-vs-noise-snapshot4096.json", second),
+      (
+        "native-original-config.json",
+        field(field(first, "a"), "expected_config"),
+      ),
+      ("native-six-config.json", field(field(first, "b"), "expected_config")),
+      (
+        "native-six-noise-snapshot-config.json",
+        field(field(second, "b"), "expected_config"),
+      ),
+      ("build-pins.json", build),
+    ] {
+    write(output + "/" + name, value.stringify(indent=2) + "\n")
+  }
+  println(
+    "Prepared two fresh G2 ABBA specs; no preflight, training or performance claim",
+  )
+}
+
+///|
+async fn read(path : String) -> String {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("regular file required: " + path)
+  }
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  let size = f.size()
+  guard size > 0L && size <= 2097152L else { fail("file exceeds 2 MiB bound") }
+  @utf8.decode(f.read_exactly_at(size.to_int(), position=0L))
+}
+
+///|
+async fn write(path : String, s : String) -> Unit {
+  @fs.write_file(path, s, create_mode=CreateNew, sync=Full)
+}
+
+///|
+fn patch_allowlist(source : String) -> String raise {
+  let needle = "\"resident_reference_max_mib\", \"body_orientation_batched\", \"world_staging_batch\","
+  let pieces = source.split(needle).map(s => s.to_owned()).to_array()
+  guard pieces.length() == 2 else {
+    fail("frozen allowlist replacement is not unique")
+  }
+  pieces[0] +
+  needle +
+  " \"noise_staging_batch\", \"actor_norm_snapshot\"," +
+  pieces[1]
+}
+
+///|
+fn validate_pair(spec : Json) -> Unit raise {
+  let kind = string(field(spec, "native4096_comparison"))
+  guard kind == "original_vs_six" || kind == "six_vs_noise_snapshot" else {
+    fail("unsupported dedicated comparison")
+  }
+  guard field(spec, "format") == Json("moonrobo.smc-native-pairs.spec.v1") &&
+    field(spec, "abba_blocks") == Json(1) &&
+    field(spec, "steady_first_iteration") == Json(41) &&
+    field(spec, "steady_last_iteration") == Json(60) &&
+    field(field(spec, "protocol"), "pi_batch") == Json(4096) else {
+    fail("dedicated 4096 one-block ABBA protocol required")
+  }
+  for side in ["a", "b"] {
+    let s = field(spec, side)
+    guard field(s, "kind") == Json("native") else { fail("native/native only") }
+    let c = field(s, "expected_config")
+    for
+      (key, expected) in [
+        ("num_envs", Json(256)),
+        ("seed", Json(0)),
+        ("iterations", Json(60)),
+        ("warmup_steps", Json(64)),
+        ("wm_only_iters", Json(20)),
+        ("wm_batch", Json(2048)),
+        ("wm_window", Json(8)),
+        ("horizon", Json(32)),
+        ("pi_batch", Json(4096)),
+        ("pi_microbatch", Json(512)),
+        ("wm_microbatch", Json(0)),
+        ("max_motion_sampler_bins", Json(9000)),
+        ("noise_staging_max_mib", Json(16)),
+        ("resident_reference_max_mib", Json(1376)),
+        ("world_staging_max_mib", Json(128)),
+        ("memory_admission_percent", Json(80)),
+        ("telemetry_max_samples", Json(512)),
+        ("serial_optimizer_save_workspace", Json(true)),
+        ("amp", Json("none")),
+        ("precision", Json("float32")),
+        ("allow_tf32", Json(true)),
+        ("reuse_critic_normalization", Json(false)),
+        ("critic_cuda_graph", Json(false)),
+        ("layer_norm_mode", Json("expanded")),
+      ] {
+      guard field(c, key) == expected else {
+        fail("dedicated configuration differs: " + key)
+      }
+    }
+    // Snapshot storage has a fixed 64 KiB production reserve, not a user cap.
+    guard !fields(c).contains("actor_norm_snapshot_max_kib") else {
+      fail("invented snapshot cap is not a production field")
+    }
+    for key in six {
+      guard field(c, key) ==
+        Json(kind == "six_vs_noise_snapshot" || side == "b") else {
+        fail("six-switch stage differs: " + key)
+      }
+    }
+    for key in two {
+      guard field(c, key) ==
+        Json(kind == "six_vs_noise_snapshot" && side == "b") else {
+        fail("two-switch stage differs: " + key)
+      }
+    }
+  }
+  let a = fields(field(field(spec, "a"), "expected_config"))
+  let b = fields(field(field(spec, "b"), "expected_config"))
+  guard a.length() == b.length() else { fail("configuration key sets differ") }
+  let expected = if kind == "original_vs_six" { six } else { two }
+  let changed = [ for key, value in a if b.get(key) != Some(value) => key ]
+  guard changed.length() == expected.length() &&
+    changed.iter().all(k => expected.contains(k)) else {
+    fail("comparison changes fields outside its exact switch set")
+  }
+}
+
+///|
+async fn derive_tools(repo : String, output : String) -> Unit {
+  guard @fs.realpath(repo) == repo && !@fs.exists(output) else {
+    fail("canonical repo and fresh tool directory required")
+  }
+  let runner = read(repo + "/scripts/run_smc_native_pairs.mbtx")
+  let summary = read(repo + "/scripts/summarize_smc_native_pairs.mbtx")
+  guard digest(runner) == runner_sha && digest(summary) == summary_sha else {
+    fail("frozen parent tool source differs")
+  }
+  let derived_runner = patch_allowlist(runner)
+  let derived_summary = patch_allowlist(summary)
+  let wrapper = read(repo + "/scripts/run_native4096_pairs.mbtx")
+  @fs.mkdir(output)
+  guard @fs.realpath(output) == output else {
+    fail("canonical output required")
+  }
+  write(output + "/runner.mbtx", derived_runner)
+  write(output + "/summary.mbtx", derived_summary)
+  write(
+    output + "/derivation.json",
+    (
+      {
+        "format": "moonrobo.native4096-pair-tools.v1",
+        "repo": Json(repo),
+        "wrapper_sha256": Json(digest(wrapper)),
+        "source_runner_sha256": Json(runner_sha),
+        "source_summary_sha256": Json(summary_sha),
+        "derived_runner_sha256": Json(digest(derived_runner)),
+        "derived_summary_sha256": Json(digest(derived_summary)),
+        "only_patch": "append noise_staging_batch and actor_norm_snapshot to exactly one native config-difference allowlist in each frozen source; no other source bytes changed",
+        "launch_requires_strict_wrapper": true,
+        "new_runtime_guards": false,
+        "guard_relaxation": false,
+      } : Json).stringify(indent=2) +
+    "\n",
+  )
+  println("Derived exact two-name tools; no Docker/GPU: " + output)
+}
+
+///|
+async fn tools_manifest(tools : String) -> Json {
+  guard @fs.realpath(tools) == tools else {
+    fail("canonical tools directory required")
+  }
+  let m = @json.parse(read(tools + "/derivation.json"))
+  guard field(m, "format") == Json("moonrobo.native4096-pair-tools.v1") else {
+    fail("wrong derivation format")
+  }
+  let repo = string(field(m, "repo"))
+  let r = read(repo + "/scripts/run_smc_native_pairs.mbtx")
+  let s = read(repo + "/scripts/summarize_smc_native_pairs.mbtx")
+  let wrapper = read(repo + "/scripts/run_native4096_pairs.mbtx")
+  guard digest(r) == runner_sha &&
+    digest(s) == summary_sha &&
+    field(m, "wrapper_sha256") == Json(digest(wrapper)) &&
+    read(tools + "/runner.mbtx") == patch_allowlist(r) &&
+    read(tools + "/summary.mbtx") == patch_allowlist(s) &&
+    field(m, "derived_runner_sha256") == Json(digest(patch_allowlist(r))) &&
+    field(m, "derived_summary_sha256") == Json(digest(patch_allowlist(s))) else {
+    fail("derived tool identity changed")
+  }
+  m
+}
+
+///|
+async fn delegate(
+  tools : String,
+  spec : Json,
+  args : Array[String],
+  summary~ : Bool = false,
+) -> Unit {
+  validate_pair(spec)
+  let m = tools_manifest(tools)
+  let path = if field(spec, "native4096_comparison") == Json("original_vs_six") {
+    string(field(m, "repo")) +
+    (if summary {
+      "/scripts/summarize_smc_native_pairs.mbtx"
+    } else {
+      "/scripts/run_smc_native_pairs.mbtx"
+    })
+  } else {
+    tools + (if summary { "/summary.mbtx" } else { "/runner.mbtx" })
+  }
+  let code = @process.run(
+    "moon",
+    ["run", "--target", "native", path, "--"] + args,
+  )
+  guard code == 0 else { fail("frozen child tool failed; evidence retained") }
+}
+
+///|
+async fn receipt(tools : String, root : String) -> Json {
+  {
+    "format": "moonrobo.native4096-wrapper-receipt.v1",
+    "tool_derivation": tools_manifest(tools),
+    "spec_sha256": Json(digest(read(root + "/spec.json"))),
+    "guards_unchanged": true,
+  }
+}
+
+///|
+async fn validate_receipt(tools : String, root : String) -> Unit {
+  guard @json.parse(read(root + "/wrapper-receipt.json")) ==
+    receipt(tools, root) else {
+    fail("wrapper receipt differs")
+  }
+}
+
+///|
+async fn self_test_tools(tools : String) -> Unit {
+  ignore(tools_manifest(tools))
+  for path in [tools + "/runner.mbtx", tools + "/summary.mbtx"] {
+    guard @process.run("moon", [
+        "run", "--target", "native", path, "--", "--self-test",
+      ]) ==
+      0 else {
+      fail("derived tool CPU self-test failed")
+    }
+  }
+}
+
+///|
+async fn self_test_source(path : String) -> Unit {
+  let input = read(path)
+  guard digest(input) ==
+    "b619eb3ba728eeb625220614603b4bb6cc139da9a696675141a1794b135d2e3c" else {
+    fail("frozen G fixture required")
+  }
+  // In-memory test fixture only: these hashes are never written to runnable specs.
+  let build : Json = {
+    "format": "moonrobo.native4096-build-pins.v1",
+    "directory": "/home/wlc004s/moonrobo/private/smc-native-aligned-20261024-g2-test",
+    "trainer_sha256": Json(runner_sha),
+    "source_sha256": Json(summary_sha),
+    "plugin_sha256": "c3cfbe79777db5bcc1f4e6ee1437f597ddae49f80758ccae9ce4f227d1f42804",
+  }
+  for kind in ["original_vs_six", "six_vs_noise_snapshot"] {
+    let original = @json.parse(input)
+    let result = make_pair(original, build, kind)
+    assert_eq(original.stringify(), @json.parse(input).stringify())
+    validate_pair(result)
+    guard field(original, "pins") is Array(before) &&
+      field(result, "pins") is Array(after) else {
+      fail("fixture pins")
+    }
+    let changed = [ for i in 0..<before.length() if before[i] != after[i] => i ]
+    assert_eq(changed.length(), 3)
+    assert_true(
+      string(field(field(result, "a"), "entrypoint")).contains("-g2-test/"),
+    )
+  }
+  println(
+    "G2 spec derivation fixture checks passed in memory; no specs or processes created",
+  )
+}
+
+///|
+fn fixture(kind : String) -> Json {
+  let c : Json = {
+    "num_envs": 256,
+    "seed": 0,
+    "iterations": 60,
+    "warmup_steps": 64,
+    "wm_only_iters": 20,
+    "wm_batch": 2048,
+    "wm_window": 8,
+    "horizon": 32,
+    "pi_batch": 4096,
+    "pi_microbatch": 512,
+    "wm_microbatch": 0,
+    "max_motion_sampler_bins": 9000,
+    "noise_staging_max_mib": 16,
+    "resident_reference_max_mib": 1376,
+    "world_staging_max_mib": 128,
+    "memory_admission_percent": 80,
+    "telemetry_max_samples": 512,
+    "serial_optimizer_save_workspace": true,
+    "amp": "none",
+    "precision": "float32",
+    "allow_tf32": true,
+    "reuse_critic_normalization": false,
+    "critic_cuda_graph": false,
+    "layer_norm_mode": "expanded",
+  }
+  let sides : Map[String, Json] = Map([])
+  for side in ["a", "b"] {
+    let config = try! @json.parse(c.stringify())
+    for key in six {
+      (try! fields(config))[key] = Json(
+        kind == "six_vs_noise_snapshot" || side == "b",
+      )
+    }
+    for key in two {
+      (try! fields(config))[key] = Json(
+        kind == "six_vs_noise_snapshot" && side == "b",
+      )
+    }
+    sides[side] = { "kind": "native", "expected_config": config }
+  }
+  {
+    "format": "moonrobo.smc-native-pairs.spec.v1",
+    "native4096_comparison": Json(kind),
+    "abba_blocks": 1,
+    "steady_first_iteration": 41,
+    "steady_last_iteration": 60,
+    "protocol": { "pi_batch": 4096 },
+    "a": sides["a"],
+    "b": sides["b"],
+  }
+}
+
+///|
+fn self_test() -> Unit raise {
+  for kind in ["original_vs_six", "six_vs_noise_snapshot"] {
+    validate_pair(fixture(kind))
+    for
+      (key, value) in [
+        ("max_motion_sampler_bins", Json(9001)),
+        ("noise_staging_max_mib", Json(32)),
+        ("pi_microbatch", Json(256)),
+        ("noise_staging_batch", Json("true")),
+        ("amp", Json("bf16")),
+        ("memory_admission_percent", Json(81)),
+      ] {
+      let broken = fixture(kind)
+      fields(field(field(broken, "b"), "expected_config"))[key] = value
+      try validate_pair(broken) catch {
+        _ => ()
+      } noraise {
+        _ => fail("accepted drift: " + key)
+      }
+    }
+  }
+  let sample = "prefix \"resident_reference_max_mib\", \"body_orientation_batched\", \"world_staging_batch\", suffix"
+  assert_eq(
+    patch_allowlist(sample),
+    sample.replace(
+      old=" suffix",
+      new=" \"noise_staging_batch\", \"actor_norm_snapshot\", suffix",
+    ),
+  )
+  try patch_allowlist(sample + sample) catch {
+    _ => ()
+  } noraise {
+    _ => fail("accepted ambiguous patch")
+  }
+  println(
+    "Dedicated native4096 wrapper CPU self-tests passed; no processes/GPU",
+  )
+}
+
+///|
+async fn main {
+  match @env.args()[1:].to_owned() {
+    ["--self-test"] => self_test()
+    ["--self-test-source", source] => self_test_source(source)
+    ["--self-test-tools", tools] => self_test_tools(tools)
+    ["--make-specs", source, build, output] => make_specs(source, build, output)
+    ["--derive-tools", repo, output] => derive_tools(repo, output)
+    ["--validate-spec", tools, path] =>
+      delegate(tools, @json.parse(read(path)), ["--validate-spec", path])
+    ["--prepare", tools, path, root] => {
+      delegate(tools, @json.parse(read(path)), ["--prepare", path, root])
+      write(
+        root + "/wrapper-receipt.json",
+        receipt(tools, root).stringify(indent=2) + "\n",
+      )
+    }
+    ["--run", tools, root, index] => {
+      validate_receipt(tools, root)
+      delegate(tools, @json.parse(read(root + "/spec.json")), [
+        "--run", root, index,
+      ])
+    }
+    ["--run-range", tools, root, start, end] => {
+      validate_receipt(tools, root)
+      delegate(tools, @json.parse(read(root + "/spec.json")), [
+        "--run-range", root, start, end,
+      ])
+    }
+    ["--summary", tools, root, output] => {
+      validate_receipt(tools, root)
+      delegate(
+        tools,
+        @json.parse(read(root + "/spec.json")),
+        [root, output],
+        summary=true,
+      )
+    }
+    _ =>
+      fail(
+        "usage: --self-test | --self-test-source G_SOURCE | --self-test-tools TOOLS | --make-specs G_SOURCE BUILD_RECEIPT FRESH_OUTPUT | --derive-tools REPO FRESH_TOOLS | --validate-spec TOOLS SPEC | --prepare TOOLS SPEC FRESH_ROOT | --run TOOLS ROOT INDEX | --run-range TOOLS ROOT START END | --summary TOOLS ROOT FRESH_OUTPUT",
+      )
+  }
+}

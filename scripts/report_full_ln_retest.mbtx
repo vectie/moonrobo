@@ -1,0 +1,229 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+}
+
+///|
+fn get(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn num(j : Json) -> Double raise {
+  guard j is Number(n, ..) else { fail("number required") }
+  n
+}
+
+///|
+fn arr(j : Json) -> Array[Json] raise {
+  guard j is Array(a) else { fail("array required") }
+  a
+}
+
+///|
+fn rounded(n : Double) -> Double {
+  (n * 1000.0).round() / 1000.0
+}
+
+///|
+fn bytes(j : Json) -> Double raise {
+  match j {
+    String(s) => num(@json.parse(s))
+    _ => num(j)
+  }
+}
+
+///|
+async fn native_memory(root : String) -> Array[Json] {
+  let observations : Array[Json] = []
+  for index in [0, 3] {
+    let folder = root + "/pair/run-" + index.to_string()
+    let preflight = @json.parse(
+      @fs.read_file(folder + "/preflight.stdout.log").text(),
+    )
+    let plan = get(preflight, "plan")
+    let phase_plan = get(plan, "phase_plan")
+    let peak_phase = get(phase_plan, "peak_phase")
+    let components = arr(get(phase_plan, "phases")).filter(p => {
+      get(p, "name") == peak_phase
+    })
+    guard components.length() == 1 else { fail("one peak phase required") }
+    let mut allocated = 0.0
+    let mut reserved = 0.0
+    let mut total = 0.0
+    let mut minimum_free = 1.0e30
+    let mut samples = 0
+    for
+      line in @fs.read_file(folder + "/training.stdout.log").text().split("\n") {
+      let parsed = @json.parse(line) catch { _ => continue }
+      guard parsed is Object(m) else { continue }
+      guard m.get("format") ==
+        Some(Json("moonrobo.cuda-training-memory-sample.v1")) else {
+        continue
+      }
+      let a = get(Json(m), "allocator")
+      allocated = allocated.max(bytes(get(a, "allocated_peak_bytes")))
+      reserved = reserved.max(bytes(get(a, "reserved_peak_bytes")))
+      minimum_free = minimum_free.min(bytes(get(a, "cuda_free_bytes")))
+      total = bytes(get(a, "cuda_total_bytes"))
+      samples += 1
+    }
+    guard samples >= 180 && allocated > 0.0 && reserved >= allocated else {
+      fail("complete native stage memory observations required")
+    }
+    observations.push({
+      "run": Json(index),
+      "samples": Json(samples),
+      "cuda_total_bytes": Json(total),
+      "torch_allocated_peak_bytes": Json(allocated),
+      "torch_reserved_peak_bytes": Json(reserved),
+      "minimum_sampled_cuda_free_bytes": Json(minimum_free),
+      "preflight_admission": get(plan, "admission_decision"),
+      "planned_peak_phase": peak_phase,
+      "planned_peak_components": get(components[0], "components"),
+      "scope": "allocator peaks since post-initialization reset; sampled device free; not complete host/physics attribution; UMA metrics are not additive",
+    })
+  }
+  observations
+}
+
+///|
+fn phases(summary : Json) -> Json raise {
+  let values : Map[String, Double] = Map([])
+  for key in ["collection_ms", "world_ms", "actor_critic_ms"] {
+    let rows : Array[Double] = []
+    for run in arr(get(summary, "runs")) {
+      if get(run, "kind") != Json("native") {
+        continue
+      }
+      for row in arr(get(run, "rows"))[40:60] {
+        rows.push(num(get(row, key)))
+      }
+    }
+    guard rows.length() == 40 else { fail("complete native steady window") }
+    values[key] = rows.fold(init=0.0, (a, b) => a + b) / 40.0
+  }
+  Json(values)
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/layernorm-full-retest-20261026"
+  let old = @json.parse(
+    @fs.read_file(
+      "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/hotspot-smc4096-20261026/pair/summary.json",
+    ).text(),
+  )
+  let current = @json.parse(@fs.read_file(root + "/pair/summary.json").text())
+  guard get(current, "accepted") == Json(true) &&
+    get(old, "accepted") == Json(true) else {
+    fail("complete accepted workload pairs required")
+  }
+  let a = num(get(get(current, "a"), "mean_ms"))
+  let b = num(get(get(current, "b"), "mean_ms"))
+  let oa = num(get(get(old, "a"), "mean_ms"))
+  let ob = num(get(get(old, "b"), "mean_ms"))
+  let before = phases(old)
+  let after = phases(current)
+  let gates = @json.parse(@fs.read_file(root + "/gates.json").text())
+  let checks : Array[Json] = []
+  for run in arr(get(gates, "runs")) {
+    guard get(run, "result") is Object(r) else { fail("gate result") }
+    if r.get("numerical_comparison") is Some(comparison) {
+      let failures = arr(get(comparison, "tensors")).filter(t => {
+        num(get(t, "violations")) > 0.0
+      })
+      checks.push({
+        "label": get(run, "label"),
+        "passed": get(comparison, "passed"),
+        "failed_tensors": Json(failures.length()),
+        "failures": Json(failures),
+      })
+    }
+  }
+  let resources = arr(get(current, "runs")).map(r => {
+    get(r, "resource_observations")
+  })
+  let memory = native_memory(root)
+  let result : Json = {
+    "schema": "moonrobo.full-layernorm-retest.v1",
+    "single_agent": true,
+    "throughput_only_not_numerical_promotion": true,
+    "native_ms": Json(a),
+    "smc_compiled_eight512_ms": Json(b),
+    "native_over_smc": Json(a / b),
+    "native_minus_smc_ms": Json(a - b),
+    "previous_native_ms": Json(oa),
+    "previous_smc_ms": Json(ob),
+    "previous_ratio": Json(oa / ob),
+    "historical_native_change_ms": Json(a - oa),
+    "historical_change_is_not_this_run_single_factor_ablation": true,
+    "native_phases_before_ms": before,
+    "native_phases_after_ms": after,
+    "native_phases_are_not_cross_language_difference_attribution": true,
+    "numeric_gates": Json(checks),
+    "resources": Json(resources),
+    "native_memory": Json(memory),
+    "production_defaults_changed": false,
+    "protection_thresholds_changed": false,
+    "measurement": "fresh native/SMC/SMC/native 60-iteration runs; steady41-60; logical4096=8x512, world2048/window8, actor32; no profiler; same pinned parent workload",
+  }
+  @fs.write_file(
+    root + "/results.json",
+    result.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  let report = StringBuilder()
+  report.write_string("# LayerNorm + Linear 完整重测 — 2026-10-26\n\n")
+  report.write_string(
+    "单 agent、179，完整 60 轮 ABBA（MoonBit / smc / smc / MoonBit），每次取第 41–60 轮；无 profiler。world batch2048/window8，actor batch4096=8×512、horizon32，critic5×4。固定同一份协议、执行器与数据；保留全部旧实现。\n\n",
+  )
+  report.write_string(
+    "| 完整训练对照 | MoonBit 秒/轮 | smc compiled 秒/轮 | 倍数 | 差额秒/轮 |\n|---|---:|---:|---:|---:|\n",
+  )
+  report.write_string(
+    "| 上次 | \{rounded(oa/1000.0)} | \{rounded(ob/1000.0)} | \{rounded(oa/ob)} | \{rounded((oa-ob)/1000.0)} |\n",
+  )
+  report.write_string(
+    "| 本次 native LN + world Linear | \{rounded(a/1000.0)} | \{rounded(b/1000.0)} | \{rounded(a/b)} | \{rounded((a-b)/1000.0)} |\n\n",
+  )
+  report.write_string(
+    "[完整 ABBA 原始汇总](pair/summary.json) · [计算结果](results.json) · [数值门槛](gates.json)。本次对照不重用上次的速度样本。跨次历史改善不是本轮单因素因果实验，也不从单个 MLP 的收益乘以8/32推算。\n\n",
+  )
+  report.write_string(
+    "| MoonBit 阶段（毫秒/轮） | 上次 | 本次 |\n|---|---:|---:|\n",
+  )
+  for key in ["collection_ms", "world_ms", "actor_critic_ms"] {
+    report.write_string(
+      "| \{key} | \{rounded(num(get(before,key)))} | \{rounded(num(get(after,key)))} |\n",
+    )
+  }
+  report.write_string(
+    "\n这些阶段是 MoonBit 的同步边界统计；smc 的原始日志不提供本次等范围细项，因此该表不是剩余差额的跨语言因果账单。原来的日志/同步边界差异仍保留在汇总协议中。\n\n",
+  )
+  report.write_string(
+    "## 数值结果与适用范围\n\n8步 world 完整更新对 smc eager 通过原严格门槛（atol2e-6、rtol2e-4），覆盖梯度、Adam参数/矩与归一化状态。对 compiled world 仍有140个首层参数元素超限，最大绝对差约1.10e-5。32步 actor 对 eager/compiled 均未通过，分别68/67项张量或指标比较失败；最后策略层梯度余弦分别约-0.093/0.176。这些失败被保留，未放宽容差。\n\n因此本次是吞吐诊断，不证明训练等价或收敛效果，未切换生产默认实现。固定输入门槛与独立完整训练是不同实验：门槛使用相同iteration60权重、输入、噪声、排列与Adam状态；完整训练同seed不等于双方初值/随机流/轨迹相同。\n\n",
+  )
+  report.write_string(
+    "## 资源与失败记录\n\n原100GiB容器上限、零容器swap、80%准入及16GiB保留、host/cgroup watchdog均保持。早期启动及加载后准入拒绝的a/b/c尝试全部保留且不计入ABBA。只对已核对归属的结束作业、冻结构建/镜像和本任务数据文件请求缓存回收；没有删除文件、全局drop_caches或终止无关服务。有的缓存回收请求无效果，不能按文件大小推定释放量。\n\n完整运行的资源观测、OOM/swap与Docker终态见每个run的原始记录；UMA各项不能相加。最终GPU/Docker空闲核对见[GPU进程](gpu-processes.txt)和[容器](docker-ps.txt)。\n",
+  )
+  report.write_string(
+    "\n系统可见统一内存约121.7 GiB；100 GiB是容器上限，不是整机容量。准入预算约59.7 GiB，峰值阶段为save_optimizer_archives，其中24 GiB为物理引擎预留、约18.9 GiB为设备工作缓存包络；要求空闲约75.7 GiB，含16 GiB保留。这些是估算，不能描述成已被训练实际占用。\n\n",
+  )
+  report.write_string(
+    "| MoonBit 运行 | PyTorch分配峰值 GiB | PyTorch保留峰值 GiB | 阶段采样CUDA最小空闲 GiB |\n|---|---:|---:|---:|\n",
+  )
+  for sample in memory {
+    report.write_string(
+      "| \{num(get(sample,"run"))} | \{rounded(num(get(sample,"torch_allocated_peak_bytes"))/1073741824.0)} | \{rounded(num(get(sample,"torch_reserved_peak_bytes"))/1073741824.0)} | \{rounded(num(get(sample,"minimum_sampled_cuda_free_bytes"))/1073741824.0)} |\n",
+    )
+  }
+  report.write_string(
+    "\nPyTorch峰值从初始化后重置开始，涵盖训练及保存；不包含全部物理引擎、驱动与系统占用。CUDA最小空闲为阶段采样值，并非连续峰值保证；不能与cgroup或host用量直接相加。启动拒绝证明当时未达到准入预算，不证明100多GB不足以运行该配置。失败启动和缓存回执保留在[closure](closure/)。\n",
+  )
+  @fs.write_file(root + "/README.md", report.to_string(), create_mode=CreateNew)
+  println(result.stringify(indent=2))
+}

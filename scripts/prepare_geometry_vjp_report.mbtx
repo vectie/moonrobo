@@ -1,0 +1,14 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+async fn main {
+  let old="output/spark-runtime-20261024/geometry-tail-20261028/";let out="output/spark-runtime-20261024/geometry-vjp-20261028/"
+  let mut report=@fs.read_file(old+"report.mbtx").text()
+  report=report.replace_all(old="geometry-tail-",new="geometry-vjp-")
+  report=report.replace_all(old="startup_guards_revised_at_user_request\":true",new="startup_guards_unchanged_this_campaign\":true")
+  report=report.replace_all(old="let a=median(measured[0].map(r=>spans(r,arr(field(m,\"native_labels\")))));let b=median(measured[1].map(r=>spans(r,arr(field(m,\"native_labels\")))));",new="let names=arr(field(m,\"native_labels\")).copy();if field(m,\"name\")==Json(\"actor_forward\"){names.push(Json(\"actor.soft_failure\"))};let a=median(measured[0].map(r=>spans(r,names)));let b=median(measured[1].map(r=>spans(r,names)));")
+  report=report.replace_all(old="Json(\"actor_forward\")",new="Json(\"actor_forward_geometry_reward_tail\")")
+  report=report.replace_all(old="assert_eq(seen.length(),names.length());total",new="assert_eq(seen.length(),names.length());for name in names { guard name is String(n) else { fail(\"label\") }; let expected = if n == \"diag.actor.imagined_step\" { 256 } else if [\"actor.backward\",\"diag.actor.backward\",\"actor.forward\",\"actor.geometry\",\"actor.reward\",\"actor.tail\",\"actor.soft_failure\",\"diag.actor.reward_termination\",\"diag.actor.tail_value\"].contains(n) { 8 } else if n.has_prefix(\"world.\") { 1 } else { 0 }; if expected > 0 { assert_eq(ss.filter(s => field(s,\"label\") == name).length(), expected) } };total")
+  report=report.replace_all(old="\"native_labels\":field(m,\"native_labels\")",new="\"native_labels\":Json(names)")
+  report=report.replace_all(old="Actor forward boundary mismatch retained: SMC group includes termination.",new="Actor forward includes native soft termination to match SMC; compiler boundaries and reference-access details still differ.")
+  report=report.replace_all(old="\"scope\":field(m,\"scope\")",new="\"scope\":if field(m,\"name\")==Json(\"actor_forward_geometry_reward_tail\"){Json(\"includes native soft failure and SMC termination; return assembly outside both; compiler boundaries/reference access differ\")}else{field(m,\"scope\")}")
+  @fs.write_file(out+"report.mbtx",report)
+}

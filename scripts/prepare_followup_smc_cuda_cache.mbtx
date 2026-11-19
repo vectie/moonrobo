@@ -1,0 +1,28 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let out = repo +
+    "/output/spark-runtime-20261024/world-ln-fk-20261026/advise_followup_smc_cuda.mbtx"
+  let source = @fs.read_file(
+      repo + "/scripts/advise_combo_closed_cuda_cache_b.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="\"phase-combo26-n-collect-trace-native\",",
+      new="\"phase-combo26-n-collect-trace-native\", \"phase-combo26-s-world-off-smc-compiled\", \"phase-combo26-s-world-trace-smc-compiled\", \"phase-combo26-s-actor-off-smc-compiled\", \"phase-combo26-s-actor-trace-smc-compiled\", \"phase-combo26-s-collect-off-smc-compiled\", \"phase-combo26-s-collect-trace-smc-compiled\",",
+    )
+  @fs.write_file(out, source, create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o", "ControlPath=/tmp/moonrobo-operator-179.sock", out, "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_followup_smc_cuda.mbtx",
+    ]) ==
+    0 else {
+    fail("copy")
+  }
+}

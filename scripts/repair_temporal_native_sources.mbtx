@@ -1,0 +1,76 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+}
+
+///|
+/// Source repair only, no numerical operations.
+async fn main {
+  if @fs.exists("docs/PYTHON_DEPENDENCIES.json") {
+    fail(
+      "One-off source migration is already audited; do not rerun its rewrite recipe",
+    )
+  }
+  let manifest = @json.parse(
+    @fs.read_file("scripts/python_reference/temporal-balance-sources.json").text(),
+  )
+  guard manifest is Array(rows) else { fail("source manifest required") }
+  let names = rows.map(fn(row) {
+    guard row is Object(fields) && fields.get("script") is Some(String(name)) else {
+      fail("invalid source row")
+    }
+    name
+  })
+  names.push("probe_g1_replay_directions.mbtx")
+  let transferred = [
+    "export_g1_learned_balance.mbtx", "export_g1_sustained_balance.mbtx", "report_g1_learned_balance.mbtx",
+    "report_g1_sustained_balance.mbtx", "report_g1_balance_teacher_long.mbtx", "report_g1_balance_intervention.mbtx",
+    "report_g1_balance_long_intervention.mbtx", "report_g1_balance_features.mbtx",
+  ]
+  let path = "src/learning_temporal/physics/study_adapters.mbt"
+  let source = @fs.read_file(path)
+    .text()
+    .replace_all(
+      old="@fs.mkdir(output+\"/policy\",recursive=true);@fs.mkdir(output+\"/collection\",recursive=true)",
+      new="if !@fs.exists(output+\"/policy\") {@fs.mkdir(output+\"/policy\",recursive=true)};if !@fs.exists(output+\"/collection\") {@fs.mkdir(output+\"/collection\",recursive=true)}",
+    )
+  let source = source
+    .replace_all(old="let test:Array[Int]", new="let test_seeds:Array[Int]")
+    .replace_all(old="experiment,test,None", new="experiment,test_seeds,None")
+  @fs.write_file(path, source, create_mode=CreateOrTruncate)
+  for name in @fs.readdir("scripts") {
+    if !names.contains(name) || transferred.contains(name) {
+      continue
+    }
+    let path = "scripts/" + name
+    let source = @fs.read_file(path)
+      .text()
+      .replace_all(old=".pt\"", new=".moon.json\"")
+    let source = source.replace_all(
+      old="\"cpu_physics.py\",\"teacher_step_verification.py\"",
+      new="\"cpu_physics.py\",\"teacher_step_verification.py\",\"compare_dynamics.py\"",
+    )
+    @fs.write_file(path, source, create_mode=CreateOrTruncate)
+  }
+  let path = "src/learning_temporal/physics/study_adapters.mbt"
+  let source = @fs.read_file(path)
+    .text()
+    .replace_all(
+      old="\"maximum_latent_reconstruction_error\":0",
+      new="\"maximum_latent_reconstruction_error\":maximum_latent_error.to_json()",
+    )
+  @fs.write_file(path, source, create_mode=CreateOrTruncate)
+  let template = "scripts/temporal_balance_launcher_template.txt"
+  @fs.write_file(
+    template,
+    @fs.read_file(template)
+    .text()
+    .replace(
+      old="root,package,\"--repo\",root,..command",
+      new="root,package,..command,\"--repo\",root",
+    ),
+    create_mode=CreateOrTruncate,
+  )
+}

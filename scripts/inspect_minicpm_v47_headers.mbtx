@@ -1,0 +1,77 @@
+///|
+// Fetch bounded safetensors headers, never tensor payloads. This is offline
+// metadata inspection, not model loading or integrity verification.
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn range_bytes(url : String, first : Int32, count : Int32) -> Bytes {
+  let (code, data, _) = @process.collect_output("curl", [
+    "--fail",
+    "--silent",
+    "--show-error",
+    "--location",
+    "--max-time",
+    "60",
+    "--range",
+    "\{first}-\{first + count - 1}",
+    "--max-filesize",
+    (if count < 4096 { 4096 } else { count }).to_string(),
+    url,
+  ])
+  guard code == 0 && data.binary().length() == count else {
+    fail(
+      "bounded header range failed (code \{code}, received \{data.binary().length()}, expected \{count})",
+    )
+  }
+  data.binary()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 && !@fs.exists(args[2]) else {
+    fail(
+      "usage: inspect_minicpm_v47_headers.mbtx MODEL_INDEX.json NEW_DIRECTORY",
+    )
+  }
+  guard @fs.read_file(args[1]).json() is { "weight_map": Object(index), .. } else {
+    fail("invalid tensor index")
+  }
+  let files : Map[String, Bool] = Map([])
+  for _, entry in index {
+    guard entry is String(file) &&
+      file.has_prefix("model-") &&
+      file.has_suffix(".safetensors") &&
+      !file.contains("/") else {
+      fail("invalid model shard name")
+    }
+    files[file] = true
+  }
+  let ordered = files.keys().to_array()
+  ordered.sort()
+  @fs.mkdir(args[2], recursive=true)
+  let prefix = "https://huggingface.co/openbmb/MiniCPM-V-4.7-35B-A3B/resolve/98e79ba972b586ac6146d3505771ce1467e199ba/"
+  for file in ordered {
+    let first = range_bytes(prefix + file, 0, 8)
+    let mut length = 0UL
+    for i in 0..<8 {
+      length = length | (first[i].to_uint64() << (8 * i))
+    }
+    guard length > 0UL && length <= 16777216UL else {
+      fail("safetensors header length outside metadata budget")
+    }
+    let header = range_bytes(prefix + file, 8, length.to_int())
+    @fs.write_file(
+      args[2] + "/" + file + ".header.json",
+      header,
+      create_mode=CreateNew,
+    )
+    println("inspected \{file}: \{length} header bytes")
+  }
+}

@@ -1,0 +1,255 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = native_collect_output(exe, args)
+  assert_eq(code, 0, msg=stderr.text())
+  stdout.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    3,
+    msg="usage: verify_g1_physics.mbtx ABSOLUTE_REPO ABSOLUTE_OUTPUT",
+  )
+  let root = args[1]
+  let output = args[2]
+  let launcher = root + "/scripts/run_native_learning.mbtx"
+  let experiment = root + "/examples/learning/g1-cpu-experiment.json"
+  let provider = root + "/providers/motion_learning/cpu_physics.py"
+  let scene = root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml"
+  for name in ["first", "repeat"] {
+    ignore(
+      run(launcher, [
+        provider,
+        "--scene",
+        scene,
+        "--experiment",
+        experiment,
+        "--output",
+        output + "/" + name,
+      ]),
+    )
+  }
+  let first = @fs.read_file(output + "/first/dataset.json").text()
+  let repeat = @fs.read_file(output + "/repeat/dataset.json").text()
+  assert_eq(
+    first,
+    repeat,
+    msg="seeded physics transitions must repeat exactly on this environment",
+  )
+  let dataset = @json.parse(first)
+  let episodes = array(field(dataset, "episodes"))
+  assert_eq(episodes.length(), 18)
+  assert_eq(array(field(dataset, "state_axes")).length(), 71)
+  assert_eq(array(field(dataset, "observation_axes")).length(), 93)
+  assert_eq(array(field(dataset, "action_axes")).length(), 29)
+  for episode in episodes {
+    let steps = array(field(episode, "steps"))
+    assert_true(steps.length() > 8)
+    for i in 1..<steps.length() {
+      assert_eq(field(steps[i - 1], "next_state"), field(steps[i], "state"))
+    }
+    let last = steps[steps.length() - 1]
+    assert_true(
+      field(last, "terminated") == true.to_json() ||
+      field(last, "truncated") == true.to_json(),
+    )
+  }
+  let report = @json.parse(@fs.read_file(output + "/first/report.json").text())
+  assert_eq(field(report, "evidence_class"), "physics-simulation".to_json())
+  let trials = array(field(report, "trials"))
+  assert_eq(trials.length(), episodes.length())
+  for i, trial in trials {
+    let steps = array(field(episodes[i], "steps"))
+    assert_eq(field(trial, "episode_id"), field(episodes[i], "id"))
+    assert_eq(field(trial, "steps"), steps.length().to_json())
+    assert_eq(
+      field(trial, "failed"),
+      field(steps[steps.length() - 1], "terminated"),
+    )
+  }
+  let executable = root +
+    "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe"
+  for split in ["train", "validation", "test"] {
+    let batch_text = run(executable, [
+      output + "/first/dataset.json",
+      split,
+      "8",
+    ])
+    @fs.write_file(
+      output + "/" + split + "-batch.json",
+      batch_text,
+      create_mode=CreateOrTruncate,
+    )
+    let batch = @json.parse(batch_text)
+    let windows = array(field(batch, "windows"))
+    assert_true(windows.length() > 0)
+    assert_eq(array(field(batch, "state")).length(), windows.length() * 8 * 71)
+    assert_eq(
+      array(field(batch, "applied_action")).length(),
+      windows.length() * 8 * 29,
+    )
+    assert_eq(array(field(batch, "context")).length(), windows.length() * 2)
+    println("\{split}: \{windows.length()} windows accepted by MoonBit reader")
+  }
+  // Time-limit and physical terminal labels must be independently exercised.
+  let config = @json.parse(@fs.read_file(experiment).text())
+  guard config is Object(fields) else { fail("expected experiment") }
+  fields["duration_s"] = 0.02.to_json()
+  fields["controllers"] = ["position"].to_json()
+  let short_config = output + "/short.json"
+  @fs.write_file(short_config, config.stringify(), create_mode=CreateOrTruncate)
+  ignore(
+    run(launcher, [
+      provider,
+      "--scene",
+      scene,
+      "--experiment",
+      short_config,
+      "--output",
+      output + "/short",
+    ]),
+  )
+  let short = @json.parse(@fs.read_file(output + "/short/dataset.json").text())
+  for episode in array(field(short, "episodes")) {
+    let steps = array(field(episode, "steps"))
+    assert_eq(steps.length(), 1)
+    assert_eq(field(steps[0], "terminated"), false.to_json())
+    assert_eq(field(steps[0], "truncated"), true.to_json())
+  }
+  fields["action_noise_std_rad"] = 0.05.to_json()
+  @fs.write_file(short_config, config.stringify(), create_mode=CreateOrTruncate)
+  ignore(
+    run(launcher, [
+      provider,
+      "--scene",
+      scene,
+      "--experiment",
+      short_config,
+      "--output",
+      output + "/exploration",
+    ]),
+  )
+  let exploration = @json.parse(
+    @fs.read_file(output + "/exploration/dataset.json").text(),
+  )
+  for episode in array(field(exploration, "episodes")) {
+    let first = array(field(episode, "steps"))[0]
+    assert_true(
+      field(first, "applied_action") != field(first, "goal"),
+      msg="exploration must log applied noisy controls",
+    )
+  }
+  println(
+    "Verified G1 CPU physics: repeated transitions, state continuity, report bindings and truncation labels.",
+  )
+  println(field(report, "summaries").stringify(indent=2))
+}
+
+///|
+/// Checkpoint copies are validated or converted by the reviewed native loader.
+fn native_checkpoint_copy_command(
+  exe : String,
+  args : Array[String],
+) -> (String, Array[String])? raise {
+  if exe != "/bin/cp" || args.length() < 2 {
+    return None
+  }
+  if !args[0].has_suffix(".moon.json") &&
+    !args[0].has_suffix(".pt") &&
+    !args[1].has_suffix(".moon.json") {
+    return None
+  }
+  guard args.length() == 2 && args[1].has_suffix(".moon.json") else {
+    fail("checkpoint copies require SOURCE and native .moon.json DESTINATION")
+  }
+  let name = args[0].split("/").last().unwrap_or("").to_owned()
+  let kind = if name.contains("dynamics-seed-") {
+    "residual-dynamics"
+  } else if name.contains("actor-seed-") {
+    "g1-actor"
+  } else {
+    fail("unreviewed checkpoint copy kind: " + name)
+  }
+  let root = @env.args()[1]
+  Some(
+    (
+      root,
+      [
+        "run",
+        root + "/scripts/run_native_learning.mbtx",
+        root,
+        "src/learning_training/launch/cmd",
+        "checkpoint-copy",
+        args[0],
+        args[1],
+        kind,
+      ],
+    ),
+  )
+}
+
+///|
+/// Structured native dispatch. A .py argument is a reviewed provider descriptor, never an executable or an interpreter fallback.
+async fn native_collect_output(
+  exe : String,
+  args : Array[String],
+) -> (Int32, &@io.Data, &@io.Data) {
+  let suffix = "/scripts/run_native_learning.mbtx"
+  if exe.has_suffix(suffix) {
+    let root = exe[:exe.length() - suffix.length()].to_owned()
+    let command = ["run", exe, root, "src/learning_training/launch/cmd"]
+    command.append(args)
+    return @process.collect_output("moon", command, cwd=root)
+  }
+  if native_checkpoint_copy_command(exe, args) is Some((root, command)) {
+    return @process.collect_output("moon", command, cwd=root)
+  }
+  @process.collect_output(exe, args)
+}
+
+///|
+async fn native_process_run(
+  exe : String,
+  args : Array[String],
+  stdout? : &@process.ProcessOutput,
+  stderr? : &@process.ProcessOutput,
+) -> Int32 {
+  let suffix = "/scripts/run_native_learning.mbtx"
+  if exe.has_suffix(suffix) {
+    let root = exe[:exe.length() - suffix.length()].to_owned()
+    let command = ["run", exe, root, "src/learning_training/launch/cmd"]
+    command.append(args)
+    return @process.run("moon", command, cwd=root, stdout?, stderr?)
+  }
+  if native_checkpoint_copy_command(exe, args) is Some((root, command)) {
+    return @process.run("moon", command, cwd=root, stdout?, stderr?)
+  }
+  @process.run(exe, args, stdout?, stderr?)
+}

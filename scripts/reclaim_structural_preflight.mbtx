@@ -1,0 +1,8 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  for name in ["primitives-safe-actor-gate-a","primitives-preserve-actor-gate-a","primitives-cross-actor-gate-b","primitives-constants-actor-gate-a","primitives-safe-actor-abba-a","primitives-preserve-actor-abba-a","primitives-constants-actor-abba-a","primitives-smc-world-off-a","primitives-smc-actor-off-a","primitives-smc-world-events-c","primitives-smc-actor-events-a"] {
+    println("Inspecting closed task-owned pages "+name)
+    guard @process.run("/home/wlc004s/moonrobo/toolchain/bin/moon",["run","--target","native",base+"/advise_primitives_compiler.mbtx","--","structural-preflight-"+name,name],stdout=@process.redirect_to_file(base+"/structural-preflight-"+name+".stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(base+"/structural-preflight-"+name+".stderr.log",create_mode=CreateNew))==0 else {fail(name)}
+  }
+}

@@ -1,0 +1,886 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+// Independent, read-only numeric decoder for the small N1 CPU storage gate.
+// No tensor, simulator, process, network or GPU APIs are imported.
+struct Blob {
+  file : String
+  dtype : String
+  shape : Array[Int32]
+  count : Int64
+  byte_length : Int64
+  sha256 : String
+} derive(FromJson)
+
+///|
+struct Transition {
+  s : Array[Double]
+  s1 : Array[Double]
+  a : Array[Double]
+  a_prev : Array[Double]
+  xi : Array[Double]
+  r : Double
+  frame : Int32
+  ep_step : Int32
+  terminated : Bool
+  truncated : Bool
+} derive(FromJson)
+
+///|
+struct LocalRuntime {
+  format : String
+  config : Json
+  observation_mode : String
+  motion_names : Array[String]
+  motion_sha256 : Array[String]
+  source_fps : Double
+  capacity : Int32
+  num_envs : Int32
+  iteration : Int32
+  step_accumulator : Double
+  rng : UInt32
+  histories : Array[Array[Array[Double]]]
+  replay : Array[Array[Transition]]
+} derive(FromJson)
+
+///|
+struct LocalPhysics {
+  config : Json
+  physics : Array[Array[Double]]
+  frames : Array[Int32]
+  episode_steps : Array[Int32]
+  start_bins : Array[Int32]
+  previous : Array[Array[Double]]
+  xi : Array[Array[Double]]
+  initialized : Array[Bool]
+  returns : Array[Double]
+  discounted : Array[Double]
+  bin_returns : Array[Double]
+  bin_average : Array[Double]
+  bin_completed : Array[Int32]
+  rng : UInt32
+} derive(FromJson)
+
+///|
+struct Comparison {
+  file : String
+  dtype : String
+  shape : Array[Int32]
+  elements : Int64
+  bit_mismatches : Int32
+  signed_zero_mismatches : Int32
+  negative_zero_left : Int32
+  negative_zero_right : Int32
+  first_mismatch : Json
+  expected_le_sha256 : String
+  actual_le_sha256 : String
+} derive(ToJson)
+
+///|
+struct TensorDigest {
+  sha256 : String
+  dtype : String
+  shape : Array[Int32]
+  elements : Int64
+} derive(ToJson, FromJson)
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(found) else {
+    fail("missing field: " + key)
+  }
+  found
+}
+
+///|
+fn sha(bytes : Bytes) -> String {
+  let hash = @crypto.SHA256::new()
+  hash.update(bytes)
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+fn valid_sha(value : String) -> Bool {
+  value.length() == 64 &&
+  value.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+async fn json_input(path : String, maximum : Int64) -> (Json, String) {
+  guard @fs.kind(path, follow_symlink=false) is Regular else {
+    fail("input must be a regular file: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= maximum else {
+    fail("input exceeds small-gate JSON bound: " + path)
+  }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else { fail("JSON changed while reading") }
+  (@json.parse(@utf8.decode(bytes)), sha(bytes))
+}
+
+///|
+async fn generation(root : String, version : String) -> (Json, Json, String) {
+  guard @fs.kind(root, follow_symlink=false) is Directory else {
+    fail("generation must be a real directory")
+  }
+  let (receipt, receipt_sha) = json_input(root + "/receipt.json", 65536L)
+  let (state, state_sha) = json_input(root + "/state.json", 4194304L)
+  guard field(receipt, "format") ==
+    Json("moonrobo.native-tensor-checkpoint-pointer." + version) &&
+    field(state, "format") ==
+    Json("moonrobo.native-tensor-training-generation." + version) &&
+    field(field(receipt, "files"), "state.json") == Json(state_sha) &&
+    field(receipt, "iteration") == field(field(state, "runtime"), "iteration") else {
+    fail("generation format, iteration or state SHA mismatch")
+  }
+  (state, receipt, receipt_sha)
+}
+
+///|
+fn checked_blob(
+  value : Json,
+  name : String,
+  dtype : String,
+  shape : Array[Int32],
+  receipt : Json,
+  seen : Map[String, Bool],
+) -> Blob raise {
+  let b : Blob = @json.from_json(value)
+  let width = match dtype {
+    "f64le" => 8L
+    "i32le" => 4L
+    "u8" => 1L
+    _ => fail("dtype")
+  }
+  let mut count = 1L
+  for dimension in shape {
+    guard dimension >= 0 && dimension <= 1048576 else { fail("shape bound") }
+    count *= dimension.to_int64()
+    guard count <= 1048576L else { fail("small-gate element bound exceeded") }
+  }
+  guard b.file == name &&
+    b.dtype == dtype &&
+    b.shape == shape &&
+    b.count == count &&
+    b.byte_length == count * width &&
+    b.byte_length <= 2097152L &&
+    valid_sha(b.sha256) &&
+    !seen.contains(name) &&
+    field(field(receipt, "files"), name) == Json(b.sha256) else {
+    fail("sidecar metadata/receipt mismatch: " + name)
+  }
+  seen[name] = true
+  b
+}
+
+///|
+fn f64_bits(value : Double) -> UInt64 raise {
+  guard value - value == 0.0 else { fail("nonfinite v1 value") }
+  value.reinterpret_as_uint64()
+}
+
+///|
+fn zero_bits(value : UInt64) -> Bool {
+  (value & 0x7fffffffffffffffUL) == 0UL
+}
+
+///|
+fn little_endian(bytes : Bytes, offset : Int32, width : Int32) -> UInt64 {
+  let mut value = 0UL
+  for i in 0..<width {
+    value = value | (bytes[offset + i].to_uint64() << (i * 8))
+  }
+  value
+}
+
+///|
+async fn compare_blob(
+  root : String,
+  b : Blob,
+  expected : (Int32) -> UInt64 raise,
+) -> Comparison {
+  let path = root + "/" + b.file
+  guard @fs.kind(path, follow_symlink=false) is Regular else {
+    fail("sidecar must be regular: " + b.file)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  guard file.kind() is Regular && file.size() == b.byte_length else {
+    fail("sidecar length differs: " + b.file)
+  }
+  let width = match b.dtype {
+    "f64le" => 8
+    "i32le" => 4
+    "u8" => 1
+    _ => fail("dtype")
+  }
+  let actual_hash = @crypto.SHA256::new()
+  let expected_hash = @crypto.SHA256::new()
+  let mut mismatches = 0
+  let mut signed_zero = 0
+  let mut negative_left = 0
+  let mut negative_right = 0
+  let mut first = Json::null()
+  for offset = 0; offset < b.count.to_int(); {
+    let count = (b.count.to_int() - offset).min(65536 / width)
+    let bytes = file.read_exactly_at(
+      count * width,
+      position=(offset * width).to_int64(),
+    )
+    actual_hash.update(bytes)
+    let wanted : Array[UInt64] = []
+    for i in 0..<count {
+      let left = expected(offset + i)
+      let right = little_endian(bytes, i * width, width)
+      wanted.push(left)
+      if b.dtype == "f64le" {
+        guard (right & 0x7ff0000000000000UL) != 0x7ff0000000000000UL else {
+          fail("nonfinite v2 f64: " + b.file)
+        }
+        if left == 0x8000000000000000UL {
+          negative_left += 1
+        }
+        if right == 0x8000000000000000UL {
+          negative_right += 1
+        }
+      }
+      if left != right {
+        mismatches += 1
+        if first is Null {
+          first = {
+            "index": Json(offset + i),
+            "v1_bits_uint64": Json(left.to_string()),
+            "v2_bits_uint64": Json(right.to_string()),
+          }
+        }
+        if b.dtype == "f64le" && zero_bits(left) && zero_bits(right) {
+          signed_zero += 1
+        }
+      }
+    }
+    expected_hash.update(
+      Bytes::makei(count * width, i => {
+        (wanted[i / width] >> (i % width * 8)).to_byte()
+      }),
+    )
+    continue offset + count
+  }
+  let actual_sha = @crypto.bytes_to_hex_string(actual_hash.finalize())
+  guard file.size() == b.byte_length && actual_sha == b.sha256 else {
+    fail("sidecar SHA/EOF changed: " + b.file)
+  }
+  {
+    file: b.file,
+    dtype: b.dtype,
+    shape: b.shape,
+    elements: b.count,
+    bit_mismatches: mismatches,
+    signed_zero_mismatches: signed_zero,
+    negative_zero_left: negative_left,
+    negative_zero_right: negative_right,
+    first_mismatch: first,
+    expected_le_sha256: @crypto.bytes_to_hex_string(expected_hash.finalize()),
+    actual_le_sha256: actual_sha,
+  }
+}
+
+///|
+fn replay_number(tr : Transition, i : Int32) -> Double {
+  if i < 71 {
+    tr.s[i]
+  } else if i < 142 {
+    tr.s1[i - 71]
+  } else if i < 171 {
+    tr.a[i - 142]
+  } else if i < 200 {
+    tr.a_prev[i - 171]
+  } else if i < 233 {
+    tr.xi[i - 200]
+  } else {
+    tr.r
+  }
+}
+
+///|
+fn require_same(left : Json, right : Json, label : String) -> Unit raise {
+  guard left == right else { fail("metadata differs: " + label) }
+}
+
+///|
+fn no_distributed(value : Json) -> Bool {
+  guard value is Object(fields) else { return false }
+  fields.get("distributed") is (None | Some(Null))
+}
+
+///|
+fn validate_small_runtime(runtime : LocalRuntime) -> Unit raise {
+  guard runtime.format == "moonrobo-aligned-gpu-runtime-v1" &&
+    runtime.num_envs == 1 &&
+    runtime.capacity == 64 &&
+    runtime.iteration >= 1 &&
+    runtime.iteration <= 2 &&
+    runtime.observation_mode == "paper" &&
+    runtime.motion_names.length() == 40 &&
+    runtime.motion_sha256.length() == 40 &&
+    runtime.source_fps == 30.0 &&
+    runtime.rng != 0U &&
+    runtime.histories.length() == 1 &&
+    (runtime.histories[0].is_empty() || runtime.histories[0].length() == 10) &&
+    runtime.histories[0].all(row => row.length() == 93) &&
+    runtime.replay.length() <= 64 &&
+    runtime.replay.all(row => row.length() == 1) else {
+    fail(
+      "this comparator only supports the N1/40-clip/64-replay/iteration1..2 CPU gate",
+    )
+  }
+  for
+    (key, expected) in [
+      ("hist", 10),
+      ("goal_frames", 10),
+      ("horizon", 4),
+      ("wm_window", 2),
+      ("wm_batch", 2),
+      ("policy_batch", 2),
+    ] {
+    require_same(
+      field(runtime.config, key),
+      Json(expected),
+      "small config " + key,
+    )
+  }
+  for row in runtime.replay {
+    let tr = row[0]
+    guard tr.s.length() == 71 &&
+      tr.s1.length() == 71 &&
+      tr.a.length() == 29 &&
+      tr.a_prev.length() == 29 &&
+      tr.xi.length() == 33 &&
+      tr.frame >= 0 &&
+      tr.ep_step >= 0 else {
+      fail("invalid v1 transition dimensions/index")
+    }
+  }
+}
+
+///|
+async fn actor_metadata(
+  actor : String,
+  reloaded : String,
+  state : Json,
+  receipt : Json,
+  receipt_sha : String,
+  catalog : Json,
+) -> Json {
+  let (a, a_sha) = json_input(actor + "/actor.json", 1048576L)
+  let (b, b_sha) = json_input(reloaded + "/actor.json", 1048576L)
+  for key in ["format", "spec", "contract", "parameters", "source"] {
+    require_same(field(a, key), field(b, key), "actor " + key)
+  }
+  require_same(
+    field(a, "format"),
+    "moonrobo.native-tensor-actor.v1",
+    "actor format",
+  )
+  let source = field(a, "source")
+  require_same(
+    field(source, "identity"),
+    field(state, "identity"),
+    "actor identity",
+  )
+  require_same(
+    field(source, "iteration"),
+    field(receipt, "iteration"),
+    "actor iteration",
+  )
+  require_same(
+    field(source, "checkpoint_receipt_sha256"),
+    Json(receipt_sha),
+    "actor receipt",
+  )
+  require_same(
+    field(source, "checkpoint_files"),
+    field(receipt, "files"),
+    "actor source file set",
+  )
+  for key in ["motion_names", "motion_sha256", "source_fps"] {
+    require_same(
+      field(source, key),
+      field(catalog, key),
+      "actor catalog " + key,
+    )
+  }
+  let metadata = field(state, "learner")
+  guard field(metadata, "normalizers") is Array(norms) && norms.length() == 5 else {
+    fail("normalizers")
+  }
+  let spec = field(a, "spec")
+  require_same(
+    field(spec, "format"),
+    "moonrobo.native-tensor-actor-spec.v1",
+    "actor spec format",
+  )
+  require_same(
+    field(spec, "observation_mode"),
+    field(metadata, "observation_mode"),
+    "actor observation mode",
+  )
+  for key in ["hist", "goal_frames"] {
+    require_same(
+      field(spec, key),
+      field(field(metadata, "config"), key),
+      "actor " + key,
+    )
+  }
+  require_same(
+    field(spec, "obs_norm"),
+    norms[2],
+    "actor observation normalizer",
+  )
+  require_same(field(spec, "goal_norm"), norms[3], "actor goal normalizer")
+  require_same(
+    field(spec, "hidden"),
+    field(field(metadata, "config"), "policy_hidden"),
+    "actor shape",
+  )
+  guard field(state, "shared_state_digest") is Object(shared) &&
+    shared.get("optimizers") is Some(Array(optimizers)) &&
+    optimizers.length() == 3 else {
+    fail("expected direct held-state attestation")
+  }
+  require_same(field(optimizers[1], "name"), "policy", "policy optimizer order")
+  let parameters : Array[TensorDigest] = @json.from_json(field(a, "parameters"))
+  guard !parameters.is_empty() && parameters.length() <= 64 else {
+    fail("actor parameter count bound")
+  }
+  let parameter_hash = @crypto.SHA256::new()
+  for i, parameter in parameters {
+    let label = "parameter-\{i}"
+    let bytes = @utf8.encode(Json(parameter).stringify())
+    parameter_hash.update(
+      @utf8.encode("\{label.length()}:" + label + ":\{bytes.length()}:"),
+    )
+    parameter_hash.update(bytes)
+  }
+  let parameter_sha = @crypto.bytes_to_hex_string(parameter_hash.finalize())
+  require_same(
+    Json(parameter_sha),
+    field(optimizers[1], "parameters_sha256"),
+    "actor actual policy parameter digests",
+  )
+  {
+    "metadata_equal": true,
+    "source_and_policy_digests_verified": true,
+    "actor_metadata_sha256": a_sha,
+    "reloaded_metadata_sha256": b_sha,
+    "actor_archive_sha256": field(a, "archive_sha256"),
+    "reloaded_archive_sha256": field(b, "archive_sha256"),
+    "actor_archives_verified_locally": false,
+    "forward_executed": false,
+  }
+}
+
+///|
+async fn compare(
+  left : String,
+  right : String,
+  actor : String?,
+  reloaded : String?,
+) -> Json {
+  let left = @fs.realpath(left)
+  let right = @fs.realpath(right)
+  let (a, ar, ar_sha) = generation(left, "v1")
+  let (b, br, br_sha) = generation(right, "v2")
+  require_same(field(a, "identity"), field(b, "identity"), "identity")
+  let config = field(field(a, "identity"), "config")
+  require_same(
+    field(config, "profile"),
+    "native-tensor-cpu-stream-checkpoint-gate",
+    "scope",
+  )
+  require_same(field(config, "device"), "cpu", "device")
+  require_same(field(config, "backend"), "mujoco", "physics")
+  let r : LocalRuntime = @json.from_json(field(a, "runtime"))
+  validate_small_runtime(r)
+  let v = field(b, "runtime")
+  require_same(
+    field(v, "format"),
+    "moonrobo-aligned-gpu-runtime-v2",
+    "runtime schema",
+  )
+  guard no_distributed(field(a, "runtime")) && no_distributed(v) else {
+    fail("distributed not supported")
+  }
+  for
+    key in [
+      "config", "observation_mode", "source_fps", "capacity", "num_envs", "iteration",
+      "counters", "rng",
+    ] {
+    require_same(
+      field(field(a, "runtime"), key),
+      field(v, key),
+      "runtime " + key,
+    )
+  }
+  let next_accumulator : Double = @json.from_json(field(v, "step_accumulator"))
+  guard f64_bits(r.step_accumulator) == f64_bits(next_accumulator) else {
+    fail("step accumulator bits differ")
+  }
+  let p : LocalPhysics = @json.from_json(field(a, "environment"))
+  let physical = field(b, "environment")
+  require_same(field(physical, "backend"), "mujoco-cpu-native", "backend")
+  let q = field(physical, "metadata")
+  require_same(
+    field(q, "format"),
+    "moonrobo.aligned.mujoco-stream.v2",
+    "physical schema",
+  )
+  require_same(field(q, "config"), p.config, "physical config")
+  require_same(field(q, "rng"), Json(p.rng), "physical RNG")
+  require_same(field(q, "num_envs"), 1, "physical worlds")
+  guard p.physics.length() == 1 &&
+    p.physics[0].length() > 0 &&
+    p.physics[0].length() <= 16384 &&
+    p.frames.length() == 1 &&
+    p.episode_steps.length() == 1 &&
+    p.start_bins.length() == 1 &&
+    p.previous.length() == 1 &&
+    p.previous[0].length() == 29 &&
+    p.xi.length() == 1 &&
+    p.xi[0].length() == 33 &&
+    p.initialized.length() == 1 &&
+    p.returns.length() == 1 &&
+    p.discounted.length() == 1 &&
+    p.bin_returns.length() > 0 &&
+    p.bin_returns.length() <= 65536 &&
+    p.bin_average.length() == p.bin_returns.length() &&
+    p.bin_completed.length() == p.bin_returns.length() else {
+    fail("physical/sampler small-gate dimensions exceeded")
+  }
+  require_same(
+    field(q, "integration_width"),
+    Json(p.physics[0].length()),
+    "integration width",
+  )
+  let seen : Map[String, Bool] = {
+    "state.json": true,
+    "world.pt": true,
+    "policy.pt": true,
+    "critic.pt": true,
+  }
+  let catalog_desc : Blob = @json.from_json(field(v, "catalog"))
+  guard catalog_desc.byte_length > 0L && catalog_desc.byte_length <= 1048576L else {
+    fail("catalog bound")
+  }
+  let catalog_desc = checked_blob(
+    field(v, "catalog"),
+    "catalog.json",
+    "u8",
+    [catalog_desc.byte_length.to_int()],
+    br,
+    seen,
+  )
+  let (catalog, catalog_sha) = json_input(right + "/catalog.json", 1048576L)
+  let catalog_file = @fs.open(right + "/catalog.json", mode=ReadOnly)
+  let catalog_length = catalog_file.size()
+  catalog_file.close()
+  guard catalog_length == catalog_desc.byte_length else {
+    fail("catalog byte length differs")
+  }
+  require_same(Json(catalog_sha), Json(catalog_desc.sha256), "catalog SHA")
+  require_same(field(v, "catalog_digest"), Json(catalog_sha), "catalog digest")
+  require_same(field(v, "catalog_count"), 40, "catalog count")
+  require_same(
+    field(catalog, "format"),
+    "moonrobo.native-runtime-catalog.v2",
+    "catalog schema",
+  )
+  require_same(
+    field(catalog, "motion_names"),
+    Json(r.motion_names),
+    "catalog order/names",
+  )
+  require_same(
+    field(catalog, "motion_sha256"),
+    Json(r.motion_sha256),
+    "catalog source hashes",
+  )
+  require_same(field(catalog, "source_fps"), Json(r.source_fps), "catalog fps")
+  let result : Array[Comparison] = []
+  let add = async fn(
+    value : Json,
+    file : String,
+    dtype : String,
+    shape : Array[Int32],
+    expected : (Int32) -> UInt64 raise,
+  ) {
+    let descriptor = checked_blob(value, file, dtype, shape, br, seen)
+    result.push(compare_blob(right, descriptor, expected))
+  }
+  add(field(v, "history_lengths"), "history.lengths.i32le", "i32le", [1], _ => {
+    r.histories[0].length().to_uint64()
+  })
+  add(
+    field(v, "history_values"),
+    "history.values.f64le",
+    "f64le",
+    [1, 10, 93],
+    i => {
+      f64_bits(
+        if r.histories[0].is_empty() {
+          0.0
+        } else {
+          r.histories[0][i / 93][i % 93]
+        },
+      )
+    },
+  )
+  let replay = field(v, "replay")
+  require_same(
+    field(replay, "format"),
+    "moonrobo.replay-stream.v2",
+    "replay schema",
+  )
+  for
+    (key, expected) in [
+      ("capacity", 64),
+      ("num_envs", 1),
+      ("rows", r.replay.length()),
+    ] {
+    require_same(field(replay, key), Json(expected), "replay " + key)
+  }
+  add(
+    field(replay, "values"),
+    "replay.values.f64le",
+    "f64le",
+    [r.replay.length(), 1, 234],
+    i => f64_bits(replay_number(r.replay[i / 234][0], i % 234)),
+  )
+  add(
+    field(replay, "indices"),
+    "replay.indices.i32le",
+    "i32le",
+    [r.replay.length(), 1, 2],
+    i => {
+      (if i % 2 == 0 {
+        r.replay[i / 2][0].frame
+      } else {
+        r.replay[i / 2][0].ep_step
+      }).to_uint64()
+    },
+  )
+  add(
+    field(replay, "flags"),
+    "replay.flags.u8",
+    "u8",
+    [r.replay.length(), 1, 2],
+    i => {
+      if (if i % 2 == 0 {
+          r.replay[i / 2][0].terminated
+        } else {
+          r.replay[i / 2][0].truncated
+        }) {
+        1UL
+      } else {
+        0UL
+      }
+    },
+  )
+  add(
+    field(q, "physics"),
+    "environment.physics.f64le",
+    "f64le",
+    [1, p.physics[0].length()],
+    i => f64_bits(p.physics[0][i]),
+  )
+  add(field(q, "values"), "environment.values.f64le", "f64le", [1, 64], i => {
+    f64_bits(
+      if i < 29 {
+        p.previous[0][i]
+      } else if i < 62 {
+        p.xi[0][i - 29]
+      } else if i == 62 {
+        p.returns[0]
+      } else {
+        p.discounted[0]
+      },
+    )
+  })
+  add(field(q, "indices"), "environment.indices.i32le", "i32le", [1, 3], i => {
+    (match i {
+      0 => p.frames[0]
+      1 => p.episode_steps[0]
+      _ => p.start_bins[0]
+    }).to_uint64()
+  })
+  add(field(q, "initialized"), "environment.initialized.u8", "u8", [1], _ => {
+    if p.initialized[0] {
+      1UL
+    } else {
+      0UL
+    }
+  })
+  let sampler = field(q, "sampler")
+  require_same(
+    field(sampler, "format"),
+    "moonrobo.return-sampler-stream.v2",
+    "sampler schema",
+  )
+  require_same(
+    field(sampler, "bins"),
+    Json(p.bin_returns.length()),
+    "sampler bin count",
+  )
+  let gamma : Double = @json.from_json(field(p.config, "gamma"))
+  let saved_gamma : Double = @json.from_json(field(sampler, "gamma"))
+  let saved_gmax : Double = @json.from_json(field(sampler, "g_max"))
+  guard f64_bits(gamma) == f64_bits(saved_gamma) &&
+    f64_bits(0.1 / (1.0 - gamma)) == f64_bits(saved_gmax) else {
+    fail("sampler constants differ")
+  }
+  add(
+    field(sampler, "returns"),
+    "sampler.returns.f64le",
+    "f64le",
+    [p.bin_returns.length()],
+    i => f64_bits(p.bin_returns[i]),
+  )
+  add(
+    field(sampler, "average"),
+    "sampler.average.f64le",
+    "f64le",
+    [p.bin_returns.length()],
+    i => f64_bits(p.bin_average[i]),
+  )
+  add(
+    field(sampler, "completed"),
+    "sampler.completed.i32le",
+    "i32le",
+    [p.bin_returns.length()],
+    i => p.bin_completed[i].to_uint64(),
+  )
+  guard field(ar, "files") is Object(old_files) &&
+    old_files.length() == 4 &&
+    field(br, "files") is Object(new_files) &&
+    new_files.length() == seen.length() &&
+    new_files.iter().all(pair => seen.contains(pair.0)) else {
+    fail("receipt member set differs")
+  }
+  let actor_report = match (actor, reloaded) {
+    (None, None) => Json::null()
+    (Some(actor), Some(reloaded)) =>
+      actor_metadata(actor, reloaded, b, br, br_sha, catalog)
+    _ => fail("provide both actor metadata directories")
+  }
+  {
+    "format": "moonrobo.small-gate-rank-local-comparison.v1",
+    "iteration": Json(r.iteration),
+    "left_generation": left,
+    "right_generation": right,
+    "left_receipt_sha256": ar_sha,
+    "right_receipt_sha256": br_sha,
+    "metadata_equal": true,
+    "all_numeric_bits_equal": Json(result.all(x => x.bit_mismatches == 0)),
+    "numeric_elements": Json(result.fold(init=0L, (n, x) => n + x.elements)),
+    "sections": Json(result),
+    "catalog_entries": Json(r.motion_names.length()),
+    "replay_rows": Json(r.replay.length()),
+    "actor_metadata": actor_report,
+    "model_archives_verified_locally": false,
+    "training_executed": false,
+    "physics_executed": false,
+    "gpu_accessed": false,
+    "scope": "N1 H4 K2 storage correctness; excludes model archive decode, convergence and robot transfer",
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  let options : Map[String, String] = Map([])
+  guard args.length() >= 7 && args.length() % 2 == 1 else {
+    fail(
+      "usage: compare --left-v1 DIR --right-v2 DIR --output FRESH_JSON [--actor DIR --actor-reloaded DIR]",
+    )
+  }
+  for i = 1; i < args.length(); i = i + 2 {
+    let key = args[i]
+    guard ["--left-v1", "--right-v2", "--output", "--actor", "--actor-reloaded"].contains(
+        key,
+      ) &&
+      !options.contains(key) else {
+      fail("unknown/duplicate option")
+    }
+    options[key] = args[i + 1]
+  }
+  guard options.get("--left-v1") is Some(left) &&
+    options.get("--right-v2") is Some(right) &&
+    options.get("--output") is Some(output) else {
+    fail("missing required option")
+  }
+  guard !@fs.exists(output) else { fail("output must be fresh") }
+  let report = compare(
+    left,
+    right,
+    options.get("--actor"),
+    options.get("--actor-reloaded"),
+  )
+  @fs.write_file(
+    output,
+    @utf8.encode(report.stringify(indent=2) + "\n"),
+    create_mode=CreateNew,
+    sync=Full,
+  )
+  println(report.stringify())
+  guard field(report, "all_numeric_bits_equal") == Json(true) else {
+    fail("rank-local numeric bits differ; report preserved")
+  }
+}
+
+///|
+async test "independent binary comparison preserves signed zero and rejects corrupt SHA" {
+  let directory = @fs.tmpdir(prefix="moonrobo-local-state-")
+  defer @fs.rmdir(directory, recursive=true)
+  let values = [0.0, -0.0, 1.25, -3.5]
+  let bytes = Bytes::makei(32, i => {
+    (values[i / 8].reinterpret_as_uint64() >> (i % 8 * 8)).to_byte()
+  })
+  @fs.write_file(directory + "/fixture.f64le", bytes, create_mode=CreateNew)
+  let b : Blob = {
+    file: "fixture.f64le",
+    dtype: "f64le",
+    shape: [4],
+    count: 4L,
+    byte_length: 32L,
+    sha256: sha(bytes),
+  }
+  let exact = compare_blob(directory, b, i => f64_bits(values[i]))
+  assert_eq(exact.bit_mismatches, 0)
+  assert_eq(exact.negative_zero_left, 1)
+  assert_eq(exact.negative_zero_right, 1)
+  let signed = compare_blob(directory, b, i => {
+    f64_bits(if i == 1 { 0.0 } else { values[i] })
+  })
+  assert_eq(signed.bit_mismatches, 1)
+  assert_eq(signed.signed_zero_mismatches, 1)
+  try
+    compare_blob(directory, { ..b, sha256: "a".repeat(64), }, i => {
+      f64_bits(values[i])
+    })
+  catch {
+    Failure(message) => assert_true(message.contains("SHA"))
+    error => raise error
+  } noraise {
+    _ => fail("corrupt SHA accepted")
+  }
+}

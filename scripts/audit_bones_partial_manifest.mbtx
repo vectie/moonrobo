@@ -1,0 +1,292 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/string",
+  "moonbitlang/x/crypto",
+}
+
+///|
+fn field(value : Json, name : String) -> Json raise {
+  guard value is Object(fields) && fields.get(name) is Some(result) else {
+    fail("missing BONES partial manifest field: " + name)
+  }
+  result
+}
+
+///|
+fn text(value : Json) -> String raise {
+  guard value is String(result) else { fail("expected string") }
+  result
+}
+
+///|
+fn nonnegative_integer(value : Json) -> Int64 raise {
+  guard value is Number(number, ..) &&
+    number >= 0.0 &&
+    number <= 9007199254740991.0 &&
+    number == number.to_int64().to_double() else {
+    fail("expected exact nonnegative JSON integer")
+  }
+  number.to_int64()
+}
+
+///|
+fn exact_sum(total : Int64, value : Int64) -> Int64 raise {
+  guard total >= 0L && value >= 0L && value <= 9007199254740991L - total else {
+    fail("BONES partial manifest aggregate exceeds exact JSON integer range")
+  }
+  total + value
+}
+
+///|
+test "BONES manifest summary totals stay in exact JSON integer range" {
+  assert_eq(exact_sum(9007199254740990L, 1L), 9007199254740991L)
+  try exact_sum(9007199254740991L, 1L) catch {
+    _ => ()
+  } noraise {
+    _ => fail("overflowing aggregate was accepted")
+  }
+}
+
+///|
+fn valid_sha256(value : String) -> Bool {
+  if value.length() != 64 {
+    return false
+  }
+  for byte in @utf8.encode(value) {
+    let n = byte.to_int()
+    if !((n >= 48 && n <= 57) || (n >= 97 && n <= 102)) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn safe_clip_path(path : String) -> Bool {
+  path.has_prefix("clips/") &&
+  path.has_suffix(".csv") &&
+  path.split("/").all(part => part != "" && part != "." && part != "..")
+}
+
+///|
+fn hash_field(value : Json, name : String) -> String raise {
+  let hash = text(field(value, name))
+  guard valid_sha256(hash) else { fail("invalid SHA256: " + name) }
+  hash
+}
+
+///|
+fn reason_allowed(reason : String) -> Bool {
+  [
+    "configured_name_exclusion", "elevated_link_30_consecutive_50hz_frames", "link_height_below_minus_0_12_m",
+    "link_height_below_minus_0_08_m_more_than_80_percent",
+  ].contains(reason)
+}
+
+///|
+fn audit_manifest(
+  manifest : Json,
+  manifest_sha256 : String,
+  manifest_bytes : Int64,
+  expected_source_clips : Int32,
+) -> Json raise {
+  guard manifest is Object(fields) &&
+    fields.get("format") == Some(Json("moonrobo.aligned-motion-catalog.v1")) &&
+    fields.get("source_repository") ==
+    Some(Json("https://huggingface.co/datasets/bones-studio/seed")) &&
+    fields.get("source_fps") == Some(Json(120.0)) &&
+    fields.get("quaternion_order") == Some(Json("xyzw")) &&
+    fields.get("full_source_release") == Some(Json(false)) &&
+    fields.get("paper_exact_motion_set") == Some(Json(false)) &&
+    fields.get("filter_status") ==
+    Some(
+      Json(
+        "partial published BONES-SEED feasibility rules; author name list and floating-feet gates unavailable; not paper-exact",
+      ),
+    ) &&
+    fields.get("clips") is Some(Array(clips)) &&
+    fields.get("splits") is Some(Object(splits)) &&
+    splits.get("train") is Some(Array(train_ids)) &&
+    splits.get("evaluation") is Some(Array(eval_ids)) &&
+    fields.get("filter_provenance") is Some(Object(provenance)) else {
+    fail("unsupported or incomplete BONES partial manifest")
+  }
+  let accepted_count = clips.length()
+  guard accepted_count > 0 &&
+    accepted_count <= expected_source_clips &&
+    nonnegative_integer(field(manifest, "clip_count")) ==
+    accepted_count.to_int64() &&
+    train_ids.length() == accepted_count &&
+    eval_ids.length() == accepted_count else {
+    fail("accepted count or split length differs from clips")
+  }
+  let ids : Map[String, Bool] = Map([])
+  let paths : Map[String, Bool] = Map([])
+  let mut source_frames = 0L
+  let mut source_bytes = 0L
+  let mut converted_bytes = 0L
+  for index, clip in clips {
+    let id = text(field(clip, "id"))
+    let path = text(field(clip, "path"))
+    guard !id.is_empty() &&
+      !ids.contains(id) &&
+      !paths.contains(path) &&
+      safe_clip_path(path) &&
+      valid_sha256(text(field(clip, "sha256"))) &&
+      valid_sha256(text(field(clip, "source_sha256"))) &&
+      field(clip, "fps") == Json(120.0) &&
+      field(clip, "layout") ==
+      Json("root_xyz+quaternion_xyzw+g1_29_joint_angles") &&
+      train_ids[index] == Json(id) &&
+      eval_ids[index] == Json(id) else {
+      fail("duplicate, unsafe or split-mismatched accepted clip: " + id)
+    }
+    ids[id] = true
+    paths[path] = true
+    let frames = nonnegative_integer(field(clip, "source_frames"))
+    let original_bytes = nonnegative_integer(field(clip, "source_bytes"))
+    let aligned_bytes = nonnegative_integer(field(clip, "bytes"))
+    guard frames >= 2L && original_bytes > 0L && aligned_bytes > 0L else {
+      fail("accepted clip has empty source or converted data: " + id)
+    }
+    source_frames = exact_sum(source_frames, frames)
+    source_bytes = exact_sum(source_bytes, original_bytes)
+    converted_bytes = exact_sum(converted_bytes, aligned_bytes)
+  }
+  guard source_frames == nonnegative_integer(field(manifest, "source_frames")) &&
+    source_bytes == nonnegative_integer(field(manifest, "source_bytes")) &&
+    converted_bytes == nonnegative_integer(field(manifest, "converted_bytes")) else {
+    fail("accepted clip frame/byte totals differ from manifest")
+  }
+  let provenance_json = Json(provenance)
+  guard field(provenance_json, "version") ==
+    Json("moonrobo.bones-seed-partial-filter.v1") &&
+    field(provenance_json, "source_manifest_name") == Json("manifest.json") &&
+    field(provenance_json, "sampling_hz") == Json(50) &&
+    field(provenance_json, "floor_z_m") == Json(0.0) &&
+    field(provenance_json, "floating_feet_rule_applied") == Json(false) &&
+    field(provenance_json, "paper_name_list_verified") == Json(false) &&
+    field(provenance_json, "paper_exact_motion_set") == Json(false) &&
+    field(provenance_json, "minimum_link_height") ==
+    Json("minimum MuJoCo body origin z, excluding world, after mj_forward") &&
+    field(provenance_json, "elevated_rule") ==
+    Json("z_min > 0.20 m for >=30 consecutive 50 Hz samples") &&
+    field(provenance_json, "penetration_rule") ==
+    Json("z_min < -0.12 m at any sample, or z_min < -0.08 m at >80% of samples") &&
+    nonnegative_integer(field(provenance_json, "source_clip_count")) ==
+    expected_source_clips.to_int64() &&
+    nonnegative_integer(field(provenance_json, "accepted_count")) ==
+    accepted_count.to_int64() &&
+    field(provenance_json, "rejections") is Array(rejections) &&
+    nonnegative_integer(field(provenance_json, "rejected_count")) ==
+    rejections.length().to_int64() &&
+    accepted_count + rejections.length() == expected_source_clips else {
+    fail("filter provenance, rules or source partition is inconsistent")
+  }
+  let config = field(provenance_json, "config")
+  guard field(config, "format") ==
+    Json("moonrobo.bones-seed-partial-filter-config.v1") &&
+    field(config, "name_exclusion_terms") is Array(name_terms) &&
+    name_terms.all(term => term is String(_)) else {
+    fail("filter config provenance is invalid")
+  }
+  let reasons : Map[String, Int32] = Map([])
+  let rejected_ids : Map[String, Bool] = Map([])
+  for rejection in rejections {
+    let id = text(field(rejection, "id"))
+    guard !id.is_empty() &&
+      !ids.contains(id) &&
+      !rejected_ids.contains(id) &&
+      field(rejection, "reasons") is Array(codes) &&
+      !codes.is_empty() else {
+      fail("duplicate or invalid rejected clip: " + id)
+    }
+    rejected_ids[id] = true
+    let unique_reasons : Map[String, Bool] = Map([])
+    for code in codes {
+      let reason = text(code)
+      guard reason_allowed(reason) &&
+        !unique_reasons.contains(reason) &&
+        (reason != "configured_name_exclusion" || !name_terms.is_empty()) else {
+        fail("unknown, repeated or impossible rejection reason")
+      }
+      unique_reasons[reason] = true
+      reasons[reason] = reasons.get(reason).unwrap_or(0) + 1
+    }
+  }
+  let reason_summary : Map[String, Json] = Map([])
+  for code, count in reasons {
+    reason_summary[code] = Json(count)
+  }
+  let source_hash = hash_field(provenance_json, "source_manifest_sha256")
+  let config_hash = hash_field(provenance_json, "config_sha256")
+  let scene_hash = hash_field(provenance_json, "scene_sha256")
+  let assets_hash = hash_field(provenance_json, "scene_assets_sha256")
+  let library_hash = hash_field(provenance_json, "mujoco_library_sha256")
+  let archive_hash = hash_field(provenance_json, "g1_archive_sha256")
+  guard hash_field(field(manifest, "acquisition"), "g1_archive_sha256") ==
+    archive_hash else {
+    fail("archive acquisition and filter provenance hashes differ")
+  }
+  {
+    "audit": "manifest-structure-and-declared-hashes-only",
+    "manifest_sha256": Json(manifest_sha256),
+    "manifest_bytes": Json(manifest_bytes.to_double()),
+    "source_clip_count": Json(expected_source_clips),
+    "accepted_count": Json(accepted_count),
+    "rejected_count": Json(rejections.length()),
+    "source_frames": Json(source_frames.to_double()),
+    "source_bytes": Json(source_bytes.to_double()),
+    "converted_bytes": Json(converted_bytes.to_double()),
+    "train_evaluation_match_accepted_order": true,
+    "accepted_totals_recomputed": true,
+    "paper_exact_motion_set": false,
+    "floating_feet_rule_applied": false,
+    "paper_name_list_verified": false,
+    "configured_name_terms_count": Json(name_terms.length()),
+    "reason_occurrences": Json(reason_summary),
+    "declared_identity_hashes": {
+      "source_manifest_sha256": Json(source_hash),
+      "config_sha256": Json(config_hash),
+      "scene_sha256": Json(scene_hash),
+      "scene_assets_sha256": Json(assets_hash),
+      "mujoco_library_sha256": Json(library_hash),
+      "g1_archive_sha256": Json(archive_hash),
+    },
+    "reads_csv_or_recomputes_physics": false,
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 else {
+    fail(
+      "usage: moon run --target native scripts/audit_bones_partial_manifest.mbtx FILTERED_MANIFEST EXPECTED_SOURCE_CLIPS",
+    )
+  }
+  let expected = @string.parse_int(args[2])
+  guard expected > 0 && expected <= 200000 else {
+    fail("expected source clip count must be in 1..200000")
+  }
+  let file = @fs.open(args[1], mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 134217728L else {
+    fail("filtered manifest must be at most 128 MiB")
+  }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  let hash = @crypto.bytes_to_hex_string(@crypto.sha256(bytes))
+  let summary = audit_manifest(
+    @json.parse(@utf8.decode(bytes)),
+    hash,
+    size,
+    expected,
+  )
+  println(summary.stringify())
+}

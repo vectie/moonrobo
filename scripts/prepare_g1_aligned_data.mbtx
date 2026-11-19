@@ -1,0 +1,199 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn str(value : Json) -> String raise {
+  guard value is String(s) else { fail("expected string") }
+  s
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) else { fail("expected object") }
+  fields[key]
+}
+
+///|
+async fn download(url : String, path : String) -> Unit {
+  if !@fs.exists(path) {
+    assert_eq(
+      @process.run("curl", [
+        "-fL",
+        "--retry",
+        "5",
+        "--continue-at",
+        "-",
+        "--speed-time",
+        "60",
+        "--speed-limit",
+        "100",
+        "--connect-timeout",
+        "20",
+        "--max-time",
+        "300",
+        "--silent",
+        "--show-error",
+        url,
+        "-o",
+        path + ".partial",
+      ]),
+      0,
+      msg=url,
+    )
+    assert_eq(@process.run("mv", [path + ".partial", path]), 0)
+  }
+}
+
+///|
+async fn sha256(path : String) -> String {
+  let (code, out, err) = @process.collect_output("/usr/bin/shasum", [
+    "-a", "256", path,
+  ])
+  assert_eq(code, 0, msg=err.text())
+  out.text().split(" ").to_array()[0].to_owned()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() == 2 || args.length() == 3,
+    msg="usage: prepare_g1_aligned_data.mbtx OUTPUT [--motions-only]",
+  )
+  let motions_only = args.length() == 3
+  if motions_only {
+    assert_eq(args[2], "--motions-only")
+  }
+  let output = args[1]
+  let revision = "ce1572906efe6157840e8474d5a0d7aa87481e74"
+  let repo = "https://huggingface.co/datasets/lvhaidong/LAFAN1_Retargeting_Dataset"
+  let base = repo + "/resolve/" + revision + "/"
+  let api = "https://huggingface.co/api/datasets/lvhaidong/LAFAN1_Retargeting_Dataset/tree/" +
+    revision +
+    "/"
+  if !@fs.exists(output + "/lafan1_g1") {
+    @fs.mkdir(output + "/lafan1_g1", recursive=true)
+  }
+  if !@fs.exists(output + "/g1_description/meshes") {
+    @fs.mkdir(output + "/g1_description/meshes", recursive=true)
+  }
+  download(api + "g1", output + "/source-files.json")
+  download(api + "robot_description/g1/meshes", output + "/source-meshes.json")
+  download(base + "LICENSE", output + "/LICENSE.dataset")
+  download(base + "README.md", output + "/README.dataset.md")
+  download(
+    base + "robot_description/g1/g1_29dof_rev_1_0.urdf",
+    output + "/g1_description/g1_29dof_rev_1_0.urdf",
+  )
+  guard @json.parse(@fs.read_file(output + "/source-files.json").text())
+    is Array(files) else {
+    fail("file listing")
+  }
+  assert_eq(files.length(), 40, msg="expected frozen 40-clip G1 catalog")
+  let clips : Array[Json] = []
+  let ids : Array[Json] = []
+  let mut total_frames = 0
+  let mut total_bytes = 0
+  for item in files {
+    let source_path = str(field(item, "path"))
+    let name = source_path.split("/").to_array()[1].to_owned()
+    let relative = "lafan1_g1/" + name
+    let path = output + "/" + relative
+    download(base + source_path, path)
+    let bytes = @fs.read_file(path)
+    guard field(item, "size") is Number(size, ..) else { fail("source size") }
+    assert_eq(bytes.binary().length(), size.to_int(), msg=name)
+    let mut frames = 0
+    for line in bytes.text().split("\n") {
+      if line.trim() != "" {
+        assert_eq(line.split(",").to_array().length(), 36, msg=name)
+        frames += 1
+      }
+    }
+    let id = name[:name.length() - 4].to_owned()
+    ids.push(Json(id))
+    clips.push({
+      "id": Json(id),
+      "path": Json(relative),
+      "sha256": Json(sha256(path)),
+      "source_url": Json(base + source_path),
+      "source_git_blob": field(item, "oid"),
+      "bytes": Json(bytes.binary().length()),
+      "source_frames": Json(frames),
+      "fps": 30.0,
+      "layout": "root_xyz+quaternion_xyzw+g1_29_joint_angles",
+    })
+    total_frames += frames
+    total_bytes += bytes.binary().length()
+    println("Acquired \{clips.length()}/40 \{name}: \{frames} frames")
+  }
+  guard @json.parse(@fs.read_file(output + "/source-meshes.json").text())
+    is Array(meshes) else {
+    fail("mesh listing")
+  }
+  let assets : Array[Json] = []
+  for item in meshes {
+    if motions_only {
+      continue
+    }
+    let source_path = str(field(item, "path"))
+    let parts = source_path.split("/").to_array()
+    let relative = "g1_description/meshes/" +
+      parts[parts.length() - 1].to_owned()
+    let path = output + "/" + relative
+    download(base + source_path, path)
+    guard field(item, "size") is Number(size, ..) else {
+      fail("source mesh size")
+    }
+    assert_eq(
+      @fs.read_file(path).binary().length(),
+      size.to_int(),
+      msg=relative,
+    )
+    assets.push({
+      "path": Json(relative),
+      "sha256": Json(sha256(path)),
+      "source_url": Json(base + source_path),
+    })
+  }
+  assert_eq(total_frames, 264705, msg="same complete corpus as smc")
+  let manifest : Json = {
+    "format": "moonrobo.aligned-motion-catalog.v1",
+    "dataset": "LAFAN1 G1 retargets",
+    "source_repository": Json(repo),
+    "source_revision": Json(revision),
+    "source_fps": 30.0,
+    "control_dt": 0.02,
+    "quaternion_order": "xyzw",
+    "joint_order": "Unitree SDK G1 29 joint order, as enumerated in README.dataset.md",
+    "license": "CC-BY-NC-ND-4.0 (upstream LAFAN1); see LICENSE.dataset and README.dataset.md",
+    "clip_count": Json(clips.length()),
+    "source_frames": Json(total_frames),
+    "source_bytes": Json(total_bytes),
+    "clips": Json(clips),
+    "splits": { "train": Json(ids), "evaluation": Json(ids) },
+    "evaluation_scope": "same training motions; no unseen-motion generalization claim",
+    "bones_seed_acquired": false,
+    "robot_description": {
+      "path": "g1_description/g1_29dof_rev_1_0.urdf",
+      "sha256": Json(sha256(output + "/g1_description/g1_29dof_rev_1_0.urdf")),
+      "license": "BSD-3-Clause (Unitree); LICENSE.dataset",
+      "meshes": Json(assets),
+    },
+  }
+  @fs.write_file(
+    output +
+    (if motions_only { "/motion-manifest.json" } else { "/manifest.json" }),
+    manifest.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "Verified complete 40-clip LAFAN1 corpus at \{output}; acquired meshes: \{assets.length()}",
+  )
+}

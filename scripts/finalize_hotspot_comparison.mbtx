@@ -1,0 +1,261 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+///|
+let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/hotspot-smc4096-20261026"
+
+///|
+fn get(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn number(j : Json) -> Double raise {
+  match j {
+    Number(n, ..) => n
+    String(s) => @string.parse_double(s)
+    _ => fail("number required")
+  }
+}
+
+///|
+fn stat(trace : Json, table : String, label : String) -> Json raise {
+  let value = get(get(trace, table), label)
+  { "count": get(value, "count"), "sum_ms": get(value, "sum_ms") }
+}
+
+///|
+fn sum_stats(
+  trace : Json,
+  table : String,
+  labels : Array[String],
+) -> Double raise {
+  let mut sum = 0.0
+  for label in labels {
+    sum += number(get(stat(trace, table, label), "sum_ms"))
+  }
+  sum
+}
+
+///|
+fn forward_backward(trace : Json, label : String) -> Json raise {
+  let forward = stat(trace, "gpu_source_direct_ms", label)
+  let backward = stat(trace, "gpu_source_backward_ms", label)
+  {
+    "forward": forward,
+    "backward": backward,
+    "combined_gpu_ms": Json(
+      number(get(forward, "sum_ms")) + number(get(backward, "sum_ms")),
+    ),
+  }
+}
+
+///|
+fn grouped_copy_stages(detail : Json) -> Json raise {
+  guard get(detail, "api_by_collection_stage") is Array(rows) else {
+    fail("copy rows required")
+  }
+  let groups : Map[String, Map[String, Double]] = Map([])
+  for row in rows {
+    guard get(row, "label") is String(label) else {
+      fail("copy label required")
+    }
+    let key = label.split(",").to_array()[0].to_owned()
+    let fields = groups.get_or_default(key, Map([]))
+    for
+      field in [
+        "api_calls", "api_wall_ns", "bytes", "non_unique_copy_matches", "four_byte_calls",
+      ] {
+      fields[field] = fields.get_or_default(field, 0.0) +
+        number(get(row, field))
+    }
+    groups[key] = fields
+  }
+  let result : Map[String, Json] = Map([])
+  for key, fields in groups {
+    let output : Map[String, Json] = Map([])
+    for field, value in fields {
+      if field == "api_wall_ns" {
+        output["api_wall_ms"] = Json(value / 1000000.0)
+      } else {
+        output[field] = Json(value)
+      }
+    }
+    result[key] = Json(output)
+  }
+  Json(result)
+}
+
+///|
+async fn main {
+  let file = @fs.open(root + "/comparison-result.json", mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 16777216L else {
+    fail("bounded comparison required")
+  }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  let hash = @crypto.SHA256::new()
+  hash.update(bytes)
+  let report = @json.parse(@utf8.decode(bytes))
+  guard get(report, "single_agent") == Json(true) else {
+    fail("single-agent report required")
+  }
+  let diagnostics = get(report, "phase_diagnostics")
+  let phases : Map[String, Json] = Map([])
+  for phase in ["actor", "world", "collect"] {
+    let sides : Map[String, Json] = Map([])
+    for side in ["n", "s"] {
+      let data = get(get(diagnostics, phase), side)
+      let trace = get(data, "trace")
+      guard get(trace, "exclusive_kernel_conservation") == Json(true) else {
+        fail("captured GPU event attribution conservation failed")
+      }
+      sides[side] = {
+        "off": get(data, "off"),
+        "aten_nsys": get(data, "aten_nsys"),
+        "observed_body_delta_ms": get(data, "observed_body_delta_ms"),
+        "counts": get(trace, "counts"),
+        "gpu_kernel_time_ms": get(trace, "gpu_kernels_ms"),
+        "cpu_cuda_api_categories_ms": get(trace, "cpu_cuda_api_categories_ms"),
+        "unknown_gpu_source_ms": get(trace, "gpu_source_unknown_ms"),
+      }
+    }
+    let n = get(get(get(diagnostics, phase), "n"), "off")
+    let s = get(get(get(diagnostics, phase), "s"), "off")
+    sides["off_body_delta_ms"] = Json(
+      number(get(n, "body_ms")) - number(get(s, "body_ms")),
+    )
+    phases[phase] = Json(sides)
+  }
+  let nw = get(get(get(diagnostics, "world"), "n"), "trace")
+  let sw = get(get(get(diagnostics, "world"), "s"), "trace")
+  let na = get(get(get(diagnostics, "actor"), "n"), "trace")
+  let sa = get(get(get(diagnostics, "actor"), "s"), "trace")
+  let cpu = "cpu_structural_inclusive_ms"
+  let result : Json = {
+    "format": "moonrobo.hotspot-smc4096-findings.v1",
+    "source": "comparison-result.json",
+    "source_sha256": Json(@crypto.bytes_to_hex_string(hash.finalize())),
+    "single_agent": true,
+    "throughput": get(report, "benchmark"),
+    "diagnostic_phase_windows": Json(phases),
+    "world": {
+      "sample_prepare_upload_cpu_ms": {
+        "native": stat(nw, cpu, "diag.profile.world.sample_prepare_upload"),
+        "smc": stat(sw, cpu, "diag.world.sample_prepare_upload"),
+        "native_upload_child_inclusive": stat(
+          nw, cpu, "diag.profile.batch.upload",
+        ),
+      },
+      "native_layernorm_gpu": forward_backward(
+        nw, "diag.world.mlp/diag.network.ln.expanded",
+      ),
+      "smc_observed_ln_silu_fused_kernel_subset_ms": Json(
+        sum_stats(sw, "gpu_kernel_symbols_ms", [
+          "triton_red_fused_native_layer_norm_native_layer_norm_backward_silu_silu_backward_8",
+          "triton_red_fused_native_layer_norm_native_layer_norm_backward_silu_silu_backward_9",
+          "triton_red_fused_native_layer_norm_silu_9",
+        ]),
+      ),
+      "smc_fused_subset_is_not_standalone_ln_or_exhaustive": true,
+      "gpu_mm_addmm_ms": {
+        "native_mm": Json(
+          sum_stats(nw, "gpu_operators_exclusive_ms", ["aten::mm"]),
+        ),
+        "smc_mm_plus_addmm": Json(
+          sum_stats(sw, "gpu_operators_exclusive_ms", [
+            "aten::mm", "aten::addmm",
+          ]),
+        ),
+        "scope": "Observed mm/addmm kernels, not an identical-kernel microbenchmark; addmm includes bias.",
+      },
+      "adam_cpu_inclusive_ms": {
+        "native": stat(nw, cpu, "diag.profile.world.adam"),
+        "smc": stat(sw, cpu, "diag.world.adam"),
+      },
+      "adam_direct_gpu_ms": {
+        "native": stat(nw, "gpu_source_direct_ms", "diag.profile.world.adam"),
+        "smc": stat(sw, "gpu_source_direct_ms", "diag.world.adam"),
+      },
+      "native_adam_sync_detail": get(
+        get(get(diagnostics, "world"), "n"),
+        "sync_details",
+      ),
+      "interpretation": "Observed world matrix multiplication time does not explain the large total gap. Expanded normalization/elementwise forward-backward and preparation are measured hotspots. Adam CPU wall includes waiting for outstanding GPU work; do not treat it as optimizer compute or add CPU and GPU durations.",
+    },
+    "actor": {
+      "native_robot_fk_gpu": forward_backward(na, "diag.geometry.robot_fk"),
+      "native_world_ln_gpu": forward_backward(
+        na, "diag.world.mlp/diag.network.ln.expanded",
+      ),
+      "native_body_orientation_gpu": forward_backward(
+        na, "diag.reward.body_orientation.batched_error",
+      ),
+      "native_robot_fk_cpu": stat(na, cpu, "diag.geometry.robot_fk"),
+      "native_reference_cache_unpack_cpu": stat(
+        na, cpu, "diag.geometry.reference_fk",
+      ),
+      "native_critic_feature_cpu": stat(na, cpu, "diag.actor.critic_features"),
+      "smc_critic_feature_cpu": stat(sa, cpu, "diag.critic.features"),
+      "smc_critic_feature_pack_cpu": stat(sa, cpu, "diag.critic.feature_pack"),
+      "native_reference_history_cpu": stat(
+        na, cpu, "diag.profile.batch.policy.references_history",
+      ),
+      "backward_cpu_inclusive_ms": {
+        "native": stat(na, cpu, "diag.actor.backward"),
+        "smc": stat(sa, cpu, "diag.actor.backward"),
+      },
+      "interpretation": "Native16 robot FK calls are8 trajectory batches plus8 initial states, not16 redundant trajectory FKs. Reference FK ranges unpack cached rows, with no GPU kernel directly attributed to those unpack ranges; cache gather elsewhere is not free. Cached robot trajectory geometry is reused by reward, tail and detached critic features. SMC compiled FK/reward/features cannot be decomposed into a standalone FK with this trace. Backward CPU wall has asymmetric observer overhead.",
+    },
+    "collection": {
+      "native_copy_stages": grouped_copy_stages(
+        get(get(get(diagnostics, "collect"), "n"), "copy_details"),
+      ),
+      "smc_copy_stages": grouped_copy_stages(
+        get(get(get(diagnostics, "collect"), "s"), "copy_details"),
+      ),
+      "interpretation": "Collection off-window difference is small compared with actor/world. Native physics scope still includes2026 copy APIs,1992 of which are cuMemcpyDtoDAsync_v2 in the full capture. APIC bulk removes neither all internal physics copies nor host history packing. This is APIC versus IsaacLab, not a same-physics language comparison.",
+    },
+    "next_measured_candidates": Json([
+      "World preparation: bounded reusable packing/upload buffers or resident replay gathers; preserve RNG and sampled indices.",
+      "Expanded LN plus surrounding pointwise work: preserve exact objective, gradient and optimizer guards; prior losing native-LN-only candidate remains disabled.",
+      "Differentiable robot FK and orientation: reduce small-op submissions while preserving autograd and cached geometry reuse; do not remove required initial-state FK.",
+      "Keep independent numerical gates followed by fresh alternating batch4096 timing. No speedup predicted from trace durations or kernel counts.",
+    ]),
+    "limitations": Json([
+      "Only fresh complete unprofiled ABBA measures steady throughput. Independent one-window phase controls are not exact additive decomposition or repeated observer-overhead estimates.",
+      "Native actor trace has much greater observer perturbation than SMC. Never use traced body times as steady speed ratio.",
+      "Captured event accounting conserves and native runtime label counts match Nsight. Nsight still warns events might be missing; global loss-free capture is not proven.",
+      "Fused kernels remain opaque and unresolved source ownership stays unknown. CPU ranges nest and overlap GPU work.",
+      "SMC8x512 high-precision algorithm gate passed but strict FP32 critic-parameter gate failed. It remains a scheduling comparator, not an enabled replacement or convergence claim.",
+      "Physics, initialization and RNG streams differ across stacks. Same batch and seed do not make this a language-only benchmark.",
+      "Do not credit the change from the older ratio entirely to APIC/FK: the SMC comparator now also uses8x512.",
+    ]),
+    "safety_and_preservation": {
+      "original_sources_and_failed_run_evidence_retained": true,
+      "production_training_sources_changed_this_turn": false,
+      "protection_thresholds_lowered": false,
+      "batch_reduced": false,
+      "sampled_oom_events": 0,
+      "sampled_container_swap_bytes": 0,
+      "resource_details": get(report, "per_run"),
+      "cache_advice": "Only verified completed own-task files; contents kept. No global drop_caches.",
+      "no_training_container_or_gpu_compute_process_at_final_read_only_check": true,
+    },
+  }
+  @fs.write_file(
+    root + "/findings.json",
+    result.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+  )
+  println("wrote bounded findings.json from immutable comparison-result.json")
+}

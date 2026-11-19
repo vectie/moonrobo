@@ -1,0 +1,377 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) else { fail("expected object") }
+  fields[key]
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn str(value : Json) -> String raise {
+  guard value is String(text) else { fail("expected string") }
+  text
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(number, ..) else { fail("expected number") }
+  number
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (code, bytes, error) = @process.collect_output("/usr/bin/shasum", [
+    "-a", "256", path,
+  ])
+  assert_eq(code, 0, msg=error.text())
+  bytes.text().split(" ").to_array()[0].to_owned()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: report_g1_reference_feedback_response.mbtx REPO STUDY OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let report = read(study + "/report.json")
+  assert_eq(field(report, "physical_execution_allowed"), false)
+  assert_eq(field(report, "release_qualified"), false)
+  let source = str(field(report, "source_study"))
+  assert_eq(
+    Json(sha(source + "/report.json")),
+    field(report, "source_report_sha256"),
+  )
+  assert_eq(
+    Json(sha(str(field(report, "references")) + "/manifest.json")),
+    field(report, "reference_manifest_sha256"),
+  )
+  let original = read(source + "/report.json")
+  let config = field(report, "config")
+  let conditions = array(field(report, "conditions"))
+  assert_eq(conditions.length(), 36)
+  let records = array(field(report, "physical_records"))
+  assert_eq(records.length(), 648)
+  let by_id : Map[String, Json] = Map([])
+  let inherited : Map[String, Json] = Map([])
+  for record in array(field(original, "physical_records")) {
+    inherited[str(field(record, "episode_id"))] = record
+  }
+  for record in records {
+    let id = str(field(record, "episode_id"))
+    assert_false(by_id.contains(id))
+    by_id[id] = record
+    if field(record, "reused_baseline") == (true : Json) {
+      assert_eq(field(record, "sha256"), field(inherited[id], "sha256"))
+      assert_eq(field(record, "role"), "baseline-replay")
+    }
+  }
+  let fd_counts : Map[String, Int32] = Map([])
+  let baseline_for : Map[String, String] = Map([])
+  let mut smallest_fd_maximum = 0.0
+  for condition in conditions {
+    assert_eq(
+      Json(sha(str(field(condition, "model_checkpoint")))),
+      field(condition, "model_sha256"),
+    )
+    assert_eq(array(field(condition, "directions")).length(), 4)
+    for direction in array(field(condition, "directions")) {
+      let analytic = num(field(direction, "analytic_directional"))
+      let checks = array(field(direction, "model_finite_difference_checks"))
+      assert_eq(checks.length(), 3)
+      for check in checks {
+        let error = (analytic - num(field(check, "numeric_directional"))).abs()
+        assert_true(
+          (error - num(field(check, "absolute_error"))).abs() < 1.0e-10,
+        )
+        let passed = error <=
+          1.0e-5 + 1.0e-3 * num(field(check, "numeric_directional")).abs()
+        assert_eq(field(check, "passed"), Json(passed))
+        if passed {
+          let key = field(check, "epsilon_rad").stringify()
+          fd_counts[key] = fd_counts.get(key).unwrap_or(0) + 1
+        }
+      }
+      assert_eq(
+        field(direction, "smallest_epsilon_verified"),
+        field(checks[2], "passed"),
+      )
+      smallest_fd_maximum = smallest_fd_maximum.max(
+        num(field(checks[2], "absolute_error")),
+      )
+      for outcome in array(field(direction, "outcomes")) {
+        let amplitude = num(field(outcome, "amplitude_rad"))
+        let plus = field(outcome, "plus")
+        let minus = field(outcome, "minus")
+        let baseline_id = str(
+          field(
+            field(condition, "baselines"),
+            str(field(direction, "execution_mode")),
+          ),
+        )
+        for branch in [plus, minus] {
+          let id = str(field(branch, "episode_id"))
+          baseline_for[id] = baseline_id
+          assert_eq(
+            field(by_id[id], "execution_mode"),
+            field(direction, "execution_mode"),
+          )
+          assert_eq(
+            field(by_id[id], "direction_source"),
+            field(direction, "direction_source"),
+          )
+        }
+        assert_eq(
+          field(direction, "physics_baseline_return"),
+          field(field(by_id[baseline_id], "returns"), "32"),
+        )
+        assert_eq(
+          field(plus, "physics_return"),
+          field(field(by_id[str(field(plus, "episode_id"))], "returns"), "32"),
+        )
+        assert_eq(
+          field(minus, "physics_return"),
+          field(field(by_id[str(field(minus, "episode_id"))], "returns"), "32"),
+        )
+        let derivative = (
+            num(field(plus, "physics_return")) -
+            num(field(minus, "physics_return"))
+          ) /
+          (2.0 * amplitude)
+        assert_true(
+          (derivative - num(field(outcome, "physics_directional"))).abs() <
+          1.0e-10,
+        )
+        assert_true(
+          (num(field(plus, "physics_return")) -
+          num(field(direction, "physics_baseline_return")) -
+          num(field(outcome, "positive_physics_gain"))).abs() <
+          1.0e-12,
+        )
+      }
+    }
+  }
+  @fs.write_file(
+    study + "/provider-sources/reference_feedback_response_export.py",
+    @fs.read_file(
+      root + "/providers/motion_learning/reference_feedback_response_export.py",
+    ).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let seen : Map[String, Bool] = Map([])
+  let baseline_actions : Map[String, Array[Json]] = Map([])
+  let realized_rms_ratios : Map[String, Double] = Map([])
+  let maxima : Map[String, Double] = Map([])
+  let mut transitions = 0
+  let mut counterfactual_transitions = 0
+  let mut counterfactual_episodes = 0
+  let mut reused = 0
+  let mut feedback_baselines = 0
+  @async.with_task_group() <| group => {
+    let (reader, out) = @process.read_from_process()
+    let child = @process.spawn(
+      group,
+      root + "/target/learning-venv/bin/python",
+      [
+        study + "/provider-sources/reference_feedback_response_export.py",
+        "--study",
+        study,
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      ],
+      stdout=out,
+      stderr=@process.redirect_to_file(
+        study + "/verification-stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    )
+    while reader.read_until("\n") is Some(line) {
+      let entry = @json.parse(line)
+      let record = field(entry, "record")
+      let id = str(field(record, "episode_id"))
+      assert_eq(record, by_id[id])
+      assert_false(seen.contains(id))
+      seen[id] = true
+      let dataset = field(entry, "dataset")
+      let episodes = array(field(dataset, "episodes"))
+      assert_eq(episodes.length(), 1)
+      let steps = array(field(episodes[0], "steps"))
+      assert_eq(steps.length(), num(field(record, "steps")).to_int())
+      if field(record, "role") == Json("counterfactual") {
+        let baseline = baseline_actions[baseline_for[id]]
+        let common = steps.length().min(baseline.length())
+        let mut squared = 0.0
+        for i in 0..<common {
+          let actual = array(field(steps[i], "applied_action"))
+          let original_action = array(baseline[i])
+          for j in 0..<29 {
+            let delta = num(actual[j]) - num(original_action[j])
+            squared += delta * delta
+          }
+        }
+        realized_rms_ratios[id] = (squared / (common * 29).to_double()).sqrt() /
+          num(field(record, "amplitude")).abs()
+      } else {
+        baseline_actions[id] = steps.map(step => field(step, "applied_action"))
+      }
+      for horizon in [8, 32] {
+        let mut total = 0.0
+        let mut weight = 1.0
+        for i, step in steps {
+          if i >= horizon {
+            break
+          }
+          total += num(field(step, "reward")) * weight
+          weight *= num(field(config, "gamma"))
+        }
+        assert_true(
+          (total - num(field(field(record, "returns"), horizon.to_string()))).abs() <
+          1.0e-11,
+        )
+      }
+      guard field(entry, "verification") is Object(errors) else {
+        fail("expected verification")
+      }
+      for key, value in errors {
+        maxima[key] = maxima.get(key).unwrap_or(0.0).max(num(value))
+      }
+      let scratch = study + "/native-episode.json"
+      @fs.write_file(scratch, dataset.stringify(), create_mode=CreateOrTruncate)
+      let (code, bytes, error) = @process.collect_output(
+        root +
+        "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+        [scratch, "train", "1", "1000000"],
+      )
+      assert_eq(code, 0, msg=error.text())
+      assert_eq(field(@json.parse(bytes.text()), "window_length"), 1)
+      @fs.remove(scratch)
+      transitions += steps.length()
+      if field(record, "role") == Json("counterfactual") {
+        counterfactual_episodes += 1
+        counterfactual_transitions += steps.length()
+      } else if field(record, "reused_baseline") == (true : Json) {
+        reused += 1
+      } else {
+        feedback_baselines += 1
+      }
+      if seen.length() % 72 == 0 {
+        println("Verified \{seen.length()}/648 branch episodes")
+      }
+    }
+    reader.close()
+    assert_eq(child.wait(), 0)
+  }
+  assert_eq(seen.length(), 648)
+  assert_eq(counterfactual_episodes, 576)
+  assert_eq(reused, 36)
+  assert_eq(feedback_baselines, 36)
+  let summary : Array[Json] = []
+  for direction_source in ["open-tape", "feedback"] {
+    for mode in ["open-tape", "feedback"] {
+      for amplitude in [0.0001, 0.001] {
+        let mut pairs = 0
+        let mut agree = 0
+        let mut gains = 0
+        let mut actual_derivative = 0.0
+        let mut predicted_derivative = 0.0
+        let mut realized_ratio = 0.0
+        let mut maximum_realized_ratio = 0.0
+        for condition in conditions {
+          for direction in array(field(condition, "directions")) {
+            if field(direction, "direction_source") != Json(direction_source) ||
+              field(direction, "execution_mode") != Json(mode) {
+              continue
+            }
+            for outcome in array(field(direction, "outcomes")) {
+              if num(field(outcome, "amplitude_rad")) != amplitude {
+                continue
+              }
+              let a = num(field(outcome, "physics_directional"))
+              let p = num(field(outcome, "model_directional"))
+              pairs += 1
+              if a * p > 0 {
+                agree += 1
+              }
+              if num(field(outcome, "positive_physics_gain")) > 0 {
+                gains += 1
+              }
+              actual_derivative += a
+              predicted_derivative += p
+              for branch in [field(outcome, "plus"), field(outcome, "minus")] {
+                let ratio = realized_rms_ratios[str(field(branch, "episode_id"))]
+                realized_ratio += ratio
+                maximum_realized_ratio = maximum_realized_ratio.max(ratio)
+              }
+            }
+          }
+        }
+        summary.push({
+          "direction_source": Json(direction_source),
+          "execution_mode": Json(mode),
+          "amplitude_rad": Json(amplitude),
+          "pairs": Json(pairs),
+          "direction_sign_agreements": Json(agree),
+          "positive_amplitude_physics_gains": Json(gains),
+          "mean_physics_directional": Json(
+            actual_derivative / pairs.to_double(),
+          ),
+          "mean_model_directional": Json(
+            predicted_derivative / pairs.to_double(),
+          ),
+          "mean_realized_control_rms_ratio": Json(
+            realized_ratio / (2 * pairs).to_double(),
+          ),
+          "maximum_realized_control_rms_ratio": Json(maximum_realized_ratio),
+        })
+      }
+    }
+  }
+  guard report is Object(fields) else { fail("expected report") }
+  fields["native_verification"] = {
+    "all_records_validated": true,
+    "episodes": 648,
+    "transitions": Json(transitions),
+    "counterfactual_episodes": Json(counterfactual_episodes),
+    "counterfactual_transitions": Json(counterfactual_transitions),
+    "reused_baselines": Json(reused),
+    "new_feedback_baselines": Json(feedback_baselines),
+    "discounted_returns_reconstructed": true,
+    "maxima": Json(maxima),
+    "model_fd_passes_by_epsilon": Json(fd_counts),
+    "model_fd_checks_per_epsilon": 144,
+    "maximum_smallest_epsilon_model_fd_error": Json(smallest_fd_maximum),
+  }
+  fields["diagnostic_report_sha256"] = Json(sha(study + "/report.json"))
+  fields["verification_provider_sha256"] = Json(
+    sha(study + "/provider-sources/reference_feedback_response_export.py"),
+  )
+  fields["summary"] = Json(summary)
+  @fs.write_file(
+    args[3],
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(Json(summary).stringify(indent=2))
+}

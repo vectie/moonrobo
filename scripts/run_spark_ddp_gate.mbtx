@@ -1,0 +1,366 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+let image_id = "sha256:989985f4b65447e4452fcfeeec70cfa3f48eb52637f8f96e41a736f11ab308cd"
+
+///|
+/// This is a runtime gate: retain the SMC network/precision/horizons, but
+/// deliberately skip the 500-iteration model-only curriculum to exercise all
+/// three optimizers once. It is not a paper training schedule.
+fn gate_config() -> Json {
+  {
+    "profile": "smc-spark-ddp-runtime-gate",
+    "seed": 0,
+    "num_envs": 128,
+    "iterations": 1,
+    "buffer_steps": 128,
+    "reference_storage": "mmap",
+    "max_reference_gather_frames": 8192,
+    "warmup_steps": 64,
+    "wm_only_iters": 0,
+    "wm_hidden": [2048, 2048, 2048],
+    "pi_hidden": [2048, 1024, 512, 256],
+    "critic_hidden": [256, 128],
+    "wm_window": 8,
+    "horizon": 32,
+    "hist": 10,
+    "goal_frames": 10,
+    "wm_batches": 1,
+    "wm_batch": 128,
+    "pi_batch": 128,
+    "critic_epochs": 1,
+    "critic_minibatches": 4,
+    "lr": 0.0002,
+    "lr_decay_iters": 250000,
+    "gamma": 0.99,
+    "lam": 0.95,
+    "utd": 0.4,
+    "observation_mode": "smc",
+    "observation_noise": true,
+    "action_noise": 0.1,
+    "self_collisions": false,
+    "amp": "bf16",
+    "allow_tf32": true,
+    "physics_dt": 0.005,
+    "context_resampling": "environment",
+    "checkpoint_every": 1,
+    "threads": 4,
+  }
+}
+
+///|
+async fn checked_output(program : String, args : Array[String]) -> String {
+  let result = @shell.Cmd(program, args).output(
+    timeout_ms=10000,
+    max_output_bytes=16384,
+  )
+  result.check()
+  result.stdout().trim().to_owned()
+}
+
+///|
+fn safe_run_id(value : String) -> Bool {
+  value.length() > 0 &&
+  value.length() <= 48 &&
+  value
+  .iter()
+  .all(c => {
+    (c >= 'a' && c <= 'z') ||
+    (c >= 'A' && c <= 'Z') ||
+    (c >= '0' && c <= '9') ||
+    c == '-'
+  })
+}
+
+///|
+async fn verify_report(path : String, rank : Int32) -> Unit {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  guard file.size() <= 4L * 1024L * 1024L else {
+    fail("unexpectedly large training report")
+  }
+  let report = @json.parse(file.read_all().text())
+  guard report
+    is {
+      "iteration": Number(1.0, ..),
+      "local_counters": {
+        "physical_transitions": Number(8448.0, ..),
+        "imagined_transitions": Number(4096.0, ..),
+        "model_updates": Number(1.0, ..),
+        "actor_updates": Number(1.0, ..),
+        "critic_updates": Number(4.0, ..),
+        ..
+      },
+      "distributed": {
+        "rank": Number(actual, ..),
+        "world_size": Number(2.0, ..),
+        ..
+      },
+      ..
+    } &&
+    actual == rank.to_double() else {
+    fail("training report does not establish the expected bounded rank update")
+  }
+}
+
+///|
+/// On-host only. No SSH, credentials, downloads, driver changes, evaluation,
+/// resume or larger profiles. Start the two separately deployed ranks within
+/// 60 seconds with the same RUN_ID. Source and assets are mounted read-only.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 4 else {
+    fail(
+      "usage: run_spark_ddp_gate.mbtx CANONICAL_REPO_ROOT RANK_0_OR_1 NEW_RUN_ID",
+    )
+  }
+  let repo = args[1]
+  let rank = @string.parse_int(args[2])
+  let run_id = args[3]
+  guard rank == 0 || rank == 1 else { fail("rank must be 0 or 1") }
+  guard safe_run_id(run_id) else {
+    fail("run ID must contain 1..48 ASCII letters, digits or hyphens")
+  }
+  guard repo.has_prefix("/") &&
+    !repo.contains(",") &&
+    !repo.contains("\n") &&
+    !repo.contains("\u{0000}") &&
+    @fs.kind(repo, follow_symlink=false) == Directory &&
+    @fs.realpath(repo) == repo else {
+    fail(
+      "repository must be a canonical absolute directory without comma/newline",
+    )
+  }
+  for
+    relative in [
+      "providers/motion_learning/aligned/train.py", "data/manifest.json", "data/g1_description/g1_29dof.xml",
+      "data/g1_usd/g1_29dof/g1_29dof.usda",
+    ] {
+    guard @fs.kind(repo + "/" + relative) == Regular else {
+      fail("missing staged input: " + relative)
+    }
+  }
+  guard checked_output("uname", ["-m"]) == "aarch64" else {
+    fail("this gate requires a Linux aarch64 Spark host")
+  }
+  guard checked_output("docker", [
+      "image", "inspect", image_id, "--format", "{{.Id}} {{.Architecture}}",
+    ]) ==
+    image_id + " arm64" else {
+    fail("the exact validated RDMA image must already be loaded")
+  }
+  let uid = checked_output("id", ["-u"])
+  let gid = checked_output("id", ["-g"])
+  guard @string.parse_int(uid) > 0 && @string.parse_int(gid) >= 0 else {
+    fail("run as the ordinary training account, not root")
+  }
+  let rank_name = if rank == 0 { "rank0000" } else { "rank0001" }
+  let interface = if rank == 0 { "enp1s0f1np1" } else { "enp1s0f0np0" }
+  let hca = if rank == 0 { "rocep1s0f1:1" } else { "rocep1s0f0:1" }
+  let parent = repo + "/runs/spark-ddp-gate-" + run_id
+  @fs.mkdir(parent, recursive=true)
+  guard @fs.realpath(parent) == parent else {
+    fail("output parent contains a symlink")
+  }
+  let output = parent + "/" + rank_name
+  guard !@fs.exists(output) else {
+    fail("rank output already exists; use a new run ID")
+  }
+  @fs.mkdir(output)
+  @fs.mkdir(output + "/home")
+  @fs.mkdir(output + "/warp-cache")
+  @fs.write_file(
+    output + "/config.json",
+    gate_config().stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  let name = "moonrobo-ddp-gate-" + run_id + "-" + rank_name
+  let command = [
+    "create",
+    "--pull=never",
+    "--name",
+    name,
+    "--init",
+    "--gpus",
+    "all",
+    "--network",
+    "host",
+    "--memory=80g",
+    "--memory-swap=80g",
+    "--shm-size=8g",
+    "--device=/dev/infiniband",
+    "--ulimit",
+    "memlock=-1",
+    "--user",
+    uid + ":" + gid,
+    "--env",
+    "HOME=/gate/home",
+    "--env",
+    "WARP_CACHE_PATH=/gate/warp-cache",
+    "--env",
+    "PYTHONUNBUFFERED=1",
+    "--env",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "--env",
+    "OMP_NUM_THREADS=4",
+    "--env",
+    "NCCL_SOCKET_IFNAME==" + interface,
+    "--env",
+    "GLOO_SOCKET_IFNAME=" + interface,
+    "--env",
+    "NCCL_IB_HCA==" + hca,
+    "--env",
+    "NCCL_SOCKET_FAMILY=AF_INET",
+    "--env",
+    "NCCL_IB_ADDR_FAMILY=AF_INET",
+    "--env",
+    "NCCL_IB_ADDR_RANGE=10.0.0.0/24",
+    "--env",
+    "NCCL_NET=IB",
+    "--env",
+    "NCCL_DEBUG=INFO",
+    "--env",
+    "NCCL_DEBUG_SUBSYS=INIT,NET",
+    "--env",
+    "NCCL_DEBUG_FILE=/gate/nccl.%h.%p.log",
+    "--env",
+    "TORCH_NCCL_ASYNC_ERROR_HANDLING=1",
+    "--env",
+    "TORCH_NCCL_ENABLE_MONITORING=1",
+    "--env",
+    "TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC=60",
+    "--mount",
+    "type=bind,src=" + repo + ",dst=/workspace/moonrobo,readonly",
+    "--mount",
+    "type=bind,src=" + output + ",dst=/gate",
+    "--workdir",
+    "/workspace/moonrobo",
+    image_id,
+    "/usr/bin/timeout",
+    "--signal=TERM",
+    "--kill-after=5s",
+    "420s",
+    "/opt/isaaclab-venv/bin/torchrun",
+    "--nnodes=2",
+    "--nproc-per-node=1",
+    "--node-rank=\{rank}",
+    "--master-addr=10.0.0.1",
+    "--master-port=29500",
+    "--rdzv-backend=static",
+    "--rdzv-id=" + run_id,
+    "--rdzv-conf=timeout=60",
+    "--max-restarts=0",
+    "--monitor-interval=1",
+    "--log-dir=/gate/torchrun",
+    "--redirects=3",
+    "--tee=3",
+    "-m",
+    "providers.motion_learning.aligned.train",
+    "--distributed",
+    "--config",
+    "/gate/config.json",
+    "--iterations",
+    "1",
+    "--backend",
+    "isaac",
+    "--device",
+    "cuda:0",
+    "--motion-dir",
+    "/workspace/moonrobo/data/lafan1_g1",
+    "--motion-manifest",
+    "/workspace/moonrobo/data/manifest.json",
+    "--scene",
+    "/workspace/moonrobo/data/g1_description/g1_29dof.xml",
+    "--usd-path",
+    "/workspace/moonrobo/data/g1_usd/g1_29dof/g1_29dof.usda",
+    "--output",
+    "/gate/train",
+  ]
+  let plan : Json = {
+    "format": "moonrobo.spark-ddp-runtime-gate.v1",
+    "rank": Json(rank),
+    "run_id": Json(run_id),
+    "image_id": Json(image_id),
+    "output": Json(output),
+    "docker_create_arguments": Json(command),
+    "container_deadline_seconds": 420,
+    "forced_kill_grace_seconds": 5,
+    "attach_deadline_seconds": 450,
+    "rendezvous_timeout_seconds": 60,
+    "process_group_collective_timeout_override": false,
+    "memory_guard_bypassed": false,
+  }
+  @fs.write_file(
+    output + "/launch.json",
+    plan.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(
+    "Launching \{rank_name}; logs: \{output}; start the peer within 60 seconds",
+  )
+  let container = checked_output("docker", command)
+  // Cleanup addresses the ID returned by our own create, never a preexisting name.
+  let code = @shell.Cmd(
+    "docker",
+    ["start", "--attach", container],
+    stdout=ToFile(output + "/stdout.log"),
+    stderr=ToFile(output + "/stderr.log"),
+  ).status(timeout_ms=450000) catch {
+    error => {
+      println("launcher error: \{error}")
+      -1
+    }
+  }
+  let inspection = checked_output("docker", [
+    "inspect", "--format", "{{json .State}}", container,
+  ]) catch {
+    error =>
+      "{\"inspection_error\": " + Json(error.to_string()).stringify() + "}"
+  }
+  let cleanup = @shell.Cmd("docker", ["rm", "--force", container])
+    .output(timeout_ms=10000, max_output_bytes=16384)
+    .exit_code() catch {
+      error => {
+        println("container cleanup error: \{error}")
+        -1
+      }
+    }
+  @fs.write_file(
+    output + "/container-state.json",
+    inspection,
+    create_mode=CreateNew,
+  )
+  let result : Json = {
+    "attach_exit_code": Json(code),
+    "cleanup_exit_code": Json(cleanup),
+  }
+  @fs.write_file(
+    output + "/launcher-result.json",
+    result.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  guard cleanup == 0 else {
+    fail("container cleanup failed; inspect own container " + container)
+  }
+  guard code == 0 else { fail("bounded rank run failed; inspect \{output}") }
+  guard @json.parse(inspection)
+    is { "Running": False, "OOMKilled": False, "ExitCode": Number(0.0, ..), .. } else {
+    fail("container state does not establish a clean, non-OOM exit")
+  }
+  let report_name = "report." + rank_name + ".json"
+  verify_report(output + "/train/" + report_name, rank)
+  guard @fs.kind(output + "/train/checkpoint." + rank_name + ".pt") == Regular else {
+    fail("rank checkpoint is missing")
+  }
+  println(
+    "Rank \{rank} report and checkpoint passed the small gate; preserve both rank logs before comparing performance",
+  )
+}

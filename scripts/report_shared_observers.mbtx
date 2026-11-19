@@ -1,0 +1,166 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn number(j : Json) -> Double raise {
+  match j {
+    Number(n, ..) => n
+    String(s) => @string.parse_double(s)
+    _ => fail("numeric value")
+  }
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/shared-compute-20261026"
+  let observations = []
+  let resources = []
+  for phase in ["world", "actor"] {
+    for
+      group in [
+        "off",
+        "events",
+        if phase == "world" {
+          "observers"
+        } else {
+          "controls"
+        },
+        "captures",
+      ] {
+      let summary = read(root + "/" + phase + "-" + group + "/summary.json")
+      guard field(summary, "runs") is Array(runs) else { fail("runs") }
+      let indices = if group == "observers" {
+        [0, 1, 4, 5]
+      } else {
+        [0, 1, 2, 3]
+      }
+      for i in indices {
+        let dir = root + "/" + phase + "-" + group + "/" + i.to_string()
+        let run = runs[i]
+        let guard_record = read(dir + "/training-guard.json")
+        guard guard_record
+          is { "reason": "completed", "samples": Array(samples), .. } &&
+          !samples.is_empty() else {
+          fail("incomplete resource audit")
+        }
+        guard read(dir + "/training-docker-final.json")
+          is [{ "State": { "Running": False, "OOMKilled": False, .. }, .. }] else {
+          fail("ended without OOM required")
+        }
+        guard samples.all(s => {
+          field(s, "cgroup_swap_bytes") == Json(0) &&
+          field(s, "memory_events") is String(events) &&
+          events.contains("oom 0\n") &&
+          events.contains("oom_kill 0\n")
+        }) else {
+          fail("swap or OOM events")
+        }
+        let result = read(dir + "/result.json")
+        let (allocated, reserved, free) = match result {
+          { "memory": m, .. } =>
+            (
+              field(m, "allocated_peak_bytes"),
+              field(m, "reserved_peak_bytes"),
+              field(m, "cuda_free_bytes"),
+            )
+          { "allocated_peak": a, "reserved_peak": r, "cuda_free_bytes": f, .. } =>
+            (a, r, f)
+          _ => fail("CUDA memory report")
+        }
+        resources.push({
+          "run": field(run, "remote"),
+          "cuda_allocated_peak_gib": Json(number(allocated) / 1073741824.0),
+          "cuda_reserved_peak_gib": Json(number(reserved) / 1073741824.0),
+          "cuda_free_at_end_gib": Json(number(free) / 1073741824.0),
+          "sampled_host_free_min_gib": Json(
+            samples
+            .map(s => number(field(s, "host_free_kib")))
+            .fold(init=1.0e30, (a, b) => a.min(b)) /
+            1048576.0,
+          ),
+          "sampled_host_available_min_gib": Json(
+            samples
+            .map(s => number(field(s, "host_available_kib")))
+            .fold(init=1.0e30, (a, b) => a.min(b)) /
+            1048576.0,
+          ),
+          "cgroup_peak_gib": Json(
+            samples
+            .map(s => number(field(s, "cgroup_peak_bytes")))
+            .fold(init=0.0, (a, b) => a.max(b)) /
+            1073741824.0,
+          ),
+          "task_cgroup_swap_bytes": 0,
+          "oom": false,
+        })
+        let trace = if group == "captures" {
+          read(dir + "/trace-analysis.json")
+        } else {
+          Json::null()
+        }
+        observations.push({
+          "phase": Json(phase),
+          "group": Json(group),
+          "run": field(run, "remote"),
+          "implementation": field(run, "implementation"),
+          "mode": field(run, "observation"),
+          "ten_repeat_median_ms": field(run, "wall_median_ms"),
+          "capture_iteration_wall_ms": field(run, "capture_iteration_3_wall_ms"),
+          "capture_events": if trace == Json::null() {
+            Json::null()
+          } else {
+            field(trace, "event_counts")
+          },
+          "collector_diagnostics": if trace == Json::null() {
+            Json::null()
+          } else {
+            field(trace, "diagnostics")
+          },
+          "interpretation": Json(
+            if group == "captures" && phase == "actor" && i >= 2 {
+              "Full ATen collector covers only first actor chunk backward. Its trigger is inside whole-phase wall timing, so whole-phase wall includes collector start/stop disturbance and must not be reported as payload overhead. Other nine steady rows have collection stopped but remain in a Nsight-launched process; do not equate them with independent observer-only runs. Forward nodes are outside this capture."
+            } else if group == "captures" {
+              "Only iteration3 has CUDA collection. Capture trigger is outside payload wall clock; ten-repeat median mostly measures collection-stopped rows in a Nsight-launched process, not collector overhead or an independent observer-only control."
+            } else {
+              "No collector; separate runs can include clock/load drift. No fixed overhead correction inferred."
+            },
+          ),
+        })
+      }
+    }
+  }
+  @fs.write_file(
+    root + "/observer-and-memory.json",
+    Json({
+      "observations": Json(observations),
+      "resources": Json(resources),
+      "guards_changed": false,
+      "invalid_short_capture": "actor-captures/3 reports 718 incomplete CUPTI events dropped. Exclude its kernel totals/times from complete backward comparisons; preserve raw evidence and use separate 3b drained retry.",
+      "other_tasks_or_global_cache_cleared": false,
+      "known_exclusions": [
+        "world-observers indices2,3,6,7: NSYS capture did not trigger; excluded from collector statistics",
+        "world-captures-1 and actor-events-2: startup CUDA free-memory guard aborted; fresh retries 1b/2b retained, thresholds unchanged",
+        "actor-captures-2: automatic observer's chunk marker did not trigger collection; no trace produced. Replaced by 2b/3 capturing explicit first-backward markers, original evidence retained",
+      ],
+      "limits": "CUDA free, host free/available and cgroup counters overlap on UMA: do not add them. One-second sampling does not bound every transient host allocation. Task cgroup swap zero does not imply host-wide swap zero. Profiler warnings retained, completeness not certified.",
+    }).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(root + "/observer-and-memory.json")
+}

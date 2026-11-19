@@ -1,0 +1,36 @@
+import {
+  "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process",
+}
+async fn run(cmd : String, args : Array[String]) -> Unit { guard @process.run(cmd,args) == 0 else { fail(cmd) } }
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let out = repo + "/output/spark-runtime-20261024/smc-source-fixes-20261027"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-operator-179.sock"
+  let mut builder = @fs.read_file(out+"/build_smc_fix_a.mbtx").text()
+  for (a,b) in [("smc-fix-a","smc-fix-b"),("smc-fix-gate-a","smc-fix-gate-b"),("smc-fix-tensor-a","smc-fix-tensor-b"),("smc-fix-runtime-a","smc-fix-runtime-b"),("smc-fix-tests-a","smc-fix-tests-b"),("smc-fix-rotation-cpu-a","smc-fix-rotation-cpu-b"),("smc-fix-config-cpu-a","smc-fix-config-cpu-b")] {
+    builder=builder.replace_all(old=a,new=b)
+  }
+  builder=builder.replace_all(old="    return\n  }\n  if mode == \"mlp-tests-c\"",new="    container(\"smc-fix-resume-cpu-b\", \"/workspace/moonrobo-smc-fix-b/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/learning_aligned_gpu.whitebox_test.exe\", [\"precision_wbtest.mbt:0-1\"])\n    container(\"smc-fix-inference-cpu-b\", \"/workspace/moonrobo-smc-fix-b/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/inference/inference.whitebox_test.exe\", [\"actor_wbtest.mbt:0-1\"])\n    return\n  }\n  if mode == \"mlp-tests-c\"")
+  builder=builder.replace_all(old="\"src/learning_aligned_gpu/geometry\",",new="\"src/learning_aligned_gpu/geometry\", \"src/learning_aligned_gpu/inference\",")
+  @fs.write_file(out+"/build_smc_fix_b.mbtx",builder,create_mode=CreateNew)
+  let fixture=@fs.read_file(out+"/smc_fix_fixture_a.mbt").text().replace_all(old="m.policy_loss, m.critic_loss, m.imagined_reward",new="m.policy_loss, m.critic_loss_last, m.imagined_reward")
+  @fs.write_file(out+"/smc_fix_fixture_b.mbt",fixture,create_mode=CreateNew)
+  let mut driver=@fs.read_file(out+"/run_smc_fix_a.mbtx").text()
+  for (a,b) in [("smc-fix-gate-a","smc-fix-gate-b"),("run_smc_fix_a.mbtx","run_smc_fix_b.mbtx"),("build_smc_fix_a.mbtx","build_smc_fix_b.mbtx"),("smc_fix_fixture_a.mbt","smc_fix_fixture_b.mbt"),("+ phase + \"-gate-a\"","+ phase + \"-gate-b\"")] { driver=driver.replace_all(old=a,new=b) }
+  @fs.write_file(out+"/run_smc_fix_b.mbtx",driver,create_mode=CreateNew)
+  for file in ["smc_fix_fixture_b.mbt","run_smc_fix_b.mbtx"] {
+    run("scp",["-o","ControlPath="+socket,out+"/"+file,host+":"+base+"/"+file])
+  }
+  run("scp",["-o","ControlPath="+socket,out+"/build_smc_fix_b.mbtx",host+":"+base+"/build_smc_fix_b.mbtx"])
+  run("ssh",["-S",socket,host,"test ! -e "+base+"/workspace/moonrobo-smc-fix-b"])
+  run("ssh",["-S",socket,host,"cp -a --reflink=auto "+base+"/workspace/moonrobo-smc-fix-a "+base+"/workspace/moonrobo-smc-fix-b"])
+  for path in ["precision_wbtest.mbt","geometry/rotation_error_wbtest.mbt","inference/actor.mbt","inference/actor_wbtest.mbt","contracts.mbt","learning.mbt","actor_microbatch.mbt"] {
+    run("scp",["-o","ControlPath="+socket,repo+"/src/learning_aligned_gpu/"+path,host+":"+base+"/workspace/moonrobo-smc-fix-b/src/learning_aligned_gpu/"+path])
+  }
+  run("ssh",["-S",socket,host,"cp "+base+"/smc_fix_fixture_b.mbt "+base+"/workspace/moonrobo-smc-fix-b/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"])
+  for mode in ["gate-build-smc-fix-b","smc-fix-tests-b"] {
+    run("ssh",["-S",socket,host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/build_smc_fix_b.mbtx -- "+mode])
+  }
+}

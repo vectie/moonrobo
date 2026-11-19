@@ -1,0 +1,102 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: probe_g1_balance_intervention.mbtx REPO DISTURBANCE_STUDY TEMPORAL_STUDY OUTPUT",
+  )
+  let root = args[1]
+  let output = args[4]
+  assert_false(@fs.exists(output), msg="choose a fresh intervention directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "balance_intervention.py", "temporal_actor.py", "temporal_training.py", "policy.py",
+      "dynamics.py", "cpu_physics.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/provider-sources/teacher_feedback.py",
+    @fs.read_file(args[3] + "/provider-sources/teacher_feedback.py").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  for name in ["collection.json", "experiment.json", "teacher.json"] {
+    @fs.write_file(
+      output + "/" + name,
+      @fs.read_file(args[3] + "/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let config = @json.parse(
+    @fs.read_file(root + "/examples/learning/g1-balance-intervention.json").text(),
+  )
+  @fs.write_file(
+    output + "/config.json",
+    config.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-balance-intervention-charter.v1",
+        "config": config,
+        "policies": Json(args[2] + "/disturbed/policy"),
+        "teacher_study": Json(args[3]),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(
+    @process.run(
+      root + "/target/learning-venv/bin/python",
+      [
+        output + "/provider-sources/balance_intervention.py",
+        "--config",
+        output + "/config.json",
+        "--collection",
+        output + "/collection.json",
+        "--experiment",
+        output + "/experiment.json",
+        "--teacher",
+        output + "/teacher.json",
+        "--policies",
+        args[2] + "/disturbed/policy",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--output",
+        output,
+      ],
+      stdout=@process.redirect_to_file(
+        output + "/train.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  let report = @json.parse(@fs.read_file(output + "/report.json").text())
+  guard report is { "rows": Array(rows), "learned_policy_qualified": false, .. } else {
+    fail("missing diagnostic report")
+  }
+  assert_eq(rows.length(), 24)
+  println("Completed 24 frozen-policy intervention cells.")
+}

@@ -1,0 +1,53 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  for
+    (name, program, args) in [
+      (
+        "independent-math",
+        "target/learning-venv/bin/python",
+        ["-m", "providers.motion_learning.test_geometry_math", "-v"],
+      ),
+      (
+        "native-math",
+        "env",
+        [
+          "MOONROBO_TENSOR_LIBRARY=/Users/kq/Workspace/moonrobo/target/learning-tensor/libmoonrobo_learning_tensor.dylib",
+          "moon", "test", "--target", "native", "src/learning_aligned_gpu/geometry/math_revision_wbtest.mbt",
+          "--diagnostic-limit", "1",
+        ],
+      ),
+    ] {
+    let code = @process.run(
+      program,
+      args,
+      stdout=@process.redirect_to_file(
+        root + "/" + name + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        root + "/" + name + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    @fs.write_file(
+      root + "/" + name + ".receipt.json",
+      (
+        {
+          "exit_code": code,
+          "program": program,
+          "argv": Json(args),
+          "gpu_used": false,
+        } : Json).stringify(indent=2),
+      create_mode=CreateNew,
+    )
+    assert_eq(code, 0)
+  }
+}

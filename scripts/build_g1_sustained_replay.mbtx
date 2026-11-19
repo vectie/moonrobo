@@ -1,0 +1,348 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=err.text() + out.text())
+  out.text()
+}
+
+///|
+fn append_train(
+  base : Json,
+  added : Json,
+  episodes : Array[Json],
+  ids : Map[String, Bool],
+  owners : Map[String, Json],
+) -> (Int32, Int32) raise {
+  for
+    key in [
+      "format", "model_ref", "dt_s", "frame_convention", "state_axes", "observation_axes",
+      "action_axes", "goal_axes", "context_axes",
+    ] {
+    assert_eq(field(added, key), field(base, key), msg="layout differs: " + key)
+  }
+  let fresh = array(field(added, "episodes"))
+  let mut transitions = 0
+  for episode in fresh {
+    assert_eq(field(episode, "split"), "train")
+    guard field(episode, "id") is String(id) &&
+      field(episode, "source_family") is String(family) else {
+      fail("missing episode identity")
+    }
+    assert_true(!ids.contains(id), msg="duplicate episode: " + id)
+    assert_eq(
+      owners.get(family),
+      Some(("train" : Json)),
+      msg="unowned train family: " + family,
+    )
+    ids.set(id, true)
+    transitions += array(field(episode, "steps")).length()
+    episodes.push(episode)
+  }
+  (fresh.length(), transitions)
+}
+
+///|
+async fn gzip_windows(
+  exe : String,
+  dataset : String,
+  split : String,
+  stride : String,
+  destination : String,
+) -> Unit {
+  @async.with_task_group() <| group => {
+    let (source, child_output) = @process.read_from_process()
+    let (child_input, sink) = @process.write_to_process()
+    let writer = @process.spawn(
+      group,
+      exe,
+      [dataset, split, "8", stride],
+      stdout=child_output,
+    )
+    let compressor = @process.spawn(
+      group,
+      "gzip",
+      ["-c"],
+      stdin=child_input,
+      stdout=@process.redirect_to_file(
+        destination,
+        create_mode=CreateOrTruncate,
+      ),
+    )
+    sink.write_reader(source)
+    sink.close()
+    source.close()
+    assert_eq(writer.wait(), 0)
+    assert_eq(compressor.wait(), 0)
+  }
+}
+
+///|
+async fn export_chunk(
+  exe : String,
+  output : String,
+  chunk : Json,
+  shards : Array[Json],
+) -> Unit {
+  guard chunk is Object(fields) else { fail("expected dataset chunk") }
+  fields.set("dataset_id", "g1-sustained-augmented")
+  fields.set(
+    "provenance", "Original augmented G1 replay plus all teacher/student train transitions; teacher labels excluded; native-validated source chunks.",
+  )
+  let index = shards.length()
+  let temporary = output + "/chunk-input-\{index}.json"
+  @fs.write_file(temporary, chunk.stringify(), create_mode=CreateOrTruncate)
+  let relative = "shards/train-\{index}.json.gz"
+  gzip_windows(exe, temporary, "train", "8", output + "/" + relative)
+  let (code, bytes, err) = @process.collect_output("gzip", [
+    "-cd",
+    output + "/" + relative,
+  ])
+  assert_eq(code, 0, msg=err.text())
+  let batch = @json.parse(bytes.text())
+  let n = array(field(batch, "windows")).length()
+  assert_true(n > 0)
+  if !shards.is_empty() {
+    assert_eq(field(batch, "layout"), field(shards[0], "layout"))
+  }
+  shards.push({
+    "file": Json(relative),
+    "windows": Json(n),
+    "layout": field(batch, "layout"),
+    "sha256": Json(@crypto.bytes_to_hex_string(@crypto.sha256(bytes.binary()))),
+  })
+  if index != 0 {
+    @fs.remove(temporary)
+  }
+  println("Exported native train shard \{index}: \{n} windows.")
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    6,
+    msg="usage: build_g1_sustained_replay.mbtx REPO ORIGINAL_RUN TEACHER_DATA AGGREGATION_RUN OUTPUT",
+  )
+  let root = args[1]
+  let output = args[5]
+  assert_true(!@fs.exists(output), msg="choose a fresh dataset directory")
+  @fs.mkdir(output + "/collection", recursive=true)
+  @fs.mkdir(output + "/shards", recursive=true)
+  let exporter = root +
+    "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe"
+  let original_path = args[2] + "/collection/dataset.json"
+  let dataset = read(original_path)
+  guard dataset is Object(fields) else { fail("expected dataset") }
+  let episodes = array(field(dataset, "episodes")).copy()
+  let ids : Map[String, Bool] = Map([])
+  let owners : Map[String, Json] = Map([])
+  for episode in episodes {
+    guard field(episode, "id") is String(id) &&
+      field(episode, "source_family") is String(family) else {
+      fail("missing identity")
+    }
+    ids.set(id, true)
+    owners.set(family, field(episode, "split"))
+  }
+  let inputs : Array[Json] = []
+  let shards : Array[Json] = []
+  export_chunk(exporter, output, dataset, shards)
+  let teacher_path = args[3] + "/collect/dataset.json"
+  let teacher = read(teacher_path)
+  let (teacher_n, teacher_steps) = append_train(
+    dataset, teacher, episodes, ids, owners,
+  )
+  export_chunk(exporter, output, teacher, shards)
+  inputs.push({
+    "source": Json(teacher_path),
+    "episodes": Json(teacher_n),
+    "transitions": Json(teacher_steps),
+    "sha256": Json(
+      @crypto.bytes_to_hex_string(
+        @crypto.sha256(@fs.read_file(teacher_path).binary()),
+      ),
+    ),
+  })
+  let mut aggregation_episodes = 0
+  let mut aggregation_steps = 0
+  for seed in 0..<3 {
+    let path = args[4] + "/policy/student-physics-seed-\{seed}.jsonl.gz"
+    let content = run("gzip", ["-cd", path])
+    let mut rounds = 0
+    for line in content.split("\n") {
+      if line.trim().is_empty() {
+        continue
+      }
+      let record = @json.parse(line)
+      let (n, steps) = append_train(
+        dataset,
+        field(record, "dataset"),
+        episodes,
+        ids,
+        owners,
+      )
+      assert_eq(array(field(record, "teacher_action_targets")).length(), steps)
+      aggregation_episodes += n
+      aggregation_steps += steps
+      export_chunk(exporter, output, field(record, "dataset"), shards)
+      rounds += 1
+    }
+    assert_eq(rounds, 10)
+    inputs.push({
+      "source": Json(path),
+      "rounds": Json(rounds),
+      "teacher_targets_excluded": true,
+      "sha256": Json(
+        @crypto.bytes_to_hex_string(
+          @crypto.sha256(@fs.read_file(path).binary()),
+        ),
+      ),
+    })
+    println("Read actual student controls from seed \{seed}.")
+  }
+  assert_eq(teacher_n, 24)
+  assert_eq(teacher_steps, 10221)
+  assert_eq(aggregation_episodes, 360)
+  assert_eq(aggregation_steps, 93453)
+  assert_eq(episodes.length(), 648)
+  assert_eq(shards.length(), 32)
+  fields.set("episodes", Json(episodes))
+  fields.set("dataset_id", "g1-sustained-augmented")
+  let dataset_path = output + "/collection/dataset.json"
+  @fs.write_file(
+    dataset_path,
+    dataset.stringify(),
+    create_mode=CreateOrTruncate,
+  )
+  let compact_shards = shards.map(shard => {
+    (
+      {
+        "file": field(shard, "file"),
+        "windows": field(shard, "windows"),
+        "sha256": field(shard, "sha256"),
+      } : Json)
+  })
+  let manifest : Json = {
+    "format": "moonrobo.training-batch-shards.v1",
+    "split": "train",
+    "window_length": 8,
+    "layout": field(shards[0], "layout"),
+    "shards": Json(compact_shards),
+    "train_stride": 8,
+    "final_complete_window_retained": true,
+  }
+  @fs.write_file(
+    output + "/train-batch.json",
+    manifest.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let heldout : Array[Json] = []
+  for split in ["validation", "test"] {
+    let temporary = output + "/check-" + split + ".json"
+    assert_eq(
+      @process.run(
+        exporter,
+        [output + "/chunk-input-0.json", split, "8"],
+        stdout=@process.redirect_to_file(
+          temporary,
+          create_mode=CreateOrTruncate,
+        ),
+      ),
+      0,
+    )
+    let actual = read(temporary)
+    let expected = read(args[2] + "/" + split + "-batch.json")
+    for
+      key in [
+        "split", "window_length", "windows", "time_s", "state", "observation", "applied_action",
+        "next_state", "goal", "context", "reward", "terminated", "truncated",
+      ] {
+      assert_eq(
+        field(actual, key),
+        field(expected, key),
+        msg="held-out data changed: " + split + "/" + key,
+      )
+    }
+    ignore(run("/bin/mv", [temporary, output + "/" + split + "-batch.json"]))
+    heldout.push({
+      "split": Json(split),
+      "windows": Json(array(field(expected, "windows")).length()),
+      "all_arrays_unchanged": true,
+    })
+  }
+  @fs.remove(output + "/chunk-input-0.json")
+  let logical_dataset_sha = @crypto.bytes_to_hex_string(
+    @crypto.sha256(@fs.read_file(dataset_path).binary()),
+  )
+  ignore(run("gzip", [dataset_path]))
+  let report : Json = {
+    "format": "moonrobo.g1-sustained-replay.v1",
+    "inputs": Json(inputs),
+    "original_source": Json(original_path),
+    "original_source_sha256": Json(
+      @crypto.bytes_to_hex_string(
+        @crypto.sha256(@fs.read_file(original_path).binary()),
+      ),
+    ),
+    "episodes": Json(episodes.length()),
+    "new_train_episodes": Json(teacher_n + aggregation_episodes),
+    "new_train_transitions": Json(teacher_steps + aggregation_steps),
+    "window_length": 8,
+    "train_stride": 8,
+    "final_complete_window_retained": true,
+    "heldout": Json(heldout),
+    "dataset_file": "collection/dataset.json.gz",
+    "dataset_sha256": Json(logical_dataset_sha),
+    "compressed_dataset_sha256": Json(
+      @crypto.bytes_to_hex_string(
+        @crypto.sha256(@fs.read_file(dataset_path + ".gz").binary()),
+      ),
+    ),
+    "train_shards": Json(compact_shards),
+    "train_manifest_sha256": Json(
+      @crypto.bytes_to_hex_string(
+        @crypto.sha256(@fs.read_file(output + "/train-batch.json").binary()),
+      ),
+    ),
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    output + "/replay-report.json",
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "All source chunks validated natively with global family/identity checks; all episodes retained and held-out arrays unchanged.",
+  )
+}

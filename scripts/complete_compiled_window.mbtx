@@ -1,0 +1,172 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+let out = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+
+///|
+let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+
+///|
+async fn send(source : String, target : String) -> Unit {
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      source,
+      "wlc004s@192.168.2.179:" + base + "/" + target,
+    ]),
+    0,
+  )
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, .. args] else { fail("mode") }
+  if mode == "prepare" {
+    for
+      (old, name) in [
+        (
+          "run_compiled_window_export_c.mbtx", "run_compiled_window_export_i.mbtx",
+        ),
+        ("run_compiled_window_c.mbtx", "run_compiled_window_n.mbtx"),
+      ] {
+      let code = @fs.read_file(out + "/" + old)
+        .text()
+        .replace_all(old~, new=name)
+        .replace_all(
+          old="export_compiled_world_c.py",
+          new="export_compiled_world_i.py",
+        )
+        .replace_all(old="+amp+\"-c\"", new="+amp+\"-i\"")
+        .replace_all(
+          old="libmoonrobo_compiled_window_a.so",
+          new="libmoonrobo_compiled_window_c.so",
+        )
+        .replace_all(old="compiled-window-gate-a", new="compiled-window-gate-c")
+        .replace_all(old="+amp+\"-gate-a\"", new="+amp+\"-gate-f\"")
+      @fs.write_file(out + "/" + name, code, create_mode=CreateNew)
+      send(out + "/" + name, name)
+    }
+    send(
+      "providers/motion_learning/export_compiled_world.py", "export_compiled_world_i.py",
+    )
+    if !@fs.exists(out + "/window-build-a") {
+      assert_eq(
+        @process.run("tar", [
+          "--disable-copyfile",
+          "-czf",
+          out + "/compiled-window-overlay-a.tar.gz",
+          "src/learning_tensor/compiled_block.inc",
+          "src/learning_tensor/compiled_block_loader.inc",
+          "src/learning_tensor/compiled_block.mbt",
+          "src/learning_aligned_gpu/networks.mbt",
+          "src/learning_aligned_gpu/learning.mbt",
+          "src/learning_aligned_gpu/compiled_world.mbt",
+          "src/learning_aligned_gpu/moon.pkg",
+        ]),
+        0,
+      )
+      send(
+        out + "/compiled-window-overlay-a.tar.gz",
+        "compiled-window-overlay-a.tar.gz",
+      )
+    }
+    return
+  }
+  let (runner, argv, label, prefix) = match mode {
+    "build" => ("build_compiled_window_a.mbtx", [], "window-build-a", "")
+    "export" => {
+      guard args is [amp, label] && ["bf16", "none"].contains(amp) else {
+        fail("export args")
+      }
+      (
+        "run_compiled_window_export_i.mbtx",
+        ["world", "compiled", "off", label, amp],
+        label,
+        "hotspot-mlp-",
+      )
+    }
+    "run" => {
+      guard args is [side, amp, reps, label] &&
+        ["native", "smc", "baseline"].contains(side) &&
+        ["bf16", "none"].contains(amp) &&
+        ["1", "13"].contains(reps) else {
+        fail("run args")
+      }
+      let variant = (if amp == "none" { "fp32" } else { "bf16" }) +
+        (if side == "baseline" { "-baseline" } else { "-chunk" })
+      (
+        "run_compiled_window_o.mbtx",
+        [
+          "world",
+          if side == "baseline" {
+            "native"
+          } else {
+            side
+          },
+          "off",
+          reps,
+          label,
+          variant,
+        ],
+        label,
+        "hotspot-shared-",
+      )
+    }
+    _ => fail("unknown mode")
+  }
+  assert_true(label.all(c => c is ('a'..<='z' | '0'..<='9' | '-')))
+  let folder = out + "/" + label
+  @fs.mkdir(folder)
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179",
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      runner +
+      (if argv.is_empty() { "" } else { " -- " + argv.join(" ") }),
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  if prefix != "" {
+    for
+      name in [
+        "protocol.json", "completion.json", "result.json", "final.json", "training-guard.json",
+        "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/runs/" +
+          prefix +
+          label +
+          "/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+  }
+  println("EXIT \{code}")
+  assert_eq(code, 0)
+}

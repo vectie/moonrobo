@@ -1,0 +1,224 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    7,
+    msg="usage: fit_g1_teacher_value.mbtx REPO TEMPORAL_STUDY VALUE_STUDY MIXED_FIT DIRECTION_PROBE OUTPUT",
+  )
+  let root = args[1]
+  let source = args[2]
+  let output = args[6]
+  assert_true(!@fs.exists(output), msg="choose a fresh teacher-value directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "temporal_value.py", "temporal_actor.py", "temporal_training.py", "temporal_probe.py",
+      "actor_update_probe.py", "critic_probe.py", "policy.py", "dynamics.py", "cpu_physics.py",
+      "teacher_feedback.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(args[3] + "/provider-sources/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/provider-sources/temporal_value_training.py",
+    @fs.read_file(
+      root + "/providers/motion_learning/temporal_value_training.py",
+    ).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let overrides = read(root + "/examples/learning/g1-teacher-value-study.json")
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-teacher-value-charter.v1",
+        "overrides": overrides,
+        "incoming": Json(source),
+        "value_study": Json(args[3]),
+        "world_fit": Json(args[4]),
+        "direction_probe": Json(args[5]),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @async.with_task_group() <| group => {
+    let running : Array[(@process.Process, String)] = []
+    for variant in ["frame", "preview"] {
+      let cell = output + "/" + variant
+      @fs.mkdir(cell + "/collection", recursive=true)
+      @fs.mkdir(cell + "/fit", recursive=true)
+      assert_eq(
+        @process.run("/bin/cp", [
+          args[3] + "/dataset.json.gz",
+          cell + "/collection/dataset.json.gz",
+        ]),
+        0,
+      )
+      for
+        name in [
+          "report.json", "training-input.json", "dynamics-seed-0.moon.json", "dynamics-seed-1.moon.json",
+          "dynamics-seed-2.moon.json", "latest-dynamics-seed-0.moon.json", "latest-dynamics-seed-1.moon.json",
+          "latest-dynamics-seed-2.moon.json",
+        ] {
+        copy_model_file(root, args[4] + "/" + name, cell + "/fit/" + name)
+      }
+      let config = read(args[3] + "/" + variant + "-value-on/config.json")
+      guard config is Object(fields) && overrides is Object(changes) else {
+        fail("expected config")
+      }
+      for key, value in changes {
+        fields.set(key, value)
+      }
+      @fs.write_file(
+        cell + "/config.json",
+        config.stringify(indent=2),
+        create_mode=CreateOrTruncate,
+      )
+      let process = @process.spawn(
+        group,
+        "moon",
+        native_args(root, [
+          output + "/provider-sources/temporal_value_training.py",
+          "--config",
+          cell + "/config.json",
+          "--experiment",
+          source + "/experiment.json",
+          "--collection",
+          source + "/collection.json",
+          "--data",
+          source + "/teacher-data/dataset.json",
+          "--policies",
+          source + "/" + variant + "/policy",
+          "--dynamics",
+          args[4] + "/dynamics-seed-0.moon.json",
+          "--scene",
+          root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+          "--output",
+          cell + "/policy",
+        ]),
+        stdout=@process.redirect_to_file(
+          cell + "/train.log",
+          create_mode=CreateOrTruncate,
+        ),
+        stderr=@process.redirect_to_file(
+          cell + "/stderr.log",
+          create_mode=CreateOrTruncate,
+        ),
+      )
+      running.push((process, variant))
+    }
+    for (process, variant) in running {
+      assert_eq(process.wait(), 0, msg=variant + " failed")
+      let report = read(output + "/" + variant + "/policy/report.json")
+      guard field(report, "runs") is Array(runs) else {
+        fail("missing results")
+      }
+      for row in runs {
+        println(
+          variant +
+          ": " +
+          (
+            {
+              "seed": field(row, "seed"),
+              "selected_update": field(row, "selected_update"),
+              "baseline": field(row, "baseline"),
+              "candidate": field(row, "candidate"),
+              "qualifies": field(row, "qualifies"),
+            } : Json).stringify(),
+        )
+      }
+    }
+  }
+}
+
+///|
+/// Historical .py names are inert routing descriptors. Each target parses
+/// original flags and calls real native APIs; unknown descriptors fail closed.
+fn native_args(root : String, command : Array[String]) -> Array[String] raise {
+  guard !command.is_empty() else { fail("missing native provider descriptor") }
+  let descriptor = command[0].split("/").last().unwrap_or("").to_owned()
+  let training = [
+    "policy.py", "dynamics.py", "cpu_physics.py", "teacher_step_verification.py",
+    "compare_dynamics.py",
+  ].contains(descriptor)
+  let package = if training {
+    "src/learning_training/launch/cmd"
+  } else {
+    "src/learning_balance/launch"
+  }
+  [
+    "run",
+    "--quiet",
+    "--warn-list",
+    "-a",
+    root + "/scripts/run_native_learning.mbtx",
+    root,
+    package,
+    ..command,
+    ..if training {
+      []
+    } else {
+      ["--repo", root]
+    },
+  ]
+}
+
+///|
+/// Native checkpoint copies validate or explicitly convert restricted Torch
+/// state dictionaries. JSON names never contain renamed pickle bytes.
+async fn copy_model_file(
+  root : String,
+  source : String,
+  destination : String,
+) -> Unit {
+  if destination.has_suffix(".moon.json") {
+    assert_eq(
+      @process.run("moon", [
+        "run",
+        "--quiet",
+        "--warn-list",
+        "-a",
+        root + "/scripts/run_native_learning.mbtx",
+        root,
+        "src/learning_training/launch/cmd",
+        "checkpoint-copy",
+        source,
+        destination,
+        "residual-dynamics",
+      ]),
+      0,
+    )
+  } else {
+    @fs.write_file(
+      destination,
+      @fs.read_file(source).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+}

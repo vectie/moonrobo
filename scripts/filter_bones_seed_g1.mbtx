@@ -1,0 +1,26 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 6 && @fs.exists("moon.mod") else {
+    fail(
+      "run from the moonrobo root: moon run --target native scripts/filter_bones_seed_g1.mbtx UNFILTERED_MANIFEST LIBMUJOCO SCENE_MJCF CACHE_DIR FILTER_CONFIG",
+    )
+  }
+  let command = ["run", "--target", "native", "src/learning_aligned/filter/cmd"]
+  for value in args[1:] {
+    command.push(value)
+  }
+  assert_eq(
+    @process.run("moon", command),
+    0,
+    msg="BONES-SEED partial filter failed",
+  )
+}

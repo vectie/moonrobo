@@ -1,0 +1,11 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let p="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/"
+  let source=@fs.read_file(p+"smc-algebra-20261028/advise_algebra_b.mbtx").text()
+  let lines=source.split("\n").map(l=>if l.trim().has_prefix("let labels =") {
+    "  let labels = [\"primitives-baseline-world-gate-a\",\"primitives-snapshot-world-gate-a\",\"primitives-constants-world-gate-a\",\"primitives-baseline-actor-gate-a\"]"
+  } else {l.to_owned()}).collect().join("\n")
+  let path=p+"smc-primitives-20261028/advise_primitives_b.mbtx"
+  @fs.write_file(path,lines,create_mode=CreateNew)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",path,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/advise_primitives_b.mbtx"])==0 else {fail("scp")}
+}

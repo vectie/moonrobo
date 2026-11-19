@@ -1,0 +1,21 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/process", "moonbitlang/async@0.20.2/fs", "moonbitlang/core/json" }
+fn field(j : Json,k : String) -> Json raise {guard j is Object(o)&&o.get(k) is Some(v)else{fail(k)};v}
+fn n(j : Json) -> Double raise {guard j is Number(x,..)else{fail("number")};x}
+async fn main {
+  let root="/home/wlc004s/moonrobo";let base=root+"/private/shared-compute-20261026-a"
+  let (c,out,err)=@process.collect_output("find",["-P",root+"/private",root+"/runs","-xdev","-type","f","-size","+64M","-links","1","-print0"])
+  guard c==0else{fail(err.text())}
+  let paths=out.text().split("\u0000").filter(p=>p!="").map(p=>p.to_owned()).to_array()
+  guard paths.length()<=10000else{fail("inventory bound")}
+  let all : Array[Json]=[]
+  for chunk in 0..<((paths.length()+63)/64) {
+    let start=chunk*64
+    let end=(start+64).min(paths.length())
+    let (c,data,err)=@process.collect_output(root+"/private/fincore-official-20261024-a/root/usr/bin/fincore",["--json","--bytes","--output","FILE,SIZE,RES",..paths[start:end].to_owned()])
+    guard c==0else{fail(err.text())};guard field(@json.parse(data.text()),"fincore") is Array(rows)else{fail("rows")};all.append(rows)
+  }
+  let ranked=all.map(j=>(n(field(j,"res")),j));ranked.sort_by((a,b)=>b.0.compare(a.0))
+  let all=ranked.map(pair=>pair.1)
+  @fs.write_file(base+"/heading-residency-a.json",Json(all).stringify(indent=2),create_mode=CreateNew)
+  println(Json(all[:40].to_owned()).stringify(indent=2))
+}

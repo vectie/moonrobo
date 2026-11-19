@@ -1,0 +1,183 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn num(j : Json) -> Double raise {
+  match j {
+    Number(x, ..) => x
+    String(x) => @string.parse_double(x)
+    _ => fail("number")
+  }
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+fn median(values : Array[Double]) -> Double raise {
+  guard values.length() == 10 else { fail("ten warm measurements required") }
+  let sorted = values.copy()
+  sorted.sort()
+  (sorted[4] + sorted[5]) / 2.0
+}
+
+///|
+async fn fetch(remote : String, local : String) -> Unit {
+  if @fs.exists(local) {
+    return
+  }
+  guard @process.run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179:" + remote,
+      local,
+    ]) ==
+    0 else {
+    fail("fetch failed")
+  }
+}
+
+///|
+async fn main {
+  let local = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/top3-frequency-20261026"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let runs = "/home/wlc004s/moonrobo/runs/hotspot-shared-"
+  let gates = []
+  for variant in ["world-batched", "actor1024", "norm-snapshot"] {
+    let name = "top3-" + variant + "-gate-a.numeric.json"
+    fetch(base + "/" + name, local + "/" + name)
+    gates.push(read(local + "/" + name))
+  }
+  let pairs = []
+  let mut allocated = 0.0
+  let mut reserved = 0.0
+  let mut cuda_total = 0.0
+  let mut device_unfree = 0.0
+  for
+    (phase, variant) in [("world", "world-batched"), ("actor", "norm-snapshot")] {
+    let times = []
+    for i in 0..<4 {
+      let label = "top3-" + variant + "-off-" + i.to_string()
+      let dir = local + "/" + label
+      if !@fs.exists(dir) {
+        @fs.mkdir(dir)
+      }
+      for
+        name in [
+          "result.json", "protocol.json", "training-guard.json", "training-docker-final.json",
+        ] {
+        fetch(runs + label + "/" + name, dir + "/" + name)
+      }
+      let guard_json = read(dir + "/training-guard.json")
+      guard field(guard_json, "reason") == Json("completed") &&
+        field(guard_json, "error") == Json::null() else {
+        fail("resource gate failed")
+      }
+      guard read(dir + "/training-docker-final.json")
+        is [{ "State": { "Running": False, "OOMKilled": False, .. }, .. }] else {
+        fail("unsafe container completion")
+      }
+      let result = read(dir + "/result.json")
+      guard field(result, "observer") == Json("off") &&
+        field(result, "rows") is Array(rows) &&
+        rows.length() == 13 else {
+        fail("unprofiled thirteen iterations required")
+      }
+      times.push(
+        median(
+          rows
+          .filter(r => field(r, "steady") == Json(true))
+          .map(r => num(field(r, "wall_ms"))),
+        ),
+      )
+      let memory = field(result, "memory")
+      allocated = allocated.max(num(field(memory, "allocated_peak_bytes")))
+      reserved = reserved.max(num(field(memory, "reserved_peak_bytes")))
+      cuda_total = num(field(memory, "cuda_total_bytes"))
+      device_unfree = device_unfree.max(
+        cuda_total - num(field(memory, "cuda_free_bytes")),
+      )
+    }
+    let a = (times[0] + times[3]) / 2.0
+    let b = (times[1] + times[2]) / 2.0
+    pairs.push({
+      "phase": Json(phase),
+      "variant": Json(variant),
+      "medians_abba_ms": Json(times),
+      "baseline_ms": Json(a),
+      "candidate_ms": Json(b),
+      "saved_ms": Json(a - b),
+      "time_reduction_percent": Json((a - b) / a * 100.0),
+      "ab_saved_ms": Json(times[0] - times[1]),
+      "ba_saved_ms": Json(times[3] - times[2]),
+      "logical_batch": Json(if phase == "world" { 2048 } else { 4096 }),
+      "actor_microbatch": 512,
+    })
+  }
+  let frequencies : Json = [
+    {
+      "operation": "actor_backward",
+      "calls_per_round": 8,
+      "steps_per_call": 32,
+      "previous_difference_ms": 485.65018463134766,
+      "previous_difference_already_sums_all_calls": true,
+    },
+    {
+      "operation": "actor_forward_geometry_reward_tail",
+      "chunks_per_round": 8,
+      "rollout_steps_per_chunk": 32,
+      "previous_difference_ms": 222.02779388427734,
+      "previous_difference_already_sums_all_calls": true,
+      "boundary_limitation": "forward composite boundaries not completely matched across languages",
+    },
+    {
+      "operation": "world_backward",
+      "calls_per_round": 10,
+      "steps_per_call": 8,
+      "previous_difference_per_call_ms": 12.041568756103516,
+      "weighted_priority_estimate_ms": 120.41568756103516,
+    },
+  ]
+  let summary : Json = {
+    "scope": "fixed trained checkpoint; 3 warmups + 10 measurements per process; no profiler; short ABBA; not full-round training throughput",
+    "frequencies": frequencies,
+    "numeric_gates": Json(gates),
+    "pairs": Json(pairs),
+    "memory": {
+      "max_torch_allocated_peak_gib": Json(allocated / 1073741824.0),
+      "max_torch_reserved_peak_gib": Json(reserved / 1073741824.0),
+      "reported_cuda_total_gib": Json(cuda_total / 1073741824.0),
+      "max_end_device_unfree_gib_includes_host_and_cache": Json(
+        device_unfree / 1073741824.0,
+      ),
+      "original_guards_unchanged": true,
+      "oom": false,
+    },
+    "limits": [
+      "Full MoonBit versus smc actor gradient parity is still unresolved; these gates compare candidate against the same native baseline.",
+      "Weighted microbenchmark differences and independent candidate gains are not a closed full-round causal bill.",
+      "No full-round speedup or smc gap is inferred by subtracting these isolated gains from previous end-to-end timings.",
+    ],
+  }
+  @fs.write_file(
+    local + "/results.json",
+    summary.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(Json(pairs).stringify(indent=2))
+  println(field(summary, "memory").stringify(indent=2))
+}

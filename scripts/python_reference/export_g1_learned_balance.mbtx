@@ -1,0 +1,110 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn link(source : String, target : String) -> Unit {
+  assert_eq(@process.run("/bin/ln", [source, target]), 0)
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: export_g1_learned_balance.mbtx REPO FIT_STUDY LONG_STUDY OUTPUT",
+  )
+  let root = args[1]
+  let fit = args[2]
+  let long = args[3]
+  let output = args[4]
+  assert_false(@fs.exists(output))
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "learned_balance.py", "learned_balance_study.py", "balance_features.py", "balance_feature_study.py",
+      "balance_intervention.py", "temporal_actor.py", "temporal_training.py", "policy.py",
+      "dynamics.py", "cpu_physics.py", "teacher_feedback.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(fit + "/provider-sources/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/provider-sources/learned_balance_export.py",
+    @fs.read_file(root + "/providers/motion_learning/learned_balance_export.py").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-balance-export-charter.v1",
+        "fit_study": Json(fit),
+        "long_study": Json(long),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(
+    @process.run(
+      root + "/target/learning-venv/bin/python",
+      [
+        output + "/provider-sources/learned_balance_export.py",
+        "--study",
+        fit,
+        "--long",
+        long,
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--output",
+        output,
+      ],
+      stdout=@process.redirect_to_file(
+        output + "/export.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  for (scope, study) in [("ten-second", fit), ("thirty-second", long)] {
+    for mode in ["h10", "full"] {
+      let run = output + "/" + scope + "-" + mode
+      @fs.mkdir(run + "/collection", recursive=true)
+      for name in ["dataset.json.gz", "balance-training.jsonl.gz"] {
+        link(output + "/common/" + name, run + "/collection/" + name)
+      }
+      link(
+        fit + "/training-sources.json",
+        run + "/collection/training-sources.json",
+      )
+      link(
+        output + "/common/" + scope + "-study.json",
+        run + "/policy/balance-study.json",
+      )
+      link(
+        study + "/evaluation-physics.jsonl.gz",
+        run + "/policy/balance-evaluation.jsonl.gz",
+      )
+      for seed in [0, 1, 2] {
+        let name = "actor-" + mode + "-seed-\{seed}.pt"
+        link(fit + "/policy/" + name, run + "/policy/" + name)
+      }
+    }
+  }
+  println(
+    "Materialized four balance registry runs with shared immutable source bytes.",
+  )
+}

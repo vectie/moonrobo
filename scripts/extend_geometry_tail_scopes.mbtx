@@ -1,0 +1,11 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let dir="output/spark-runtime-20261024/geometry-tail-20261028/"
+  let mut f=@fs.read_file(dir+"geometry_tail_fixture_a.mbt").text()
+  f=rep(f,"let cross = enabled && (factor == \"cross\" || factor == \"both\")","let cross = factor == \"tail-on-cross\" || (enabled && (factor == \"cross\" || factor == \"both\"))")
+  f=rep(f,"let tail = enabled && (factor == \"tail\" || factor == \"both\")","let tail = enabled && (factor == \"tail\" || factor == \"both\" || factor == \"tail-on-cross\")")
+  @fs.write_file(dir+"geometry_tail_fixture_b.mbt",f,create_mode=CreateNew)
+  let r=@fs.read_file(dir+"run_geometry_tail_b.mbtx").text()
+  @fs.write_file(dir+"run_geometry_tail_b.mbtx",rep(rep(r,"[\"tail\", \"abba-tail\"","[\"abba-tail-on-cross\", \"tail\", \"abba-tail\""),"geometry_tail_fixture_a.mbt","geometry_tail_fixture_b.mbt"))
+}

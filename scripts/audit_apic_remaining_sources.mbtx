@@ -1,0 +1,341 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+struct Source {
+  project : String
+  pin : String
+  path : String
+  cached : String
+  url : String
+  symbols : Array[String]
+}
+
+///|
+fn digest(bytes : Bytes) -> String {
+  let mut result = ""
+  for byte in @crypto.sha256(bytes) {
+    result += byte.to_hex()
+  }
+  result
+}
+
+///|
+fn source(
+  project : String,
+  pin : String,
+  path : String,
+  cached : String,
+  base : String,
+  symbols : Array[String],
+) -> Source {
+  { project, pin, path, cached, url: base + path, symbols, }
+}
+
+///|
+/// Source text and archive hashes only. This script neither downloads nor
+/// imports sources; it has no subprocess/native library/compiler API.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 || (args.length() == 4 && args[3] == "--verify") else {
+    fail(
+      "usage: audit_apic_remaining_sources.mbtx REPO CACHE [--verify]; read staged primary source text only",
+    )
+  }
+  let root = args[1]
+  let cache = args[2]
+  let isaac = "46d6cc3d7b115906fad12efd372fbf69f4e3d3ed"
+  let newton = "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3"
+  let ibase = "https://raw.githubusercontent.com/isaac-sim/IsaacLab/" +
+    isaac +
+    "/"
+  let nbase = "https://raw.githubusercontent.com/newton-physics/newton/" +
+    newton +
+    "/"
+  let wbase = "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/"
+  let ipath = "source/isaaclab_newton/isaaclab_newton/physics/"
+  let mbase = "https://github.com/google-deepmind/mujoco_warp"
+  let sources : Array[Source] = [
+    source(
+      "IsaacLab",
+      isaac,
+      ipath + "newton_manager.py",
+      "apic-audit-newton_manager.py",
+      ibase,
+      [
+        "def start_simulation", "def initialize_solver", "def forward", "def _stage_body_forces",
+        "def _run_solver_substeps", "def _update_sensors", "def _simulate_full",
+      ],
+    ),
+    source(
+      "IsaacLab",
+      isaac,
+      ipath + "mjwarp_manager.py",
+      "apic-audit-mjwarp_manager.py",
+      ibase,
+      ["def _build_solver", "def _reset_solver_internals"],
+    ),
+    source(
+      "IsaacLab",
+      isaac,
+      ipath + "mjwarp_manager_cfg.py",
+      "apic-audit-mjwarp_manager_cfg.py",
+      ibase,
+      [
+        "class MJWarpSolverCfg", "iterations: int", "solver: str", "update_data_interval:",
+      ],
+    ),
+    source(
+      "Newton",
+      newton,
+      "newton/_src/solvers/mujoco/solver_mujoco.py",
+      "apic-audit-solver_mujoco.py",
+      nbase,
+      [
+        "def _prepare_generated_kernels", "def _mujoco_warp_step", "def step(", "def reset(",
+        "def _notify_model_changed", "def _apply_mjc_control", "def _update_mjc_data",
+        "def _update_newton_state", "def _convert_to_mjc", "def _update_model_inertial_properties",
+        "def _set_const_0_with_physical_meaninertia",
+      ],
+    ),
+    source(
+      "Newton",
+      newton,
+      "newton/_src/sim/builder.py",
+      "apic-audit-newton-builder.py",
+      nbase,
+      ["def add_usd(", "def finalize("],
+    ),
+    source(
+      "Newton",
+      newton,
+      "newton/_src/utils/import_usd.py",
+      "apic-audit-newton-import_usd.py",
+      nbase,
+      ["def parse_usd(", "schema_resolvers:", "bodies_follow_joint_ordering:"],
+    ),
+    source(
+      "Warp",
+      "v1.17.0",
+      "warp/_src/context.py",
+      "apic-audit-warp-context.py",
+      wbase,
+      [
+        "class ModuleBuilder", "def launch(", "def capture_save", "def _build_cuda_kernel_params",
+      ],
+    ),
+    source(
+      "Warp",
+      "v1.17.0",
+      "warp/_src/codegen.py",
+      "apic-audit-warp-codegen.py",
+      wbase,
+      [
+        "class Adjoint", "def build(adj", "def eval(adj", "def codegen_kernel", "def codegen_module",
+      ],
+    ),
+    source(
+      "Warp",
+      "v1.17.0",
+      "warp/_src/build.py",
+      "apic-audit-warp-build.py",
+      wbase,
+      ["def build_cuda", "wp_cuda_compile_program"],
+    ),
+    source(
+      "Warp",
+      "v1.17.0",
+      "warp/_src/utils.py",
+      "apic-audit-warp-utils.py",
+      wbase,
+      [
+        "def array_scan", "def segmented_sort_pairs", "wp_array_scan_int_device",
+        "wp_segmented_sort_pairs_float_device",
+      ],
+    ),
+    source(
+      "Warp",
+      "v1.17.0",
+      "warp/_src/apic/capture.py",
+      "apic-audit-warp-capture.py",
+      wbase,
+      ["def track_array", "def build_launch_info", "def _collect_metadata"],
+    ),
+    source(
+      "Warp",
+      "v1.17.0",
+      "warp/native/warp.h",
+      "apic-audit-warp.h",
+      wbase,
+      [
+        "wp_cuda_load_module", "wp_cuda_get_kernel", "wp_cuda_launch_kernel", "wp_array_scan_int_device",
+        "wp_segmented_sort_pairs_float_device",
+      ],
+    ),
+    source(
+      "Warp",
+      "v1.17.0",
+      "warp/native/apic.h",
+      "apic-audit-apic.h",
+      wbase,
+      [
+        "wp_apic_begin_recording", "wp_apic_register_memory_region", "wp_apic_state_save",
+      ],
+    ),
+    source(
+      "Warp",
+      "v1.17.0",
+      "warp/native/scan.cu",
+      "apic-audit-scan.cu",
+      wbase,
+      ["cub::DeviceScan::InclusiveSum", "cub::DeviceScan::ExclusiveSum"],
+    ),
+    source(
+      "Warp",
+      "v1.17.0",
+      "warp/native/sort.cu",
+      "apic-audit-sort.cu",
+      wbase,
+      [
+        "cub::DeviceSegmentedRadixSort::SortPairs", "wp_segmented_sort_pairs_float_device",
+      ],
+    ),
+  ]
+  for
+    (name, symbols) in [
+      (
+        "forward",
+        ["def fwd_position", "def forward(", "def step(", "def implicit("],
+      ),
+      (
+        "solver",
+        [
+          "def solve(", "def _solve(", "wp.capture_while", "def _solver_iteration",
+        ],
+      ),
+      (
+        "io",
+        [
+          "def is_sparse", "nxn_include.sum() < 250_000", "def put_model", "def put_data",
+        ],
+      ),
+      (
+        "collision_driver",
+        [
+          "def sap_broadphase", "wp.utils.segmented_sort_pairs", "wp.utils.array_scan",
+          "def collision(",
+        ],
+      ),
+      ("set_const", ["def set_const_fixed", "def set_const_0"]),
+      ("warp_util", ["def cache_kernel"]),
+      (
+        "smooth",
+        ["def kinematics", "def com_pos", "def crb", "def factor_solve_i"],
+      ),
+    ] {
+    let path = "mujoco_warp/_src/" + name + ".py"
+    sources.push({
+      project: "MuJoCo-Warp",
+      pin: "PyPI 3.15.0 sdist",
+      path,
+      cached: "mujoco_warp-3.15.0/" + path,
+      url: mbase,
+      symbols,
+    })
+  }
+  let rows : Array[Json] = []
+  for entry in sources {
+    let bytes = @fs.read_file(cache + "/" + entry.cached).binary()
+    let lines = @utf8.decode(bytes).split("\n").collect()
+    let anchors : Array[Json] = []
+    for symbol in entry.symbols {
+      guard lines.find_index(line => line.contains(symbol)) is Some(index) else {
+        fail("source evidence anchor absent: " + entry.path + ": " + symbol)
+      }
+      anchors.push({ "symbol": symbol.to_json(), "line": (index + 1).to_json() })
+    }
+    rows.push({
+      "project": entry.project.to_json(),
+      "pin": entry.pin.to_json(),
+      "source_path": entry.path.to_json(),
+      "source_url": entry.url.to_json(),
+      "sha256": digest(bytes).to_json(),
+      "bytes": bytes.length().to_json(),
+      "lines": lines.length().to_json(),
+      "anchors": anchors.to_json(),
+    })
+  }
+  let package = @json.parse(
+    @fs.read_file(cache + "/apic-audit-mujoco-warp-pypi.json").text(),
+  )
+  guard package
+    is { "info": { "version": "3.15.0", .. }, "urls": Array(urls), .. } else {
+    fail("expected official PyPI mujoco-warp 3.15.0 metadata")
+  }
+  let archive = @fs.read_file(cache + "/apic-audit-mujoco_warp-3.15.0.tar.gz").binary()
+  let archive_sha = digest(archive)
+  let mut archive_url = ""
+  for item in urls {
+    if item
+      is {
+        "filename": "mujoco_warp-3.15.0.tar.gz",
+        "url": String(url),
+        "digests": { "sha256": String(expected), .. },
+        ..
+      } {
+      guard archive_sha == expected else {
+        fail("PyPI source archive SHA256 mismatch")
+      }
+      archive_url = url
+    }
+  }
+  guard !archive_url.is_empty() else {
+    fail("official source archive metadata absent")
+  }
+  let report : Json = {
+    "format": "moonrobo.apic-remaining-native-source-evidence.v1",
+    "scope": "Static primary-source call-chain evidence; symbol anchors are lexical evidence, not an executed or complete kernel closure",
+    "sources": rows.to_json(),
+    "mujoco_warp_distribution": {
+      "version": "3.15.0",
+      "url": archive_url.to_json(),
+      "archive_sha256": archive_sha.to_json(),
+      "official_pypi_digest_verified": true,
+      "installed": false,
+      "imported": false,
+    },
+    "python_executed": false,
+    "sdk_initialized": false,
+    "model_compiled": false,
+    "cuda_compiled": false,
+    "apic_exported": false,
+    "tests_executed": false,
+    "effective_kernel_closure_observed": false,
+  }
+  let output = root + "/docs/APIC_REMAINING_SOURCE_EVIDENCE.json"
+  if args.length() == 4 {
+    guard @json.parse(@fs.read_file(output).text()) == report else {
+      fail(
+        "source evidence differs from recorded metadata; review source identities before updating",
+      )
+    }
+  } else {
+    @fs.write_file(
+      output,
+      report.stringify(indent=2) + "\n",
+      create_mode=CreateOrTruncate,
+    )
+  }
+  println(
+    "Verified " +
+    rows.length().to_string() +
+    " primary source identities and official sdist SHA; no upstream code executed",
+  )
+}

@@ -1,0 +1,1166 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/x/crypto",
+}
+
+///|
+// Native Linux executable, inside an already limited, fresh container. The host
+// verifies its image ID and mounts the repository read-only and /gate writable.
+// GNU timeout encloses this helper, including hashing and checkpoint checks.
+// Separate diagnostic gate: the original frozen N128 launcher is unchanged.
+// Usage: HELPER /absolute/new/trainer EXACT_LOWERCASE_SHA256
+let repo = "/workspace/moonrobo"
+
+///|
+let config : String = repo +
+  "/examples/learning/g1-native-tensor-apic-n128-scale-gate.json"
+
+///|
+let config_sha = "6913ba684c3f07b0398665668e9c3b3773ecdc89accd4cf4cfa50522c1aa2643"
+
+///|
+let image_id = "sha256:9d517324498da0ab109841d666bd49b9e9838bf3878e678c226c15848cbcac3b"
+
+///|
+let manifest : String = repo + "/data/manifest.json"
+
+///|
+let manifest_sha = "760c59585d792da74e9437f12dced4d216afd5d17411cf4bfa507ed51e6bc60f"
+
+///|
+let bundle : String = repo +
+  "/runs/apic-n128-20261024-a/g1-128env-apic/manifest.json"
+
+///|
+let bundle_sha = "bcca38b63ba4fe8f933a8c808ec94092630d30bccbbfae89fb4b41dddbf95774"
+
+///|
+let tensor : String = repo +
+  "/private/native-tensor-telemetry-20261024-c/libmoonrobo_learning_tensor.so"
+
+///|
+let tensor_sha = "226e18f2cd6cbfbdfbf0a7b6faab1b8833440746eac17fd5d377205db75852d4"
+
+///|
+let physics = "/opt/moonrobo/apic-runtime/libmoonrobo_aligned_apic.so"
+
+///|
+let physics_sha = "6c5df912291754b37ac2c60a0b0c13253d2486e87c42ca20fb0ad19e910099e1"
+
+///|
+let mujoco = "/opt/isaaclab-venv/lib/python3.12/site-packages/mujoco/libmujoco.so.3.15.0"
+
+///|
+let mujoco_sha = "76845f2712200efaa5a38da7a004e944ecdb7397c41fd8b8ea7684a82d3e4bd0"
+
+///|
+let scene : String = repo + "/data/g1_description/scene-no-self-collision.xml"
+
+///|
+let scene_sha = "34cf0cf3c5fa5452fc24d33d9f31fb4a4435f3050366041e1dc853b39bdd20ee"
+
+///|
+let memory_limit = 68719476736L
+
+///|
+let batch_execution : Json = { "world_microbatch": 16, "actor_microbatch": 16 }
+
+///|
+fn validate_trainer_pin(path : String, digest : String) -> Unit raise {
+  guard path.has_prefix("/") &&
+    !path.contains("\n") &&
+    digest.length() == 64 &&
+    digest.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) else {
+    fail("trainer requires an absolute path and explicit lowercase SHA256")
+  }
+}
+
+///|
+fn json_sha(value : Json) -> String {
+  let hash = @crypto.SHA256::new()
+  hash.update(@utf8.encode(value.stringify()))
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+fn verify_telemetry_options(value : Json) -> Unit raise {
+  guard value
+    is {
+      "format": "moonrobo.cuda-training-telemetry-options.v1",
+      "enabled": True,
+      "synchronize_each_sample": True,
+      "reset_peaks": "once after initialization and checkpoint restore",
+      "max_retained_samples": Number(128.0, ..),
+      "max_event_bytes": Number(16384.0, ..),
+      "affects_performance": True,
+      "changes_training_identity": False,
+      "caching_precondition": "fixed enabled allocator; no external cache/peak mutation",
+      "programmatic_cache_disable_checked": False,
+      ..
+    } else {
+    fail("telemetry opt-in/window/synchronization contract differs")
+  }
+}
+
+///|
+let phases : Array[String] = [
+  "initialization_and_restore_complete_before_reset", "window_start", "warmup_complete",
+  "collection_complete", "world_updates_complete", "actor_critic_complete", "checkpoint_begin",
+  "checkpoint_complete", "training_and_checkpoint_complete",
+]
+
+///|
+fn verify_telemetry_value(value : Json, identity_sha : String) -> Json raise {
+  guard value
+    is {
+      "format": "moonrobo.cuda-training-memory-report.v1",
+      "status": "complete",
+      "window_id": String(window),
+      "rank": Number(0.0, ..),
+      "resume_kind": "fresh",
+      "starting_iteration": Number(0.0, ..),
+      "durable_training_identity_changed_by_flag": False,
+      "memory_admission_modified": False,
+      "empty_cache_called": False,
+      "error": Null,
+      "samples": Array(samples),
+      ..
+    } &&
+    window.has_prefix("cuda-memory-") &&
+    window.has_suffix("-rank-0-iteration-0") &&
+    window.length() <= 128 &&
+    window
+    .iter()
+    .all(c => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') &&
+    field(value, "identity_sha256") == Json(identity_sha) &&
+    integer(field(value, "peak_reset_count")) == 1L &&
+    integer(field(value, "sample_count")) == 9L &&
+    integer(field(value, "retained_sample_count")) == 9L &&
+    integer(field(value, "omitted_sample_count")) == 0L &&
+    samples.length() == 9 else {
+    fail("complete bounded fresh N128 telemetry window required")
+  }
+  verify_telemetry_options(field(value, "options"))
+  let comparisons : Array[Json] = []
+  let mut previous_allocated = 0L
+  let mut previous_reserved = 0L
+  let mut minimum_free = 9223372036854775807L
+  let mut baseline_free = 0L
+  let mut total_bytes = 0L
+  for i, sample in samples {
+    guard @utf8.encode(sample.stringify()).length() <= 16384 &&
+      field(sample, "format") == Json("moonrobo.cuda-training-memory-sample.v1") &&
+      field(sample, "window_id") == Json(window) &&
+      field(sample, "identity_sha256") == Json(identity_sha) &&
+      integer(field(sample, "sequence")) == i.to_int64() &&
+      integer(field(sample, "rank")) == 0L &&
+      integer(field(sample, "iteration")) == (if i < 3 { 0L } else { 1L }) &&
+      field(sample, "phase") == Json(phases[i]) &&
+      field(sample, "peak_origin") ==
+      Json(
+        if i == 0 {
+          "process before diagnostic reset"
+        } else {
+          "diagnostic window reset"
+        },
+      ) else {
+      fail("telemetry phase sequence, identity or event bound differs")
+    }
+    let begin = integer(field(sample, "sample_begin_unix_ms"))
+    let end = integer(field(sample, "sample_end_unix_ms"))
+    guard begin > 0L && end >= begin else {
+      fail("invalid telemetry sample timestamp")
+    }
+    let stats = field(sample, "allocator")
+    guard field(stats, "device") == Json(0) &&
+      field(stats, "synchronized") == Json(true) else {
+      fail("unsynchronized or wrong-device telemetry")
+    }
+    let allocated_current = integer(field(stats, "allocated_current_bytes"))
+    let allocated_peak = integer(field(stats, "allocated_peak_bytes"))
+    let reserved_current = integer(field(stats, "reserved_current_bytes"))
+    let reserved_peak = integer(field(stats, "reserved_peak_bytes"))
+    let free = integer(field(stats, "cuda_free_bytes"))
+    let total = integer(field(stats, "cuda_total_bytes"))
+    guard allocated_current >= 0L &&
+      allocated_peak >= allocated_current &&
+      reserved_current >= 0L &&
+      reserved_peak >= reserved_current &&
+      free >= 0L &&
+      total >= free &&
+      total > 0L &&
+      total <= 1099511627776L else {
+      fail("invalid allocator or CUDA device byte counters")
+    }
+    if i == 0 {
+      total_bytes = total
+    }
+    guard total == total_bytes else { fail("CUDA total changed during window") }
+    if i > 1 {
+      guard allocated_peak >= previous_allocated &&
+        reserved_peak >= previous_reserved else {
+        fail("telemetry cumulative peaks decreased without a permitted reset")
+      }
+    }
+    if i == 1 {
+      baseline_free = free
+    }
+    let host = field(sample, "host")
+    guard field(host, "cgroup_source") ==
+      Json("/sys/fs/cgroup (visible mount root)") &&
+      field(host, "ancestor_limits_enumerated") == Json(false) &&
+      field(host, "read_errors") is Object(_) &&
+      field(host, "cgroup_metrics") is Object(_) else {
+      fail("host observation source/scope missing")
+    }
+    comparisons.push({
+      "phase": Json(phases[i]),
+      "sequence": Json(i),
+      "sample_begin_unix_ms": Json(begin),
+      "sample_end_unix_ms": Json(end),
+      "allocator": stats,
+      "allocated_cumulative_peak_increase_since_previous_boundary_bytes": if i >
+        1 {
+        Json(allocated_peak - previous_allocated)
+      } else {
+        Json::null()
+      },
+      "reserved_cumulative_peak_increase_since_previous_boundary_bytes": if i >
+        1 {
+        Json(reserved_peak - previous_reserved)
+      } else {
+        Json::null()
+      },
+      "observed_cuda_free_drop_from_window_start_bytes": if i > 0 {
+        Json(baseline_free - free)
+      } else {
+        Json::null()
+      },
+      "host": host,
+    })
+    if i > 0 {
+      previous_allocated = allocated_peak
+      previous_reserved = reserved_peak
+      minimum_free = minimum_free.min(free)
+    }
+  }
+  guard field(value, "last_sample") == samples[8] &&
+    integer(field(value, "allocated_window_peak_bytes")) == previous_allocated &&
+    integer(field(value, "reserved_window_peak_bytes")) == previous_reserved &&
+    integer(field(value, "minimum_observed_cuda_free_bytes")) == minimum_free else {
+    fail("telemetry retained samples and aggregate peaks differ")
+  }
+  {
+    "format": "moonrobo.native-n128-telemetry-phase-comparison.v1",
+    "window_id": Json(window),
+    "identity_sha256": Json(identity_sha),
+    "sample_count": 9,
+    "phases": Json(comparisons),
+    "allocated_window_peak_bytes": Json(previous_allocated),
+    "reserved_window_peak_bytes": Json(previous_reserved),
+    "minimum_observed_cuda_free_bytes": Json(minimum_free),
+    "phase_comparison_scope": "growth of cumulative allocator high-water mark since previous boundary, not phase-local peak or total-device memory",
+    "host_comparison_scope": "sequential visible cgroup mount-root observations; kernel peak can predate diagnostic window; missing values stay null",
+    "external_allocations_added_to_allocator": false,
+    "performance_comparison_valid": false,
+    "memory_admission_modified": false,
+  }
+}
+
+///|
+async fn verify_telemetry(report : Json) -> Json {
+  let value = field(report, "cuda_memory_telemetry")
+  let comparison = verify_telemetry_value(
+    value,
+    json_sha(field(report, "identity")),
+  )
+  guard field(value, "window_id") is String(window) &&
+    field(report, "cuda_memory_telemetry_file") == Json(window + ".json") else {
+    fail("telemetry file name differs from bounded window identity")
+  }
+  let path = "/gate/train/" + window + ".json"
+  guard bounded_json(path, 4194304L) == value else {
+    fail("independent telemetry evidence differs from training report")
+  }
+  guard comparison is Object(fields) else {
+    fail("comparison must be an object")
+  }
+  fields["telemetry_file"] = Json(path)
+  fields["telemetry_file_sha256"] = Json(file_sha(path, 4194304L))
+  fields["memory_plan"] = field(report, "memory_plan")
+  fields["post_catalog_memory_plan"] = field(report, "post_catalog_memory_plan")
+  comparison
+}
+
+///|
+fn field(value : Json, name : String) -> Json raise {
+  guard value is Object(fields) && fields.get(name) is Some(result) else {
+    fail("missing JSON field: " + name)
+  }
+  result
+}
+
+///|
+fn integer(value : Json) -> Int64 raise {
+  match value {
+    String(text) => @string.parse_int64(text)
+    Number(n, ..) => {
+      guard n >= 0 && n <= 9007199254740991.0 && n.to_int64().to_double() == n else {
+        fail("expected exact nonnegative integer")
+      }
+      n.to_int64()
+    }
+    _ => fail("expected integer/string")
+  }
+}
+
+///|
+fn required_some(value : Json) -> Json raise {
+  // Existing reports explicitly encode Json(Some(value)) as [value].
+  guard value is Array(values) && values.length() == 1 else {
+    fail("missing or malformed report Some value")
+  }
+  values[0]
+}
+
+///|
+async fn file_sha(path : String, max_bytes : Int64) -> String {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected regular file: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= max_bytes else { fail("file byte bound: " + path) }
+  let hash = @crypto.SHA256::new()
+  for offset = 0L; offset < size; {
+    let count = (size - offset).min(65536L).to_int()
+    hash.update(file.read_exactly_at(count, position=offset))
+    continue offset + count.to_int64()
+  }
+  guard file.size() == size else { fail("file size changed: " + path) }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn bounded_text(path : String, limit : Int64) -> String {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected regular text file: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= limit else { fail("text byte bound: " + path) }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else { fail("text size changed: " + path) }
+  @utf8.decode(bytes)
+}
+
+///|
+async fn bounded_json(path : String, limit : Int64) -> Json {
+  @json.parse(bounded_text(path, limit))
+}
+
+///|
+async fn write_json(path : String, value : Json) -> Unit {
+  @fs.write_file(
+    path,
+    value.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+}
+
+///|
+async fn cgroup() -> Json {
+  let values : Map[String, String] = Map([])
+  let errors : Map[String, String] = Map([])
+  for
+    name in [
+      "memory.max", "memory.current", "memory.peak", "memory.events", "memory.swap.max",
+      "memory.swap.current", "cpu.max",
+    ] {
+    try {
+      let file = @fs.open("/sys/fs/cgroup/" + name, mode=ReadOnly)
+      defer file.close()
+      let bytes = FixedArray::make(16385, b'\x00')
+      let n = file.read_at(bytes, position=0L)
+      guard n > 0 && n <= 16384 else { fail("missing/oversized cgroup metric") }
+      values[name] = @utf8.decode(Bytes::makei(n, i => bytes[i]))
+        .trim()
+        .to_owned()
+    } catch {
+      error => errors[name] = error.to_string()
+    }
+  }
+  { "values": Json(values), "errors": Json(errors) }
+}
+
+///|
+fn verify_cgroup(value : Json) -> Int64 raise {
+  let values : Map[String, String] = @json.from_json(field(value, "values"))
+  guard values.get("memory.max") == Some(memory_limit.to_string()) &&
+    values.get("memory.swap.max") == Some("0") &&
+    values.get("cpu.max") is Some(cpu) else {
+    fail("requires 64 GiB memory, zero swap and four CPUs")
+  }
+  let parts = cpu.split(" ").filter(x => x != "").to_array()
+  guard parts.length() == 2 &&
+    @string.parse_int64(parts[1]) > 0L &&
+    @string.parse_int64(parts[0]) == 4L * @string.parse_int64(parts[1]) &&
+    values.get("memory.peak") is Some(peak) &&
+    values.get("memory.events") is Some(events) else {
+    fail("missing/invalid cgroup quota, peak or OOM evidence")
+  }
+  let parsed : Map[String, Int64] = Map([])
+  for line in events.split("\n") {
+    let parts = line.split(" ").filter(x => x != "").to_array()
+    guard parts.length() == 2 else { fail("invalid memory.events") }
+    parsed[parts[0].to_owned()] = @string.parse_int64(parts[1])
+  }
+  guard parsed.get("oom") == Some(0L) &&
+    parsed.get("oom_kill") == Some(0L) &&
+    parsed.get("oom_group_kill").unwrap_or(0L) == 0L else {
+    fail("observed cgroup OOM event")
+  }
+  let result = @string.parse_int64(peak)
+  guard result > 0L else { fail("invalid cgroup peak") }
+  // Kernel peak can briefly exceed its limit; preserve it instead of clamping.
+  result
+}
+
+///|
+fn verify_memory(plan : Json) -> Unit raise {
+  let host = integer(field(plan, "host_free_bytes"))
+  let cuda = integer(field(plan, "cuda_free_bytes"))
+  let budget = integer(field(plan, "budget_bytes"))
+  guard host > 0L &&
+    cuda > 0L &&
+    host <= 1099511627776L &&
+    cuda <= 1099511627776L &&
+    budget == host.min(cuda) * 65L / 100L &&
+    integer(field(plan, "peak_bytes")) == 36531105856L &&
+    integer(field(plan, "peak_bytes")) <= budget &&
+    integer(field(field(plan, "components"), "physics_scene_reserve")) ==
+    25769803776L &&
+    integer(
+      field(field(plan, "components"), "distributed_communicator_staging"),
+    ) ==
+    0L else {
+    fail("N128 memory plan differs or fails unchanged 65%/24 GiB admission")
+  }
+}
+
+///|
+async fn verify_inputs(trainer : String, trainer_sha : String) -> Json {
+  validate_trainer_pin(trainer, trainer_sha)
+  guard trainer.has_prefix("/") &&
+    @fs.realpath(trainer) == trainer &&
+    @fs.realpath(repo) == repo &&
+    @fs.realpath("/gate") == "/gate" else {
+    fail("canonical trainer/repository/gate paths required")
+  }
+  let pins = [
+    (trainer, trainer_sha, 1073741824L),
+    (config, config_sha, 1048576L),
+    (manifest, manifest_sha, 4194304L),
+    (bundle, bundle_sha, 268435456L),
+    (tensor, tensor_sha, 1073741824L),
+    (physics, physics_sha, 268435456L),
+    (mujoco, mujoco_sha, 268435456L),
+    (scene, scene_sha, 16777216L),
+  ]
+  let actual : Map[String, Json] = Map([])
+  for (path, expected, limit) in pins {
+    guard file_sha(path, limit) == expected else {
+      fail("pinned SHA mismatch: " + path)
+    }
+    actual[path] = Json(expected)
+  }
+  Json(actual)
+}
+
+///|
+fn command(
+  trainer : String,
+  mode : String,
+  seconds : Int32,
+) -> Array[String] raise {
+  guard ["preflight", "train"].contains(mode) && seconds > 0 && seconds <= 850 else {
+    fail("invalid bounded gate phase")
+  }
+  // Keep phase children in the outer watchdog's process group, so its hard
+  // deadline covers the trainer as well as the MoonBit coordinator.
+  let args = [
+    "--foreground",
+    "--signal=TERM",
+    "--kill-after=5s",
+    "\{seconds}s",
+    trainer,
+    mode,
+  ]
+  args.append([
+    "--tensor-library", tensor, "--library", mujoco, "--scene", scene,
+  ])
+  args.append(["--manifest", manifest, "--config", config])
+  args.append(["--physics-library", physics, "--physics-artifact", bundle])
+  args.append(["--output", "/gate/train", "--checkpoint-format", "stream-v2"])
+  args.push("--cuda-memory-telemetry")
+  if mode == "train" {
+    args.append(["--iterations", "1"])
+  }
+  args
+}
+
+///|
+fn verify_readiness(value : Json) -> Int64 raise {
+  let extra = integer(field(value, "extra_collection_steps"))
+  let rows = integer(field(value, "replay_rows"))
+  let initial = integer(field(value, "initial_candidates"))
+  let candidates = integer(field(value, "candidates"))
+  guard extra >= 0L &&
+    extra <= 256L &&
+    extra % 8L == 0L &&
+    integer(field(value, "extra_physical_transitions")) == 128L * extra &&
+    integer(field(value, "collection_step_budget")) == 256L &&
+    integer(field(value, "horizon")) == 32L &&
+    integer(field(value, "max_remaining_steps")) >= 32L &&
+    rows == (66L + extra).min(256L) &&
+    initial >= 0L &&
+    initial <= 8448L &&
+    (extra > 0L || initial > 0L) &&
+    candidates > 0L &&
+    candidates <= 128L * rows else {
+    fail("N128 actor readiness/refill differs from finite H32 contract")
+  }
+  extra
+}
+
+///|
+async fn readiness() -> Json {
+  let mut found : Json? = None
+  for line in bounded_text("/gate/trainer.stdout.log", 4194304L).split("\n") {
+    if !line.has_prefix("{") {
+      continue
+    }
+    let row = @json.parse(line.to_owned()) catch { _ => continue }
+    if row
+      is {
+        "iteration": Number(1.0, ..),
+        "world": Object(_),
+        "policy": Object(_),
+        "actor_readiness": candidate,
+        ..
+      } {
+      guard found is None else { fail("multiple iteration-1 metrics") }
+      let value = required_some(candidate)
+      ignore(verify_readiness(value))
+      found = Some(value)
+    }
+  }
+  guard found is Some(value) else { fail("missing actor readiness metrics") }
+  value
+}
+
+///|
+async fn verify_report(extra : Int64, trainer_sha : String) -> Json {
+  let report = bounded_json("/gate/train/report.json", 4194304L)
+  guard report
+    is {
+      "format": "moonrobo.native-tensor-training-report.v1",
+      "iteration": Number(1.0, ..),
+      "distributed": False,
+      "resume_kind": "fresh",
+      "precision": "float32",
+      "amp": "none",
+      "learner_execution": {
+        "device": "cuda:0",
+        "backend": "libtorch",
+        "device_resident": True,
+        ..
+      },
+      "physics_execution": {
+        "backend": "isaac-newton-warp-apic-native",
+        "device": "cuda:0",
+        ..
+      },
+      "robot_hardware_execution": False,
+      "training_complete_for_requested_iterations": True,
+      "convergence_verified": False,
+      "checkpoint_format": "stream-v2",
+      ..
+    } else {
+    fail("unexpected N128 native CUDA/APIC one-iteration report")
+  }
+  let identity = field(report, "identity")
+  guard field(identity, "config") == bounded_json(config, 1048576L) &&
+    field(identity, "batch_execution") == batch_execution &&
+    field(report, "batch_execution") == batch_execution &&
+    field(identity, "split") == Json("train") &&
+    field(identity, "seed") == Json(179) &&
+    field(identity, "distributed_session") == Json::null() else {
+    fail("report configuration/seed/batch/single-host identity differs")
+  }
+  for
+    (key, expected) in [
+      ("manifest_sha256", manifest_sha),
+      ("physics_artifact_sha256", bundle_sha),
+      ("physics_library_sha256", physics_sha),
+      ("scene_sha256", scene_sha),
+      ("mujoco_library_sha256", mujoco_sha),
+      ("native_executable_sha256", trainer_sha),
+      ("tensor_library_sha256", tensor_sha),
+    ] {
+    guard field(identity, key) == Json(expected) else {
+      fail("report identity differs: " + key)
+    }
+  }
+  for key in ["memory_plan", "post_catalog_memory_plan"] {
+    verify_memory(field(report, key))
+  }
+  for label in ["counters", "global_counters"] {
+    for
+      (key, expected) in [
+        ("physical_transitions", 8448L + 128L * extra),
+        ("imagined_transitions", 4096L),
+        ("model_updates", 10L),
+        ("actor_updates", 1L),
+        ("critic_updates", 20L),
+        ("model_fit_transition_slots", 10240L),
+      ] {
+      guard integer(field(field(report, label), key)) == expected else {
+        fail("unexpected " + label + "." + key)
+      }
+    }
+  }
+  report
+}
+
+///|
+// Byte integrity/save verification only. Actual optimizer reload and warm
+// physics restore remain a separately executed audit, not implied here.
+async fn verify_checkpoint(report : Json, extra : Int64) -> Json {
+  let pointer = bounded_json("/gate/train/current.json", 65536L)
+  guard pointer
+    is {
+      "format": "moonrobo.native-tensor-checkpoint-pointer.v2",
+      "iteration": Number(1.0, ..),
+      "generation": String(generation),
+      "files": Object(files),
+      ..
+    } &&
+    files.length() == 14 &&
+    generation.has_prefix("generation-1-") &&
+    generation.length() <= 128 &&
+    generation
+    .iter()
+    .all(c => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') &&
+    pointer == required_some(field(report, "checkpoint")) &&
+    field(pointer, "shared_state_digest") ==
+    required_some(field(report, "shared_state_digest")) else {
+    fail("stream-v2 checkpoint receipt differs from training report")
+  }
+  let root = "/gate/train/" + generation
+  guard @fs.realpath(root) == root &&
+    pointer == bounded_json(root + "/receipt.json", 65536L) else {
+    fail("generation path/immutable receipt differs")
+  }
+  let mut total = 0L
+  for
+    name in [
+      "world.pt", "policy.pt", "critic.pt", "state.json", "catalog.json", "history.lengths.i32le",
+      "history.values.f64le", "replay.values.f64le", "replay.indices.i32le", "replay.flags.u8",
+      "environment.xi.f64le", "sampler.returns.f64le", "sampler.average.f64le", "sampler.completed.i32le",
+    ] {
+    guard files.get(name) is Some(String(expected)) &&
+      expected.length() == 64 &&
+      file_sha(root + "/" + name, 536870912L) == expected else {
+      fail("missing/corrupt stream-v2 member: " + name)
+    }
+    let file = @fs.open(root + "/" + name, mode=ReadOnly)
+    defer file.close()
+    total += file.size()
+    guard total <= 1073741824L else {
+      fail("checkpoint exceeds 1 GiB gate bound")
+    }
+  }
+  let saved = bounded_json(root + "/state.json", 4194304L)
+  let runtime = field(saved, "runtime")
+  let env = field(field(saved, "environment"), "metadata")
+  guard field(saved, "format") ==
+    Json("moonrobo.native-tensor-training-generation.v2") &&
+    field(saved, "identity") == field(report, "identity") &&
+    field(saved, "shared_state_digest") == field(pointer, "shared_state_digest") &&
+    field(runtime, "format") == Json("moonrobo-aligned-gpu-runtime-v2") &&
+    field(runtime, "iteration") == Json(1) &&
+    field(runtime, "num_envs") == Json(128) &&
+    field(runtime, "capacity") == Json(256) &&
+    field(runtime, "catalog_count") == Json(40) &&
+    integer(field(field(runtime, "replay"), "rows")) == (66L + extra).min(256L) &&
+    field(env, "format") == Json("moonrobo.aligned.isaac-warm-stream.v2") &&
+    field(env, "num_envs") == Json(128) &&
+    field(env, "exact_resume") == Json(false) &&
+    field(env, "replay_refill_required") == Json(true) else {
+    fail("saved stream-v2 runtime metadata differs from N128/40-motion gate")
+  }
+  {
+    "generation": Json(generation),
+    "verified_member_count": 14,
+    "verified_member_bytes": Json(total),
+    "catalog_count": 40,
+    "optimizer_reload_verified": false,
+    "exact_physics_resume_verified": false,
+  }
+}
+
+///|
+async fn inside(trainer : String, trainer_sha : String) -> Unit {
+  let started = @async.now()
+  guard @fs.readdir("/gate").is_empty() else {
+    fail("fresh /gate required; no overwrites")
+  }
+  let before = cgroup()
+  write_json("/gate/cgroup-before.json", before)
+  let mut preflight_code : Int32? = None
+  let mut train_code : Int32? = None
+  let mut failure : String? = None
+  let mut pins : Json? = None
+  let mut result : Json? = None
+  try {
+    ignore(verify_cgroup(before))
+    pins = Some(verify_inputs(trainer, trainer_sha))
+    let preflight = command(trainer, "preflight", 120)
+    write_json("/gate/command-plan.json", {
+      "format": "moonrobo.native-n128-telemetry-gate-plan.v1",
+      "expected_image_id": Json(image_id),
+      "image_id_verification": "host-required; not verified inside container",
+      "preflight": Json(preflight),
+      "trainer": Json(trainer),
+      "trainer_sha256": Json(trainer_sha),
+      "cuda_memory_telemetry_required": true,
+      "whole_helper_deadline_seconds": 895,
+      "kill_grace_seconds": 5,
+      "memory_limit_bytes": Json(memory_limit),
+      "swap_limit_bytes": 0,
+      "cpu_quota": 4,
+      "max_iterations": 1,
+      "checkpoint_format": "stream-v2",
+      "num_envs": 128,
+      "world_batch": 128,
+      "actor_batch": 128,
+      "microbatch": 16,
+    })
+    preflight_code = Some(
+      @shell.Cmd(
+        "/usr/bin/timeout",
+        preflight,
+        stdout=ToFile("/gate/preflight.stdout.log"),
+        stderr=ToFile("/gate/preflight.stderr.log"),
+      ).status(timeout_ms=130000),
+    )
+    guard preflight_code == Some(0) else {
+      fail("preflight refused/failed; training was not started")
+    }
+    let plan = bounded_json("/gate/preflight.stdout.log", 4194304L)
+    guard field(plan, "format") == Json("moonrobo.native-tensor-memory-plan.v1") &&
+      field(plan, "batch_execution") == batch_execution &&
+      field(plan, "checkpoint_format") == Json("stream-v2") &&
+      field(plan, "compiled_mujoco_header_version") == Json(3015000) else {
+      fail("preflight identity/batch/checkpoint/ABI differs")
+    }
+    verify_memory(field(plan, "plan"))
+    verify_telemetry_options(field(plan, "cuda_memory_telemetry_diagnostic"))
+    // Reserve time for streamed integrity checks and final evidence; the outer
+    // watchdog also bounds them if any filesystem operation stalls.
+    let seconds = ((850000L - (@async.now() - started)) / 1000L).to_int()
+    guard seconds >= 1 else { fail("total deadline exhausted before training") }
+    let train = command(trainer, "train", seconds)
+    write_json("/gate/training-command.json", Json(train))
+    train_code = Some(
+      @shell.Cmd(
+        "/usr/bin/timeout",
+        train,
+        stdout=ToFile("/gate/trainer.stdout.log"),
+        stderr=ToFile("/gate/trainer.stderr.log"),
+      ).status(timeout_ms=(seconds + 10) * 1000),
+    )
+    guard train_code == Some(0) else {
+      fail("bounded one-iteration trainer failed")
+    }
+    let ready = readiness()
+    let extra = verify_readiness(ready)
+    let report = verify_report(extra, trainer_sha)
+    let telemetry = verify_telemetry(report)
+    write_json("/gate/telemetry-phase-comparison.json", telemetry)
+    result = Some({
+      "counters": field(report, "counters"),
+      "actor_readiness": ready,
+      "checkpoint": verify_checkpoint(report, extra),
+      "telemetry": telemetry,
+    })
+  } catch {
+    error => failure = Some(error.to_string())
+  }
+  let after = cgroup()
+  write_json("/gate/cgroup-after.json", after)
+  let peak : Int64? = Some(verify_cgroup(after)) catch {
+    error => {
+      if failure is None {
+        failure = Some(error.to_string())
+      }
+      None
+    }
+  }
+  write_json("/gate/inside-summary.json", {
+    "format": "moonrobo.native-n128-telemetry-gate-result.v1",
+    "preflight_exit_code": preflight_code
+    .map(x => Json(x))
+    .unwrap_or(Json::null()),
+    "trainer_exit_code": train_code.map(x => Json(x)).unwrap_or(Json::null()),
+    "error": failure.map(x => Json(x)).unwrap_or(Json::null()),
+    "verified_pins": pins.unwrap_or(Json::null()),
+    "result": result.unwrap_or(Json::null()),
+    "elapsed_ms": Json(@async.now() - started),
+    "actual_cgroup_memory_peak_bytes": peak
+    .map(x => Json(x))
+    .unwrap_or(Json::null()),
+    "peak_above_limit": peak
+    .map(x => Json(x > memory_limit))
+    .unwrap_or(Json::null()),
+    "memory_metrics_scope": "kernel cgroup before helper exit; not full container lifetime",
+    "checkpoint_semantic_audit_deferred": true,
+    "physics_equivalence_certified": false,
+    "paper_exact_motion_set": false,
+    "convergence_verified": false,
+    "synchronized_diagnostic_run": true,
+    "performance_comparison_valid": false,
+  })
+  guard failure is None && result is Some(_) && peak is Some(_) else {
+    fail("N128 gate failed; /gate contains retained evidence")
+  }
+}
+
+///|
+// CPU-only schema fixture; not a CUDA measurement or physical execution.
+fn telemetry_fixture() -> Json {
+  let window = "cuda-memory-10000-rank-0-iteration-0"
+  let samples : Array[Json] = []
+  for i, phase in phases {
+    let peak = if i == 0 { 100L } else { 10L + i.to_int64() }
+    samples.push({
+      "format": "moonrobo.cuda-training-memory-sample.v1",
+      "window_id": Json(window),
+      "identity_sha256": Json("a".repeat(64)),
+      "rank": 0,
+      "sequence": Json(i.to_int64()),
+      "iteration": Json(if i < 3 { 0 } else { 1 }),
+      "phase": Json(phase),
+      "peak_origin": Json(
+        if i == 0 {
+          "process before diagnostic reset"
+        } else {
+          "diagnostic window reset"
+        },
+      ),
+      "sample_begin_unix_ms": Json(10000L + i.to_int64()),
+      "sample_end_unix_ms": Json(10000L + i.to_int64()),
+      "allocator": {
+        "device": 0,
+        "synchronized": true,
+        "allocated_current_bytes": "2",
+        "allocated_peak_bytes": Json(peak),
+        "reserved_current_bytes": "3",
+        "reserved_peak_bytes": Json(peak + 10L),
+        "cuda_free_bytes": Json(1000L - i.to_int64()),
+        "cuda_total_bytes": "2000",
+      },
+      "host": {
+        "cgroup_source": "/sys/fs/cgroup (visible mount root)",
+        "ancestor_limits_enumerated": false,
+        "host_mem_available_bytes": Json::null(),
+        "cgroup_metrics": { "memory.current": "32", "memory.peak": "64" },
+        "read_errors": { "/proc/meminfo": "fixture unavailable" },
+      },
+    })
+  }
+  {
+    "format": "moonrobo.cuda-training-memory-report.v1",
+    "status": "complete",
+    "window_id": Json(window),
+    "identity_sha256": Json("a".repeat(64)),
+    "rank": 0,
+    "resume_kind": "fresh",
+    "starting_iteration": 0,
+    "durable_training_identity_changed_by_flag": false,
+    "memory_admission_modified": false,
+    "empty_cache_called": false,
+    "error": Json::null(),
+    "samples": Json(samples),
+    "last_sample": samples[8],
+    "peak_reset_count": 1,
+    "sample_count": "9",
+    "retained_sample_count": 9,
+    "omitted_sample_count": "0",
+    "allocated_window_peak_bytes": "18",
+    "reserved_window_peak_bytes": "28",
+    "minimum_observed_cuda_free_bytes": "992",
+    "options": {
+      "format": "moonrobo.cuda-training-telemetry-options.v1",
+      "enabled": true,
+      "synchronize_each_sample": true,
+      "reset_peaks": "once after initialization and checkpoint restore",
+      "max_retained_samples": 128,
+      "max_event_bytes": 16384,
+      "affects_performance": true,
+      "changes_training_identity": false,
+      "caching_precondition": "fixed enabled allocator; no external cache/peak mutation",
+      "programmatic_cache_disable_checked": false,
+    },
+  }
+}
+
+///|
+fn telemetry_self_test() -> Unit raise {
+  validate_trainer_pin("/new/trainer", "a".repeat(64))
+  for
+    (path, hash) in [
+      ("relative/trainer", "a".repeat(64)),
+      ("/new/trainer", "A".repeat(64)),
+      ("/new/trainer", "a".repeat(63)),
+    ] {
+    try validate_trainer_pin(path, hash) catch {
+      _ => ()
+    } noraise {
+      _ => fail("invalid explicit trainer pin accepted")
+    }
+  }
+  let good = telemetry_fixture()
+  let compared = verify_telemetry_value(good, "a".repeat(64))
+  assert_eq(field(compared, "allocated_window_peak_bytes"), Json(18L))
+  guard field(compared, "phases") is Array(rows) else { fail("missing phases") }
+  assert_eq(rows.length(), 9)
+  assert_eq(
+    field(
+      rows[0],
+      "allocated_cumulative_peak_increase_since_previous_boundary_bytes",
+    ),
+    Json::null(),
+  )
+  assert_eq(
+    field(rows[1], "observed_cuda_free_drop_from_window_start_bytes"),
+    Json(0L),
+  )
+  assert_eq(
+    field(
+      rows[8],
+      "allocated_cumulative_peak_increase_since_previous_boundary_bytes",
+    ),
+    Json(1L),
+  )
+  assert_eq(
+    field(rows[8], "observed_cuda_free_drop_from_window_start_bytes"),
+    Json(7L),
+  )
+  assert_eq(
+    field(field(rows[8], "host"), "host_mem_available_bytes"),
+    Json::null(),
+  )
+  // Mirrors the production serialized identity digest, including parsed repr.
+  let identity : Json = {
+    "config": { "dt": 0.02, "num_envs": 128 },
+    "sha": "a",
+  }
+  assert_eq(
+    json_sha(identity),
+    json_sha(@json.parse(identity.stringify(indent=2))),
+  )
+  for
+    (name, replacement) in [
+      ("status", Json("failed")),
+      ("peak_reset_count", Json(2)),
+      ("sample_count", Json("10")),
+      ("allocated_window_peak_bytes", Json("999")),
+      ("identity_sha256", Json("b".repeat(64))),
+    ] {
+    guard good is Object(fields) else { fail("fixture object") }
+    let bad = fields.copy()
+    bad[name] = replacement
+    try ignore(verify_telemetry_value(Json(bad), "a".repeat(64))) catch {
+      _ => ()
+    } noraise {
+      _ => fail("invalid telemetry report accepted: " + name)
+    }
+  }
+  let bad = telemetry_fixture()
+  guard field(bad, "samples") is Array(samples) &&
+    field(samples[5], "allocator") is Object(stats) else {
+    fail("fixture samples")
+  }
+  stats["allocated_peak_bytes"] = Json("3")
+  try ignore(verify_telemetry_value(bad, "a".repeat(64))) catch {
+    _ => ()
+  } noraise {
+    _ => fail("decreasing cumulative peak accepted")
+  }
+}
+
+///|
+async fn self_test() -> Unit {
+  telemetry_self_test()
+  let trainer = "/bounded/trainer"
+  let preflight = command(trainer, "preflight", 120)
+  let train = command(trainer, "train", 700)
+  assert_eq(preflight[0], "--foreground")
+  assert_eq(preflight[3], "120s")
+  assert_eq(train[3], "700s")
+  assert_true(!preflight.contains("--iterations"))
+  assert_true(train.contains("--iterations") && train.contains("stream-v2"))
+  assert_true(
+    train.contains("--cuda-memory-telemetry") &&
+    preflight.contains("--cuda-memory-telemetry"),
+  )
+  assert_eq(train[train.length() - 1], "1")
+  let invalid = try {
+    ignore(command(trainer, "train", 851))
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(invalid)
+  let base : Json = {
+    "extra_collection_steps": 0,
+    "extra_physical_transitions": 0,
+    "collection_step_budget": 256,
+    "horizon": 32,
+    "max_remaining_steps": 50,
+    "replay_rows": 66,
+    "initial_candidates": 8000,
+    "candidates": 8000,
+  }
+  assert_eq(verify_readiness(base), 0L)
+  let last : Json = {
+    "extra_collection_steps": 256,
+    "extra_physical_transitions": 32768,
+    "collection_step_budget": 256,
+    "horizon": 32,
+    "max_remaining_steps": 50,
+    "replay_rows": 256,
+    "initial_candidates": 0,
+    "candidates": 128,
+  }
+  assert_eq(verify_readiness(last), 256L)
+  let invalid : Json = {
+    "extra_collection_steps": 264,
+    "extra_physical_transitions": 33792,
+    "collection_step_budget": 256,
+    "horizon": 32,
+    "max_remaining_steps": 50,
+    "replay_rows": 256,
+    "initial_candidates": 0,
+    "candidates": 128,
+  }
+  assert_true(
+    try {
+      ignore(verify_readiness(invalid))
+      false
+    } catch {
+      _ => true
+    },
+  )
+  let snapshot : Json = {
+    "values": {
+      "memory.max": "68719476736",
+      "memory.swap.max": "0",
+      "cpu.max": "400000 100000",
+      "memory.peak": "68719484928",
+      "memory.events": "low 0\nhigh 0\nmax 1\noom 0\noom_kill 0\noom_group_kill 0",
+    },
+  }
+  assert_eq(verify_cgroup(snapshot), 68719484928L)
+  let plan : Json = {
+    "host_free_bytes": "60000000000",
+    "cuda_free_bytes": "61000000000",
+    "budget_bytes": "39000000000",
+    "peak_bytes": "36531105856",
+    "components": {
+      "physics_scene_reserve": "25769803776",
+      "distributed_communicator_staging": "0",
+    },
+  }
+  verify_memory(plan)
+  guard plan is Object(plan_fields) else { fail("self-test plan object") }
+  plan_fields["budget_bytes"] = Json("40000000000")
+  assert_true(
+    try {
+      verify_memory(Json(plan_fields))
+      false
+    } catch {
+      _ => true
+    },
+  )
+  assert_eq(required_some(Json(Some(1))), Json(1))
+  let local_config = "examples/learning/g1-native-tensor-apic-n128-scale-gate.json"
+  assert_eq(file_sha(local_config, 1048576L), config_sha)
+  let cfg = bounded_json(local_config, 1048576L)
+  for
+    (name, expected) in [
+      ("num_envs", 128),
+      ("wm_batch", 128),
+      ("pi_batch", 128),
+      ("wm_microbatch", 16),
+      ("pi_microbatch", 16),
+      ("buffer_steps", 256),
+      ("wm_batches", 10),
+      ("critic_epochs", 5),
+      ("critic_minibatches", 4),
+      ("iterations", 1),
+    ] {
+    assert_eq(field(cfg, name), Json(expected))
+  }
+  println(
+    "N128 telemetry gate CPU self-test passed; no CUDA, physics or remote execution",
+  )
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args.length() == 2 && args[1] == "--self-test" {
+    self_test()
+    return
+  }
+  if args.length() == 4 && args[1] == "--inside" {
+    inside(args[2], args[3])
+    return
+  }
+  guard args.length() == 3 else {
+    fail(
+      "usage: run_spark_native_n128_telemetry_gate TRAINER_ABSOLUTE_PATH TRAINER_SHA256 | --self-test",
+    )
+  }
+  validate_trainer_pin(args[1], args[2])
+  // Resolve here: passing literal /proc/self/exe to timeout would refer to
+  // timeout itself once it executes, not to this native MoonBit helper.
+  let executable = @fs.realpath("/proc/self/exe")
+  let code = @shell.Cmd("/usr/bin/timeout", [
+    "--signal=TERM",
+    "--kill-after=5s",
+    "895s",
+    executable,
+    "--inside",
+    args[1],
+    args[2],
+  ]).status(timeout_ms=905000)
+  guard code == 0 else {
+    fail(
+      "N128 telemetry whole-helper exit \{code}; retain logs; hard timeout can leave summary absent",
+    )
+  }
+}

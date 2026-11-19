@@ -1,0 +1,82 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/json", "moonbitlang/core/string" }
+let out="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-algebra-20261028"
+fn field(j : Json,k : String) -> Json raise {guard j is Object(m) && m.get(k) is Some(v) else {fail(k)};v}
+fn number(j : Json) -> Double raise {match j {Number(x,..)=>x;String(x)=>@string.parse_double(x);_=>fail("number")}}
+async fn fetch_text(remote : String,path : String) -> String {
+  if !@fs.exists(path) {guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/"+remote,path])==0 else {fail(remote)}}
+  @fs.read_file(path).text()
+}
+async fn fetch(remote : String,path : String) -> Json {@json.parse(fetch_text(remote,path))}
+async fn main {
+  let times : Map[String,Double]=Map([])
+  let runs : Array[Json]=[]
+  let mut reserved=0.0;let mut cgroup=0.0;let mut available=1.0e30
+  for (phase,variants) in [("world",["baseline","rotation","xi","all","smc"]),("actor",["baseline","xi","return","all","smc"])] {
+    for variant in variants {
+      let label="algebra-"+phase+"-"+variant+"-a"
+      let dir=out+"/"+label; if !@fs.exists(dir) {@fs.mkdir(dir,recursive=true)}
+      let remote="runs/hotspot-shared-"+label+"/"
+      let j=fetch(remote+"result.json",dir+"/result.json")
+      let g=fetch(remote+"training-guard.json",dir+"/training-guard.json")
+      let state=fetch(remote+"training-docker-final.json",dir+"/training-docker-final.json")
+      guard state is [{"State":{"OOMKilled":False,"Running":False,..},..}] && field(g,"reason")==Json("completed") else {fail("guard "+label)}
+      guard field(j,"observer")==Json("off") && field(j,"rows") is Array(rows) && rows.length()==13 else {fail("result")}
+      let ts=rows.filter(r=>field(r,"steady")==Json(true)).map(r=>number(field(r,"wall_ms")))
+      let ordered=ts.copy();ordered.sort();assert_eq(ts.length(),10)
+      let median=(ordered[4]+ordered[5])/2.0;times[phase+"-"+variant]=median
+      guard j is Object(m) else {fail("result object")}
+      let memory=m.get("memory").unwrap_or({"reserved_peak_bytes":m.get("reserved_peak").unwrap_or(Json(0)),"allocated_peak_bytes":m.get("allocated_peak").unwrap_or(Json(0))})
+      reserved=reserved.max(number(field(memory,"reserved_peak_bytes")))
+      guard field(g,"samples") is Array(samples) else {fail("samples")}
+      for s in samples {cgroup=cgroup.max(number(field(s,"cgroup_peak_bytes")));available=available.min(number(field(s,"host_available_kib"))*1024.0);assert_eq(number(field(s,"cgroup_swap_bytes")),0.0)}
+      runs.push({"label":Json(label),"median_ms":Json(median),"steady_ms":Json(ts),"memory":memory})
+    }
+  }
+  let numeric : Array[Json]=[]
+  for (phase,variants) in [("world",["rotation","xi","all"]),("actor",["xi","return","all"])] {
+    for variant in variants {
+      let name="algebra-numeric-"+phase+"-"+variant
+      let j=fetch("private/shared-compute-20261026-a/"+name+".json",out+"/"+name+".json")
+      numeric.push({"phase":Json(phase),"variant":Json(variant),"passed":field(j,"passed"),"values":field(j,"values"),"mismatches":field(j,"mismatches"),"metadata_mismatches":field(j,"metadata_mismatches"),"metric_mismatches":field(j,"metric_mismatches")})
+    }
+  }
+  let cross : Array[Json]=[]
+  for phase in ["world","actor"] {
+    let label="algebra-smc-eager-"+phase+"-a";let dir=out+"/"+label;if !@fs.exists(dir) {@fs.mkdir(dir,recursive=true)}
+    let j=fetch("runs/hotspot-shared-"+label+"/result.json",dir+"/result.json")
+    let n=field(j,"numerical_comparison");guard field(n,"tensors") is Array(ts) else {fail("tensors")}
+    let mut violations=0.0;let mut elements=0.0
+    for t in ts {violations+=number(field(t,"violations"));elements+=number(field(t,"elements"))}
+    cross.push({"phase":Json(phase),"passed":field(n,"passed"),"violations":Json(violations),"elements":Json(elements),"selected":Json(ts.filter(t=>[Json("policy-18-gradient"),Json("world-12-gradient"),Json("metrics")].contains(field(t,"name"))))})
+  }
+  let compiled : Array[Json]=[]
+  for phase in ["world","actor"] {
+    let j=@json.parse(@fs.read_file(out+"/algebra-"+phase+"-smc-a/result.json").text())
+    let n=field(j,"numerical_comparison");guard field(n,"tensors") is Array(ts) else {fail("compiled tensors")}
+    let mut violations=0.0
+    for t in ts {violations+=number(field(t,"violations"))}
+    compiled.push({"phase":Json(phase),"passed":field(n,"passed"),"violations":Json(violations),"selected":Json(ts.filter(t=>[Json("policy-18-gradient"),Json("world-12-gradient"),Json("metrics")].contains(field(t,"name"))))})
+  }
+  let cpu : Array[Json]=[]
+  for (name,expected) in [("primitive",3),("geometry",1),("pivot",1),("config",4),("resume",1),("inference",1)] {
+    let label="smc-algebra-"+name+"-cpu-b";let log=fetch_text("private/shared-compute-20261026-a/"+label+".stdout.log",out+"/"+label+".stdout.log")
+    guard !log.contains("SKIP") else {fail("skip "+name)};let mut n=0
+    for line in log.split("\n") {if line.has_prefix("{\"type\":\"result\"") {guard @json.parse(line.to_owned()) is {"message":"",..} else {fail(name)};n+=1}}
+    assert_eq(n,expected);cpu.push({"name":Json(name),"executed_passed":Json(n)})
+  }
+  let phases : Array[Json]=[]
+  for phase in ["world","actor"] {
+    let a=times[phase+"-baseline"];let b=times[phase+"-all"];let target=times[phase+"-smc"]
+    phases.push({"phase":Json(phase),"baseline_ms":Json(a),"all_candidate_ms":Json(b),"observed_saved_ms":Json(a-b),"observed_saved_percent":Json((a-b)/a*100.0),"smc_compiled_ms":Json(target),"remaining_ms":Json(b-target),"ratio":Json(b/target)})
+  }
+  let result : Json={
+    "scope":"Fixed iteration60 weights, Adam, normalizers, tensors, noise and permutations restored before every repetition; actor4096=8x512 H32 plus20 critic updates; world2048x8 ONE update. Reset/upload/export excluded; not complete round timing.",
+    "method":"Single agent, serial GPU jobs, no profiler, 3 warmup+10 steady repeats. Baseline then single factors then combined then SMC compiled; initial screening is one order and cannot establish a stable causal speedup by itself.",
+    "source_changes":["Optional native SMC mat_to_quat/quat_to_rotvec expressions, linalg_vector_norm and epsilon/branch/order preserved for world target/error.","Optional xi normalization preserves SMC subtraction followed by division, replacing factored affine only when selected.","Optional actor objective uses native cumprod, float32 power and batch reduction with SMC tail multiplication order; analytic and zero-survival derivative tests retained."],
+    "correctness":{"atol":0.000002,"rtol":0.0002,"native_full_updates":Json(numeric),"cross_language_eager":Json(cross),"cross_language_compiled":Json(compiled),"cpu_tests":Json(cpu),"promoted_to_default":false,"reverse_pair_skipped":"Actor xi fails 344 values; actor return fails one policy-18 gradient value (max abs 2.9616057872772217e-6, max tolerance ratio1.20837). No threshold relaxation and no promotion. Planned reverse-order performance confirmation was not launched.","note":"Original paths retained. New arithmetic modes are explicit and checkpointed/audited. Eager numerical comparisons and compiled performance comparisons are distinct; compiled actor gradient cosine0.78039 is a material unresolved difference, also present in the prior run. SMC compiled timing is not an accepted numerically equivalent target."},
+    "phase_comparison":Json(phases),"runs":Json(runs),
+    "memory":{"guards_unchanged":true,"max_torch_reserved_bytes":Json(reserved),"max_cgroup_peak_bytes":Json(cgroup),"min_host_available_bytes":Json(available),"oom":false,"container_swap_bytes":0,"note":"UMA counters overlap; do not add Torch reserved and cgroup usage. Only closed task-owned files received fadvise; no deletion or global cache drop."},
+  }
+  @fs.write_file(out+"/results-final.json",result.stringify(indent=2),create_mode=CreateNew)
+  println(field(result,"phase_comparison").stringify(indent=2));println(field(result,"memory").stringify(indent=2));println(Json(numeric).stringify(indent=2))
+}

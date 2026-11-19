@@ -1,0 +1,21 @@
+import {"moonbitlang/async@0.20.2","moonbitlang/async@0.20.2/fs","moonbitlang/async@0.20.2/process"}
+///|
+async fn main {
+ let out="output/spark-runtime-20261024/geometry-math-20261029-a"
+ let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+ let fixture=@fs.read_file(out+"/geometry_math_fixture_c.mbt").text().replace_all(old="async test \"shared-input paper-width isolated comparison\" {",new=
+   #|async test "shared-input paper-width isolated comparison" {
+   #| try geometry_shared_fixture() catch {@tensor.TensorError::Native(message)=>fail("geometry native: "+message);e=>raise e}
+   #|}
+   #|///|
+   #|async fn geometry_shared_fixture() -> Unit {
+ )
+ for (name,content) in [
+ ("geometry_math_fixture_d.mbt",fixture),
+ ("build_geometry_math_d.mbtx",@fs.read_file(out+"/build_geometry_math_c.mbtx").text().replace_all(old="geometry-math-c",new="geometry-math-d").replace_all(old="geometry_math_fixture_c.mbt",new="geometry_math_fixture_d.mbt")),
+ ("run_geometry_math_training_d.mbtx",@fs.read_file(out+"/run_geometry_math_training_c.mbtx").text().replace_all(old="run_geometry_math_training_c.mbtx",new="run_geometry_math_training_d.mbtx").replace_all(old="actor-step-gate-geometry-math-c",new="actor-step-gate-geometry-math-d")),
+ ("run_geometry_math_gate_d.mbtx",@fs.read_file(out+"/run_geometry_math_gate_c.mbtx").text().replace_all(old="run_geometry_math_gate_c.mbtx",new="run_geometry_math_gate_d.mbtx").replace_all(old="actor-step-gate-geometry-math-c",new="actor-step-gate-geometry-math-d").replace_all(old="geometry-math-native-gate-a",new="geometry-math-native-gate-b"))] {
+ @fs.write_file(out+"/"+name,content,create_mode=CreateNew)
+ assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-math-179.sock",out+"/"+name,"wlc004s@192.168.2.179:"+base+"/"+name]),0)
+ }
+}

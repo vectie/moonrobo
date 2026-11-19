@@ -1,0 +1,130 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: fit_g1_temporal_ppo.mbtx REPO TEMPORAL_STUDY VALUE_STUDY OUTPUT",
+  )
+  let root = args[1]
+  let output = args[4]
+  assert_true(!@fs.exists(output), msg="choose a fresh PPO study directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "temporal_ppo.py", "temporal_actor.py", "temporal_value.py", "temporal_training.py",
+      "temporal_probe.py", "actor_update_probe.py", "critic_probe.py", "policy.py",
+      "dynamics.py", "cpu_physics.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/provider-sources/teacher_feedback.py",
+    @fs.read_file(args[3] + "/provider-sources/teacher_feedback.py").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let config = @json.parse(
+    @fs.read_file(root + "/examples/learning/g1-temporal-ppo.json").text(),
+  )
+  @fs.write_file(
+    output + "/config.json",
+    config.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-temporal-ppo-charter.v1",
+        "config": config,
+        "incoming": Json(args[2]),
+        "value_study": Json(args[3]),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(
+    @process.run(
+      root + "/target/learning-venv/bin/python",
+      [
+        output + "/provider-sources/temporal_ppo.py",
+        "--config",
+        output + "/config.json",
+        "--collection",
+        args[2] + "/collection.json",
+        "--experiment",
+        args[2] + "/experiment.json",
+        "--policies",
+        args[2] + "/preview/policy",
+        "--values",
+        args[3] + "/preview-value-on/policy",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--output",
+        output,
+      ],
+      stdout=@process.redirect_to_file(
+        output + "/train.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  let (code, out, err) = @process.collect_output("gzip", [
+    "-cd",
+    output + "/collection/dataset.json.gz",
+  ])
+  assert_eq(code, 0, msg=err.text())
+  @fs.write_file(
+    output + "/native-input.json",
+    out.binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let (checked, batch, check_err) = @process.collect_output(
+    root + "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+    [output + "/native-input.json", "train", "1", "1000000"],
+  )
+  assert_eq(checked, 0, msg=check_err.text() + batch.text())
+  @fs.write_file(
+    output + "/native-check.json",
+    batch.binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.remove(output + "/native-input.json")
+  let report = @json.parse(@fs.read_file(output + "/policy/report.json").text())
+  guard report
+    is { "runs": Array(runs), "learned_transition_model_used": false, .. } else {
+    fail("missing PPO runs")
+  }
+  for row in runs {
+    guard row is Object(fields) else { fail("expected run") }
+    println(
+      (
+        {
+          "seed": fields["seed"],
+          "selected_iteration": fields["selected_update"],
+          "training_transitions": fields["training_transitions"],
+          "actor_steps": fields["actor_optimizer_steps"],
+          "candidate": fields["candidate"],
+          "qualifies": fields["qualifies"],
+        } : Json).stringify(),
+    )
+  }
+}

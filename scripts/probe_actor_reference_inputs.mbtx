@@ -1,0 +1,153 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, rev] &&
+    ["prepare", "build", "run"].contains(mode) &&
+    ["a", "b"].contains(rev) else {
+    fail("prepare/build/run")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  if mode == "prepare" {
+    let insertion =
+      #|  let input_records : Array[SharedTensor] = []
+      #|  for i,t in constants {input_records.push(shared_write(output,"constant-\{i}",t))}
+      #|  let all_refs : @geometry.State = {p:backend.concat(references.map(s=>s.p)),rotation:backend.concat(references.map(s=>s.rotation)),v:backend.concat(references.map(s=>s.v)),w:backend.concat(references.map(s=>s.w)),q:backend.concat(references.map(s=>s.q)),qd:backend.concat(references.map(s=>s.qd))}
+      #|  let whole=context.pack_reference_bodies(all_refs).reshape([33,4096,252])
+      #|  for t in 0..<33 {
+      #|    input_records.push(shared_write(output,"frame-\{t}",packed.narrow(0,t,1).reshape([4096,252])))
+      #|    input_records.push(shared_write(output,"whole-\{t}",whole.narrow(0,t,1).reshape([4096,252])))
+      #|  }
+      #|  hotspot_gate_memory(backend,"reference-inputs-after")
+      #|  shared_json(output+"/inputs.json",{"diagnostic_only":true,"records":Json(input_records)})
+      #|  shared_json(output+"/result.json",{"diagnostic_only":true,"scope":"robot constants and per-frame versus whole-batch reference FK; no optimizer update"})
+      #|  return
+      #|  let rows : Array[Json] = []
+    let fixture = @fs.read_file(out + "/actor_reward_reference_fixture_a.mbt")
+      .text()
+      .replace_all(old="  let rows : Array[Json] = []", new=insertion)
+    let fixture = if rev == "b" {
+      fixture.replace_all(
+        old="context.pack_reference_bodies",
+        new="context.with_native_cross(true).pack_reference_bodies",
+      )
+    } else {
+      fixture
+    }
+    let build = @fs.read_file(out + "/build_actor_reward_reference_a.mbtx")
+      .text()
+      .replace_all(old="reward-reference-native-a", new="reference-inputs-a")
+      .replace_all(
+        old="actor_reward_reference_fixture_a.mbt",
+        new="actor_reference_inputs_fixture_a.mbt",
+      )
+    let runner = @fs.read_file(
+        out + "/run_actor_reward_reference_native_a.mbtx",
+      )
+      .text()
+      .replace_all(
+        old="run_actor_reward_reference_native_a.mbtx",
+        new="run_actor_reference_inputs_a.mbtx",
+      )
+      .replace_all(
+        old="actor-step-gate-reward-reference-native-a",
+        new="actor-step-gate-reference-inputs-a",
+      )
+      .replace_all(
+        old="actor_reward_reference_fixture_a.mbt",
+        new="actor_reference_inputs_fixture_a.mbt",
+      )
+    for
+      (name, content) in [
+        ("actor_reference_inputs_fixture_a.mbt", fixture),
+        ("build_actor_reference_inputs_a.mbtx", build),
+        ("run_actor_reference_inputs_a.mbtx", runner),
+      ] {
+      let name = name
+        .replace_all(old="inputs_a", new="inputs_" + rev)
+        .replace_all(old="inputs_fixture_a", new="inputs_fixture_" + rev)
+      let content = content
+        .replace_all(old="inputs-a", new="inputs-" + rev)
+        .replace_all(old="inputs_a", new="inputs_" + rev)
+        .replace_all(old="inputs_fixture_a", new="inputs_fixture_" + rev)
+      @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+      if name.has_suffix(".mbtx") {
+        assert_eq(
+          @process.run("moon", ["check", "--target", "native", out + "/" + name]),
+          0,
+        )
+      }
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/reference-inputs-" + mode + "-" + rev
+  @fs.mkdir(folder)
+  let command = if mode == "build" {
+    "build_actor_reference_inputs_a.mbtx"
+  } else {
+    "run_actor_reference_inputs_a.mbtx -- actor native off 1 actor-reference-inputs-a bf16-full"
+  }
+  let command = command
+    .replace_all(old="inputs_a", new="inputs_" + rev)
+    .replace_all(old="inputs-a", new="inputs-" + rev)
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      command,
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  if mode == "run" {
+    for
+      name in [
+        "result.json", "inputs.json", "completion.json", "training-guard.json", "training-docker-final.json",
+        "training.stdout.log", "training.stderr.log", "protocol.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-reference-inputs-" +
+          rev +
+          "/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+  }
+  assert_eq(code, 0)
+}

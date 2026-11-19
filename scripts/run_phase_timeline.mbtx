@@ -1,0 +1,832 @@
+///|
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/async/io",
+  "moonbitlang/async/shell",
+  "moonbitlang/async/os_error",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+// Run INSIDE the independently guarded, pinned diagnostic container. This is
+// not the Docker owner and never changes container memory/swap/GPU settings.
+// The outer owner must verify idle GPU, image/mount identities, fresh admission
+// and retain its independent host24 GiB / cgroup84 GiB / CUDA16 GiB guards
+// through target exit, profiler finalization and SDK teardown (100 GiB hard cap).
+
+///|
+struct Spec {
+  format : String
+  protocol : String
+  nsys : String
+  nsys_sha256 : String
+  program : String
+  program_sha256 : String
+  args : Array[String]
+  cwd : String
+  output_directory : String
+  session : String
+  environment : Map[String, String]
+  pinned_files : Map[String, String]
+} derive(FromJson)
+
+///|
+fn safe_path(value : String) -> Bool {
+  value.has_prefix("/") &&
+  !value.contains("..") &&
+  value.all(c => {
+    c is ('a'..<='z' | 'A'..<='Z' | '0'..<='9' | '/' | '_' | '-' | '.')
+  })
+}
+
+///|
+fn digest(value : String) -> Bool {
+  value.length() == 64 && value.all(c => c is ('0'..<='9' | 'a'..<='f'))
+}
+
+///|
+fn argument(args : Array[String], name : String) -> String? raise {
+  let mut value = None
+  for i, item in args {
+    if item == name {
+      guard value is None && i + 1 < args.length() else {
+        fail("duplicate or incomplete target option: " + name)
+      }
+      value = Some(args[i + 1])
+    }
+  }
+  value
+}
+
+///|
+fn validate(spec : Spec) -> Unit raise {
+  guard spec.format == "moonrobo.operator-timeline-launch.v1" &&
+    [
+      "tiny-probe", "tiny-external-stop-probe", "native-prefix41", "smc-compiled-prefix41",
+      "smc-eager-prefix41",
+    ].contains(spec.protocol) else {
+    fail("unsupported independent diagnostic protocol")
+  }
+  guard safe_path(spec.nsys) &&
+    safe_path(spec.program) &&
+    safe_path(spec.cwd) &&
+    safe_path(spec.output_directory) &&
+    (
+      spec.output_directory.has_prefix("/run/") ||
+      spec.output_directory.has_prefix("/workspace/moonrobo/runs/")
+    ) &&
+    spec.session.has_prefix("moonrobo-op-") &&
+    spec.session.length() <= 100 &&
+    spec.session.all(c => c is ('a'..<='z' | '0'..<='9' | '-')) &&
+    digest(spec.nsys_sha256) &&
+    digest(spec.program_sha256) &&
+    spec.args.length() <= 128 else {
+    fail("invalid path, session, argument bound or executable digest")
+  }
+  guard spec.pinned_files.length() <= 64 else {
+    fail("pinned-file count bound")
+  }
+  for path, sha in spec.pinned_files {
+    guard safe_path(path) && digest(sha) else { fail("invalid pinned file") }
+  }
+  for name, value in spec.environment {
+    guard [
+        "MOONROBO_TRACE_ITERATION", "SM_PROFILE", "TORCH_COMPILE_DISABLE", "TORCHDYNAMO_DISABLE",
+        "OMP_NUM_THREADS", "MKL_NUM_THREADS",
+      ].contains(name) &&
+      value.length() <= 16 &&
+      value.all(c => c is ('0'..<='9')) else {
+      fail("unexpected diagnostic environment override")
+    }
+  }
+  if spec.protocol == "native-prefix41" {
+    guard spec.args.get(0) == Some("diagnose-operators") &&
+      !spec.args.contains("--resume") &&
+      !spec.args.contains("--distributed") &&
+      !spec.args.contains("--preflight-only") else {
+      fail("native timeline must use dedicated no-checkpoint driver")
+    }
+    guard argument(spec.args, "--iterations") == Some("41") &&
+      spec.args.contains("--cuda-memory-telemetry") else {
+      fail(
+        "native timeline must execute the fixed 41-iteration protocol with telemetry",
+      )
+    }
+  } else if spec.protocol.has_prefix("smc-") {
+    guard argument(spec.args, "--iterations") == Some("41") &&
+      argument(spec.args, "--ckpt_every") == Some("60") &&
+      argument(spec.args, "--log_every") == Some("1") &&
+      !spec.args.contains("--resume") &&
+      spec.environment.get("MOONROBO_TRACE_ITERATION") == Some("41") &&
+      spec.environment.get("SM_PROFILE") == Some("0") else {
+      fail(
+        "SMC timeline must use the independently patched 41/no-save source and fixed window",
+      )
+    }
+    let mode_matches = if spec.protocol == "smc-eager-prefix41" {
+      spec.environment.get("TORCH_COMPILE_DISABLE") == Some("1") &&
+      spec.environment.get("TORCHDYNAMO_DISABLE") == Some("1")
+    } else {
+      spec.environment.get("TORCH_COMPILE_DISABLE") == Some("0") &&
+      spec.environment.get("TORCHDYNAMO_DISABLE") == Some("0")
+    }
+    guard mode_matches else {
+      fail("SMC compiled/eager diagnostic selector mismatch")
+    }
+  } else {
+    let count = if spec.protocol == "tiny-external-stop-probe" { 2 } else { 1 }
+    guard spec.args.length() == count &&
+      spec.pinned_files.contains(spec.args[0]) &&
+      (count == 1 || spec.args[1] == "external-stop") else {
+      fail("tiny probe needs exactly its pinned tensor plugin path")
+    }
+  }
+}
+
+///|
+fn nsys_argv(spec : Spec) -> Array[String] {
+  let args = [
+    "profile",
+    "--trace=cuda,nvtx",
+    "--sample=none",
+    "--backtrace=none",
+    "--cpuctxsw=none",
+    "--cuda-memory-usage=false",
+    "--cuda-event-trace=false",
+    "--cuda-graph-trace=node",
+    "--cuda-flush-interval=0",
+    "--capture-range=nvtx",
+    "--nvtx-capture=moonrobo.actor_critic.capture@*",
+    "--capture-range-end=stop",
+    "--kill=none",
+    "--stats=false",
+    "--export=none",
+    "--session-new=" + spec.session,
+    "--output=" + spec.output_directory + "/trace",
+    spec.program,
+  ]
+  args.append(spec.args)
+  args
+}
+
+///|
+async fn bounded_text(path : String, maximum : Int64) -> String {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size >= 0L && size <= maximum else {
+    fail("bounded input exceeded: " + path)
+  }
+  @utf8.decode(file.read_exactly_at(size.to_int(), position=0L))
+}
+
+///|
+// procfs/cgroup report stat size=0; read a fixed maximum to EOF instead.
+async fn special_text(path : String, maximum : Int32) -> String {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let buffer = FixedArray::make(maximum + 1, b'\x00')
+  let reader : &@io.Reader = file
+  let mut size = 0
+  for ;; {
+    let n = reader.read(buffer, offset=size, max_len=maximum + 1 - size)
+    if n == 0 {
+      break
+    }
+    size += n
+    guard size <= maximum else { fail("special-file read exceeds fixed bound") }
+  }
+  @utf8.decode(Bytes::from_array(buffer[:size]))
+}
+
+///|
+async fn sha256(path : String) -> String {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  guard file.kind() == @fs.Regular else {
+    fail("pinned input is not a regular file")
+  }
+  let size = file.size()
+  guard size >= 1L && size <= 1073741824L else {
+    fail("pinned file size bound")
+  }
+  let hash = @crypto.SHA256::new()
+  for offset = 0L; offset < size; {
+    let n = (size - offset).min(65536L).to_int()
+    hash.update(file.read_exactly_at(n, position=offset))
+    continue offset + n.to_int64()
+  }
+  guard file.size() == size else { fail("pinned file size changed") }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn available_host() -> Int64 {
+  for line in special_text("/proc/meminfo", 65536).split("\n") {
+    if line.has_prefix("MemAvailable:") {
+      let words = line.split(" ").filter(s => s != "").to_array()
+      guard words.length() == 3 && words[2] == "kB" else {
+        fail("invalid MemAvailable")
+      }
+      return @string.parse_int64(words[1]) * 1024L
+    }
+  }
+  fail("MemAvailable absent")
+}
+
+///|
+async fn cgroup_current() -> Int64 {
+  guard special_text("/sys/fs/cgroup/memory.max", 128).trim() == "107374182400" &&
+    special_text("/sys/fs/cgroup/memory.swap.max", 128).trim() == "0" else {
+    fail("diagnostic wrapper requires the unchanged 100 GiB, zero-swap cgroup")
+  }
+  @string.parse_int64(special_text("/sys/fs/cgroup/memory.current", 128).trim())
+}
+
+///|
+async fn tree_bytes_inner(
+  root : String,
+  depth : Int32,
+  count : Ref[Int32],
+  vanished : Ref[Int32],
+) -> Int64 {
+  // Nsight2025.3.2 uses tmp/nvidia/nsight_systems/quadd_session_*/streams
+  // (depth5). SMC compilation also transiently exceeds 128 entries in TMPDIR.
+  // Bound metadata separately from the unchanged 1/2 GiB byte thresholds.
+  guard depth <= 8 else { fail("trace output nesting bound") }
+  let entries = @fs.readdir(root, include_hidden=true)
+  guard entries.length() <= 4096 else {
+    fail("trace directory entry bound4096: " + root)
+  }
+  let mut total = 0L
+  for entry in entries {
+    count.val += 1
+    guard count.val <= 16384 else { fail("total trace entries exceed16384") }
+    guard entry != "." && entry != ".." && !entry.contains("/") else {
+      fail("invalid trace entry")
+    }
+    total += listed_entry_bytes(root + "/" + entry, depth, count, vanished)
+  }
+  total
+}
+
+///|
+async fn listed_entry_bytes(
+  path : String,
+  parent_depth : Int32,
+  count : Ref[Int32],
+  vanished : Ref[Int32],
+) -> Int64 {
+  // The compiler and Nsight may remove a child after readdir. Only ENOENT
+  // inside an already-enumerated child is benign. Root disappearance and all
+  // other failures still propagate; the enumerated child still counts toward
+  // the existing entry limit. This scan is not a filesystem snapshot.
+  try {
+    match @fs.kind(path, follow_symlink=false) {
+      @fs.Regular => {
+        let file = @fs.open(path, mode=ReadOnly)
+        defer file.close()
+        let n = file.size()
+        guard n >= 0L && n <= 2147483648L else {
+          fail("trace file exceeds hard size limit")
+        }
+        n
+      }
+      @fs.Directory => tree_bytes_inner(path, parent_depth + 1, count, vanished)
+      _ => fail("trace output contains a link or non-regular entry")
+    }
+  } catch {
+    @os_error.OSError(_) as error if error.is_ENOENT() => {
+      vanished.val += 1
+      0L
+    }
+    error => raise error
+  }
+}
+
+///|
+async fn scan_tree(root : String) -> (Int64, Int32) {
+  let vanished = Ref::new(0)
+  let bytes = tree_bytes_inner(root, 0, Ref::new(0), vanished)
+  (bytes, vanished.val)
+}
+
+///|
+async fn tree_bytes(root : String) -> Int64 {
+  scan_tree(root).0
+}
+
+///|
+struct WindowScanner {
+  mut offset : Int64
+  mut pending : String
+  mut started : Bool
+  mut completed : Bool
+}
+
+///|
+fn WindowScanner::new() -> WindowScanner {
+  { offset: 0L, pending: "", started: false, completed: false, }
+}
+
+///|
+fn WindowScanner::feed(self : WindowScanner, chunk : String) -> Unit raise {
+  let lines = (self.pending + chunk)
+    .split("\n")
+    .map(s => s.to_owned())
+    .to_array()
+  for line in lines[:lines.length() - 1] {
+    guard line.length() <= 1048576 else {
+      fail("operator marker line exceeds1MiB")
+    }
+    let (started, completed) = parse_window_state(line)
+    self.started = self.started || started
+    self.completed = self.completed || completed
+  }
+  self.pending = lines[lines.length() - 1]
+  guard self.pending.length() <= 1048576 else {
+    fail("operator marker line exceeds1MiB")
+  }
+}
+
+///|
+async fn WindowScanner::scan(
+  self : WindowScanner,
+  path : String,
+) -> (Bool, Bool) {
+  if !@fs.exists(path) {
+    guard self.offset == 0L else { fail("operator log disappeared") }
+    return (self.started, self.completed)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size >= self.offset && size <= 2147483648L else {
+    fail("operator log truncated or exceeds original2GiB file bound")
+  }
+  // Consume every newly appended byte once. A large final statistics record
+  // must not evict an earlier completion marker from a fixed-size tail.
+  while self.offset < size {
+    let n = (size - self.offset).min(65536L).to_int()
+    self.feed(@utf8.decode_lossy(file.read_exactly_at(n, position=self.offset)))
+    self.offset += n.to_int64()
+  }
+  let (started, completed) = parse_window_state(self.pending)
+  (self.started || started, self.completed || completed)
+}
+
+///|
+async fn window_state(path : String) -> (Bool, Bool) {
+  WindowScanner::new().scan(path)
+}
+
+///|
+fn parse_window_state(text : String) -> (Bool, Bool) {
+  let mut started = false
+  let mut completed = false
+  for line in text.split("\n") {
+    // Nsight writes carriage-return progress without a final newline. The
+    // application's JSON can therefore follow `trace.nsys-rep` on that line.
+    let candidate = match line.to_owned().find("{") {
+      Some(offset) => line[offset:]
+      None => continue
+    }
+    try @json.parse(candidate) catch {
+      _ => ()
+    } noraise {
+      {
+        "format": String("moonrobo.operator-window.v1"),
+        "state": String(state),
+        "iteration": Number(41, ..),
+        ..
+      } => {
+        if state == "started" {
+          started = true
+        }
+        if state == "completed" {
+          completed = true
+        }
+      }
+      _ => ()
+    }
+  }
+  (started, completed)
+}
+
+///|
+async fn write_json(path : String, value : Json) -> Unit {
+  @fs.write_file(
+    path,
+    value.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+}
+
+///|
+async fn execute(spec : Spec) -> Unit {
+  let collector = @env.get_env_var("MOONROBO_OPERATOR_COLLECTOR").unwrap_or(
+    "nsys",
+  )
+  guard ["off", "nsys"].contains(collector) else {
+    fail("invalid diagnostic collector")
+  }
+  // This wrapper cannot relax admission; the native dedicated command performs
+  // both initial and post-catalog planning with the extra 4 GiB included.
+  guard sha256(spec.nsys) == spec.nsys_sha256 &&
+    sha256(spec.program) == spec.program_sha256 else {
+    fail("diagnostic executable hash mismatch")
+  }
+  for path, sha in spec.pinned_files {
+    guard sha256(path) == sha else {
+      fail("pinned input hash mismatch: " + path)
+    }
+  }
+  guard available_host() >= 25769803776L else {
+    fail("profiler requires 24 GiB starting host headroom")
+  }
+  ignore(cgroup_current())
+  guard !@fs.exists(spec.output_directory) else {
+    fail("trace directory must be fresh")
+  }
+  let parts = spec.output_directory.split("/").map(s => s.to_owned()).to_array()
+  ignore(parts.pop())
+  let parent = parts.join("/")
+  guard @fs.realpath(parent) == parent else {
+    fail("trace parent must be canonical and contain no symlinks")
+  }
+  @fs.mkdir(spec.output_directory)
+  @fs.mkdir(spec.output_directory + "/tmp")
+  let environment = spec.environment.copy()
+  environment["NSYS_NVTX_PROFILER_REGISTER_ONLY"] = "0"
+  environment["TMPDIR"] = spec.output_directory + "/tmp"
+  let program = if collector == "off" { spec.program } else { spec.nsys }
+  let args = if collector == "off" { spec.args } else { nsys_argv(spec) }
+  write_json(spec.output_directory + "/launch.json", {
+    "format": "moonrobo.operator-timeline-inner-launch.v1",
+    "protocol": spec.protocol,
+    "program": program,
+    "collector": collector,
+    "arguments": Json(args),
+    "environment": Json(environment),
+    "capture_limit_ms": 60000,
+    "process_limit_ms": 1800000,
+    "soft_trace_bytes": "1073741824",
+    "hard_trace_bytes": "2147483648",
+    "max_directory_entries": 4096,
+    "max_total_entries": 16384,
+    "instrumentation_reserve_bytes": "4294967296",
+    "cuda_graph_trace": "node",
+    "cuda_graph_trace_scope": "node-level collection adds diagnostic overhead; actual graph usage must be established from trace tables",
+    "use_for_throughput_comparison": false,
+  })
+  let log_path = spec.output_directory + "/target.stdout.log"
+  let window_scanner = WindowScanner::new()
+  let err_path = spec.output_directory + "/target.stderr.log"
+  let samples : Array[Json] = []
+  let started = @async.now()
+  let mut capture_started : Int64? = None
+  let mut capture_completed = false
+  let mut removed_children = 0L
+  let mut stopped_for_bound = false
+  let mut stop_reason = ""
+  let mut stop_started : Int64? = None
+  let stop_status = Ref::new(0)
+  let code = @async.with_timeout(1830000, () => {
+    @async.with_task_group() <| group => {
+      // File size rlimit bounds each profiler/target file even between polls.
+      // No-save diagnostics create no large checkpoint; original training is
+      // not launched through this diagnostic wrapper.
+      let command = ["--fsize=2147483648", "--", program]
+      command.append(args)
+      let child = @process.spawn(
+        group,
+        "/usr/bin/prlimit",
+        command,
+        extra_env=environment,
+        cwd=spec.cwd,
+        stdout=@process.redirect_to_file(log_path, create_mode=CreateNew),
+        stderr=@process.redirect_to_file(err_path, create_mode=CreateNew),
+        cancel_handler=@process.graceful_cancel(timeout=5000),
+      )
+      for ;; {
+        if child.try_wait() is Some(code) {
+          break code
+        }
+        @async.sleep(250)
+        let host = available_host()
+        let current = cgroup_current()
+        let (size, vanished) = scan_tree(spec.output_directory)
+        removed_children += vanished.to_int64()
+        let (begin, end) = window_scanner.scan(log_path)
+        if begin && capture_started is None {
+          capture_started = Some(@async.now())
+        }
+        capture_completed = capture_completed || end
+        let elapsed = @async.now() - started
+        if samples.length() < 7200 &&
+          samples.length().to_int64() * 1000L <= elapsed {
+          samples.push({
+            "elapsed_ms": Json(elapsed),
+            "host_available_bytes": Json(host),
+            "cgroup_current_bytes": Json(current),
+            "trace_tree_bytes": Json(size),
+            "removed_children_during_this_scan": Json(vanished),
+            "removed_children_observed_total": Json(removed_children),
+          })
+        }
+        let overdue = capture_started is Some(t) &&
+          !capture_completed &&
+          @async.now() - t >= 60000L
+        let forced_probe_stop = spec.protocol == "tiny-external-stop-probe" &&
+          capture_started is Some(t) &&
+          @async.now() - t >= 1000L
+        if !stopped_for_bound &&
+          (
+            host < 25769803776L ||
+            current > 90194313216L ||
+            size >= 1073741824L ||
+            overdue ||
+            forced_probe_stop
+          ) {
+          stopped_for_bound = true
+          stop_started = Some(@async.now())
+          stop_reason = if host < 25769803776L || current > 90194313216L {
+            "memory_headroom"
+          } else if size >= 1073741824L {
+            "trace_output_limit"
+          } else if overdue {
+            "capture_timeout"
+          } else {
+            "expected_external_stop_probe"
+          }
+          write_json(spec.output_directory + "/CAPTURE_TRUNCATED.json", {
+            "reason": stop_reason,
+            "elapsed_ms": Json(elapsed),
+            "target_may_continue": true,
+          })
+          if collector == "off" {
+            child.cancel()
+            fail("unprofiled diagnostic reached unchanged resource/time bound")
+          }
+          group.spawn_bg(
+            () => {
+              try {
+                let result = @async.with_timeout(5000, () => {
+                  // Nsight locates its live session under this invocation's
+                  // TMPDIR. Control must inherit the exact profile environment.
+                  @shell.Cmd(
+                    spec.nsys,
+                    ["stop", "--session=" + spec.session],
+                    cwd=spec.cwd,
+                    env=environment,
+                  ).output()
+                })
+                @fs.write_file(
+                  spec.output_directory + "/stop.stdout.log",
+                  result.stdout(),
+                  create_mode=CreateNew,
+                )
+                @fs.write_file(
+                  spec.output_directory + "/stop.stderr.log",
+                  result.stderr(),
+                  create_mode=CreateNew,
+                )
+                result.check()
+                stop_status.val = 1
+              } catch {
+                error => {
+                  stop_status.val = -1
+                  @fs.write_file(
+                    spec.output_directory + "/stop-error.txt",
+                    error.to_string(),
+                    create_mode=CreateNew,
+                  )
+                }
+              }
+            },
+            allow_failure=true,
+          )
+        }
+        if stop_status.val < 0 ||
+          (stop_started is Some(t) && @async.now() - t >= 10000L) {
+          child.cancel()
+          fail(
+            "profiler stop failed or target failed to finish bounded capture grace; outer owner must stop exact container",
+          )
+        }
+        if host < 17179869184L ||
+          current >= 107374182400L ||
+          size >= 2147483648L ||
+          elapsed >= 1800000L {
+          // Critical guard aborts this owned child group. The independent outer
+          // container guard remains mandatory if target descendants survive.
+          child.cancel()
+          fail(
+            "diagnostic hard resource/time guard; incomplete evidence retained",
+          )
+        }
+      }
+    }
+  })
+  let (last_begin, last_end) = window_scanner.scan(log_path)
+  capture_completed = capture_completed || last_end
+  write_json(spec.output_directory + "/inner-receipt.json", {
+    "format": "moonrobo.operator-timeline-inner-receipt.v1",
+    "collector": collector,
+    "exit_code": Json(code),
+    "watchdog_started_seen": Json(capture_started is Some(_) || last_begin),
+    "watchdog_completed_seen": Json(capture_completed),
+    "truncated": Json(stopped_for_bound),
+    "stop_reason": stop_reason,
+    "stop_status": Json(stop_status.val),
+    "samples": Json(samples),
+    "removed_children_observed_total": Json(removed_children),
+    "nsight_capture_verified": false,
+    "use_for_throughput_comparison": false,
+  })
+  let expected_stop = spec.protocol == "tiny-external-stop-probe" &&
+    stop_reason == "expected_external_stop_probe" &&
+    stop_status.val == 1
+  guard code == 0 && capture_completed && (!stopped_for_bound || expected_stop) else {
+    fail("operator diagnostic incomplete; inspect retained artifacts")
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args is [_, "--inspect-window", path] {
+    let (started, completed) = window_state(path)
+    println(({ "started": started, "completed": completed } : Json).stringify())
+    return
+  }
+  if args is [_, "--self-test-tree-race", root] {
+    guard safe_path(root) && !@fs.exists(root) else {
+      fail("race fixture requires a fresh absolute directory")
+    }
+    @fs.mkdir(root)
+    @fs.write_file(root + "/kept.bin", "fixture", create_mode=CreateNew)
+    @fs.write_file(root + "/removed.ptx.o", "temporary", create_mode=CreateNew)
+    let listed = @fs.readdir(root, include_hidden=true)
+    assert_true(listed.contains("removed.ptx.o"))
+    @fs.remove(root + "/removed.ptx.o")
+    let vanished = Ref::new(0)
+    let count = Ref::new(0)
+    let mut bytes = 0L
+    for entry in listed {
+      count.val += 1
+      bytes += listed_entry_bytes(root + "/" + entry, 0, count, vanished)
+    }
+    assert_eq(bytes, 7L)
+    assert_eq(count.val, 2)
+    assert_eq(vanished.val, 1)
+    assert_eq(scan_tree(root), (7L, 0))
+    try scan_tree(root + "/missing-root") catch {
+      @os_error.OSError(_) as error if error.is_ENOENT() => ()
+      error => raise error
+    } noraise {
+      _ => fail("missing scan root must not be silently accepted")
+    }
+    println(
+      "CPU listed-child ENOENT race counted; live bytes and root failure preserved",
+    )
+    return
+  }
+  if args is [_, "--self-test-stop-env"] {
+    // CPU subprocess regression for the same Cmd environment propagation used
+    // by the stop path. No Nsight, target, CUDA or filesystem work is launched.
+    let expected = "/run/moonrobo-nsys-stop-env-regression/tmp"
+    let result = @shell.Cmd("/usr/bin/printenv", ["TMPDIR"], env={
+      "TMPDIR": expected,
+      "NSYS_NVTX_PROFILER_REGISTER_ONLY": "0",
+    }).output(timeout_ms=3000, max_output_bytes=1024)
+    result.check()
+    assert_eq(result.stdout().trim().to_owned(), expected)
+    println(
+      "CPU child receives private Nsight TMPDIR; actual session stop remains a GPU probe gate",
+    )
+    return
+  }
+  if args is [_, "--self-test-tree", root] {
+    guard safe_path(root) && !@fs.exists(root) else {
+      fail("tree regression fixture requires a fresh absolute directory")
+    }
+    let streams = root + "/tmp/nvidia/nsight_systems/quadd_session_1074/streams"
+    @fs.mkdir(streams, recursive=true)
+    @fs.write_file(streams + "/bounded.bin", "fixture", create_mode=CreateNew)
+    assert_eq(tree_bytes(root), 7L)
+    @fs.mkdir(streams + "/a/b/c", recursive=true)
+    assert_eq(tree_bytes(root), 7L)
+    @fs.mkdir(streams + "/a/b/c/d")
+    try tree_bytes(root) catch {
+      _ => ()
+    } noraise {
+      _ => fail("depth9 tree incorrectly accepted")
+    }
+    println(
+      "Nsight depth5/depth8 accepted and depth9 refused; bounded CPU fixture retained, no GPU launched",
+    )
+    return
+  }
+  if args is [_, "--self-test"] {
+    let scanner = WindowScanner::new()
+    scanner.feed(
+      "{\"format\":\"moonrobo.operator-window.v1\",\"state\":\"started\",\"iteration\":41}\n",
+    )
+    scanner.feed("{\"format\":\"moonrobo.operator-window.v1\",\"state\":\"comp")
+    assert_false(scanner.completed)
+    scanner.feed("leted\",\"iteration\":41}\n")
+    for _ in 0..<5 {
+      scanner.feed(Array::make(65536, "x").join(""))
+    }
+    scanner.feed("\n")
+    assert_true(scanner.started && scanner.completed)
+    assert_eq(scanner.pending, "")
+    assert_eq(
+      parse_window_state(
+        "{\"format\":\"moonrobo.operator-window.v1\",\"state\":\"started\",\"iteration\":41}\n\r[1/1] [========================100%] trace.nsys-rep{\"format\":\"moonrobo.operator-window.v1\",\"state\":\"completed\",\"iteration\":41}\n",
+      ),
+      (true, true),
+    )
+    assert_eq(
+      parse_window_state(
+        "trace.nsys-rep{\"format\":\"moonrobo.operator-window.v1\",\"state\":\"completed\",\"iteration\":40}",
+      ),
+      (false, false),
+    )
+    assert_eq(
+      parse_window_state(
+        "trace.nsys-rep{\"format\":\"moonrobo.operator-window.v1\",\"state\":\"completed\",\"iteration\":41",
+      ),
+      (false, false),
+    )
+    assert_true(safe_path("/run/native-diag-1"))
+    assert_false(safe_path("/run/../old"))
+    assert_false(digest("bad"))
+    let spec : Spec = {
+      format: "moonrobo.operator-timeline-launch.v1",
+      protocol: "tiny-probe",
+      nsys: "/opt/nsys",
+      nsys_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      program: "/workspace/probe",
+      program_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      args: ["/workspace/plugin.so"],
+      cwd: "/workspace",
+      output_directory: "/run/probe",
+      session: "moonrobo-op-probe-a",
+      environment: {},
+      pinned_files: {
+        "/workspace/plugin.so": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      },
+    }
+    validate(spec)
+    let command = nsys_argv(spec)
+    assert_true(command.contains("--capture-range-end=stop"))
+    assert_true(command.contains("--cuda-graph-trace=node"))
+    assert_true(command.contains("--kill=none"))
+    assert_false(command.contains("--capture-range-end=stop-shutdown"))
+    try validate({ ..spec, protocol: "native-prefix41", }) catch {
+      _ => ()
+    } noraise {
+      _ => fail("wrong native protocol accepted")
+    }
+    try
+      argument(["--iterations", "41", "--iterations", "60"], "--iterations")
+    catch {
+      _ => ()
+    } noraise {
+      _ => fail("duplicate iteration accepted")
+    }
+    println(
+      "operator timeline pure validation self-test passed; no process/GPU launched",
+    )
+    return
+  }
+  guard args is [_, mode, path] && ["--plan", "--execute"].contains(mode) else {
+    fail(
+      "usage: run_operator_timeline.mbtx --plan|--execute PINNED_SPEC.json; or --self-test",
+    )
+  }
+  let spec : Spec = @json.from_json(@json.parse(bounded_text(path, 65536L)))
+  validate(spec)
+  if mode == "--plan" {
+    println(
+      (
+        {
+          "program": spec.nsys,
+          "arguments": Json(nsys_argv(spec)),
+          "requires_outer_guard": true,
+          "instrumentation_reserve_bytes": "4294967296",
+          "executes_gpu": false,
+        } : Json).stringify(indent=2),
+    )
+  } else {
+    execute(spec)
+  }
+}

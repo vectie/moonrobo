@@ -1,0 +1,18 @@
+{
+  "format": "moonrobo.g1-reference-action-response-charter.v1",
+  "source_report_sha256": "3dfd575b497e9def98807c0a4543a3c8baaea5725a2f133b93dc452435466405",
+  "methods": ["replay-prefix-extended", "replay-prefix-anchor"],
+  "seeds": [0, 1, 2],
+  "probe_clip_indices": [0, 3, 6],
+  "offset_steps": [0, 50],
+  "horizons": [8, 32],
+  "action_rms_amplitudes_rad": [0.0001, 0.001],
+  "finite_difference_epsilon_rad": 0.000001,
+  "maximum_branch_steps": 32,
+  "direction_feasibility": "Before normalizing any gradient, zero coordinates within sqrt(29)*maximum_amplitude = 0.005385164807134504 rad of either actuator limit. A unit joint-RMS direction has no coordinate larger than sqrt(29), so both signs at both amplitudes remain strictly interior on every changed coordinate. This uniform restriction fixes the nonsmooth saturated-control finite-difference failure in the preliminary collection; no method, seed, state, horizon or amplitude is selected from physical outcomes.",
+  "gamma": 0.99,
+  "precision": "Float64 physics archives, derivatives and reward evaluation using promoted frozen float32 learned artifacts and float32 reference reward targets. Not bit-identical to the original float32 reward accumulation.",
+  "comparison": "Use every frozen cycle-6 model and the same run's recorded cycle-5 actor controls from the last-cycle diagnostic. Replay controls from the exact reference integration snapshot and require float32 states to equal the original archives before capturing full solver snapshots at steps 0 and 50. At each available snapshot, hold all later recorded controls fixed and perturb only the first position setpoint. Compute model H8/H32 return gradients with respect to that first control, normalize each direction to unit joint RMS, and evaluate both signs at both fixed amplitudes in physics and the model. Controls use identical actuator clipping. Archive one unperturbed baseline replay and four branches per horizon. Missing complete baseline windows are reported explicitly, never replaced by another state.",
+  "scope": "Local open-loop action-response diagnosis at known development states, not a full actor gradient, refitting, policy update, checkpoint selection, generalization test, skill qualification or successful cost-to-target comparison. A baseline replay is not new independent collection. Physical counterfactual archives may support a later separately declared training study.",
+  "physical_execution_allowed": false
+}

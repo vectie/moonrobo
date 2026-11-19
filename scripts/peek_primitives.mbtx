@@ -1,0 +1,20 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env", "moonbitlang/core/json" }
+fn field(j : Json,k : String) -> Json raise {guard j is Object(m) && m.get(k) is Some(v) else {fail(k)};v}
+fn number(j : Json) -> Double raise {guard j is Number(x,..) else {fail("number")};x}
+async fn main {
+  let dir="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-primitives-20261028"
+  for label in @env.args()[1:] {
+    guard label.has_prefix("primitives-") && label.iter().all(c=>c is ('a'..<='z' | '0'..<='9' | '-')) else {fail("label")}
+    let d=dir+"/"+label;@fs.mkdir(d,recursive=true)
+    let file=d+"/result.json"
+    if !@fs.exists(file) {guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/runs/hotspot-shared-"+label+"/result.json",file])==0 else {fail(label)}}
+    let j=@json.parse(@fs.read_file(file).text());guard field(j,"rows") is Array(rows) && rows.length()==52 else {fail("blocks")}
+    let times=[]
+    for i in 0..<4 {
+      let xs=rows.filter(r=>field(r,"steady")==Json(true) && field(r,"abba_block")==Json(i)).map(r=>number(field(r,"wall_ms")))
+      assert_eq(xs.length(),10);xs.sort();times.push((xs[4]+xs[5])/2.0)
+    }
+    let a=(times[0]+times[3])/2.0;let b=(times[1]+times[2])/2.0
+    println(({"label":Json(label),"ABBA_ms":Json(times),"baseline_ms":Json(a),"candidate_ms":Json(b),"saved_ms":Json(a-b),"saved_percent":Json((a-b)/a*100.0),"AB_saved":Json(times[0]-times[1]),"BA_saved":Json(times[3]-times[2])}:Json).stringify(indent=2))
+  }
+}

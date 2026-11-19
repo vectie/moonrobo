@@ -1,0 +1,13 @@
+{
+  "seeds": [0, 1, 2],
+  "updates": 400,
+  "batch_size": 64,
+  "hidden_width": 128,
+  "learning_rate": 0.001,
+  "normalization_floor": 0.1,
+  "evaluate_every": 50,
+  "cpu_threads": 2,
+  "late_window_fraction": 0.5,
+  "late_validation_weight": 0.5,
+  "acceptance": "Report whole-window and after-two-second validation/test prediction errors separately. Prediction diagnostics do not qualify control."
+}

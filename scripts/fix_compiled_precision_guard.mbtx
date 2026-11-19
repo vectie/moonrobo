@@ -1,0 +1,90 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let parent = @fs.read_file(out + "/build_compiled_window_a.mbtx").text()
+  let start = parent.find("  container(\"aoti-window-plugin-build-a\"").unwrap()
+  let end = parent.find("  container(\"aoti-window-native-build-a\"").unwrap()
+  let build = parent[:parent.find("async fn main {").unwrap()].to_owned() +
+    "async fn main {\n  require_idle()\n" +
+    parent[start:end]
+    .to_owned()
+    .replace_all(
+      old="aoti-window-plugin-build-a",
+      new="aoti-window-plugin-build-b",
+    )
+    .replace_all(
+      old="libmoonrobo_compiled_window_a.so",
+      new="libmoonrobo_compiled_window_b.so",
+    ) +
+    "}\n"
+  let runner = @fs.read_file(out + "/run_compiled_window_i.mbtx")
+    .text()
+    .replace_all(
+      old="run_compiled_window_i.mbtx",
+      new="run_compiled_window_j.mbtx",
+    )
+    .replace_all(
+      old="libmoonrobo_compiled_window_a.so",
+      new="libmoonrobo_compiled_window_b.so",
+    )
+    .replace_all(old="+amp+\"-gate-c\"", new="+amp+\"-gate-d\"")
+  for
+    (name, code) in [
+      ("build_compiled_window_plugin_b.mbtx", build),
+      ("run_compiled_window_j.mbtx", runner),
+    ] {
+    @fs.write_file(out + "/" + name, code, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      "src/learning_tensor/compiled_block.inc",
+      "wlc004s@192.168.2.179:" +
+      base +
+      "/workspace/moonrobo-compiled-window-a/src/learning_tensor/compiled_block.inc",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179",
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/build_compiled_window_plugin_b.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/window-plugin-b.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/window-plugin-b.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+}

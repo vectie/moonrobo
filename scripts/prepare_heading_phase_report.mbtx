@@ -1,0 +1,24 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  guard @env.args() is [_,variant]&&["heading","split","both"].contains(variant)else{fail("admitted variant")}
+  let root="/Users/kq/Workspace/moonrobo";let out=root+"/output/spark-runtime-20261024/smc-heading-body-20261028"
+  let mut s=@fs.read_file(root+"/scripts/report_primitives_phases.mbtx").text()
+  s=rep(s,"smc-primitives-20261028","smc-heading-body-20261028")
+  s=rep(s,"\"safe\"","\""+variant+"\"")
+  s=rep(s,"\"primitives-\"+variant+\"-\"+phase+\"-events-\"+(if phase==\"world\" && variant==\"smc\" {\"c\"} else {\"a\"})","\"heading-body-\"+variant+\"-\"+phase+\"-events-c\"")
+  @fs.write_file(out+"/report_heading_phases.mbtx",s,create_mode=CreateNew)
+  let runner=(
+    #|import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env" }
+    #|async fn main {
+    #|  guard @env.args() is [_,candidate]&&["heading","split","both"].contains(candidate)else{fail("admitted candidate")}
+    #|  let moon="/home/wlc004s/moonrobo/toolchain/bin/moon"
+    #|  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+    #|  for phase in ["world","actor"] {for variant in ["baseline",candidate,"smc"] {
+    #|    guard @process.run(moon,["run","--target","native",base+"/heading_events.mbtx","--",phase,variant])==0 else{fail("events "+phase+" "+variant)}
+    #|  }}
+    #|}
+  )
+  @fs.write_file(out+"/heading_events_suite.mbtx",runner,create_mode=CreateNew)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",out+"/heading_events_suite.mbtx","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/heading_events_suite.mbtx"])==0 else{fail("stage")}
+}

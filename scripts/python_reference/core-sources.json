@@ -1,0 +1,152 @@
+[
+  {
+    "script": "probe_g1_critic.mbtx",
+    "sha256": "ad93308b9663e4534de9549d678acd3c50fecb178e8d5ef74d0d8d57835037ea",
+    "legacy_entry": "scripts/python_reference/probe_g1_critic.mbtx"
+  },
+  {
+    "script": "score_g1_actor_steps.mbtx",
+    "sha256": "551e4f5422a644cb6cac8ae79db2ec14a5e45c86a3dfc295f1db66db25e3ea06",
+    "legacy_entry": "scripts/python_reference/score_g1_actor_steps.mbtx"
+  },
+  {
+    "script": "probe_g1_paired_model.mbtx",
+    "sha256": "4c2e6f02a828cb492850dca08a8b8d690eb5936d39e083901e27e0dfe9f50e36",
+    "legacy_entry": "scripts/python_reference/probe_g1_paired_model.mbtx"
+  },
+  {
+    "script": "fit_g1_long_dynamics.mbtx",
+    "sha256": "e78d290e3e4a2d7d1b4019372b20e27b58e233f88bf6c65bdbf32a1b1d8d6c5e",
+    "legacy_entry": "scripts/python_reference/fit_g1_long_dynamics.mbtx"
+  },
+  {
+    "script": "fit_g1_goal_dynamics.mbtx",
+    "sha256": "3520aca22e7cf513adab7da8928e1e079faca2e412e8927258081bb1f6c2b991",
+    "legacy_entry": "scripts/python_reference/fit_g1_goal_dynamics.mbtx"
+  },
+  {
+    "script": "verify_g1_ppo.mbtx",
+    "sha256": "ab233bf9201cf9c48b55e1ce31ab4d0fbdf0db43329ce3450d53d5bf70d390e7",
+    "legacy_entry": "scripts/python_reference/verify_g1_ppo.mbtx"
+  },
+  {
+    "script": "fit_g1_behavior_cloning.mbtx",
+    "sha256": "519a846b40d2127679acda8c562f94d12b7dc65504ed10c97b4a8a08804b8afb",
+    "legacy_entry": "scripts/python_reference/fit_g1_behavior_cloning.mbtx"
+  },
+  {
+    "script": "score_g1_paired_tail.mbtx",
+    "sha256": "7263059ff6410db90b886247af1b21d0227b375e26a2bb2753e34030fe7706c7",
+    "legacy_entry": "scripts/python_reference/score_g1_paired_tail.mbtx"
+  },
+  {
+    "script": "score_g1_short_cycle.mbtx",
+    "sha256": "079813015899a9f7757248ab3f2059b7940889bc198fa9854239384e211227a4",
+    "legacy_entry": "scripts/python_reference/score_g1_short_cycle.mbtx"
+  },
+  {
+    "script": "probe_g1_dynamic_refit.mbtx",
+    "sha256": "50c37417bac52a91400e2481476f138f6b1fcf3815a22b97aa64f376e92b7de7",
+    "legacy_entry": "scripts/python_reference/probe_g1_dynamic_refit.mbtx"
+  },
+  {
+    "script": "verify_g1_physics.mbtx",
+    "sha256": "dfac77e1bcad54bea1deabf5c10db55438c26120d645e3c38a3a3b7bd3055407",
+    "legacy_entry": "scripts/python_reference/verify_g1_physics.mbtx"
+  },
+  {
+    "script": "fit_g1_counterfactual.mbtx",
+    "sha256": "ee681c0a1f197831641730f57d3ecdfe4e0a767cc3c1e39eca87eb05350a0433",
+    "legacy_entry": "scripts/python_reference/fit_g1_counterfactual.mbtx"
+  },
+  {
+    "script": "fit_g1_dynamics.mbtx",
+    "sha256": "2872afffa7883ba9d13aaf525c92099e292b51bdc80efd281c71c8b5284ac8dd",
+    "legacy_entry": "scripts/python_reference/fit_g1_dynamics.mbtx"
+  },
+  {
+    "script": "verify_g1_goal_candidate.mbtx",
+    "sha256": "d199398330d78271a8db86e22ee78ea68c36933c5215a1017bc1870d0c91b266",
+    "legacy_entry": "scripts/python_reference/verify_g1_goal_candidate.mbtx"
+  },
+  {
+    "script": "fit_g1_dynamic_refit.mbtx",
+    "sha256": "0a12647cb3ffb94734fb95382a5a8db2e983c126ceb3715038a605ff7b3a5fd8",
+    "legacy_entry": "scripts/python_reference/fit_g1_dynamic_refit.mbtx"
+  },
+  {
+    "script": "fit_g1_short_cycle.mbtx",
+    "sha256": "82fb8a32b4af071884791ef258d210ac6960ad468f0713022ef45cb8005e8009",
+    "legacy_entry": "scripts/python_reference/fit_g1_short_cycle.mbtx"
+  },
+  {
+    "script": "verify_g1_invariant.mbtx",
+    "sha256": "8a199445a33b0c48237dc0e881a62c5590e8ce854564d26381c8bcdd3f7cd54d",
+    "legacy_entry": "scripts/python_reference/verify_g1_invariant.mbtx"
+  },
+  {
+    "script": "fit_g1_policy.mbtx",
+    "sha256": "fb8dce2a76f85af48be8cdf7767d9c3f0a0f2d9497c00584cb57b1cccdfb068e",
+    "legacy_entry": "scripts/python_reference/fit_g1_policy.mbtx"
+  },
+  {
+    "script": "ablate_g1_policy_horizon.mbtx",
+    "sha256": "e9fce21ea2b3e8f396429ee076373573575644c4f673c49f1384b3e77f75c944",
+    "legacy_entry": "scripts/python_reference/ablate_g1_policy_horizon.mbtx"
+  },
+  {
+    "script": "compare_g1_learning.mbtx",
+    "sha256": "999eccbc0f7bfc808cf6425074bc8d8baa08e9d1b09a02497420bb1ec210fc73",
+    "legacy_entry": "scripts/python_reference/compare_g1_learning.mbtx"
+  },
+  {
+    "script": "fit_g1_physics_critic.mbtx",
+    "sha256": "b678d85c8297899343a7eb5d78b957900312a38e67cfa8617e88e732bf5cf5f7",
+    "legacy_entry": "scripts/python_reference/fit_g1_physics_critic.mbtx"
+  },
+  {
+    "script": "fit_g1_ppo.mbtx",
+    "sha256": "5f4ff0bc88f2d1dc954eb8163c11d2c38c8187ec43e7eb4d0dfa27fa23ee7267",
+    "legacy_entry": "scripts/python_reference/fit_g1_ppo.mbtx"
+  },
+  {
+    "script": "fit_g1_goal_policy.mbtx",
+    "sha256": "cc95f52ca7abd3243707452047d57c27721b44a5112068f809f58066eff5270d",
+    "legacy_entry": "scripts/python_reference/fit_g1_goal_policy.mbtx"
+  },
+  {
+    "script": "probe_g1_model.mbtx",
+    "sha256": "6c4911d865d4101ec6c61e9a418424d8514c077158cbfe2da5287f5445d229c8",
+    "legacy_entry": "scripts/python_reference/probe_g1_model.mbtx"
+  },
+  {
+    "script": "probe_g1_actor_update.mbtx",
+    "sha256": "95122d0d55ab876ec3248335ca38f58afe566e5b02c6f874edad4a5a0e18ffab",
+    "legacy_entry": "scripts/python_reference/probe_g1_actor_update.mbtx"
+  },
+  {
+    "script": "fit_g1_paired_tail.mbtx",
+    "sha256": "985bc193811f15b7eccaa2efb6ac1cb9bbd5949ba34fa090d5799fd416caf61f",
+    "legacy_entry": "scripts/python_reference/fit_g1_paired_tail.mbtx"
+  },
+  {
+    "script": "probe_g1_tail.mbtx",
+    "sha256": "7342dddf49f45b4f9ac10261421eb118e4c3da18541bfd2686460be41a2a197c",
+    "legacy_entry": "scripts/python_reference/probe_g1_tail.mbtx"
+  },
+  {
+    "script": "fit_g1_dataset_aggregation.mbtx",
+    "sha256": "49f7524e68ea9125d36bc5743fca42e502bfb4d5037d98a50b7232c23c0435ff",
+    "legacy_entry": "scripts/python_reference/fit_g1_dataset_aggregation.mbtx"
+  },
+  {
+    "script": "verify_policy_refactor.mbtx",
+    "sha256": "b245f23a8a99466aba973b3bbd2dd00c382da47f6545e53da72c73eafd7314d6",
+    "legacy_entry": "scripts/python_reference/verify_policy_refactor.mbtx"
+  },
+  {
+    "script": "fit_g1_invariant.mbtx",
+    "sha256": "a7c1d885951a5c791de2fbdafc5351e85edb633f3789943e5a230f52ffb27186",
+    "legacy_entry": "scripts/python_reference/fit_g1_invariant.mbtx"
+  }
+]

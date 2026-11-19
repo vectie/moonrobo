@@ -1,0 +1,14 @@
+{
+  "seeds": [0, 1, 2],
+  "rounds": 10,
+  "updates_per_round": 1000,
+  "batch_size": 256,
+  "actor_learning_rate": 0.0003,
+  "recent_points": 50000,
+  "collection_seed_base": 2400,
+  "validation_seeds": [30, 31, 32],
+  "test_seeds": [8500, 8501, 8502],
+  "max_mean_joint_rmse_rad": 0.15,
+  "cpu_threads": 2,
+  "scope": "Ten rounds of student train-family physics followed by supervised teacher labels, half initial/half accumulated recent point samples. Teacher labels remain separate from actual student applied actions. Same actor and frozen normalization; zero-output untrained critic retained for later calibration. Validation selects among all rounds including incoming actor; final seeds never select weights."
+}

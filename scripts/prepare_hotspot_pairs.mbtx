@@ -1,0 +1,135 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+fn obj(j : Json) -> Map[String, Json] raise {
+  guard j is Object(o) else { fail("object required") }
+  o
+}
+
+///|
+fn get(j : Json, k : String) -> Json raise {
+  guard obj(j).get(k) is Some(v) else { fail("missing " + k) }
+  v
+}
+
+///|
+fn arr(j : Json) -> Array[Json] raise {
+  guard j is Array(a) else { fail("array required") }
+  a
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (reader, redirect) = @process.read_from_process()
+  defer reader.close()
+  @async.with_task_group() <| group => {
+    let child = group.spawn(() => {
+      @process.run("sha256sum", [path], stdout=redirect)
+    })
+    let bytes = FixedArray::make(2048, b'\x00')
+    let n = reader.read(bytes)
+    guard n >= 64 && n < 2048 && child.wait() == 0 else { fail("sha failed") }
+    @utf8.decode(Bytes::from_array(bytes[:64]))
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] &&
+    ["apic", "apic2", "apic3", "inspection"].contains(mode) else {
+    fail("apic|inspection")
+  }
+  let base = "/home/wlc004s/moonrobo/private/hotspot-optimization-20261025-a"
+  let mapped = "/workspace/moonrobo/private/hotspot-optimization-20261025-a"
+  let parent = "/home/wlc004s/moonrobo/private/smc-native-g2-confirmation-prepared/spec-six-vs-smc4096.json"
+  guard sha(parent) ==
+    "40ae4d4a3f6959876ab18ee82cd9a30e055b0927848c0c07dc5fcc7be9ff0b1c" else {
+    fail("accepted baseline changed")
+  }
+  let spec = @json.parse(@fs.read_file(parent).text())
+  let original = get(spec, "a")
+  obj(spec)["name"] = Json(
+    "native-hotspot-single-change-" + mode + "-batch4096-abba",
+  )
+  for side in ["a", "b"] {
+    let member = @json.parse(original.stringify())
+    obj(member)["entrypoint"] = Json(mapped + "/trainer")
+    obj(member)["label"] = Json(mode + "-" + side)
+    let argv = arr(get(member, "argv"))
+    for i in 0..<(argv.length() - 1) {
+      if argv[i] == Json("--physics-library") {
+        argv[i + 1] = Json(mapped + "/libmoonrobo_aligned_apic_bulk.so")
+      }
+      if argv[i] == Json("--tensor-library") {
+        argv[i + 1] = Json(
+          "/workspace/moonrobo/private/operator-diagnostic-20261025-a/libmoonrobo_learning_tensor_phase_b.so",
+        )
+      }
+    }
+    obj(get(member, "env"))["MOONROBO_APIC_IO"] = Json(
+      if mode.has_prefix("apic") && side == "a" {
+        "scalar"
+      } else {
+        "bulk"
+      },
+    )
+    obj(get(member, "expected_config"))["reuse_pre_step_state"] = Json(
+      mode == "inspection" && side == "b",
+    )
+    obj(spec)[side] = member
+  }
+  for
+    path in [
+      base + "/trainer",
+      base + "/libmoonrobo_aligned_apic_bulk.so",
+      base + "/run_hotspot_pairs_v3.mbtx",
+      base + "/source-hotspot.tar.gz",
+      base + "/build.mbtx",
+      base + "/build-c.mbtx",
+      base + "/build_hotspot_optimization.mbtx",
+      "/home/wlc004s/moonrobo/runs/hotspot-apic-exact-gate-20261025-b/result.json",
+      "/home/wlc004s/moonrobo/runs/hotspot-apic-exact-gate-20261025-b/training.stderr.log",
+      "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/libmoonrobo_learning_tensor_phase_b.so",
+    ] {
+    arr(get(spec, "pins")).push({
+      "path": Json(path),
+      "sha256": Json(sha(path)),
+      "role": "hotspot-frozen-build-or-runner",
+    })
+  }
+  if mode == "inspection" {
+    for path in [
+      base + "/run_hotspot_inspection_series.mbtx",
+      "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_hotspot_run_cache.mbtx",
+      "/home/wlc004s/moonrobo/runs/hotspot-apic3-abba-20261025-c/summary.json",
+    ] {
+      arr(get(spec, "pins")).push({ "path": Json(path), "sha256": Json(sha(path)), "role": "measured-predecessor-and-cache-controller" })
+    }
+  }
+  obj(spec)["known_differences"] = Json([
+    "Both native sides use exactly the same rebuilt executable, APIC plugin, tensor plugin, original six optimizations and batch4096/micro512. Original implementations are retained; one execution switch differs.",
+    "APIC pair changes only scalar versus bulk transfer. Inspection pair keeps bulk transfer on both sides and changes only reuse_pre_step_state. No physics/reward/GAE/noise/optimizer schedule change.",
+    "All inherited265 input pins retained. Newly compiled sources/binaries and runner separately pinned. Fresh60 iteration processes, ABBA, steady41-60, no profiler.",
+    "Original admission80percent/16GiB reserve,100GiB cgroup/zero container swap/12CPU and sampled host/cgroup guards retained. Bulk staging is no larger than legacy per-view staging; verification-only scratch is bounded48MiB and absent from throughput runs.",
+  ])
+  obj(spec)["batch_layout"] = {
+    "logical_actor_batch": 4096,
+    "a_microbatch": 512,
+    "b_microbatch": 512,
+  }
+  @fs.write_file(
+    base + "/spec-" + mode + ".json",
+    spec.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println("Prepared " + mode)
+}

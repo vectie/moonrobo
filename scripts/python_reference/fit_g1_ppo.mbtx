@@ -1,0 +1,99 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=stderr.text() + stdout.text())
+  stdout.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() == 4 || args.length() == 5,
+    msg="usage: fit_g1_ppo.mbtx REPO INITIAL_DYNAMICS_RUN OUTPUT [CONFIG]",
+  )
+  let root = args[1]
+  let output = args[3]
+  let python = root + "/target/learning-venv/bin/python"
+  @fs.mkdir(output, recursive=true)
+  for name in ["ppo.py", "policy.py", "cpu_physics.py", "dynamics.py"] {
+    @fs.write_file(
+      output + "/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let config = if args.length() == 5 {
+    args[4]
+  } else {
+    root + "/examples/learning/g1-ppo-fit.json"
+  }
+  let settings = @json.parse(@fs.read_file(config).text())
+  let collection = match settings {
+    { "collection_experiment": String(path), .. } => root + "/" + path
+    _ => root + "/examples/learning/g1-dynamics-collection.json"
+  }
+  let evaluation = match settings {
+    { "evaluation_experiment": String(path), .. } => root + "/" + path
+    _ => root + "/examples/learning/g1-cpu-experiment.json"
+  }
+  ignore(
+    run(python, [
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      root + "/providers/motion_learning",
+      "-p",
+      "test_*.py",
+    ]),
+  )
+  let command = [
+    root + "/providers/motion_learning/ppo.py",
+    "--train",
+    args[2] + "/train-batch.json",
+    "--scene",
+    root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+    "--config",
+    config,
+    "--experiment",
+    collection,
+    "--evaluation-experiment",
+    evaluation,
+    "--output",
+    output,
+  ]
+  match settings {
+    { "warm_start_policy": String(path), .. } => command.append(["--warm-start-policy", root + "/" + path])
+    _ => ()
+  }
+  let log = run(python, command)
+  @fs.write_file(output + "/training.log", log, create_mode=CreateOrTruncate)
+  let report = @json.parse(@fs.read_file(output + "/report.json").text())
+  assert_eq(field(report, "format"), "moonrobo.g1-ppo-fit.v1".to_json())
+  guard field(report, "runs") is Array(runs) else { fail("missing PPO runs") }
+  assert_eq(runs.length(), 3)
+  for result in runs {
+    assert_eq(field(result, "actor_changed"), true.to_json())
+    assert_eq(field(result, "reload_matches"), true.to_json())
+    println(result.stringify())
+  }
+  println("PPO artifacts: " + output)
+}

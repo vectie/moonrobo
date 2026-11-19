@@ -1,0 +1,237 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+async fn read_pipe(reader : &@io.Reader) -> String {
+  let data = FixedArray::make(1048577, b'\x00')
+  let mut n = 0
+  for ;; {
+    let k = reader.read(data, offset=n, max_len=data.length() - n)
+    if k == 0 {
+      break
+    }
+    n += k
+    guard n < data.length() else { fail("1MiB bound") }
+  }
+  @utf8.decode(Bytes::from_array(data[:n])).trim().to_owned()
+}
+
+///|
+async fn command(p : String, args : Array[String]) -> String {
+  @async.with_timeout(15000, () => {
+    let (o, stdout) = @process.read_from_process()
+    let (e, stderr) = @process.read_from_process()
+    @async.with_task_group() <| g => {
+      let c = g.spawn(() => @process.run(p, args, stdout~, stderr~))
+      let out = g.spawn(() => {
+        defer o.close()
+        read_pipe(o)
+      })
+      let err = g.spawn(() => {
+        defer e.close()
+        read_pipe(e)
+      })
+      let code = c.wait()
+      let text = out.wait()
+      let error = err.wait()
+      guard code == 0 else { fail(p + " " + error) }
+      text
+    }
+  })
+}
+
+///|
+async fn idle() -> Unit {
+  guard command("docker", ["ps", "--quiet"]) == "" &&
+    command("nvidia-smi", [
+      "--query-compute-apps=pid", "--format=csv,noheader,nounits",
+    ]) ==
+    "" else {
+    fail("active workload; no cache advice")
+  }
+}
+
+///|
+async fn residency(paths : Array[String]) -> Json {
+  @json.parse(
+    command(
+      "/home/wlc004s/moonrobo/private/fincore-official-20261024-a/root/usr/bin/fincore",
+      ["--json", "--bytes", "--output", "FILE,SIZE,RES", ..paths],
+    ),
+  )
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, label] &&
+    label.length() > 0 &&
+    label.length() <= 80 &&
+    label.all(c => c is ('a'..<='z' | '0'..<='9' | '-')) else {
+    fail("fresh explicit advice label")
+  }
+  let report = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a/finished-snapshot-advice-" +
+    label +
+    ".json"
+  guard !@fs.exists(report) else { fail("fresh advice receipt") }
+  idle()
+  let before = @fs.read_file("/proc/meminfo").text()
+  let records = []
+  for
+    suffix in [
+      "diag-world-off-0", "diag-world-off-3", "diag-world-events-0", "diag-world-events-3",
+      "diag-world-observers-0", "diag-world-observers-2", "diag-world-observers-4",
+      "diag-world-observers-6", "diag-world-captures-0", "diag-world-captures-2",
+      "diag-actor-off-0", "diag-actor-off-3", "diag-actor-events-0", "diag-actor-events-3",
+      "diag-actor-captures-0", "diag-actor-captures-2", "diag-actor-captures-2b",
+      "diag-actor-controls-0", "diag-actor-controls-2", "trained-native-world-gate-a",
+      "trained-native-actor-gate-a", "native-world-gate-a", "native-actor-gate-a",
+      "trained-export-b", "export-a",
+    ] {
+    idle()
+    let root = "/home/wlc004s/moonrobo/runs/hotspot-shared-" + suffix
+    if !@fs.exists(root + "/training-docker-final.json") {
+      continue
+    }
+    let saved = @json.parse(
+      @fs.read_file(root + "/training-docker-final.json").text(),
+    )
+    guard saved
+      is [
+        {
+          "Id": String(id),
+          "Image": saved_image,
+          "Config": saved_config,
+          "State": {
+            "Running": False,
+            "Pid": Number(0, ..),
+            "Status": "exited",
+            "OOMKilled": False,
+            "FinishedAt": finished,
+            ..
+          },
+          ..
+        },
+      ] else {
+      fail("unclosed source")
+    }
+    let actual = @json.parse(command("docker", ["inspect", id]))
+    guard actual
+      is [
+        {
+          "Id": String(actual_id),
+          "Image": actual_image,
+          "Config": actual_config,
+          "State": {
+            "Running": False,
+            "Pid": Number(0, ..),
+            "Status": "exited",
+            "OOMKilled": False,
+            "FinishedAt": actual_finished,
+            ..
+          },
+          "Mounts": Array(mounts),
+          ..
+        },
+      ] &&
+      actual_id == id &&
+      actual_image == saved_image &&
+      actual_config == saved_config &&
+      actual_finished == finished &&
+      mounts.any(m => {
+        m
+        is { "Source": String(source), "Destination": "/pair", "RW": True, .. } &&
+        source == root
+      }) else {
+      fail("changed source/ownership")
+    }
+    let names = command("find", [
+        "-P", root, "-maxdepth", "1", "-type", "f", "-name", "*.f64", "-printf",
+        "%f\n",
+      ])
+      .split("\n")
+      .map(s => s.to_owned())
+      .to_array()
+    guard names.length() > 0 &&
+      names.length() <= 512 &&
+      names.all(n => {
+        n.has_suffix(".f64") &&
+        n.all(c => c is ('a'..<='z' | '0'..<='9' | '-' | '.'))
+      }) else {
+      fail("bounded flat snapshot names required")
+    }
+    let paths = names.map(n => root + "/" + n)
+    let initial = residency(paths)
+    guard initial is { "fincore": Array(entries), .. } else {
+      fail("residency schema")
+    }
+    let resident = entries.filter_map(e => {
+      match e {
+        { "file": String(path), "res": Number(n, ..), .. } if n > 0.0 =>
+          Some(path)
+        { "file": String(_), "res": Number(0, ..), .. } => None
+        _ => fail("residency entry")
+      }
+    })
+    guard resident.all(p => paths.contains(p)) else {
+      fail("residency identity")
+    }
+    let changed = []
+    for i, path in resident {
+      if i % 32 == 0 {
+        idle()
+      }
+      guard @fs.realpath(path) == path &&
+        @fs.kind(path, follow_symlink=false) == Regular else {
+        fail("unsafe snapshot path")
+      }
+      let stamp = command("stat", ["-c", "%u:%h:%d:%i:%s:%Y:%Z", path])
+      let parts = stamp.split(":").to_array()
+      guard parts.length() == 7 &&
+        parts[0] == "1000" &&
+        parts[1] == "1" &&
+        @string.parse_int64(parts[4]) <= 134217728L else {
+        fail("snapshot ownership/size")
+      }
+      ignore(
+        command("dd", [
+          "if=" + path,
+          "iflag=nocache,nofollow",
+          "count=0",
+          "status=none",
+        ]),
+      )
+      guard command("stat", ["-c", "%u:%h:%d:%i:%s:%Y:%Z", path]) == stamp else {
+        fail("file identity changed")
+      }
+      changed.push({ "path": Json(path), "stat_before_after": Json(stamp) })
+    }
+    records.push({
+      "root": Json(root),
+      "owner_container": Json(id),
+      "before": initial,
+      "after": residency(paths),
+      "files": Json(changed),
+    })
+  }
+  idle()
+  let receipt : Json = {
+    "operation": "POSIX_FADV_DONTNEED via GNU dd iflag=nocache,nofollow count=0",
+    "file_read_write_delete": false,
+    "global_cache_clear": false,
+    "only_this_task_finished_container_flat_snapshot_files": true,
+    "host_before": Json(before),
+    "host_after": Json(@fs.read_file("/proc/meminfo").text()),
+    "records": Json(records),
+  }
+  @fs.write_file(report, receipt.stringify(indent=2), create_mode=CreateNew)
+  println(report)
+}

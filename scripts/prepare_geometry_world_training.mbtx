@@ -1,0 +1,120 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let put = async fn(name : String, content : String) {
+    @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-math-179.sock",
+        out + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  let prior = "hotspot-geometry-math-ieee-packages-a"
+  let next = "hotspot-mlp-geometry-world-backward-export-a"
+  put(
+    "geometry_math_fixture_f.mbt",
+    @fs.read_file(out + "/geometry_math_fixture_e.mbt")
+    .text()
+    .replace_all(
+      old="let world_root=\"/workspace/moonrobo/runs/" + prior + "\"",
+      new="let world_root=\"/workspace/moonrobo/runs/" + next + "\"",
+    ),
+  )
+  put(
+    "build_geometry_math_f.mbtx",
+    @fs.read_file(out + "/build_geometry_math_e.mbtx")
+    .text()
+    .replace_all(old="geometry-math-e", new="geometry-math-f")
+    .replace_all(
+      old="geometry_math_fixture_e.mbt",
+      new="geometry_math_fixture_f.mbt",
+    ),
+  )
+  put(
+    "geometry_training_reference_f.py",
+    @fs.read_file("providers/motion_learning/geometry_training_reference.py").text(),
+  )
+  for mode in ["training", "gate"] {
+    let src = "run_geometry_math_" + mode + "_e.mbtx"
+    let name = "run_geometry_math_" + mode + "_f.mbtx"
+    let runner = @fs.read_file(out + "/" + src)
+      .text()
+      .replace_all(old=src, new=name)
+      .replace_all(
+        old="actor-step-gate-geometry-math-e",
+        new="actor-step-gate-geometry-math-f",
+      )
+      .replace_all(
+        old="let world_root=\"/home/wlc004s/moonrobo/runs/" + prior + "\"",
+        new="let world_root=\"/home/wlc004s/moonrobo/runs/" + next + "\"",
+      )
+      .replace_all(
+        old="  e[\"MOONROBO_SHARED_AMP\"]",
+        new="  mounts.push({\"source\":\"/home/wlc004s/moonrobo/runs/" +
+          next +
+          "\",\"target\":\"/workspace/moonrobo/runs/" +
+          next +
+          "\",\"readonly\":true})\n  e[\"MOONROBO_SHARED_AMP\"]",
+      )
+      .replace_all(
+        old="geometry_training_reference_c.py",
+        new="geometry_training_reference_f.py",
+      )
+      .replace_all(
+        old="hotspot-shared-geometry-math-native-gate-b",
+        new="hotspot-shared-geometry-math-native-gate-f",
+      )
+    let runner = if mode == "gate" {
+      runner.replace_all(
+        old="  let pins : Map[String, Json] = {}",
+        new="  e[\"GEOMETRY_FROZEN_WORLD\"]=\"/workspace/moonrobo/runs/" +
+          next +
+          "\"\n  e[\"GEOMETRY_CAPTURE_CODE\"]=\"1\"\n  let pins : Map[String, Json] = {}",
+      )
+    } else {
+      runner
+    }
+    put(name, runner)
+  }
+  let source = @fs.read_file("scripts/run_geometry_training.mbtx")
+    .text()
+    .replace_all(
+      old="build_geometry_math_e.mbtx",
+      new="build_geometry_math_f.mbtx",
+    )
+    .replace_all(old="build-e.", new="build-f.")
+    .replace_all(
+      old="geometry-math-native-gate-b",
+      new="geometry-math-native-gate-f",
+    )
+    .replace_all(
+      old="geometry-math-reference-gate-a",
+      new="geometry-math-reference-gate-f",
+    )
+    .replace_all(
+      old="run_geometry_math_gate_e.mbtx",
+      new="run_geometry_math_gate_f.mbtx",
+    )
+    .replace_all(
+      old="run_geometry_math_training_e.mbtx",
+      new="run_geometry_math_training_f.mbtx",
+    )
+  @fs.write_file(
+    out + "/run_geometry_world_training.mbtx",
+    source,
+    create_mode=CreateNew,
+  )
+}

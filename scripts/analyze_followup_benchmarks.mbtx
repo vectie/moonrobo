@@ -1,0 +1,177 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/x/crypto",
+}
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn num(j : Json) -> Double raise {
+  let v = match j {
+    Number(v, ..) => v
+    String(s) => @string.parse_double(s)
+    _ => fail("number")
+  }
+  guard !v.is_nan() && !v.is_inf() else { fail("finite number") }
+  v
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/world-ln-fk-20261026"
+  let selection = match @env.args() {
+    [_] => "all"
+    [_, candidate] if ["world", "ln", "fk"].contains(candidate) => candidate
+    _ => fail("optional world|ln|fk; omit for complete comparison")
+  }
+  let cases : Array[Json] = []
+  for
+    (name, gate_name) in [
+      ("world", "world_packed-20261026-a"),
+      ("ln", "fused_tail-20261026-b"),
+      ("fk", "fk_axis-20261026-a"),
+    ] {
+    if selection != "all" && name != selection {
+      continue
+    }
+    let gate = @json.parse(
+      @fs.read_file(root + "/gates/" + gate_name + "/result.json").text(),
+    )
+    guard field(gate, "passed") == Json(true) &&
+      field(gate, "process_guard_passed") == Json(true) else {
+      fail("required numeric gate failed")
+    }
+    let path = root + "/benchmark-" + name + "/summary.json"
+    let bytes = @fs.read_file(path)
+    let summary = @json.parse(bytes.text())
+    guard field(summary, "accepted") == Json(true) &&
+      field(summary, "runs") is Array(runs) &&
+      runs.length() == 4 else {
+      fail("complete accepted ABBA required")
+    }
+    let phases : Map[String, Json] = Map([])
+    let memory : Map[String, Json] = Map([])
+    for side in ["a", "b"] {
+      let sum : Map[String, Double] = {
+        "collection_ms": 0.0,
+        "world_ms": 0.0,
+        "actor_critic_ms": 0.0,
+        "total_ms": 0.0,
+      }
+      let mut count = 0
+      let mut cgroup_peak = 0.0
+      let mut cuda_reserved = 0.0
+      let mut cuda_free = 1.0e30
+      for run in runs {
+        if field(run, "side") != Json(side) {
+          continue
+        }
+        guard field(run, "rows") is Array(rows) && rows.length() == 60 else {
+          fail("exact60 rows")
+        }
+        for row in rows[40:60] {
+          for
+            key in ["collection_ms", "world_ms", "actor_critic_ms", "total_ms"] {
+            sum[key] = sum[key] + num(field(row, key))
+          }
+          count += 1
+        }
+        let resources = field(run, "resource_observations")
+        let runtime = field(run, "runtime_details")
+        guard field(resources, "observed_oom_events") == Json(0) &&
+          field(resources, "maximum_observed_swap_bytes") == Json(0) else {
+          fail("memory event")
+        }
+        cgroup_peak = cgroup_peak.max(
+          num(field(resources, "maximum_observed_cgroup_memory_peak_bytes")),
+        )
+        cuda_reserved = cuda_reserved.max(
+          num(field(runtime, "cuda_reserved_window_peak_bytes")),
+        )
+        cuda_free = cuda_free.min(
+          num(field(runtime, "minimum_observed_cuda_free_bytes")),
+        )
+      }
+      guard count == 40 else { fail("forty steady rows per side") }
+      phases[side] = Json(sum.map((_, v) => Json(v / 40.0)))
+      memory[side] = {
+        "cgroup_sampled_peak_bytes": Json(cgroup_peak),
+        "cuda_reserved_window_peak_bytes": Json(cuda_reserved),
+        "minimum_observed_cuda_free_bytes": Json(cuda_free),
+        "observed_oom_events": 0,
+        "container_swap_bytes": 0,
+      }
+    }
+    let a = num(field(field(summary, "a"), "mean_ms"))
+    let b = num(field(field(summary, "b"), "mean_ms"))
+    let phase_reductions : Map[String, Json] = Map([])
+    for key in ["collection_ms", "world_ms", "actor_critic_ms", "total_ms"] {
+      let before = num(field(phases["a"], key))
+      let after = num(field(phases["b"], key))
+      phase_reductions[key] = Json((before - after) / before * 100.0)
+    }
+    let f = @fs.open(path, mode=ReadOnly)
+    let h = @crypto.SHA256::new()
+    h.update(f.read_exactly_at(f.size().to_int(), position=0L))
+    f.close()
+    cases.push({
+      "candidate": Json(name),
+      "baseline_ms": Json(a),
+      "candidate_ms": Json(b),
+      "iteration_time_reduction_percent": Json((a - b) / a * 100.0),
+      "speedup": Json(a / b),
+      "baseline_statistics": field(summary, "a"),
+      "candidate_statistics": field(summary, "b"),
+      "paired_ab_ba_ratios": field(
+        summary, "adjacent_ab_ba_a_over_b_mean_time_ratios",
+      ),
+      "steady_phase_mean_ms": Json(phases),
+      "phase_time_reduction_percent": Json(phase_reductions),
+      "memory": Json(memory),
+      "numerical_gate": gate,
+      "summary_path": Json(path),
+      "summary_sha256": Json(@crypto.bytes_to_hex_string(h.finalize())),
+    })
+  }
+  let result : Json = {
+    "format": "moonrobo.world-ln-fk-measured-comparison.v1",
+    "single_agent": true,
+    "all_requested_candidates_completed": Json(selection == "all"),
+    "batch": 4096,
+    "actor_microbatch": 512,
+    "actor_chunks": 8,
+    "profiler_enabled": false,
+    "baseline": "APIC bulk plus immutable reference FK cache, original expanded LayerNorm and staged world data",
+    "cases": Json(cases),
+    "guards_unchanged": true,
+    "default_candidate_flags_enabled": false,
+    "original_implementations_retained": true,
+    "limitations": [
+      "Three isolated one-factor comparisons; gains must not be multiplied or summed to claim a combined speedup.",
+      "Short60-iteration ABBA throughput study, steady41-60; not convergence or sim-to-real validation.",
+      "Existing synchronized phase-boundary telemetry is present on both sides. No Nsight/operator profiler captures.",
+      "Cgroup and CUDA counters describe overlapping unified-memory accounting; do not add them. Peaks are observed windows/samples, not an absolute lifetime guarantee.",
+      "Failed LN revision a and failed startup groups excluded. Original numerical tolerances and all memory thresholds retained.",
+    ],
+  }
+  @fs.write_file(
+    root +
+    (if selection == "all" {
+      "/results.json"
+    } else {
+      "/results-" + selection + ".json"
+    }),
+    result.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(result.stringify(indent=2))
+}

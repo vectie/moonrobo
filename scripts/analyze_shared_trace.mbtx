@@ -1,0 +1,254 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+async fn bounded(reader : &@io.Reader) -> String {
+  let data = FixedArray::make(1048577, b'\x00')
+  let mut n = 0
+  for ;; {
+    let k = reader.read(data, offset=n, max_len=data.length() - n)
+    if k == 0 {
+      break
+    }
+    n += k
+    guard n < data.length() else { fail("1MiB metadata limit") }
+  }
+  @utf8.decode(Bytes::from_array(data[:n])).trim().to_owned()
+}
+
+///|
+async fn output(program : String, args : Array[String]) -> String {
+  @async.with_timeout(60000, () => {
+    let (o, stdout) = @process.read_from_process()
+    let (e, stderr) = @process.read_from_process()
+    @async.with_task_group() <| g => {
+      let child = g.spawn(() => @process.run(program, args, stdout~, stderr~))
+      let out = g.spawn(() => {
+        defer o.close()
+        bounded(o)
+      })
+      let err = g.spawn(() => {
+        defer e.close()
+        bounded(e)
+      })
+      let code = child.wait()
+      let value = out.wait()
+      let error = err.wait()
+      guard code == 0 else { fail(program + ": " + error) }
+      value
+    }
+  })
+}
+
+///|
+async fn query(db : String, sql : String) -> Json {
+  let s = output("prlimit", [
+    "--as=4294967296", "--cpu=60", "--", "sqlite3", "-batch", "-readonly", "-json",
+    db, sql,
+  ])
+  if s == "" {
+    Json([])
+  } else {
+    @json.parse(s)
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, phase, index] &&
+    ["world", "actor"].contains(phase) &&
+    ["0", "1", "2", "3", "3b", "3c"].contains(index) else {
+    fail("completed shared trace world|actor 0|1|2|3")
+  }
+  let root = "/home/wlc004s/moonrobo/runs/hotspot-shared-diag-" +
+    phase +
+    "-captures-" +
+    (if phase == "world" && index == "1" {
+      "1b"
+    } else if phase == "actor" && index == "2" {
+      "2b"
+    } else {
+      index
+    })
+  let dest = root + "/analysis"
+  guard @json.parse(@fs.read_file(root + "/training-guard.json").text())
+    is { "reason": "completed", .. } &&
+    @json.parse(@fs.read_file(root + "/training-docker-final.json").text())
+    is [{ "State": { "OOMKilled": False, "Running": False, .. }, .. }] else {
+    fail("source not safely completed")
+  }
+  guard output("docker", ["ps", "--quiet"]) == "" && !@fs.exists(dest) else {
+    fail("idle fresh CPU export required")
+  }
+  let raw = @fs.open(root + "/trace.nsys-rep", mode=ReadOnly)
+  let size = raw.size()
+  raw.close()
+  guard size > 0L && size <= 536870912L else {
+    fail("shared single-window trace exceeds 512MiB")
+  }
+  @fs.mkdir(dest)
+  let id = output("docker", [
+    "create",
+    "--network",
+    "none",
+    "--memory",
+    "4g",
+    "--memory-swap",
+    "4g",
+    "--cpus",
+    "2",
+    "--pids-limit",
+    "256",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--user",
+    "1000:1000",
+    "--mount",
+    "type=bind,src=" + root + ",dst=/input,readonly",
+    "--mount",
+    "type=bind,src=" + dest + ",dst=/output",
+    "--mount",
+    "type=bind,src=/opt/nvidia/nsight-systems/2025.3.2,dst=/opt/nvidia/nsight-systems/2025.3.2,readonly",
+    "--entrypoint",
+    "/usr/bin/timeout",
+    "sha256:c76815627562a180052cef8e7e07edb37fe8547d83158eed6182ebd99bb8385d",
+    "--signal=TERM",
+    "--kill-after=10",
+    "600",
+    "/opt/nvidia/nsight-systems/2025.3.2/target-linux-sbsa-armv8/nsys",
+    "export",
+    "--type=sqlite",
+    "--output=/output/trace.sqlite",
+    "/input/trace.nsys-rep",
+  ])
+  guard id.length() == 64 else { fail("container id") }
+  let code = @process.run(
+    "docker",
+    ["start", "--attach", id],
+    stdout=@process.redirect_to_file(
+      dest + "/export.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      dest + "/export.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  let final = output("docker", ["inspect", id])
+  @fs.write_file(
+    dest + "/export-docker-final.json",
+    final,
+    create_mode=CreateNew,
+  )
+  guard code == 0 &&
+    @json.parse(final)
+    is [
+      {
+        "State": {
+          "OOMKilled": False,
+          "ExitCode": Number(0, ..),
+          "Running": False,
+          ..
+        },
+        ..
+      },
+    ] else {
+    fail("bounded CPU export failed")
+  }
+  let db = dest + "/trace.sqlite"
+  let schema = query(
+    db, "SELECT name,sql FROM sqlite_master WHERE type='table' AND name IN ('NVTX_EVENTS','CUPTI_ACTIVITY_KIND_RUNTIME','CUPTI_ACTIVITY_KIND_KERNEL','DIAGNOSTIC_EVENT');",
+  )
+  let scope_sql =
+    #|WITH scopes AS (SELECT n.rowid AS scope_id,n.start,n.end,n.globalTid,COALESCE(n.text,s.value) AS label
+    #|FROM NVTX_EVENTS n LEFT JOIN StringIds s ON n.textId=s.id
+    #|WHERE n.end>n.start AND (COALESCE(n.text,s.value) IN ('world.forward','world.backward','world.adam','actor.forward','actor.geometry','actor.reward','actor.tail','actor.backward','actor.adam','critic.prepare','critic.forward','critic.backward','critic.adam')
+    #|OR COALESCE(n.text,s.value) LIKE 'diag.actor.%' OR COALESCE(n.text,s.value) LIKE 'diag.critic.%'))
+  let scopes = query(
+    db,
+    scope_sql +
+    " SELECT label,COUNT(*) AS spans,SUM(end-start)/1e6 AS host_wall_ms FROM scopes GROUP BY label ORDER BY label LIMIT 128;",
+  )
+  let cpu = query(
+    db,
+    scope_sql +
+    (
+      #|, calls AS (SELECT n.label,r.start,r.end,ss.value AS api FROM scopes n JOIN CUPTI_ACTIVITY_KIND_RUNTIME r
+      #|ON r.globalTid=n.globalTid AND r.start>=n.start AND r.end<=n.end JOIN StringIds ss ON r.nameId=ss.id)
+      #|SELECT label,api,COUNT(*) AS calls,SUM(end-start)/1e6 AS api_wall_ms FROM calls GROUP BY label,api ORDER BY label,api_wall_ms DESC LIMIT 1024;
+    ),
+  )
+  let kernel_sql = scope_sql +
+    (
+      #|, launched AS (SELECT n.label,k.rowid AS kernel_id,k.start,k.end,k.streamId,k.deviceId,k.contextId,ks.value AS kernel
+      #|FROM scopes n JOIN CUPTI_ACTIVITY_KIND_RUNTIME r ON (r.globalTid & -16777216)=(n.globalTid & -16777216)
+      #|AND r.start>=n.start AND r.end<=n.end
+      #|JOIN CUPTI_ACTIVITY_KIND_KERNEL k ON k.globalPid=(r.globalTid & -16777216) AND k.correlationId=r.correlationId
+      #|JOIN StringIds ks ON k.demangledName=ks.id)
+    )
+  let kernels = query(
+    db,
+    kernel_sql +
+    " SELECT label,COUNT(*) AS kernels,COUNT(DISTINCT kernel_id) AS distinct_kernels,SUM(end-start)/1e6 AS summed_kernel_ms,MIN(start)/1e6 AS first_start_ms,MAX(end)/1e6 AS last_end_ms,COUNT(DISTINCT streamId) AS streams FROM launched GROUP BY label ORDER BY label LIMIT 128;",
+  )
+  let categories = query(
+    db,
+    kernel_sql +
+    (
+      #|SELECT label,CASE WHEN kernel LIKE '%gemm%' OR kernel LIKE '%Gemm%' OR kernel LIKE '%GEMM%' THEN 'gemm'
+      #|WHEN kernel LIKE '%layer_norm%' OR kernel LIKE '%LayerNorm%' THEN 'named_layer_norm'
+      #|WHEN kernel LIKE '%triton%' THEN 'triton_fused_other' ELSE 'other' END AS category,
+      #|COUNT(*) AS kernels,SUM(end-start)/1e6 AS summed_kernel_ms FROM launched GROUP BY label,category ORDER BY label,summed_kernel_ms DESC LIMIT 1024;
+    ),
+  )
+  let totals = query(
+    db, "SELECT (SELECT COUNT(*) FROM NVTX_EVENTS) AS nvtx,(SELECT COUNT(*) FROM CUPTI_ACTIVITY_KIND_KERNEL) AS kernels,(SELECT COUNT(*) FROM CUPTI_ACTIVITY_KIND_RUNTIME) AS runtime_calls;",
+  )
+  for
+    (name, result, bound) in [
+      ("scopes", scopes, 128),
+      ("runtime", cpu, 1024),
+      ("kernels", kernels, 128),
+      ("categories", categories, 1024),
+    ] {
+    guard result is Array(rows) && rows.length() < bound else {
+      fail("query reached output bound: " + name)
+    }
+  }
+  let diagnostics = query(
+    db, "SELECT timestampType,source,severity,text FROM DIAGNOSTIC_EVENT LIMIT 256;",
+  )
+  let report : Json = {
+    "schema": "moonrobo.shared-trace-analysis.v1",
+    "source": Json(root),
+    "source_report_sha256": Json(
+      output("sha256sum", [root + "/trace.nsys-rep"]),
+    ),
+    "database_sha256": Json(output("sha256sum", [db])),
+    "raw_bytes": Json(size),
+    "table_schema": schema,
+    "scopes": scopes,
+    "runtime_by_main_thread_scope": cpu,
+    "kernel_by_launch_scope": kernels,
+    "kernel_name_categories": categories,
+    "event_counts": totals,
+    "diagnostics": diagnostics,
+    "limitations": "Instrumented window only, not corrected normal throughput. NVTX scopes may nest: do not sum parents/children. Main-thread runtime API intervals overlap GPU execution and may include waits; kernel sum is not a wall-time decomposition. Kernel attribution uses launch call time inside a same-process scope across all threads and matching full globalPid/correlationId. Missing or unmatched events are not inferred. Named kernel categories are not mathematically identical operator microbenchmarks.",
+  }
+  @fs.write_file(
+    dest + "/report.json",
+    report.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(dest + "/report.json")
+}

@@ -1,0 +1,102 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=stderr.text())
+  stdout.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    3,
+    msg="usage: fit_g1_dynamics.mbtx ABSOLUTE_REPO ABSOLUTE_OUTPUT",
+  )
+  let root = args[1]
+  let output = args[2]
+  let python = root + "/target/learning-venv/bin/python"
+  println("Collecting exploratory G1 transitions")
+  println(
+    run(python, [
+      root + "/providers/motion_learning/cpu_physics.py",
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--experiment",
+      root + "/examples/learning/g1-dynamics-collection.json",
+      "--output",
+      output + "/collection",
+    ]),
+  )
+  let executable = root +
+    "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe"
+  for split in ["train", "validation", "test"] {
+    let batch = run(executable, [
+      output + "/collection/dataset.json",
+      split,
+      "8",
+    ])
+    @fs.write_file(
+      output + "/" + split + "-batch.json",
+      batch,
+      create_mode=CreateOrTruncate,
+    )
+  }
+  println("Fitting autoregressive dynamics for three seeds on CPU")
+  let log = run(python, [
+    root + "/providers/motion_learning/dynamics.py",
+    "--train",
+    output + "/train-batch.json",
+    "--validation",
+    output + "/validation-batch.json",
+    "--test",
+    output + "/test-batch.json",
+    "--config",
+    root + "/examples/learning/g1-dynamics-fit.json",
+    "--output",
+    output + "/fit",
+  ])
+  @fs.write_file(output + "/fit.log", log, create_mode=CreateOrTruncate)
+  let report = @json.parse(@fs.read_file(output + "/fit/report.json").text())
+  assert_eq(
+    field(report, "normalization_source"),
+    "train-windows-only".to_json(),
+  )
+  assert_eq(field(report, "selection_source"), "validation-only".to_json())
+  assert_eq(field(report, "horizon"), (8).to_json())
+  guard field(report, "runs") is Array(runs) else { fail("missing runs") }
+  assert_eq(runs.length(), 3)
+  for result in runs {
+    assert_eq(field(result, "reload_matches"), true.to_json())
+    assert_eq(field(field(result, "gradient_probe"), "passed"), true.to_json())
+    let metrics = field(result, "metrics")
+    println(
+      ({ "seed": field(result, "seed"), "test": field(metrics, "test") } : Json).stringify(),
+    )
+  }
+  println(
+    "All seeds beat persistence: " + field(report, "all_passed").stringify(),
+  )
+  assert_eq(
+    field(report, "all_passed"),
+    true.to_json(),
+    msg="dynamics diagnostic failed; inspect saved report",
+  )
+}

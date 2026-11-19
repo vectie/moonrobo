@@ -1,0 +1,748 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+let root_prefix = "/home/wlc004s/moonrobo/runs/"
+
+///|
+let fincore = "/home/wlc004s/moonrobo/private/fincore-official-20261024-a/root/usr/bin/fincore"
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(m) && m.get(k) is Some(v) else { fail("missing " + k) }
+  v
+}
+
+///|
+fn text(j : Json) -> String raise {
+  guard j is String(s) else { fail("expected string") }
+  s
+}
+
+///|
+fn component(s : String) -> Bool {
+  s != "" &&
+  s != "." &&
+  s != ".." &&
+  !s.contains("partial") &&
+  s.iter().all(c => c >= ' ' && c != '\u007f' && c != '/' && c != '\\')
+}
+
+///|
+fn sha(s : String) -> Bool {
+  s.length() == 64 &&
+  s.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+async fn output(reader : &@io.Reader) -> String {
+  let b = FixedArray::make(1048577, b'\x00')
+  let mut count = 0
+  for ;; {
+    let n = reader.read(b, offset=count, max_len=b.length() - count)
+    if n == 0 {
+      break
+    }
+    count += n
+    guard count <= 1048576 else { fail("command output exceeded 1 MiB") }
+  }
+  @utf8.decode(Bytes::from_array(b[:count]))
+}
+
+///|
+async fn command(program : String, args : Array[String]) -> String {
+  @async.with_timeout(30000, () => {
+    let (out, out_to) = @process.read_from_process()
+    let (err, err_to) = @process.read_from_process()
+    @async.with_task_group() <| g => {
+      let child = g.spawn(() => {
+        @process.run(program, args, stdout=out_to, stderr=err_to)
+      })
+      let stdout = g.spawn(() => {
+        defer out.close()
+        output(out)
+      })
+      let stderr = g.spawn(() => {
+        defer err.close()
+        output(err)
+      })
+      let code = child.wait()
+      let contents = stdout.wait()
+      let errors = stderr.wait()
+      guard code == 0 else { fail(program + " failed: " + errors) }
+      contents
+    }
+  })
+}
+
+///|
+async fn regular(path : String) -> Unit {
+  guard @fs.realpath(path) == path &&
+    @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("canonical regular file required: " + path)
+  }
+}
+
+///|
+async fn read_json(path : String) -> Json {
+  regular(path)
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  let size = f.size()
+  guard size > 0L && size <= 16777216L else { fail("metadata bound") }
+  let bytes = f.read_exactly_at(size.to_int(), position=0L)
+  guard f.size() == size else { fail("metadata changed") }
+  @json.parse(@utf8.decode(bytes))
+}
+
+///|
+async fn idle() -> Unit {
+  guard command("docker", [
+      "--host", "unix:///var/run/docker.sock", "ps", "--quiet",
+    ]).trim() ==
+    "" else {
+    fail("Docker workloads active; refuse advice")
+  }
+}
+
+///|
+async fn hold(path : String, locks : Array[@fs.File]) -> Unit {
+  regular(path)
+  let f = @fs.open(path, mode=ReadOnly, create_mode=OpenExisting)
+  guard f.try_lock(Exclusive) else {
+    f.close()
+    fail("diagnostic/training lock held")
+  }
+  locks.push(f)
+}
+
+///|
+struct Payload {
+  path : String
+  size : Int64
+  identity : String
+  digest_metadata : Json
+}
+
+///|
+async fn identity(path : String) -> String {
+  regular(path)
+  let value = command("stat", ["--format=%d %i %s %Y %Z %h %u", "--", path])
+    .trim()
+    .to_owned()
+  let values = value.split(" ").to_array().map(s => @string.parse_int64(s))
+  guard values.length() == 7 &&
+    values[0] >= 0L &&
+    values[1] > 0L &&
+    values[2] >= 0L &&
+    values[2] <= 4294967296L &&
+    values[5] == 1L &&
+    values[6] == 1000L else {
+    fail("file identity/size/single-link/owner bound rejected")
+  }
+  value
+}
+
+///|
+async fn add(path : String, digest : Json, selected : Array[Payload]) -> Unit {
+  guard !selected.any(p => p.path == path) && selected.length() < 1024 else {
+    fail("duplicate/count bound")
+  }
+  let stamp = identity(path)
+  let f = @fs.open(path, mode=ReadOnly)
+  let size = f.size()
+  f.close()
+  selected.push({ path, size, identity: stamp, digest_metadata: digest, })
+}
+
+///|
+struct Scan {
+  mut entries : Int32
+  mut bytes : Int64
+}
+
+///|
+async fn cache(
+  dir : String,
+  depth : Int32,
+  scan : Scan,
+  selected : Array[Payload],
+) -> Unit {
+  guard depth <= 8 &&
+    @fs.realpath(dir) == dir &&
+    @fs.kind(dir, follow_symlink=false) == Directory else {
+    fail("cache path/depth bound")
+  }
+  let entries = @fs.opendir(dir)
+  defer entries.close()
+  while entries.next(include_hidden=true, include_special=false) is Some(entry) {
+    guard component(entry.name) else { fail("unsafe cache entry") }
+    scan.entries += 1
+    guard scan.entries <= 32768 else { fail("cache entry count exceeded") }
+    let path = dir + "/" + entry.name
+    match @fs.kind(path, follow_symlink=false) {
+      Directory => cache(path, depth + 1, scan, selected)
+      Regular => {
+        let f = @fs.open(path, mode=ReadOnly)
+        let size = f.size()
+        f.close()
+        scan.bytes += size
+        guard size >= 0L && scan.bytes <= 4294967296L else {
+          fail("cache bytes exceeded")
+        }
+        if size >= 1048576L {
+          add(path, Json::null(), selected)
+        }
+      }
+      _ => fail("symlink/special cache file refused")
+    }
+  }
+}
+
+///|
+async fn collect(
+  root : String,
+  locks : Array[@fs.File],
+  selected : Array[Payload],
+) -> Json {
+  let (prefix, digest) = match root {
+    "/home/wlc004s/moonrobo/runs/native4096-profile24-20261024-g" =>
+      (
+        "moonrobo.native4096-execution-diagnostic", "988f79ecacfc21940053c0bcf0fa916e4e0969890e66cd3b1527ca3e0d7e7d52",
+      )
+    "/home/wlc004s/moonrobo/runs/native-E-profile24-20261024-b" =>
+      (
+        "moonrobo.native-execution-diagnostic", "6c1fc95a2dce0d4934f49700bd5bacad0292f6127a59d002138ce60bde78144a",
+      )
+    _ =>
+      fail(
+        "only two explicitly authorized completed diagnostic roots supported",
+      )
+  }
+  guard @fs.realpath(root) == root else { fail("canonical root required") }
+  hold(root + "/diagnostic.lock", locks)
+  hold(root + "/run/train/run.lock", locks)
+  let spec = read_json(root + "/spec.json")
+  let plan = read_json(root + "/plan.json")
+  let result = read_json(root + "/result.json")
+  guard command("sha256sum", ["--", root + "/spec.json"]).has_prefix(
+      digest + " ",
+    ) &&
+    field(spec, "format") == Json(prefix + ".spec.v1") &&
+    field(plan, "format") == Json(prefix + ".plan.v1") &&
+    field(plan, "spec_sha256") == Json(digest) &&
+    field(result, "format") == Json(prefix + ".result.v1") &&
+    field(result, "spec_sha256") == Json(digest) &&
+    field(result, "passed") == Json(true) &&
+    field(result, "error") == Json::null() &&
+    field(field(result, "coverage"), "complete") == Json(true) &&
+    field(
+      field(field(result, "coverage"), "label_counts"),
+      "iteration.training",
+    ) ==
+    Json(24) else {
+    fail("diagnostic completion/spec identity mismatch")
+  }
+  let run = root + "/run"
+  let guard_report = read_json(run + "/training-guard.json")
+  let launch = read_json(run + "/training-launch.json")
+  guard field(guard_report, "passed") == Json(true) &&
+    field(guard_report, "exit_code") == Json(0) &&
+    field(launch, "program") == Json("docker") &&
+    field(launch, "argv") == field(plan, "training_argv") else {
+    fail("training guard/launch mismatch")
+  }
+  guard read_json(run + "/training-docker-final.json") is Array([recorded]) else {
+    fail("container evidence")
+  }
+  let id = text(field(recorded, "Id"))
+  guard sha(id) else { fail("invalid container id") }
+  guard @json.parse(
+      command("docker", ["--host", "unix:///var/run/docker.sock", "inspect", id]),
+    )
+    is Array([actual]) else {
+    fail("current container evidence")
+  }
+  for container in [recorded, actual] {
+    let state = field(container, "State")
+    guard field(container, "Id") == Json(id) &&
+      field(container, "Image") ==
+      Json(
+        "sha256:c76815627562a180052cef8e7e07edb37fe8547d83158eed6182ebd99bb8385d",
+      ) &&
+      field(state, "Status") == Json("exited") &&
+      field(state, "Running") == Json(false) &&
+      field(state, "Pid") == Json(0) &&
+      field(state, "ExitCode") == Json(0) &&
+      field(state, "OOMKilled") == Json(false) &&
+      !text(field(state, "FinishedAt")).has_prefix("0001-") else {
+      fail("container not completed exit0/noOOM")
+    }
+    guard field(container, "Mounts") is Array(mounts) else {
+      fail("mount evidence")
+    }
+    let pair_mounts = mounts.filter(m => {
+      text(field(m, "Destination")).has_prefix("/pair")
+    })
+    guard pair_mounts.length() == 1 &&
+      field(pair_mounts[0], "Source") == Json(run) &&
+      field(pair_mounts[0], "Destination") == Json("/pair") &&
+      field(pair_mounts[0], "Type") == Json("bind") &&
+      field(pair_mounts[0], "RW") == Json(true) else {
+      fail("owned run mount mismatch")
+    }
+  }
+  guard field(actual, "Config") == field(recorded, "Config") else {
+    fail("container configuration changed")
+  }
+  let report = read_json(run + "/train/report.json")
+  let current = read_json(run + "/train/current.json")
+  let generation = text(field(current, "generation"))
+  guard component(generation) && generation.has_prefix("generation-") else {
+    fail("generation path")
+  }
+  let receipt = read_json(run + "/train/" + generation + "/receipt.json")
+  let reported = match field(report, "checkpoint") {
+    Array([v]) => v
+    Object(_) as v => v
+    _ => fail("receipt")
+  }
+  guard field(report, "format") ==
+    Json("moonrobo.native-tensor-training-report.v1") &&
+    field(report, "iteration") == Json(24) &&
+    field(report, "training_complete_for_requested_iterations") == Json(true) &&
+    field(report, "distributed") == Json(false) &&
+    field(field(report, "identity"), "config") ==
+    field(spec, "diagnostic_config") &&
+    field(current, "format") ==
+    Json("moonrobo.native-tensor-checkpoint-pointer.v2") &&
+    field(current, "iteration") == Json(24) &&
+    current == reported &&
+    current == receipt else {
+    fail("training/current/committed receipt identity mismatch")
+  }
+  let start = selected.length()
+  guard field(current, "files") is Object(files) && files.length() <= 128 else {
+    fail("checkpoint files bound")
+  }
+  for name, digest in files {
+    guard component(name) && sha(text(digest)) else {
+      fail("checkpoint inventory")
+    }
+    if ["world.pt", "policy.pt", "critic.pt"].contains(name) ||
+      name.has_suffix(".f64le") ||
+      name.has_suffix(".i32le") ||
+      name.has_suffix(".u8") {
+      add(run + "/train/" + generation + "/" + name, digest, selected)
+    }
+  }
+  guard selected.length() > start else { fail("no committed checkpoint files") }
+  guard field(field(actual, "Config"), "Env") is Array(environment) &&
+    field(launch, "argv") is Array(argv) else {
+    fail("cache environment evidence")
+  }
+  let scan = { entries: 0, bytes: 0L, }
+  for
+    (name, variable) in [
+      ("cuda-cache", "CUDA_CACHE_PATH"),
+      ("inductor-cache", "TORCHINDUCTOR_CACHE_DIR"),
+    ] {
+    let value = variable + "=/pair/" + name
+    guard environment.filter(v => text(v).has_prefix(variable + "=")) ==
+      [Json(value)] &&
+      argv.filter(v => v == Json(value)).length() == 1 else {
+      fail("private cache env differs")
+    }
+    if @fs.exists(run + "/" + name) {
+      cache(run + "/" + name, 0, scan, selected)
+    }
+  }
+  {
+    "root": root,
+    "spec_sha256": digest,
+    "container_id": id,
+    "iteration": 24,
+    "committed_metadata_matches": true,
+    "payload_hashes_recomputed": false,
+    "selected_files": selected.length() - start,
+    "cache_scanned_entries": scan.entries,
+  }
+}
+
+///|
+async fn resident(path : String) -> Json {
+  let j = @json.parse(
+    command(fincore, [
+      "--json", "--bytes", "--output", "FILE,SIZE,RES,PAGES", path,
+    ]),
+  )
+  guard field(j, "fincore") is Array([row]) && field(row, "file") == Json(path) else {
+    fail("fincore result")
+  }
+  row
+}
+
+///|
+async fn completed_container(
+  root : String,
+  image : String,
+  mount_source : String,
+  mount_target : String,
+) -> Json {
+  guard read_json(root + "/docker-final.json") is Array([recorded]) else {
+    fail("legacy container evidence")
+  }
+  let id = text(field(recorded, "Id"))
+  guard sha(id) else { fail("container id") }
+  guard @json.parse(
+      command("docker", ["--host", "unix:///var/run/docker.sock", "inspect", id]),
+    )
+    is Array([actual]) else {
+    fail("current legacy container evidence")
+  }
+  for c in [recorded, actual] {
+    let state = field(c, "State")
+    guard field(c, "Id") == Json(id) &&
+      field(c, "Image") == Json(image) &&
+      field(state, "Status") == Json("exited") &&
+      field(state, "Running") == Json(false) &&
+      field(state, "Pid") == Json(0) &&
+      field(state, "ExitCode") == Json(0) &&
+      field(state, "OOMKilled") == Json(false) &&
+      !text(field(state, "FinishedAt")).has_prefix("0001-") else {
+      fail("legacy container is not exited0/noOOM")
+    }
+    guard field(c, "Mounts") is Array(mounts) else { fail("legacy mounts") }
+    let matching = mounts.filter(m => {
+      text(field(m, "Destination")).has_prefix(mount_target)
+    })
+    guard matching.length() == 1 &&
+      field(matching[0], "Source") == Json(mount_source) &&
+      field(matching[0], "Destination") == Json(mount_target) &&
+      field(matching[0], "Type") == Json("bind") &&
+      field(matching[0], "RW") == Json(true) else {
+      fail("legacy owned mount identity")
+    }
+  }
+  guard field(recorded, "Config") == field(actual, "Config") else {
+    fail("legacy container config changed")
+  }
+  actual
+}
+
+///|
+async fn collect_legacy_native(
+  root : String,
+  locks : Array[@fs.File],
+  selected : Array[Payload],
+) -> Json {
+  let sweep = root_prefix + "native-paper-batch-sweep-20261024-a"
+  guard [
+    sweep + "/cases/micro256",
+    sweep + "/cases/micro512",
+    root_prefix + "native-paper-wm2048-pi512-20261024-a",
+  ].contains(root) else {
+    fail("legacy native scope")
+  }
+  guard @fs.realpath(root) == root else { fail("legacy canonical root") }
+  hold(root + "/train/run.lock", locks)
+  let mount_source = if root.has_prefix(sweep + "/") { sweep } else { root }
+  let container = completed_container(
+    root, "sha256:c76815627562a180052cef8e7e07edb37fe8547d83158eed6182ebd99bb8385d",
+    mount_source, "/gate",
+  )
+  let config = read_json(root + "/config.json")
+  let report = read_json(root + "/train/report.json")
+  let current = read_json(root + "/train/current.json")
+  let generation = text(field(current, "generation"))
+  guard component(generation) && generation.has_prefix("generation-") else {
+    fail("legacy generation")
+  }
+  let receipt = read_json(root + "/train/" + generation + "/receipt.json")
+  let reported = match field(report, "checkpoint") {
+    Array([v]) => v
+    Object(_) as v => v
+    _ => fail("legacy checkpoint")
+  }
+  guard field(report, "format") ==
+    Json("moonrobo.native-tensor-training-report.v1") &&
+    field(report, "iteration") == Json(10) &&
+    field(report, "training_complete_for_requested_iterations") == Json(true) &&
+    field(report, "distributed") == Json(false) &&
+    field(field(report, "identity"), "config") == config &&
+    field(current, "format") ==
+    Json("moonrobo.native-tensor-checkpoint-pointer.v2") &&
+    field(current, "iteration") == Json(10) &&
+    current == reported &&
+    current == receipt else {
+    fail("legacy complete10 config/receipt mismatch")
+  }
+  guard field(current, "files") is Object(files) && files.length() <= 128 else {
+    fail("legacy inventory bound")
+  }
+  let start = selected.length()
+  for name, digest in files {
+    guard component(name) && sha(text(digest)) else {
+      fail("legacy checkpoint entry")
+    }
+    if ["world.pt", "policy.pt", "critic.pt"].contains(name) ||
+      name.has_suffix(".f64le") ||
+      name.has_suffix(".i32le") ||
+      name.has_suffix(".u8") {
+      add(root + "/train/" + generation + "/" + name, digest, selected)
+    }
+  }
+  guard selected.length() > start else { fail("no legacy committed payload") }
+  {
+    "root": root,
+    "kind": "legacy-completed-native10",
+    "container_id": field(container, "Id"),
+    "iteration": 10,
+    "committed_metadata_matches": true,
+    "payload_hashes_recomputed": false,
+    "selected_files": selected.length() - start,
+    "performance_acceptance_changed": false,
+  }
+}
+
+///|
+async fn collect_legacy_smc(root : String, selected : Array[Payload]) -> Json {
+  let profile = root_prefix +
+    "smc-original-benchmark-aligned-f32-profile-20261024-a"
+  let original = root_prefix + "smc-original-benchmark-20261024-b"
+  guard root == profile || root == original else {
+    fail("legacy SMC exact scope")
+  }
+  guard @fs.realpath(root) == root else { fail("canonical legacy SMC root") }
+  let iterations = if root == profile { 60 } else { 600 }
+  let container = completed_container(
+    root,
+    "sha256:e84e3c0d2b553e29ffa04fb6d738a3b635afa66e3d23824bfc6c6304e198ad46",
+    root + "/logs",
+    "/logs",
+  )
+  let guard_report = read_json(root + "/memory-summary.json")
+  guard field(guard_report, "reason") == Json("completed") &&
+    field(guard_report, "exit_code") == Json(0) else {
+    fail("legacy SMC guard incomplete")
+  }
+  let args = read_json(root + "/logs/args.json")
+  guard field(args, "iterations") == Json(iterations) &&
+    field(args, "log_dir") == Json("/logs") else {
+    fail("legacy SMC args mismatch")
+  }
+  let csv_path = root + "/logs/train_log.csv"
+  regular(csv_path)
+  let f = @fs.open(csv_path, mode=ReadOnly)
+  let length = f.size()
+  guard length > 0L && length <= 4194304L else {
+    f.close()
+    fail("legacy CSV bound")
+  }
+  let csv = @utf8.decode(f.read_exactly_at(length.to_int(), position=0L))
+  f.close()
+  let lines = csv.trim().split("\n").to_array()
+  guard lines.length() >= 2 &&
+    lines.length() <= 601 &&
+    lines[lines.length() - 1].has_prefix(iterations.to_string() + ",") else {
+    fail("legacy SMC final iteration row missing")
+  }
+  let start = selected.length()
+  add(root + "/logs/last.pt", Json::null(), selected)
+  let checkpoint_name = if iterations == 60 {
+    "ckpt_000060.pt"
+  } else {
+    "ckpt_000600.pt"
+  }
+  add(root + "/logs/" + checkpoint_name, Json::null(), selected)
+  if root == profile {
+    // This exact shared historical cache is separately authorized. Its original
+    // startup attempt failed, but the completed profile demonstrably mounted and
+    // used it; no attempt/result acceptance is changed by releasing file pages.
+    let cache_root = root_prefix + "smc-original-benchmark-20261024-a/cache"
+    guard field(container, "Mounts") is Array(mounts) &&
+      field(field(container, "Config"), "Env") is Array(environment) else {
+      fail("historical cache ownership evidence")
+    }
+    let matching = mounts.filter(m => {
+      text(field(m, "Destination")).has_prefix("/cache")
+    })
+    guard matching.length() == 1 &&
+      field(matching[0], "Source") == Json(cache_root) &&
+      field(matching[0], "Destination") == Json("/cache") &&
+      field(matching[0], "RW") == Json(true) &&
+      field(matching[0], "Type") == Json("bind") else {
+      fail("historical cache mount")
+    }
+    let scan = { entries: 0, bytes: 0L, }
+    for
+      (name, variable) in [
+        ("cuda", "CUDA_CACHE_PATH"),
+        ("inductor", "TORCHINDUCTOR_CACHE_DIR"),
+        ("triton", "TRITON_CACHE_DIR"),
+      ] {
+      guard environment.filter(v => text(v).has_prefix(variable + "=")) ==
+        [Json(variable + "=/cache/" + name)] else {
+        fail("historical cache environment")
+      }
+      cache(cache_root + "/" + name, 0, scan, selected)
+    }
+  }
+  {
+    "root": root,
+    "kind": "legacy-completed-smc",
+    "container_id": field(container, "Id"),
+    "iteration": iterations,
+    "complete_guard_args_csv_verified": true,
+    "payload_hashes_recomputed": false,
+    "selected_files": selected.length() - start,
+    "legacy_run_results_unchanged": true,
+    "performance_acceptance_changed": false,
+    "lock_protocol": "Legacy SMC exposes no file lock; exact stopped container and Docker-global idle checks plus operator serialization exclude known writers.",
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() >= 4 &&
+    args.length() <= 8 &&
+    ["--plan", "--advise"].contains(args[1]) else {
+    fail(
+      "--plan|--advise FRESH_REPORT_JSON EXACT_AUTHORIZED_PROFILE_ROOT [SECOND_ROOT]",
+    )
+  }
+  let destination = args[2]
+  guard destination.has_prefix("/home/wlc004s/moonrobo/private/") &&
+    !destination.contains("..") &&
+    !@fs.exists(destination) &&
+    !@fs.exists(destination + ".selection.json") else {
+    fail("fresh private report required")
+  }
+  let locks : Array[@fs.File] = []
+  defer (for lock in locks {
+    lock.close()
+  })
+  let selected : Array[Payload] = []
+  let completed : Array[Json] = []
+  let operations : Array[Json] = []
+  let memory_before = command("free", ["--bytes"])
+  let mut error : Json = Json::null()
+  let passed = try {
+    idle()
+    for root in args[3:] {
+      completed.push(
+        if root.contains("native-paper-") {
+          collect_legacy_native(root, locks, selected)
+        } else if root.contains("smc-original-benchmark") {
+          collect_legacy_smc(root, selected)
+        } else {
+          collect(root, locks, selected)
+        },
+      )
+    }
+    let mut bytes = 0L
+    for p in selected {
+      bytes += p.size
+    }
+    guard bytes <= 8589934592L else { fail("combined 8 GiB bound") }
+    @fs.write_file(
+      destination + ".selection.json",
+      (
+        {
+          "roots": completed,
+          "selected_bytes": bytes,
+          "files": selected.map(p => {
+            (
+              {
+                "path": p.path,
+                "size": p.size,
+                "identity": p.identity,
+                "receipt_sha256_metadata": p.digest_metadata,
+              } : Json)
+          }),
+        } : Json).stringify(indent=2),
+      create_mode=CreateNew,
+      sync=Full,
+    )
+    if args[1] == "--advise" {
+      guard command("dd", ["--version"]).contains("coreutils") &&
+        command("sync", ["--version"]).contains("coreutils") else {
+        fail("GNU dd/sync required")
+      }
+      for p in selected {
+        idle()
+        guard identity(p.path) == p.identity else {
+          fail("selected identity changed")
+        }
+        let before = resident(p.path)
+        ignore(command("sync", ["--data", "--", p.path]))
+        guard identity(p.path) == p.identity else {
+          fail("identity changed after sync")
+        }
+        idle()
+        ignore(
+          command("dd", [
+            "if=" + p.path,
+            "iflag=nocache,nofollow",
+            "count=0",
+            "status=none",
+          ]),
+        )
+        guard identity(p.path) == p.identity else {
+          fail("identity changed after advice")
+        }
+        operations.push({
+          "path": p.path,
+          "sync_exit_code": 0,
+          "advice_exit_code": 0,
+          "identity_unchanged": true,
+          "mincore_before": before,
+          "mincore_after": resident(p.path),
+        })
+      }
+    }
+    idle()
+    true
+  } catch {
+    e => {
+      error = Json(e.to_string())
+      false
+    }
+  }
+  let report : Json = {
+    "format": "moonrobo.completed-owned-run-cache-advice.v1",
+    "passed": passed,
+    "mode": args[1],
+    "error": error,
+    "completed_diagnostics": completed,
+    "operations": operations,
+    "memory_before": memory_before,
+    "memory_after": command("free", ["--bytes"]),
+    "payload_content_bytes_read": 0,
+    "payload_content_bytes_written": 0,
+    "files_deleted": 0,
+    "global_cache_operation": false,
+    "global_sync": false,
+    "scope": "Exact authorized completed24 profiles, three completed10 native checkpoints, two completed SMC outputs and their explicitly authorized old private compiler cache only. Published receipt/config/actual exited container evidence, locks where supported, Docker idle and operator serialization; file-specific sync/nofollow nocache and mincore. No file deletion, global operation, acceptance rewrite, model input or public library advice.",
+  }
+  @fs.write_file(
+    destination,
+    report.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+  guard passed else {
+    fail("Rejected/failed; evidence retained: " + destination)
+  }
+  println("Completed bounded diagnostic cache " + args[1] + ": " + destination)
+}

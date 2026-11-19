@@ -1,0 +1,202 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+async fn validate_chunk(
+  root : String,
+  output : String,
+  dataset : Json,
+  layout : Json,
+  ids : Map[String, Bool],
+  families : Array[Json],
+) -> Json {
+  for
+    key in [
+      "model_ref", "dt_s", "frame_convention", "state_axes", "observation_axes",
+      "action_axes", "goal_axes", "context_axes",
+    ] {
+    assert_eq(
+      field(dataset, key),
+      field(layout, key),
+      msg="dataset schema: " + key,
+    )
+  }
+  let episodes = array(field(dataset, "episodes"))
+  let mut transitions = 0
+  for episode in episodes {
+    assert_eq(field(episode, "split"), "train")
+    assert_true(families.contains(field(episode, "source_family")))
+    guard field(episode, "id") is String(id) else { fail("missing episode id") }
+    assert_true(!ids.contains(id), msg="duplicate episode: " + id)
+    ids.set(id, true)
+    transitions += array(field(episode, "steps")).length()
+  }
+  let temporary = output + "/native-chunk.json"
+  @fs.write_file(temporary, dataset.stringify(), create_mode=CreateOrTruncate)
+  let (code, out, err) = @process.collect_output(
+    root + "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+    [temporary, "train", "1", "1000000"],
+  )
+  assert_eq(code, 0, msg=err.text() + out.text())
+  let checked = @json.parse(out.text())
+  assert_eq(field(checked, "window_length"), 1)
+  assert_eq(array(field(checked, "windows")).length(), episodes.length() * 2)
+  @fs.remove(temporary)
+  {
+    "episodes": Json(episodes.length()),
+    "transitions": Json(transitions),
+    "native_checked": true,
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: prepare_g1_dynamic_replay.mbtx REPO BASE_REPLAY TEMPORAL_STUDY OUTPUT",
+  )
+  let root = args[1]
+  let source = args[3]
+  let output = args[4]
+  assert_true(!@fs.exists(output), msg="choose a fresh replay directory")
+  @fs.mkdir(output, recursive=true)
+  let base = args[2] + "/train-batch.json"
+  let layout = field(read(base), "layout")
+  let collection = read(source + "/collection.json")
+  let families = array(field(collection, "cases")).map(c => {
+    assert_eq(field(c, "split"), "train")
+    field(c, "family")
+  })
+  let ids : Map[String, Bool] = Map([])
+  let sources : Array[Json] = []
+  let teacher = source + "/teacher-data/dataset.json"
+  let teacher_check = validate_chunk(
+    root,
+    output,
+    read(teacher),
+    layout,
+    ids,
+    families,
+  )
+  sources.push({
+    "path": Json(teacher),
+    "kind": "dataset",
+    "sha256": Json(digest(teacher)),
+    "chunks": [teacher_check],
+  })
+  for method in ["frame", "history", "preview"] {
+    let report = read(source + "/" + method + "/policy/report.json")
+    let runs = array(field(report, "runs"))
+    for seed in 0..<3 {
+      let path = source +
+        "/" +
+        method +
+        "/policy/student-physics-seed-\{seed}.jsonl.gz"
+      let hash = digest(path)
+      assert_eq(
+        field(field(runs[seed], "student_physics"), "sha256"),
+        Json(hash),
+      )
+      let chunks : Array[Json] = []
+      @async.with_task_group() <| group => {
+        let (reader, child_output) = @process.read_from_process()
+        let process = @process.spawn(
+          group,
+          "gzip",
+          ["-cd", path],
+          stdout=child_output,
+        )
+        while reader.read_until("\n") is Some(line) {
+          if line.trim().is_empty() {
+            continue
+          }
+          let row = @json.parse(line)
+          let dataset = field(row, "dataset")
+          let targets = array(field(row, "teacher_action_targets"))
+          let episodes = array(field(dataset, "episodes"))
+          assert_eq(targets.length(), episodes.length())
+          for i, episode in episodes {
+            assert_eq(
+              array(targets[i]).length(),
+              array(field(episode, "steps")).length(),
+            )
+          }
+          chunks.push(
+            validate_chunk(root, output, dataset, layout, ids, families),
+          )
+          println(
+            "Validated " + method + " seed \{seed} round \{chunks.length()}.",
+          )
+        }
+        reader.close()
+        assert_eq(process.wait(), 0)
+      }
+      assert_eq(chunks.length(), 8)
+      for chunk in chunks {
+        assert_eq(field(chunk, "episodes"), 18)
+      }
+      sources.push({
+        "path": Json(path),
+        "kind": "student-jsonl-gzip",
+        "sha256": Json(hash),
+        "method": Json(method),
+        "seed": Json(seed),
+        "chunks": Json(chunks),
+        "teacher_targets_excluded": true,
+      })
+    }
+  }
+  assert_eq(ids.length(), 1332)
+  @fs.write_file(
+    output + "/manifest.json",
+    (
+      {
+        "format": "moonrobo.g1-actual-action-streams.v1",
+        "split": "train",
+        "layout": layout,
+        "base_batch": { "path": Json(base), "sha256": Json(digest(base)) },
+        "window_length": 8,
+        "stride": 8,
+        "final_complete_window_retained": true,
+        "sources": Json(sources),
+        "episodes": Json(ids.length()),
+        "native_validation": "all source datasets parsed by canonical native reader, plus global train-family and episode identity checks",
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

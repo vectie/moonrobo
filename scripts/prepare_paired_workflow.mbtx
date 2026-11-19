@@ -1,0 +1,179 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn[T : FromJson] field(j : Json, key : String) -> T raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  @json.from_json(v)
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@utf8.decode(@fs.read_file(path).binary()))
+}
+
+///|
+fn digest(b : Bytes) -> String {
+  let h = @crypto.SHA256::new()
+  h.update(b)
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+fn sample(b : Bytes, i : Int32) -> Double {
+  let p = i * 4
+  let bits = b[p].to_int() |
+    (b[p + 1].to_int() << 8) |
+    (b[p + 2].to_int() << 16) |
+    (b[p + 3].to_int() << 24)
+  bits.reinterpret_as_float().to_double()
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, benchmark, rec, player, dest] else {
+    fail(
+      "prepare_paired_workflow.mbtx BENCHMARK RECORDED PLAYER_MANIFEST NEW_OUTPUT",
+    )
+  }
+  guard !@fs.exists(dest) else { fail("workflow output must be fresh") }
+  let catalog = read(player)
+  let clips : Array[Json] = field(catalog, "clips")
+  let refs = read(benchmark + "/references.json")
+  let rerefs = read(rec + "/references.json")
+  let audit = read(benchmark + "/overlap-audit.json")
+  let sources : Array[Json] = @json.from_json(
+    read(benchmark + "/source-validation.json"),
+  )
+  let pins : Array[Json] = field(refs, "clips")
+  assert_eq(pins, (field(rerefs, "clips") : Array[Json]))
+  for doc in [refs, rerefs, audit] {
+    assert_eq(
+      (field(doc, "panel_sha256") : Json),
+      (field(catalog, "panel_sha256") : Json),
+    )
+  }
+  assert_eq(clips.length(), 40)
+  assert_eq(pins.length(), 40)
+  assert_eq(sources.length(), 40)
+  let motions : Array[Map[String, Json]] = []
+  for i, c in clips {
+    let r = pins[i]
+    assert_eq((field(r, "id") : Json), (field(c, "id") : Json))
+    assert_eq((field(sources[i], "id") : Json), (field(c, "id") : Json))
+    assert_eq(
+      (field(r, "source_sha256") : Json),
+      (field(sources[i], "canonical_sha256") : Json),
+    )
+    let screen = field(r, "screen")
+    motions.push({
+      "id": (field(c, "id") : Json),
+      "source_frames": (field(sources[i], "source_frames") : Json),
+      "screen_passed": (field(screen, "accepted") : Json),
+      "screen_reasons": (field(screen, "reasons") : Json),
+      "body_rms_m": (field(screen, "body_rms_m") : Json),
+      "arm": (field(r, "arm_fidelity") : Json),
+    })
+  }
+  for robot in ["g1", "e1"] {
+    let orig = read(benchmark + "/" + robot + ".json")
+    let result = read(
+      rec + "/" + (if robot == "e1" { "final" } else { robot }) + ".json",
+    )
+    for
+      key in [
+        "actor_archive_sha256", "per_clip", "mujoco_library_sha256", "tensor_library_sha256",
+      ] {
+      assert_eq((field(orig, key) : Json), (field(result, key) : Json))
+    }
+    assert_eq(
+      (field(result, "actor_archive_sha256") : Json),
+      (field(field(field(catalog, "robots"), robot), "actor_sha256") : Json),
+    )
+    let rows : Array[Json] = field(result, "per_clip")
+    assert_eq(rows.length(), clips.length())
+    @fs.mkdir(dest + "/" + robot, recursive=true)
+    for i, c in clips {
+      let meta = field(c, robot)
+      let row = rows[i]
+      assert_eq((field(row, "clip_id") : Json), (field(c, "id") : Json))
+      let steps : Int32 = field(meta, "steps")
+      let n : Int32 = field(c, "expected_steps")
+      assert_eq(steps, (field(row, "executed_steps") : Int32))
+      assert_eq(n, (field(row, "expected_steps") : Int32))
+      assert_eq(
+        (field(row, "normalized_return") : Json),
+        (field(meta, "score") : Json),
+      )
+      let other = field(c, if robot == "g1" { "e1" } else { "g1" })
+      let common = steps.min(field(other, "steps"))
+      let stem = robot + "/" + i.to_string()
+      let pose = @fs.read_file(rec + "/" + stem + ".f32").binary()
+      assert_eq(digest(pose), (field(meta, "sha256") : String))
+      let b = @fs.read_file(rec + "/" + stem + ".metrics.f32").binary()
+      assert_eq(b.length(), steps * 44)
+      let mut joint_reward = 0.0
+      let mut tail = 0.0
+      let terms = Array::make(8, 0.0)
+      for j in 0..<steps {
+        let r = sample(b, j * 11)
+        let mut reconstructed = 0.0
+        for t in 0..<8 {
+          let part = sample(b, j * 11 + 3 + t)
+          reconstructed += part
+          if j < common {
+            terms[t] += part
+          }
+        }
+        assert_true((reconstructed - r).abs() < 1.0e-7)
+        if j < common {
+          joint_reward += r
+        } else {
+          tail += r
+        }
+      }
+      let denominator = (field(row, "maximum_full_clip_return") : Double)
+      assert_eq(denominator, n.to_double() * 0.1)
+      assert_true(
+        ((joint_reward + tail) / denominator - (field(meta, "score") : Double)).abs() <
+        1.0e-7,
+      )
+      motions[i][robot] = {
+        "sha256": Json(digest(b)),
+        "file": Json(stem + ".f32"),
+        "shared": Json(joint_reward / denominator),
+        "tail": Json(tail / denominator),
+        "shared_terms": Json(terms.map(x => x / denominator)),
+        "rmse": (field(field(row, "strict_tracking"), "rmse") : Json),
+      }
+      @fs.write_file(dest + "/" + stem + ".f32", b, create_mode=CreateNew)
+    }
+  }
+  let info : Json = {
+    "format": "moonrobo.paired-workflow.v1",
+    "panel_sha256": (field(catalog, "panel_sha256") : Json),
+    "g1_catalog": (field(audit, "training_g1") : Json),
+    "e1_train": (field(audit, "e1_train") : Json),
+    "physics_hz": (field(audit, "physics_hz") : Json),
+    "source_hz": (field(audit, "source_fps") : Json),
+    "workflow_evaluator_sha256": (field(rerefs, "generator_sha256") : Json),
+    "columns": [
+      "reward", "height_error_m", "tilt_error", "body_position", "body_orientation",
+      "body_linear_velocity", "body_angular_velocity", "root_position", "root_orientation",
+      "action_rate", "joint_limit",
+    ],
+    "clips": Json(motions),
+  }
+  @fs.write_file(
+    dest + "/manifest.json",
+    @utf8.encode(info.stringify(indent=2)),
+    create_mode=CreateNew,
+  )
+}

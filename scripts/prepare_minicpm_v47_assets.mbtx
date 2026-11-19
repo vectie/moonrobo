@@ -1,0 +1,69 @@
+///|
+// Selected flagship metadata only; large weight shards are acquired on Spark.
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 2 && !@fs.exists(args[1]) else {
+    fail("usage: prepare_minicpm_v47_assets.mbtx NEW_DIRECTORY")
+  }
+  let model = "openbmb/MiniCPM-V-4.7-35B-A3B"
+  let revision = "98e79ba972b586ac6146d3505771ce1467e199ba"
+  @fs.mkdir(args[1], recursive=true)
+  for
+    file in [
+      "config.json", "generation_config.json", "tokenizer.json", "tokenizer_config.json",
+      "chat_template.jinja", "preprocessor_config.json", "processor_config.json",
+      "model.safetensors.index.json",
+    ] {
+    // /raw returns a Git LFS pointer for tokenizer.json. Resolve the pinned
+    // artifact and follow its CDN redirect rather than saving that pointer.
+    let code = @process.run("curl", [
+      "--fail",
+      "--silent",
+      "--show-error",
+      "--location",
+      "--max-time",
+      "180",
+      "--output",
+      args[1] + "/" + file,
+      "https://huggingface.co/" + model + "/resolve/" + revision + "/" + file,
+    ])
+    guard code == 0 else {
+      fail("MiniCPM flagship asset download failed: " + file)
+    }
+  }
+  @fs.write_file(
+    args[1] + "/revision.txt",
+    @utf8.encode(model + "\n" + revision + "\n"),
+    create_mode=CreateNew,
+  )
+  guard @process.run("curl", [
+      "--fail",
+      "--silent",
+      "--show-error",
+      "--location",
+      "--max-time",
+      "60",
+      "--output",
+      args[1] + "/shards.json",
+      "https://huggingface.co/api/models/" +
+      model +
+      "/tree/" +
+      revision +
+      "?recursive=false&expand=false",
+    ]) ==
+    0 else {
+    fail("MiniCPM shard size metadata download failed")
+  }
+  println(
+    "Prepared selected MiniCPM-V 4.7 35B-A3B metadata; no weight shards downloaded",
+  )
+}

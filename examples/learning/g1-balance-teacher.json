@@ -1,0 +1,8 @@
+{
+  "development_seeds": [2100, 2101],
+  "evaluation_seeds": [8300, 8301, 8302],
+  "collection_seeds": [2200, 2201, 2202, 2203],
+  "fixed": {"residual_bound_rad": 0.3, "joint_damping": 0.02, "velocity_gain": 0.2},
+  "grid": {"angle_gain": [0.0, 0.5, 1.5], "com_gain": [0.0, 1.0, 3.0], "rate_gain": [0.05, 0.15], "pitch_bias_rad": [-0.05, 0.0, 0.05]},
+  "scope": "Fit handcrafted ankle feedback on six constant-goal train cases only. Same physical model, servos, dt, residual range and fall thresholds; privileged COM/foot state is explicitly simulation-only. Separate fresh canonical evaluation; no learned-policy qualification."
+}

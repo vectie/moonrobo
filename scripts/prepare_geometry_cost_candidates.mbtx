@@ -1,0 +1,122 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+fn once(s : String, old : String, new : String) -> String raise {
+  assert_eq(s.split(old).count(), 2)
+  s.replace_all(old~, new~)
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-cost-20261030-a"
+  let old = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let put = async fn(name : String, text : String) {
+    @fs.write_file(out + "/" + name, text, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-cost-179.sock",
+        out + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  let current = @fs.read_file("src/learning_aligned_gpu/learning.mbt").text()
+  let from = current
+    .find("          if self.optimizations.tail_reference_fk_cache {")
+    .unwrap()
+  let until = current[from:].find("\n      },").unwrap() + from
+  let tail = current[from:until].to_owned()
+  let learning = once(
+    @fs.read_file(out + "/geometry_cost_learning_a.mbt").text(),
+    "          self.context.critic_features(state, batch.references[c.horizon], xi_n)",
+    tail,
+  )
+  put("geometry_cost_learning_b.mbt", learning)
+  for
+    (name, file) in [
+      ("geometry_cost_context_b.mbt", "geometry/context.mbt"),
+      ("geometry_cost_options_b.mbt", "execution_optimizations.mbt"),
+      ("geometry_cost_cmd_options_b.mbt", "cmd/optimizations.mbt"),
+    ] {
+    put(name, @fs.read_file("src/learning_aligned_gpu/" + file).text())
+  }
+  let mut fixture = @fs.read_file(old + "/geometry_math_fixture_r.mbt").text()
+  fixture = once(
+    fixture, "  let rows : Array[Json] = []", "  let variant=@env.get_env_var(\"GEOMETRY_COST_CANDIDATE\").unwrap_or(\"off\")\n  guard [\"off\",\"layout\",\"tail\",\"both\",\"abba-layout\",\"abba-tail\",\"abba-both\"].contains(variant) else{fail(\"candidate\")}\n  let layout_steps=if variant.contains(\"layout\")||variant.contains(\"both\"){Some((backend.load_compiled_block(\"/workspace/moonrobo/runs/hotspot-mlp-geometry-actor-layouts-a/initial\",cuda_device=0),backend.load_compiled_block(\"/workspace/moonrobo/runs/hotspot-mlp-geometry-actor-layouts-a/recurrent\",cuda_device=0)))}else{None}\n  let rows : Array[Json] = []",
+  )
+  fixture = once(
+    fixture, "  let variant = @env.get_env_var(\"MOONROBO_TOP3_VARIANT\").unwrap_or(\"baseline\")\n",
+    "",
+  )
+  fixture = once(
+    fixture, "    let enabled = block == 1 || block == 2", "    let enabled = block == 1 || block == 2 || (!abba && variant != \"off\")",
+  )
+  let begin = fixture
+    .find("    let learner : @gpu.Learner = if abba {")
+    .unwrap()
+  let end = fixture[begin:].find("    learner.load_optimizers(input)").unwrap() +
+    begin
+  let replacement =
+    #|    let learner : @gpu.Learner = { ..learner,
+    #|      optimizations: { ..learner.optimizations, tail_reference_fk_cache: enabled && (factor=="tail"||factor=="both"), },
+    #|      compiled_actor_steps: if enabled && (factor=="layout"||factor=="both") {layout_steps}else{learner.compiled_actor_steps},
+    #|    }
+    #|
+  fixture = fixture[:begin].to_owned() + replacement + fixture[end:].to_owned()
+  put("geometry_cost_fixture_b.mbt", fixture)
+  let mut build = @fs.read_file(out + "/build_geometry_cost_a.mbtx")
+    .text()
+    .replace_all(old="geometry-cost-a", new="geometry-cost-b")
+  build = build.replace_all(
+    old="geometry_cost_learning_a.mbt",
+    new="geometry_cost_learning_b.mbt",
+  )
+  build = build.replace_all(
+    old="geometry_math_fixture_r.mbt",
+    new="geometry_cost_fixture_b.mbt",
+  )
+  build = once(
+    build, "(\"math_context.mbt\",\"geometry/context.mbt\")", "(\"geometry_cost_context_b.mbt\",\"geometry/context.mbt\"),(\"geometry_cost_options_b.mbt\",\"execution_optimizations.mbt\"),(\"geometry_cost_cmd_options_b.mbt\",\"cmd/optimizations.mbt\")",
+  )
+  put("build_geometry_cost_b.mbtx", build)
+  let mut runner = @fs.read_file(out + "/run_geometry_cost_a.mbtx").text()
+  runner = runner.replace_all(
+    old="implementation == \"native\"",
+    new="implementation.has_prefix(\"native\")",
+  )
+  runner = runner.replace_all(
+    old="implementation != \"native\"",
+    new="!implementation.has_prefix(\"native\")",
+  )
+  runner = runner.replace_all(
+    old="implementation!=\"native\"",
+    new="!implementation.has_prefix(\"native\")",
+  )
+  runner = once(
+    runner, "[\"native\", \"smc\",", "[\"native\", \"native-tail\", \"native-layout\", \"native-both\", \"native-abba-tail\", \"native-abba-layout\", \"native-abba-both\", \"smc\",",
+  )
+  runner = runner.replace_all(
+    old="actor-step-gate-geometry-cost-a",
+    new="actor-step-gate-geometry-cost-b",
+  )
+  runner = runner.replace_all(
+    old="run_geometry_cost_a.mbtx",
+    new="run_geometry_cost_b.mbtx",
+  )
+  runner = once(
+    runner, "  e[\"MOONROBO_SHARED_OBSERVER\"] = Json(observer)", "  e[\"MOONROBO_SHARED_OBSERVER\"] = Json(observer)\n  e[\"GEOMETRY_COST_CANDIDATE\"]=Json(if implementation.has_prefix(\"native-\"){implementation[7:].to_owned()}else{\"off\"})",
+  )
+  runner = once(
+    runner, "  let reward_dir=", "  if implementation.contains(\"layout\")||implementation.contains(\"both\") {\n   let root=\"/home/wlc004s/moonrobo/runs/hotspot-mlp-geometry-actor-layouts-a\"\n   assert_eq(field(read_json(root+\"/result.json\"),\"bitwise_vjp_gate\"),Json(true))\n   mounts.push({\"source\":Json(root),\"target\":\"/workspace/moonrobo/runs/hotspot-mlp-geometry-actor-layouts-a\",\"readonly\":true})\n   for part in [\"initial\",\"recurrent\"] {for name in @fs.readdir(root+\"/\"+part) {if name.has_suffix(\".so\")||name.has_suffix(\".cubin\")||name==\"manifest.json\"||name==\"native.spec\" {let path=root+\"/\"+part+\"/\"+name;pins[path]=Json(hash_file(path))}}}\n  }\n  let reward_dir=",
+  )
+  put("run_geometry_cost_b.mbtx", runner)
+}

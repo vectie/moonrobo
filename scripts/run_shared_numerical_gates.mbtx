@@ -1,0 +1,56 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, phase] && ["world", "actor"].contains(phase) else {
+    fail("world|actor")
+  }
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  for implementation in ["native", "smc-eager", "smc"] {
+    let label = if implementation == "smc" {
+      "smc-compiled"
+    } else {
+      implementation
+    }
+    println("Starting trained " + phase + " " + label + " numerical gate")
+    let code = @process.run(
+      "/home/wlc004s/moonrobo/toolchain/bin/moon",
+      [
+        "run",
+        "--target",
+        "native",
+        base + "/run_shared_compute_v9.mbtx",
+        "--",
+        phase,
+        implementation,
+        "off",
+        "1",
+        "trained-" + label + "-" + phase + "-gate-a",
+      ],
+      stdout=@process.redirect_to_file(
+        base + "/trained-gate-" + phase + "-" + label + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        base + "/trained-gate-" + phase + "-" + label + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    guard code == 0 else {
+      fail(
+        "trained " +
+        phase +
+        " " +
+        label +
+        " gate failed; no performance run released",
+      )
+    }
+    println("Passed trained " + phase + " " + label)
+  }
+}

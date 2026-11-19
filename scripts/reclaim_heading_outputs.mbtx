@@ -1,0 +1,8 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  for name in ["primitives-struct-baseline-actor-gate-a","primitives-struct-baseline-world-gate-b","primitives-struct-axis-actor-gate-a","primitives-struct-static-actor-gate-a","primitives-struct-skew-actor-gate-a","primitives-struct-structural-actor-gate-a","primitives-struct-fk-actor-gate-a"] {
+    println("Inspecting closed output pages "+name)
+    guard @process.run("/home/wlc004s/moonrobo/toolchain/bin/moon",["run","--target","native",base+"/advise_primitives_compiler.mbtx","--","heading-reclaim-"+name,name],stdout=@process.redirect_to_file(base+"/heading-reclaim-"+name+".stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(base+"/heading-reclaim-"+name+".stderr.log",create_mode=CreateNew))==0 else{fail(name)}
+  }
+}

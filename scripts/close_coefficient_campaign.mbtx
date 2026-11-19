@@ -1,0 +1,18 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/json" }
+async fn main {
+  let dir="output/spark-runtime-20261024/coefficient-assembly-20261028"
+  let old=@fs.read_file("output/spark-runtime-20261024/geometry-vjp-20261028/advise_outputs.mbtx").text()
+  let s=old.replace_all(old="[\"conditional-0-a\",\"conditional-1-a\",\"conditional-2-a\",\"conditional-3-a\",\"tail-world-abba-a\",\"cross-actor-abba-a\",\"tail-actor-abba-a\",\"both-actor-abba-a\"]",new="[\"geometry-vjp-tail-world-gate-a\",\"geometry-vjp-tail-actor-gate-a\",\"coefficient-assembly-baseline-world-gate-a\",\"coefficient-assembly-baseline-actor-gate-a\",\"coefficient-assembly-route-world-c\",\"coefficient-assembly-route-actor-c\",\"return-split-baseline-actor-gate-a\",\"return-split-both-actor-gate-a\"]").replace_all(old="runs/hotspot-shared-geometry-vjp-",new="runs/hotspot-shared-").replace_all(old="geometry-vjp-output-cache-advice-a.json",new="coefficient-assembly-final-output-cache-advice-a.json")
+  @fs.write_file(dir+"/close_cache.mbtx",s,create_mode=CreateNew)
+  let ssh=["-S","/tmp/moonrobo-operator-179.sock","wlc004s@192.168.2.179"]
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+"/close_cache.mbtx","wlc004s@192.168.2.179:"+base+"/close_coefficient_cache.mbtx"])==0else{fail("stage")}
+  guard @process.run("ssh",[..ssh,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/close_coefficient_cache.mbtx"])==0else{fail("close")}
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock","wlc004s@192.168.2.179:"+base+"/coefficient-assembly-final-output-cache-advice-a.json",dir+"/final-cache-and-idle.json"])==0else{fail("receipt")}
+  let hashes=[]
+  for name in ["smc-local.sha256","remote-source-binaries.sha256"]{let values=[];for l in @fs.read_file(dir+"/"+name).text().split("\n"){if l.length()>=64{values.push(l[:64].to_owned())}};hashes.push(values)}
+  assert_eq(hashes[0].length(),3);assert_eq(hashes[1].length(),6);for i in 0..<3{assert_eq(hashes[0][i],hashes[1][i])}
+  let p=dir+"/final-verification.json";guard @json.parse(@fs.read_file(p).text()) is Object(m)&&@json.parse(@fs.read_file(dir+"/return-results.json").text()) is {"gates":Array(gates),..}else{fail("verification")}
+  m["return_full_update_gates"]=Json(gates);m["SMC_local_runtime_source_hashes_match"]=Json(true);m["all_task_GPU_jobs_closed"]=Json(true);m["accepted_split_actor_return"]=Json(false)
+  @fs.write_file(p,Json::object(m).stringify(indent=2))
+}

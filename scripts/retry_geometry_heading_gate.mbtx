@@ -1,0 +1,56 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let source = @fs.read_file("scripts/reclaim_geometry_history.mbtx").text()
+  let lines = source
+    .split("\n")
+    .filter(x => x.contains("let names=["))
+    .to_array()
+  assert_eq(lines.length(), 1)
+  let cleanup = source
+    .replace_all(
+      old=lines[0].to_owned(),
+      new="    #| let names=[\"training-bench-smc-ap-a\",\"training-bench-smc-ap-b\",\"training-smc-gate-aq\",\"training-native-gate-ap\",\"world-reference-native-gate-f\",\"actor-adjoints-f\",\"training-smc-gate-n\",\"geometry-math-native-gate-o\",\"geometry-math-reference-gate-p\"]",
+    )
+    .replace_all(old="history_b", new="measured_pages_a")
+    .replace_all(old="history-advice-b", new="measured-pages-advice-a")
+  @fs.write_file(
+    out + "/reclaim_measured_pages_a.mbtx",
+    cleanup,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("moon", [
+      "run",
+      "--target",
+      "native",
+      out + "/reclaim_measured_pages_a.mbtx",
+    ]),
+    0,
+  )
+  @fs.write_file(
+    out + "/run_geometry_heading_training_r2.mbtx",
+    @fs.read_file(out + "/run_geometry_heading_training_r.mbtx")
+    .text()
+    .replace_all(old="gate-r", new="gate-r2"),
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("moon", [
+      "run",
+      "--target",
+      "native",
+      out + "/run_geometry_heading_training_r2.mbtx",
+      "--",
+      "native-gate",
+    ]),
+    0,
+  )
+}

@@ -1,0 +1,48 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env" }
+fn replace(s : String,a : String,b : String) -> String raise {guard s.contains(a) else {fail("missing template: "+a)};s.replace_all(old=a,new=b)}
+async fn run(p : String,args : Array[String]) -> Unit {guard @process.run(p,args)==0 else {fail(p)}}
+async fn main {
+  let repo="/Users/kq/Workspace/moonrobo";let old=repo+"/output/spark-runtime-20261024/smc-primitives-20261028"
+  let dir=repo+"/output/spark-runtime-20261024/smc-structural-20261028"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a";let host="wlc004s@192.168.2.179";let socket="/tmp/moonrobo-operator-179.sock"
+  guard @env.args() is [_,mode] else {fail("prepare|stage")}
+  if mode=="prepare" {
+    @fs.mkdir(dir,recursive=true)
+    let regression=@fs.read_file(repo+"/src/learning_aligned_gpu/geometry/cross_preserve_test.mbt").text()
+    let regression=replace(replace(regression,"forward preserving cross FK","compact rotations and static FK"),".with_cross_preserve_forward(true)",".with_compact_axis_rotation(true).with_static_fk_pruning(true)")
+    let regression=replace(regression,"      qref: if", "      offset_rotation: if i % 3 == 0 { [1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0] } else { body.offset_rotation },\n      qref: if")
+    @fs.write_file(repo+"/src/learning_aligned_gpu/geometry/static_fk_test.mbt",regression,create_mode=CreateNew)
+    let mut f=@fs.read_file(old+"/primitives_fixture_d.mbt").text()
+    f=f.split("\n").map(l=>if l.trim().has_prefix("native_cross:") {"      native_cross: false,"} else if l.trim().has_prefix("world_norm_snapshot:") {"      world_norm_snapshot: true,"}else if l.trim().has_prefix("detached_rotation_constants:"){"      detached_rotation_constants: true,"}else if l.trim().has_prefix("native_cross_preserve_forward:"){"      native_cross_preserve_forward: true,"}else{l.to_owned()}).collect().join("\n")
+    f=replace(f,"      reuse_geometry: true,",
+      #|      compact_axis_rotation: [Some("axis"),Some("structural")].contains(@env.get_env_var("MOONROBO_TOP3_VARIANT")),
+      #|      compact_skew: [Some("skew"),Some("structural")].contains(@env.get_env_var("MOONROBO_TOP3_VARIANT")),
+      #|      static_fk_pruning: [Some("static"),Some("structural")].contains(@env.get_env_var("MOONROBO_TOP3_VARIANT")),
+      #|      reuse_geometry: true,
+    )
+    f=replace(f,"      let preserve = enabled && (factor == \"preserve\" || factor == \"safe\")","      let axis = enabled && (factor == \"axis\" || factor == \"structural\")\n      let skew = enabled && (factor == \"skew\" || factor == \"structural\")\n      let fixed = enabled && (factor == \"static\" || factor == \"structural\")")
+    f=replace(f,"        context: learner.context.with_native_cross(false).with_cross_preserve_forward(preserve),","        context: learner.context.with_compact_axis_rotation(axis).with_static_fk_pruning(fixed),")
+    f=replace(f,"        optimizations: { ..learner.optimizations,","        optimizations: { ..learner.optimizations,\n          compact_axis_rotation: axis, compact_skew: skew, static_fk_pruning: fixed,")
+    @fs.write_file(dir+"/structural_fixture_a.mbt",f,create_mode=CreateNew)
+    let mut b=@fs.read_file(old+"/build_primitives_c.mbtx").text()
+    for (a,v) in [("moonrobo-smc-primitives-c","moonrobo-smc-structural-a"),("smc-primitives-gate-c","smc-structural-gate-a"),("smc-primitives-tensor-c","smc-structural-tensor-a"),("smc-primitives-runtime-c","smc-structural-runtime-a"),("smc-primitives-tests-c","smc-structural-tests-a"),("-cpu-c","-structural-cpu-a"),("libmoonrobo_smc_primitives_c.so","libmoonrobo_smc_structural_a.so"),("smc-primitives-plugin-c","smc-structural-plugin-a")] {b=replace(b,a,v)}
+    b=replace(b,"[\"heading_wbtest.mbt:0-1\"]","[\"compact_rotation_wbtest.mbt:0-2\"]")
+    b=replace(b,"[\"cross_preserve_test.mbt:0-1\"])","[\"cross_preserve_test.mbt:0-1\"])")
+    b=replace(b,"geometry.blackbox_test.exe\", [\"cross_preserve_test.mbt:0-1\"]","geometry.blackbox_test.exe\", [\"static_fk_test.mbt:0-1\"]")
+    b=replace(b,"[\"optimizations_wbtest.mbt:0-5\"]","[\"optimizations_wbtest.mbt:0-8\"]")
+    @fs.write_file(dir+"/build_structural_a.mbtx",b,create_mode=CreateNew)
+    let mut driver=@fs.read_file(old+"/run_primitives_e.mbtx").text()
+    for (a,v) in [("smc-primitives-gate-d","smc-structural-gate-a"),("run_primitives_e.mbtx","run_structural_a.mbtx"),("build_primitives_d.mbtx","build_structural_a.mbtx"),("primitives_fixture_d.mbt","structural_fixture_a.mbt"),("libmoonrobo_smc_primitives_c.so","libmoonrobo_smc_structural_a.so"),("\"abba-safe\"","\"abba-safe\", \"axis\", \"skew\", \"static\", \"structural\", \"abba-axis\", \"abba-skew\", \"abba-static\", \"abba-structural\"")] {driver=replace(driver,a,v)}
+    @fs.write_file(dir+"/run_structural_a.mbtx",driver,create_mode=CreateNew)
+    @fs.write_file(dir+"/invoke_structural_a.mbtx",replace(@fs.read_file(old+"/invoke_primitives_e.mbtx").text(),"run_primitives_e.mbtx","run_structural_a.mbtx"),create_mode=CreateNew)
+    return
+  }
+  guard mode=="stage" else {fail("mode")}
+  for file in ["structural_fixture_a.mbt","build_structural_a.mbtx","run_structural_a.mbtx","invoke_structural_a.mbtx"] {run("scp",["-o","ControlPath="+socket,dir+"/"+file,host+":"+base+"/"+file])}
+  run("ssh",["-S",socket,host,"test ! -e "+base+"/workspace/moonrobo-smc-structural-a"])
+  run("ssh",["-S",socket,host,"cp -a --reflink=auto "+base+"/workspace/moonrobo-smc-primitives-d "+base+"/workspace/moonrobo-smc-structural-a"])
+  for path in ["execution_optimizations.mbt","learning.mbt","microbatch.mbt","actor_microbatch.mbt","geometry/context.mbt","geometry/rotations.mbt","geometry/state.mbt","geometry/compact_rotation_wbtest.mbt","geometry/static_fk_test.mbt","geometry/moon.pkg","cmd/optimizations.mbt","cmd/optimizations_wbtest.mbt"] {run("scp",["-o","ControlPath="+socket,repo+"/src/learning_aligned_gpu/"+path,host+":"+base+"/workspace/moonrobo-smc-structural-a/src/learning_aligned_gpu/"+path])}
+  for path in ["compact_rotation.inc","compact_rotation_loader.inc","compact_rotation.mbt","adapter.cpp","loader.c","moon.pkg"] {run("scp",["-o","ControlPath="+socket,repo+"/src/learning_tensor/"+path,host+":"+base+"/workspace/moonrobo-smc-structural-a/src/learning_tensor/"+path])}
+  run("ssh",["-S",socket,host,"cp "+base+"/structural_fixture_a.mbt "+base+"/workspace/moonrobo-smc-structural-a/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"])
+  for mode in ["plugin","gate-build-smc-structural-a","smc-structural-tests-a"] {run("ssh",["-S",socket,host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/build_structural_a.mbtx -- "+mode])}
+}

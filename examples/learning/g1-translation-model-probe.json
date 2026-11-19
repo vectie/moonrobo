@@ -1,0 +1,13 @@
+{
+  "seed": 0,
+  "seeds": [730, 731, 732],
+  "snapshot_steps": [75],
+  "horizons": [8, 32],
+  "directions": 0,
+  "epsilons_rad": [0.001, 0.01],
+  "translation_shifts_m": [[1.0, 0.0], [0.0, 1.0]],
+  "gamma": 0.99,
+  "target_height_m": 0.783675,
+  "cpu_threads": 2,
+  "scope": "Counterfactual development probe on the same infinite flat plane: shift global root XY and preserve recorded joint controls and velocities. Measure the physical symmetry before interpreting model equivariance; no hardware authority."
+}

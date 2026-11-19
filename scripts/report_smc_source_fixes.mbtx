@@ -1,0 +1,64 @@
+import {
+  "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json", "moonbitlang/core/string",
+}
+let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-source-fixes-20261027"
+fn field(j : Json, k : String) -> Json raise { guard j is Object(m) && m.get(k) is Some(v) else { fail(k) }; v }
+fn num(j : Json) -> Double raise { match j { Number(v,..) => v; String(v) => @string.parse_double(v); _ => fail("number") } }
+fn median(xs : Array[Double]) -> Double raise { guard xs.length() == 10 else { fail("ten steady samples") }; let a=xs.copy(); a.sort(); (a[4]+a[5])/2.0 }
+async fn read(p : String) -> Json { @json.parse(@fs.read_file(p).text()) }
+async fn fetch(label : String, file : String) -> Json {
+  let folder = root+"/"+label
+  if !@fs.exists(folder) { @fs.mkdir(folder,recursive=true) }
+  let path=folder+"/"+file
+  if !@fs.exists(path) {
+    guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/runs/hotspot-shared-"+label+"/"+file,path]) == 0 else { fail("fetch "+label+"/"+file) }
+  }
+  read(path)
+}
+async fn main {
+  let times : Map[String,Double] = Map([])
+  let records : Array[Json] = []
+  let mut peak=0.0
+  for label in ["fix-actor-base-0","fix-actor-base-1","fix-actor-rotation-0","fix-actor-linear-0","fix-actor-aligned-0","fix-actor-aligned-1","fix-actor-smc-0","fix-world-base-0","fix-world-aligned-1","fix-world-smc-0"] {
+    let result=fetch(label,"result.json")
+    let guard_report=fetch(label,"training-guard.json")
+    let state=fetch(label,"training-docker-final.json")
+    guard state is [{ "State": { "OOMKilled":False,"Running":False,.. },.. }] else { fail("unsafe "+label) }
+    let rows=field(result,"rows")
+    guard rows is Array(all) else { fail("rows") }
+    let samples=all.filter(r => field(r,"steady")==Json(true)).map(r => num(field(r,"wall_ms")))
+    let time=median(samples)
+    times[label]=time
+    let mem=match result {
+      Object(m) => match m.get("memory") { Some(v) => v; None => ({"reserved_peak_bytes":field(result,"reserved_peak"),"allocated_peak_bytes":field(result,"allocated_peak"),"cuda_free_bytes":field(result,"cuda_free_bytes")} : Json) }
+      _ => fail("result object")
+    }
+    let p=num(field(mem,"reserved_peak_bytes"))
+    peak=peak.max(p)
+    records.push({"label":Json(label),"median_ms":Json(time),"steady_wall_ms":Json(samples),"memory":mem,"guard_reason":field(guard_report,"reason"),"numeric":match result { Object(m) => m.get("numerical_comparison").unwrap_or(Json::null()); _ => Json::null() }})
+  }
+  let before=(times["fix-actor-base-0"]+times["fix-actor-base-1"])/2.0
+  let after=(times["fix-actor-aligned-0"]+times["fix-actor-aligned-1"])/2.0
+  let target=times["fix-actor-smc-0"]
+  let eager=fetch("fix-smc-eager-actor-gate-a","result.json")
+  let result : Json = {
+    "scope":"fixed iteration60 weights, inputs, noise, optimizer state and permutations; actor4096=8x512 H32 with20 critic updates; world2048x8 one update; no sampling/upload, not full rounds",
+    "profiler":"off; 3 warmups+10 samples per process; reset outside timing; one GPU process at a time",
+    "actor_abba":{"baseline_ms":Json(before),"candidate_ms":Json(after),"saved_ms":Json(before-after),"saved_percent":Json((before-after)/before*100.0),"smc_ms":Json(target),"remaining_ms":Json(after-target),"ratio":Json(after/target),"pair_savings_ms":Json([times["fix-actor-base-0"]-times["fix-actor-aligned-0"],times["fix-actor-base-1"]-times["fix-actor-aligned-1"]])},
+    "single_factor_screening_only":{"trace_acos_saved_ms":Json(times["fix-actor-base-0"]-times["fix-actor-rotation-0"]),"policy_critic_linear_saved_ms":Json(times["fix-actor-base-0"]-times["fix-actor-linear-0"]),"limitation":"one order each, not repeat-confirmed; do not add savings"},
+    "world":{"baseline_ms":Json(times["fix-world-base-0"]),"candidate_ms":Json(times["fix-world-aligned-1"]),"smc_ms":Json(times["fix-world-smc-0"]),"limitation":"one order each; world batching previously passed native numerical gate and ABBA; this test is a fresh same-session check; candidate retry followed scoped closed-task page-cache advice after original64GiB startup guard rejection"},
+    "candidate":{"world_layer_norm":"native","world_linear":"native","policy_linear":"native","critic_linear":"native","rotation_error":"trace_acos","world_error_batched":true,"sparse_joint_axis":true,"original_paths_retained":true,"promoted_to_default":false},
+    "correctness":{"analytic_rotation_cpu_gate":"passed, including identity/pi clamp and nonorthogonal inputs","actor_eager_comparison":field(eager,"numerical_comparison"),"known_metric_comparison_defect":"metrics[1] is MoonBit mean of20 critic losses versus SMC last critic loss; those scalar values are not comparable. Parameter/gradient/moment mismatches are independent and remain blocking.","full_actor_parity_passed":false},
+    "memory":{"peak_reserved_bytes":Json(peak),"guards_unchanged":true,"oom":false},
+    "source_findings":["SMC rot_angle_sq uses clamped trace acos; legacy native quaternion log has different off-manifold/boundary derivatives","SMC uses nn.Linear for all MLPs; native policy/critic still used matmul plus bias","SMC batches world state error across the entire8-step window; the retained native baseline submits it eight times","Remaining full32-step actor numerical mismatch is unresolved; no production promotion"],
+    "runs":Json(records),
+  }
+  if @fs.exists(root+"/results.json") {
+    @fs.write_file(root+"/results.json",result.stringify(indent=2))
+  } else {
+    @fs.write_file(root+"/results.json",result.stringify(indent=2),create_mode=CreateNew)
+  }
+  println(field(result,"actor_abba").stringify(indent=2))
+  println(field(result,"world").stringify(indent=2))
+}

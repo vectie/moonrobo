@@ -1,0 +1,13 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let dir="output/spark-runtime-20261024/geometry-tail-20261028/"
+  let mut build=@fs.read_file(dir+"build_geometry_tail_a.mbtx").text()
+  build=rep(build,"geometry-tail-gate-a","geometry-tail-gate-b")
+  build=rep(build,"moonrobo-geometry-tail-a","moonrobo-geometry-tail-b")
+  @fs.write_file(dir+"build_geometry_tail_b.mbtx",build,create_mode=CreateNew)
+  let mut runner=@fs.read_file(dir+"run_geometry_tail_a.mbtx").text()
+  for (a,b) in [("geometry-tail-gate-a","geometry-tail-gate-b"),("run_geometry_tail_a.mbtx","run_geometry_tail_b.mbtx"),("build_geometry_tail_a.mbtx","build_geometry_tail_b.mbtx")] {runner=rep(runner,a,b)}
+  @fs.write_file(dir+"run_geometry_tail_b.mbtx",runner,create_mode=CreateNew)
+  @fs.write_file(dir+"invoke_geometry_tail_b.mbtx",rep(@fs.read_file(dir+"invoke_geometry_tail_a.mbtx").text(),"run_geometry_tail_a.mbtx","run_geometry_tail_b.mbtx"),create_mode=CreateNew)
+}

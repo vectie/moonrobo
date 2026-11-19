@@ -1,0 +1,83 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let put = async fn(name : String, content : String) {
+    @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-math-179.sock",
+        out + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  let fixture = @fs.read_file(out + "/geometry_math_fixture_l.mbt").text()
+  assert_eq(fixture.split("smc_xi_normalization: false").to_array().length(), 2)
+  put(
+    "geometry_math_fixture_o.mbt",
+    fixture.replace_all(
+      old="smc_xi_normalization: false",
+      new="smc_xi_normalization: true",
+    ),
+  )
+  put(
+    "build_geometry_math_o.mbtx",
+    @fs.read_file(out + "/build_geometry_math_l.mbtx")
+    .text()
+    .replace_all(old="geometry-math-l", new="geometry-math-o")
+    .replace_all(
+      old="geometry_math_fixture_l.mbt",
+      new="geometry_math_fixture_o.mbt",
+    ),
+  )
+  put(
+    "run_geometry_math_training_o.mbtx",
+    @fs.read_file(out + "/run_geometry_math_training_l.mbtx")
+    .text()
+    .replace_all(old="geometry-math-l", new="geometry-math-o")
+    .replace_all(old="training_l.mbtx", new="training_o.mbtx"),
+  )
+  @fs.write_file(
+    out + "/run_geometry_centered_training_o.mbtx",
+    @fs.read_file(out + "/run_geometry_reward_training_l.mbtx")
+    .text()
+    .replace_all(old="math_l.mbtx", new="math_o.mbtx")
+    .replace_all(old="training_l.mbtx", new="training_o.mbtx")
+    .replace_all(old="gate-l", new="gate-o")
+    .replace_all(old="build-l.", new="build-o."),
+    create_mode=CreateNew,
+  )
+  let comparator = @fs.read_file(
+      "providers/motion_learning/geometry_snapshot_gate.py",
+    )
+    .text()
+    .replace_all(
+      old="hotspot-shared-geometry-math-reference-gate-i",
+      new="hotspot-shared-geometry-math-reference-gate-n",
+    )
+    .replace_all(
+      old="    rows=[]",
+      new="    assert len(actual['records'])==160 and {r['name'] for r in actual['records']}==set(saved['tensors'])\n    assert len(actual['metadata']['normalizers'])==len(saved['normalizers'])==5\n    rows=[]",
+    )
+  put("geometry_snapshot_gate_c.py", comparator)
+  put(
+    "run_geometry_snapshot_gate_o.mbtx",
+    @fs.read_file(out + "/run_geometry_snapshot_gate_k.mbtx")
+    .text()
+    .replace_all(
+      old="geometry_snapshot_gate.py",
+      new="geometry_snapshot_gate_c.py",
+    ),
+  )
+}

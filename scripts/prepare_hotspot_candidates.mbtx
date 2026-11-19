@@ -1,0 +1,162 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+fn obj(j : Json) -> Map[String, Json] raise {
+  guard j is Object(o) else { fail("object required") }
+  o
+}
+
+///|
+fn get(j : Json, k : String) -> Json raise {
+  guard obj(j).get(k) is Some(v) else { fail("missing " + k) }
+  v
+}
+
+///|
+fn arr(j : Json) -> Array[Json] raise {
+  guard j is Array(a) else { fail("array required") }
+  a
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (reader, redirect) = @process.read_from_process()
+  defer reader.close()
+  @async.with_task_group() <| group => {
+    let child = group.spawn(() => {
+      @process.run("sha256sum", [path], stdout=redirect)
+    })
+    let bytes = FixedArray::make(2048, b'\x00')
+    let n = reader.read(bytes)
+    guard n >= 64 && n < 2048 && child.wait() == 0 else { fail("sha failed") }
+    @utf8.decode(Bytes::from_array(bytes[:64]))
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, apic, inspection] &&
+    ["gate", "layernorm", "cross", "reference_fk"].contains(mode) &&
+    ["scalar", "bulk"].contains(apic) &&
+    ["false", "true"].contains(inspection) else {
+    fail("gate|layernorm|cross|reference_fk scalar|bulk false|true")
+  }
+  let base = "/home/wlc004s/moonrobo/private/hotspot-optimization-20261025-b"
+  let mapped = "/workspace/moonrobo/private/hotspot-optimization-20261025-b"
+  let build_a = "/home/wlc004s/moonrobo/private/hotspot-optimization-20261025-a"
+  let parent = "/home/wlc004s/moonrobo/private/smc-native-g2-confirmation-prepared/spec-six-vs-smc4096.json"
+  guard sha(parent) ==
+    "40ae4d4a3f6959876ab18ee82cd9a30e055b0927848c0c07dc5fcc7be9ff0b1c" else {
+    fail("accepted baseline changed")
+  }
+  let spec = @json.parse(@fs.read_file(parent).text())
+  let original = get(spec, "a")
+  obj(spec)["name"] = Json(
+    "native-hotspot-single-change-" + mode + "-batch4096-abba",
+  )
+  for side in ["a", "b"] {
+    let member = @json.parse(original.stringify())
+    obj(member)["entrypoint"] = Json(mapped + "/trainer")
+    obj(member)["label"] = Json(mode + "-" + side)
+    let argv = arr(get(member, "argv"))
+    for i in 0..<(argv.length() - 1) {
+      if argv[i] == Json("--physics-library") {
+        argv[i + 1] = Json("/workspace/moonrobo/private/hotspot-optimization-20261025-a/libmoonrobo_aligned_apic_bulk.so")
+      }
+      if argv[i] == Json("--tensor-library") {
+        argv[i + 1] = Json(
+          mapped + "/libmoonrobo_learning_tensor.so",
+        )
+      }
+    }
+    obj(get(member, "env"))["MOONROBO_APIC_IO"] = Json(apic)
+    let config = obj(get(member, "expected_config"))
+    config["reuse_pre_step_state"] = Json(inspection == "true")
+    config["layer_norm_mode"] = Json(if mode == "layernorm" && side == "b" { "submitted" } else { "expanded" })
+    config["geometry_submitted_cross"] = Json(mode == "cross" && side == "b")
+    config["reference_fk_cache"] = Json(mode == "reference_fk" && side == "b")
+    obj(spec)[side] = member
+  }
+  for
+    path in [
+      base + "/trainer",
+      base + "/libmoonrobo_learning_tensor.so",
+      base + "/numeric-gate",
+      base + "/tensor-gate",
+      base + "/runtime-gate",
+      base + "/run_hotspot_pairs_v4.mbtx",
+      base + "/overlay.tar.gz",
+      base + "/build_hotspot_candidates.mbtx",
+      base + "/build_hotspot_candidates_v2.mbtx",
+      base + "/stage_hotspot_fixture_workspace.mbtx",
+      base + "/workspace/moonrobo-fixtures/fixture-staging-manifest.json",
+      base + "/fixture-nontrivial-target.receipt.json",
+      base + "/update_hotspot_numeric_fixture.mbtx",
+      base + "/hotspot_numeric_wbtest_v2.mbt",
+      base + "/fixture-gradient-position.receipt.json",
+      base + "/update_hotspot_numeric_fixture_v3.mbtx",
+      base + "/hotspot_numeric_wbtest_v3.mbt",
+      base + "/gate-build-final.receipt.json",
+      base + "/gate-build-final-copy-numeric-gate.receipt.json",
+      base + "/workspace/moonrobo-fixtures/src/learning_aligned_gpu/cmd/hotspot_numeric_wbtest.mbt",
+      base + "/tests-protocol.receipt.json",
+      base + "/tests-protocol.stdout.log",
+      base + "/prepare_hotspot_candidates.mbtx",
+      base + "/summarize_hotspot_pairs.mbtx",
+      base + "/run_hotspot_candidate_series.mbtx",
+      "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_hotspot_run_cache.mbtx",
+      build_a + "/libmoonrobo_aligned_apic_bulk.so",
+      build_a + "/source-hotspot.tar.gz",
+      "/home/wlc004s/moonrobo/runs/hotspot-apic-exact-gate-20261025-b/result.json",
+      "/home/wlc004s/moonrobo/runs/hotspot-apic-exact-gate-20261025-b/training.stderr.log",
+    ] {
+    arr(get(spec, "pins")).push({
+      "path": Json(path),
+      "sha256": Json(sha(path)),
+      "role": "hotspot-frozen-build-or-runner",
+    })
+  }
+  if mode != "gate" {
+    let gates = match mode {
+      "layernorm" => ["layernorm-unit", "layernorm"]
+      "reference_fk" => ["reference_fk-gather", "reference_fk"]
+      _ => [mode]
+    }
+    for gate in gates {
+      let root = "/home/wlc004s/moonrobo/runs/hotspot-numeric-" + gate + "-20261025-a"
+      guard get(@json.parse(@fs.read_file(root + "/result.json").text()), "passed") == Json(true) else {
+        fail("numerical gate not passed: " + gate)
+      }
+      for name in ["result.json", "training.stdout.log", "training-guard.json"] {
+        let path = root + "/" + name
+        arr(get(spec, "pins")).push({ "path": Json(path), "sha256": Json(sha(path)), "role": "candidate-numerical-gate" })
+      }
+    }
+  }
+  obj(spec)["known_differences"] = Json([
+    if mode == "gate" { "A/A bootstrap specification freezes binaries, inputs and limits for separate numerical gates only. It is not a throughput comparison." } else { "Both native sides use identical rebuilt executable/plugins and original six optimizations, batch4096/micro512. Baseline APIC/pre-step switches match on both sides. Exactly one candidate switch differs; original implementations remain available." },
+    "Submitted LayerNorm/cross retain the expanded ATen expression/autograd ordering. FK cache stores immutable reference body states; robot FK remains differentiable. No physics/reward/GAE/noise/optimizer schedule change.",
+    "All inherited265 input pins retained. Newly compiled sources/binaries and runner separately pinned. Fresh60 iteration processes, ABBA, steady41-60, no profiler.",
+    "Original admission80percent/16GiB reserve,100GiB cgroup/zero container swap/12CPU and sampled host/cgroup guards retained. Reference FK has512MiB table hard cap and adds2GiB to EVERY baseline admission phase; no reserve discount.",
+  ])
+  obj(spec)["batch_layout"] = {
+    "logical_actor_batch": 4096,
+    "a_microbatch": 512,
+    "b_microbatch": 512,
+  }
+  @fs.write_file(
+    base + "/spec-" + mode + ".json",
+    spec.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println("Prepared " + mode)
+}

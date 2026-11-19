@@ -1,0 +1,31 @@
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+async fn main {
+  for (phase, implementation, reps, label, variant) in [
+    ("world","native","1","fix-aligned-world-gate-a","aligned"),
+    ("actor","native","13","fix-actor-base-0","baseline"),
+    ("actor","native","13","fix-actor-rotation-0","rotation"),
+    ("actor","native","13","fix-actor-linear-0","linear"),
+    ("actor","native","13","fix-actor-aligned-0","aligned"),
+    ("actor","smc","13","fix-actor-smc-0","aligned"),
+    ("actor","native","13","fix-actor-aligned-1","aligned"),
+    ("actor","native","13","fix-actor-base-1","baseline"),
+    ("world","native","13","fix-world-base-0","baseline"),
+    ("world","native","13","fix-world-aligned-0","aligned"),
+    ("world","smc","13","fix-world-smc-0","aligned"),
+  ] {
+    // One GPU process at a time. The retained driver validates ownership,
+    // startup capacity, nonfinite gradients and unchanged peak/stop limits.
+    guard !@fs.exists(base+"/"+label+".exit.json") else { fail("fresh labels required") }
+    guard @process.run("/home/wlc004s/moonrobo/toolchain/bin/moon",["run","--target","native",base+"/run_smc_source_fixes.mbtx","--",phase,implementation,"off",reps,label,variant]) == 0 else { fail("driver failed") }
+    // SMC can exit 1 for the recorded cross-language numerical gate. Its
+    // measured result remains diagnostic, never authority to promote a mode.
+    if implementation == "native" {
+      guard @fs.read_file(base+"/"+label+".exit.json").text() == "{\"exit_code\":0}" else { fail("native job failed; stop") }
+    }
+  }
+}

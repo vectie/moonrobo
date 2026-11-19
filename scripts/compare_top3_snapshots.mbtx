@@ -1,0 +1,183 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x/crypto",
+}
+
+///|
+fn field(v : Json, key : String) -> Json raise {
+  guard v is Object(m) && m.get(key) is Some(x) else { fail("missing " + key) }
+  x
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+fn differences(a : Json, b : Json) -> Int32 raise {
+  match (a, b) {
+    (Number(x, ..), Number(y, ..)) =>
+      if x == x && y == y && (x - y).abs() <= 2.0e-6 + 2.0e-4 * x.abs() {
+        0
+      } else {
+        1
+      }
+    (Array(x), Array(y)) if x.length() == y.length() => {
+      let mut n = 0
+      for i in 0..<x.length() {
+        n += differences(x[i], y[i])
+      }
+      n
+    }
+    (Object(x), Object(y)) if x.length() == y.length() => {
+      let mut n = 0
+      for k, v in x {
+        n += differences(v, field(b, k))
+      }
+      n
+    }
+    _ => if a == b { 0 } else { 1 }
+  }
+}
+
+///|
+fn decode(bytes : Bytes, i : Int32) -> Double {
+  let mut bits = 0UL
+  for j in 0..<8 {
+    bits = bits | (bytes[i * 8 + j].to_uint64() << (j * 8))
+  }
+  bits.reinterpret_as_double()
+}
+
+///|
+struct Blob {
+  file : String
+  dtype : String
+  shape : Array[Int32]
+  count : Int64
+  byte_length : Int64
+  sha256 : String
+} derive(FromJson)
+
+///|
+struct Record {
+  name : String
+  blob : Blob
+} derive(FromJson)
+
+///|
+async fn main {
+  guard @env.args() is [_, left, right, output] else {
+    fail("baseline candidate report.json")
+  }
+  let a = read(left + "/final.json")
+  let b = read(right + "/final.json")
+  guard field(a, "optimizer_metadata") == field(b, "optimizer_metadata") else {
+    fail("Adam schedule/steps differ")
+  }
+  let x : Array[Record] = @json.from_json(field(a, "records"))
+  let y : Array[Record] = @json.from_json(field(b, "records"))
+  guard x.length() == y.length() && x.length() > 0 else {
+    fail("record counts")
+  }
+  let reports = []
+  let mut count = 0L
+  let mut mismatches = 0L
+  for i, ar in x {
+    let br = y[i]
+    guard ar.name == br.name &&
+      ar.blob.shape == br.blob.shape &&
+      ar.blob.count == br.blob.count &&
+      ar.blob.file == ar.name + ".f64" &&
+      br.blob.file == ar.blob.file &&
+      !ar.name.contains("/") &&
+      ar.blob.dtype == "f64le" &&
+      br.blob.dtype == "f64le" &&
+      ar.blob.byte_length == ar.blob.count * 8L &&
+      br.blob.byte_length == ar.blob.byte_length else {
+      fail("record identity")
+    }
+    let af = @fs.open(left + "/" + ar.blob.file, mode=ReadOnly)
+    defer af.close()
+    let bf = @fs.open(right + "/" + br.blob.file, mode=ReadOnly)
+    defer bf.close()
+    guard af.size() == ar.blob.byte_length && bf.size() == br.blob.byte_length else {
+      fail("blob size")
+    }
+    let ah = @crypto.SHA256::new()
+    let bh = @crypto.SHA256::new()
+    let mut bad = 0L
+    let mut max_abs = 0.0
+    let mut max_ratio = 0.0
+    for offset = 0L; offset < ar.blob.count; {
+      let n = (ar.blob.count - offset).min(8192L).to_int()
+      let ab = af.read_exactly_at(n * 8, position=offset * 8L)
+      let bb = bf.read_exactly_at(n * 8, position=offset * 8L)
+      ah.update(ab)
+      bh.update(bb)
+      for j in 0..<n {
+        let av = decode(ab, j)
+        let bv = decode(bb, j)
+        guard av == av && bv == bv && av.abs() < 1.0e300 && bv.abs() < 1.0e300 else {
+          fail("nonfinite snapshot")
+        }
+        let delta = (av - bv).abs()
+        let ratio = delta / (2.0e-6 + 2.0e-4 * av.abs())
+        if ratio > 1 {
+          bad += 1L
+        }
+        max_abs = max_abs.max(delta)
+        max_ratio = max_ratio.max(ratio)
+      }
+      continue offset + n.to_int64()
+    }
+    guard @crypto.bytes_to_hex_string(ah.finalize()) == ar.blob.sha256 &&
+      @crypto.bytes_to_hex_string(bh.finalize()) == br.blob.sha256 else {
+      fail("snapshot digest mismatch")
+    }
+    count += ar.blob.count
+    mismatches += bad
+    reports.push({
+      "name": Json(ar.name),
+      "count": Json(ar.blob.count.to_double()),
+      "mismatches": Json(bad.to_double()),
+      "max_abs": Json(max_abs),
+      "max_tolerance_ratio": Json(max_ratio),
+    })
+  }
+  let metadata_bad = differences(field(a, "metadata"), field(b, "metadata"))
+  let ra = read(left + "/result.json")
+  let rb = read(right + "/result.json")
+  guard field(ra, "rows") is Array(ax) &&
+    field(rb, "rows") is Array(bx) &&
+    !ax.is_empty() &&
+    !bx.is_empty() else {
+    fail("result rows")
+  }
+  let metric_bad = differences(field(ax[0], "metrics"), field(bx[0], "metrics"))
+  let passed = mismatches == 0L && metadata_bad == 0 && metric_bad == 0
+  @fs.write_file(
+    output,
+    Json({
+      "baseline": Json(left),
+      "candidate": Json(right),
+      "absolute_tolerance": 0.000002,
+      "relative_tolerance": 0.0002,
+      "passed": Json(passed),
+      "values": Json(count.to_double()),
+      "mismatches": Json(mismatches.to_double()),
+      "metadata_mismatches": Json(metadata_bad),
+      "metric_mismatches": Json(metric_bad),
+      "records": Json(reports),
+    }).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(
+    "NUMERIC passed=\{passed} values=\{count} mismatches=\{mismatches} metadata=\{metadata_bad} metrics=\{metric_bad}",
+  )
+}

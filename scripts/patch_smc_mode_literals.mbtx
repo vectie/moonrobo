@@ -1,0 +1,10 @@
+import { "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2" }
+async fn main {
+  for name in ["audit_wbtest.mbt", "inference/actor_wbtest.mbt"] {
+    let path = "/Users/kq/Workspace/moonrobo/src/learning_aligned_gpu/" + name
+    let text = @fs.read_file(path).text().replace_all(old="    world_linear_mode: None,", new="    world_linear_mode: None,\n    policy_linear_mode: None,\n    critic_linear_mode: None,\n    rotation_error_mode: None,")
+    @fs.write_file(path, if name == "inference/actor_wbtest.mbt" {
+      text.replace_all(old="    format: \"moonrobo.native-tensor-actor-spec.v1\",", new="    format: \"moonrobo.native-tensor-actor-spec.v1\",\n    policy_linear_mode: None,")
+    } else { text })
+  }
+}

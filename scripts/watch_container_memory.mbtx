@@ -1,0 +1,535 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+/// Read-only observation of an existing container. The only Docker command is
+/// inspect; no signals, exec, GPU calls, cache drops, settings or workloads.
+/// Output is a fresh directory containing bounded JSONL and a final summary.
+fn safe_container(name : String) -> Bool {
+  name.length() >= 1 &&
+  name.length() <= 128 &&
+  !name.has_prefix("-") &&
+  name
+  .iter()
+  .all(c => {
+    (c >= 'a' && c <= 'z') ||
+    (c >= 'A' && c <= 'Z') ||
+    (c >= '0' && c <= '9') ||
+    c == '-' ||
+    c == '_' ||
+    c == '.'
+  })
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(result) else {
+    fail("missing inspect field: " + key)
+  }
+  result
+}
+
+///|
+fn optional_integer(value : Int64?) -> Json {
+  match value {
+    Some(number) => Json(number)
+    None => Json::null()
+  }
+}
+
+///|
+fn optional_string(value : String?) -> Json {
+  match value {
+    Some(text) => Json(text)
+    None => Json::null()
+  }
+}
+
+///|
+fn nonnegative(text : StringView) -> Int64 raise {
+  let value = @string.parse_int64(text.trim())
+  guard value >= 0L else { fail("negative kernel counter") }
+  value
+}
+
+///|
+fn counters(text : String) -> Map[String, Int64] raise {
+  let values : Map[String, Int64] = Map([])
+  for line in text.trim().split("\n") {
+    let words = line.trim().split(" ").filter(x => x != "").to_array()
+    guard words.length() == 2 && !values.contains(words[0].to_owned()) else {
+      fail("malformed memory.events")
+    }
+    values[words[0].to_owned()] = nonnegative(words[1])
+  }
+  values
+}
+
+///|
+fn mem_available(text : String) -> Int64 raise {
+  for line in text.split("\n") {
+    if line.has_prefix("MemAvailable:") {
+      let words = line.split(" ").filter(x => x != "").to_array()
+      guard words.length() == 3 && words[2] == "kB" else {
+        fail("invalid MemAvailable unit")
+      }
+      let kib = nonnegative(words[1])
+      guard kib <= 9007199254740L else {
+        fail("MemAvailable exceeds parser bound")
+      }
+      return kib * 1024L
+    }
+  }
+  fail("MemAvailable missing")
+}
+
+///|
+fn cgroup_v2_path(text : String, container_id : String) -> String raise {
+  for line in text.split("\n") {
+    if line.has_prefix("0::/") {
+      let path = line.to_owned()[3:].to_owned()
+      guard path.length() <= 1024 &&
+        path != "/" &&
+        !path.contains("//") &&
+        path.split("/").all(x => x != "." && x != "..") &&
+        path.contains(container_id) &&
+        path
+        .iter()
+        .all(c => {
+          (c >= 'a' && c <= 'z') ||
+          (c >= 'A' && c <= 'Z') ||
+          (c >= '0' && c <= '9') ||
+          c == '/' ||
+          c == '-' ||
+          c == '_' ||
+          c == '.'
+        }) else {
+        fail(
+          "cannot safely attribute host cgroup-v2 path to inspected container ID",
+        )
+      }
+      return "/sys/fs/cgroup" + path
+    }
+  }
+  fail("host cgroup-v2 entry missing; no cgroup-v1 fallback")
+}
+
+///|
+async fn bounded_text(path : String, capacity : Int32) -> String {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  // procfs/cgroup files report zero stat size. A bounded pread avoids read_all
+  // and cannot allocate in proportion to an unexpected filesystem object.
+  let buffer = FixedArray::make(capacity + 1, b'\x00')
+  let count = file.read_at(buffer, position=0L)
+  guard count > 0 && count <= capacity else {
+    fail("kernel metadata missing or oversized: " + path)
+  }
+  @utf8.decode(Bytes::makei(count, i => buffer[i])).trim().to_owned()
+}
+
+///|
+async fn inspect_container(target : String) -> Json {
+  let inspected = @shell.Cmd("docker", [
+    "inspect", "--type", "container", "--format", "{\"id\":{{json .Id}},\"name\":{{json .Name}},\"state\":{{json .State}}}",
+    target,
+  ]).output(timeout_ms=2500, max_output_bytes=8192)
+  inspected.check()
+  @json.parse(inspected.stdout())
+}
+
+///|
+struct Observations {
+  mut peak : Int64?
+  mut current_max : Int64?
+  mut host_available_min : Int64?
+  mut first_events : Map[String, Int64]?
+  mut last_events : Map[String, Int64]?
+  events_max : Map[String, Int64]
+  events_increments : Map[String, Int64]
+  mut counter_decreased : Bool
+  mut known_samples : Int32
+  mut unknown_samples : Int32
+}
+
+///|
+fn Observations::new() -> Observations {
+  {
+    peak: None,
+    current_max: None,
+    host_available_min: None,
+    first_events: None,
+    last_events: None,
+    events_max: Map([]),
+    events_increments: Map([]),
+    counter_decreased: false,
+    known_samples: 0,
+    unknown_samples: 0,
+  }
+}
+
+///|
+fn Observations::record(
+  self : Observations,
+  values : Map[String, String],
+) -> Unit raise {
+  if values.get("memory.peak") is Some(text) {
+    let peak = nonnegative(text)
+    self.peak = Some(self.peak.unwrap_or(peak).max(peak))
+    self.known_samples += 1
+  } else {
+    self.unknown_samples += 1
+  }
+  if values.get("memory.current") is Some(text) {
+    let current = nonnegative(text)
+    self.current_max = Some(self.current_max.unwrap_or(current).max(current))
+  }
+  if values.get("memory.events") is Some(text) {
+    let current = counters(text)
+    if self.first_events is None {
+      self.first_events = Some(current)
+    }
+    for key, count in current {
+      self.events_max[key] = self.events_max
+        .get(key)
+        .unwrap_or(count)
+        .max(count)
+      if self.last_events is Some(previous) && previous.get(key) is Some(before) {
+        if count < before {
+          self.counter_decreased = true
+        } else {
+          self.events_increments[key] = self.events_increments
+            .get(key)
+            .unwrap_or(0L) +
+            count -
+            before
+        }
+      }
+    }
+    self.last_events = Some(current)
+  }
+}
+
+///|
+async fn watch(
+  name : String,
+  output : String,
+  max_seconds : Int32,
+  poll_ms : Int32,
+) -> Unit {
+  guard safe_container(name) &&
+    max_seconds >= 1 &&
+    max_seconds <= 21600 &&
+    poll_ms >= 1000 &&
+    poll_ms <= 60000 else {
+    fail(
+      "container must be a bounded ASCII name; max_seconds=1..21600; poll_ms=1000..60000 (default 5000)",
+    )
+  }
+  guard output.has_prefix("/") &&
+    !output.has_suffix("/") &&
+    output.length() <= 4096 &&
+    !output.contains("\n") &&
+    !@fs.exists(output) else {
+    fail("fresh absolute output directory required")
+  }
+  let components = output.split("/").to_array()
+  let parent = components[0:components.length() - 1]
+    .map(x => x.to_owned())
+    .join("/")
+  guard parent != "" &&
+    @fs.realpath(parent) == parent &&
+    components[components.length() - 1] != "." &&
+    components[components.length() - 1] != ".." else {
+    fail("output parent must already exist at a canonical absolute path")
+  }
+  @fs.mkdir(output)
+  let log = @fs.open(
+    output + "/samples.jsonl",
+    mode=ReadWrite,
+    create_mode=CreateNew,
+    permission=0o600,
+  )
+  defer log.close()
+  let started = @env.now().reinterpret_as_int64()
+  let deadline = @async.now() + max_seconds.to_int64() * 1000L
+  let maximum_samples = max_seconds * 1000 / poll_ms + 2
+  let stats = Observations::new()
+  let mut offset = 0L
+  let mut samples = 0
+  let mut target = name
+  let mut pinned_id : String? = None
+  let mut pinned_start : Json? = None
+  let mut cgroup_path : String? = None
+  let mut last_inspection = Json::null()
+  let mut last_cgroup_metrics : Map[String, String] = Map([])
+  let mut last_errors : Map[String, String] = Map([])
+  let mut last_known_peak_at : Int64? = None
+  let mut reason = "deadline"
+  let mut inspect_failures = 0
+  println("Read-only container memory monitor started; evidence: " + output)
+  while samples < maximum_samples {
+    let timestamp = @env.now().reinterpret_as_int64()
+    let errors : Map[String, String] = Map([])
+    let values : Map[String, String] = Map([])
+    let mut inspection = Json::null()
+    let mut stopped = false
+    let mut restart = false
+    try {
+      inspection = inspect_container(target)
+      guard field(inspection, "id") is String(id) &&
+        id.length() == 64 &&
+        id.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) else {
+        fail("invalid inspected container ID")
+      }
+      if pinned_id is Some(expected) {
+        guard id == expected else { fail("container identity changed") }
+      } else {
+        pinned_id = Some(id)
+        target = id
+      }
+      let state = field(inspection, "state")
+      let start = field(state, "StartedAt")
+      if pinned_start is Some(previous) {
+        restart = previous != start
+      } else {
+        pinned_start = Some(start)
+      }
+      guard field(state, "Running") is True || field(state, "Running") is False else {
+        fail("inspect Running is not boolean")
+      }
+      stopped = field(state, "Running") == Json(false)
+      if !stopped && !restart {
+        guard field(state, "Pid") is Number(raw_pid, ..) &&
+          raw_pid > 0 &&
+          raw_pid <= 2147483647.0 &&
+          raw_pid.to_int().to_double() == raw_pid else {
+          fail("invalid inspected host PID")
+        }
+        let mapped = cgroup_v2_path(
+          bounded_text("/proc/\{raw_pid.to_int()}/cgroup", 8192),
+          id,
+        )
+        guard @fs.realpath(mapped) == mapped else {
+          fail("cgroup path is not canonical")
+        }
+        cgroup_path = Some(mapped)
+      }
+      last_inspection = inspection
+      inspect_failures = 0
+    } catch {
+      error => {
+        errors["docker_inspect_or_cgroup_mapping"] = error.to_string()
+        inspect_failures += 1
+      }
+    }
+    // On exit/inspect loss attempt one final read from the last verified path;
+    // do not replace a deleted cgroup with zero or inspect a reused name.
+    if !restart && cgroup_path is Some(path) {
+      for
+        metric in [
+          "memory.current", "memory.peak", "memory.max", "memory.events", "memory.events.local",
+          "memory.swap.current", "memory.swap.peak", "memory.swap.max",
+        ] {
+        try {
+          values[metric] = bounded_text(path + "/" + metric, 4096)
+        } catch {
+          error => errors[metric] = error.to_string()
+        }
+      }
+    } else {
+      errors["cgroup"] = "unknown: no verified live cgroup-v2 path for this container instance"
+    }
+    stats.record(values) catch {
+      error => errors["counter_parse"] = error.to_string()
+    }
+    if values.get("memory.peak") is Some(_) {
+      last_known_peak_at = Some(timestamp)
+    }
+    let mut available : Int64? = None
+    try {
+      let bytes = mem_available(bounded_text("/proc/meminfo", 32768))
+      available = Some(bytes)
+      stats.host_available_min = Some(
+        stats.host_available_min.unwrap_or(bytes).min(bytes),
+      )
+    } catch {
+      error => errors["host_MemAvailable"] = error.to_string()
+    }
+    let record : Json = {
+      "format": "moonrobo.container-memory-sample.v1",
+      "index": samples,
+      "timestamp_unix_ms": Json(timestamp),
+      "elapsed_ms": Json(timestamp - started),
+      "inspection": inspection,
+      "cgroup_path": optional_string(cgroup_path),
+      "cgroup_metrics": Json(values),
+      "host_mem_available_bytes": optional_integer(available),
+      "errors": Json(errors),
+      "cgroup_memory_peak_known": values.contains("memory.peak"),
+    }
+    last_cgroup_metrics = values
+    last_errors = errors
+    let encoded = @utf8.encode(record.stringify() + "\n")
+    guard encoded.length() <= 32768 else {
+      fail("memory sample exceeds 32 KiB metadata limit")
+    }
+    if offset + encoded.length().to_int64() > 67108864L {
+      reason = "metadata_byte_limit"
+      break
+    }
+    log.write_at(encoded, position=offset)
+    offset += encoded.length().to_int64()
+    log.sync()
+    samples += 1
+    if restart {
+      reason = "container_restart_detected"
+      break
+    }
+    if stopped {
+      reason = "container_stopped"
+      break
+    }
+    if inspect_failures >= 3 {
+      reason = "inspect_unavailable_after_three_attempts"
+      break
+    }
+    let remaining = deadline - @async.now()
+    if remaining <= 0L {
+      break
+    }
+    @async.sleep(remaining.min(poll_ms.to_int64()).to_int())
+  }
+  let summary : Json = {
+    "format": "moonrobo.container-memory-summary.v1",
+    "read_only_monitor": true,
+    "container_requested": name,
+    "container_id": optional_string(pinned_id),
+    "monitor_started_unix_ms": Json(started),
+    "monitor_finished_unix_ms": Json(@env.now().reinterpret_as_int64()),
+    "stop_reason": reason,
+    "max_seconds": max_seconds,
+    "poll_ms": poll_ms,
+    "samples": samples,
+    "sample_bytes": Json(offset),
+    "last_inspection": last_inspection,
+    "last_cgroup_metrics": Json(last_cgroup_metrics),
+    "last_sample_errors": Json(last_errors),
+    "max_kernel_memory_peak_observed_bytes": optional_integer(stats.peak),
+    "max_memory_current_observed_bytes": optional_integer(stats.current_max),
+    "min_host_mem_available_observed_bytes": optional_integer(
+      stats.host_available_min,
+    ),
+    "last_known_peak_sample_unix_ms": optional_integer(last_known_peak_at),
+    "samples_with_known_kernel_peak": stats.known_samples,
+    "samples_without_kernel_peak": stats.unknown_samples,
+    "first_memory_events": match stats.first_events {
+      Some(events) => Json(events)
+      None => Json::null()
+    },
+    "last_memory_events": match stats.last_events {
+      Some(events) => Json(events)
+      None => Json::null()
+    },
+    "max_memory_event_counters_observed": Json(stats.events_max),
+    "positive_event_counter_increments_observed": Json(stats.events_increments),
+    "counter_decrease_observed": stats.counter_decreased,
+    "complete_lifetime_peak_certified": false,
+    "coverage_note": "Monitoring starts at the recorded time. Kernel memory.peak may include earlier activity; a deleted cgroup or an exit between polls can hide the final peak. Unknown values are null/missing with explicit errors, never zero. Event max counts are cumulative observations, not summed samples; memory.events max is not an OOM counter. Raw peaks above memory.max are retained without clamping.",
+    "container_modified": false,
+    "gpu_called": false,
+  }
+  @fs.write_file(
+    output + "/final-summary.json.partial",
+    @utf8.encode(summary.stringify(indent=2) + "\n"),
+    create_mode=CreateNew,
+    permission=0o600,
+    sync=Full,
+  )
+  @fs.rename(
+    output + "/final-summary.json.partial",
+    output + "/final-summary.json",
+    replace=false,
+  )
+  println(summary.stringify(indent=2))
+}
+
+///|
+fn self_test() -> Unit raise {
+  assert_true(safe_container("moonrobo-bones-filter-20261024-a"))
+  assert_false(safe_container("--help"))
+  assert_false(safe_container("container;other-command"))
+  assert_eq(
+    mem_available("MemTotal: 1 kB\nMemAvailable:   4096 kB\n"),
+    4194304L,
+  )
+  let id = "a".repeat(64)
+  assert_eq(
+    cgroup_v2_path("0::/system.slice/docker-" + id + ".scope\n", id),
+    "/sys/fs/cgroup/system.slice/docker-" + id + ".scope",
+  )
+  for
+    bad in [
+      "0::/\n",
+      "0::/system.slice/unrelated.scope\n",
+      "0::/../docker-" + id + ".scope\n",
+    ] {
+    try cgroup_v2_path(bad, id) catch {
+      _ => ()
+    } noraise {
+      _ => fail("unattributed cgroup path accepted")
+    }
+  }
+  let stats = Observations::new()
+  stats.record({
+    "memory.peak": "17179877376",
+    "memory.current": "1300000000",
+    "memory.events": "max 18228\noom 0\noom_kill 0",
+  })
+  stats.record({
+    "memory.peak": "17179877376",
+    "memory.events": "max 18230\noom 0\noom_kill 0",
+  })
+  stats.record(Map([]))
+  assert_eq(stats.peak, Some(17179877376L))
+  assert_eq(stats.events_max["max"], 18230L)
+  assert_eq(stats.events_increments["max"], 2L)
+  assert_eq(stats.events_max["oom"], 0L)
+  assert_eq(stats.unknown_samples, 1)
+  assert_eq(optional_integer(None), Json::null())
+  println(
+    "read-only memory monitor parser/counter self-test passed; no Docker or GPU execution",
+  )
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args.length() == 2 && args[1] == "--self-test" {
+    self_test()
+    return
+  }
+  guard args.length() == 4 || args.length() == 5 else {
+    fail(
+      "usage: watch_container_memory.mbtx CONTAINER FRESH_ABSOLUTE_OUTPUT_DIR MAX_SECONDS [POLL_MS=5000]; max 21600 seconds, poll >=1000 ms; only Docker inspect, procfs/cgroup reads and fresh metadata output",
+    )
+  }
+  watch(
+    args[1],
+    args[2],
+    @string.parse_int(args[3]),
+    if args.length() == 5 {
+      @string.parse_int(args[4])
+    } else {
+      5000
+    },
+  )
+}

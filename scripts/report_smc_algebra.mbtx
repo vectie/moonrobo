@@ -1,0 +1,33 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/json", "moonbitlang/core/env", "moonbitlang/core/string" }
+let out="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-algebra-20261028"
+fn field(j : Json,k : String) -> Json raise {guard j is Object(m) && m.get(k) is Some(v) else {fail(k)};v}
+fn number(j : Json) -> Double raise {match j {Number(x,..)=>x;String(x)=>@string.parse_double(x);_=>fail("number")}}
+async fn fetch(remote : String,path : String) -> Json {
+  if !@fs.exists(path) {guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/"+remote,path])==0 else {fail(remote)}}
+  @json.parse(@fs.read_file(path).text())
+}
+async fn main {
+  let labels=@env.args()[1:].to_array()
+  guard !labels.is_empty() else {fail("run labels")}
+  for label in labels {
+    let dir=out+"/"+label; if !@fs.exists(dir) {@fs.mkdir(dir,recursive=true)}
+    let remote="runs/hotspot-shared-"+label+"/"
+    let j=fetch(remote+"result.json",dir+"/result.json")
+    let g=fetch(remote+"training-guard.json",dir+"/training-guard.json")
+    let state=fetch(remote+"training-docker-final.json",dir+"/training-docker-final.json")
+    guard state is [{"State":{"OOMKilled":False,"Running":False,..},..}] && field(g,"reason")==Json("completed") else {fail("guard "+label)}
+    guard field(j,"observer")==Json("off") && field(j,"rows") is Array(rows) else {fail("result")}
+    let times=rows.filter(r=>field(r,"steady")==Json(true)).map(r=>number(field(r,"wall_ms")))
+    times.sort()
+    let median=if times.is_empty() {Json::null()} else {Json((times[(times.length()-1)/2]+times[times.length()/2])/2.0)}
+    let mut numeric : Json=Json::null()
+    if j is Object(m) && m.get("numerical_comparison") is Some(n) {
+      guard field(n,"tensors") is Array(ts) else {fail("tensors")}
+      let mut violations=0.0; let mut elements=0.0
+      for t in ts {violations+=number(field(t,"violations"));elements+=number(field(t,"elements"))}
+      let selected=ts.filter(t=>[Json("policy-18-gradient"),Json("world-12-gradient"),Json("metrics")].contains(field(t,"name")))
+      numeric={"passed":field(n,"passed"),"violations":Json(violations),"elements":Json(elements),"selected":Json(selected)}
+    }
+    println(({"label":Json(label),"steady_samples":Json(times.length()),"median_ms":median,"numerical":numeric}:Json).stringify(indent=2))
+  }
+}

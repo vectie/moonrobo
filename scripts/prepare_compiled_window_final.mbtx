@@ -1,0 +1,87 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let exporter = @fs.read_file(dir + "/run_compiled_window_export_b.mbtx")
+    .text()
+    .replace_all(
+      old="run_compiled_window_export_b.mbtx",
+      new="run_compiled_window_export_c.mbtx",
+    )
+    .replace_all(
+      old="export_compiled_world_b.py",
+      new="export_compiled_world_c.py",
+    )
+  @fs.write_file(
+    dir + "/run_compiled_window_export_c.mbtx",
+    exporter,
+    create_mode=CreateNew,
+  )
+  let runner = @fs.read_file(dir + "/run_compiled_window_a.mbtx")
+    .text()
+    .replace_all(
+      old="run_compiled_window_a.mbtx",
+      new="run_compiled_window_c.mbtx",
+    )
+    .replace_all(old="+amp+\"-a\"", new="+amp+\"-c\"")
+    .replace_all(
+      old="guard [\"bf16-full\",",
+      new="guard [\"bf16-baseline\",\"fp32-baseline\",\"bf16-full\",",
+    )
+    .replace_all(
+      old="if implementation==\"native\" { e[\"MOONROBO_COMPILED_WORLD_PACKAGE\"]",
+      new="if implementation==\"native\" && !variant.has_suffix(\"-baseline\") { e[\"MOONROBO_COMPILED_WORLD_PACKAGE\"]",
+    )
+  @fs.write_file(
+    dir + "/run_compiled_window_c.mbtx",
+    runner,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("tar", [
+      "--disable-copyfile",
+      "-czf",
+      dir + "/compiled-window-overlay-a.tar.gz",
+      "src/learning_tensor/compiled_block.inc",
+      "src/learning_tensor/compiled_block_loader.inc",
+      "src/learning_tensor/compiled_block.mbt",
+      "src/learning_aligned_gpu/networks.mbt",
+      "src/learning_aligned_gpu/learning.mbt",
+      "src/learning_aligned_gpu/compiled_world.mbt",
+      "src/learning_aligned_gpu/moon.pkg",
+    ]),
+    0,
+  )
+  for
+    name in [
+      "run_compiled_window_export_c.mbtx", "run_compiled_window_c.mbtx", "compiled-window-overlay-a.tar.gz",
+    ] {
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        dir + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      "providers/motion_learning/export_compiled_world.py",
+      "wlc004s@192.168.2.179:" + base + "/export_compiled_world_c.py",
+    ]),
+    0,
+  )
+}

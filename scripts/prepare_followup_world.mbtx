@@ -1,0 +1,134 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+let local_root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/world-ln-fk-20261026"
+
+///|
+let remote_root = "/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a"
+
+///|
+let old_root = "/home/wlc004s/moonrobo/private/hotspot-optimization-20261025-b"
+
+///|
+let host = "wlc004s@192.168.2.179"
+
+///|
+let socket = "/tmp/moonrobo-operator-179.sock"
+
+///|
+async fn run(program : String, args : Array[String]) -> Unit {
+  guard @process.run(program, args) == 0 else {
+    fail("preparation failed: " + program)
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_] else { fail("fixed fresh world preparation only") }
+  guard !@fs.exists(local_root) else {
+    fail("fresh evidence directory required")
+  }
+  @fs.mkdir(local_root + "/inputs", recursive=true)
+  run("scp", [
+    "-o",
+    "ControlPath=" + socket,
+    host + ":" + old_root + "/run_hotspot_pairs_v4.mbtx",
+    local_root + "/inputs/runner-original.mbtx",
+  ])
+  let original = @fs.read_file(local_root + "/inputs/runner-original.mbtx").text()
+  let runner = original
+    .replace_all(old=old_root, new=remote_root)
+    .replace_all(
+      old="/workspace/moonrobo/private/hotspot-optimization-20261025-b",
+      new="/workspace/moonrobo/private/hotspot-followup-world-20261026-a",
+    )
+    .replace_all(
+      old="\"reuse_pre_step_state\", \"geometry_submitted_cross\", \"reference_fk_cache\",",
+      new="\"reuse_pre_step_state\", \"geometry_submitted_cross\", \"reference_fk_cache\", \"world_packed_replay\",",
+    )
+    .replace_all(
+      old="\"layernorm\", \"cross\", \"reference_fk\", \"layernorm-unit\", \"reference_fk-gather\",",
+      new="\"layernorm\", \"cross\", \"reference_fk\", \"layernorm-unit\", \"reference_fk-gather\", \"world_packed\", \"world-fields\",",
+    )
+    .replace_all(
+      old="let (binary, test_name, marker) = match mode {",
+      new="let (binary, test_name, marker) = match mode {\n    \"world-fields\" => (\"runtime-gate\", \"world_staging_wbtest.mbt:1-3\", \"WORLD_PACKED_RUNNER_GATE_PASS\")",
+    )
+  guard runner.contains("\"world_packed_replay\"") &&
+    runner.contains("WORLD_PACKED_RUNNER_GATE_PASS") else {
+    fail("runner derivation anchor")
+  }
+  @fs.write_file(
+    local_root + "/run_followup_pairs.mbtx",
+    runner,
+    create_mode=CreateNew,
+  )
+  let builder = @fs.read_file(
+      "/Users/kq/Workspace/moonrobo/scripts/build_hotspot_candidates_v2.mbtx",
+    )
+    .text()
+    .replace_all(old=old_root, new=remote_root)
+  @fs.write_file(
+    local_root + "/build_followup_world.mbtx",
+    builder,
+    create_mode=CreateNew,
+  )
+  run("env", [
+    "COPYFILE_DISABLE=1",
+    "tar",
+    "--exclude=_build",
+    "--exclude=.mooncakes",
+    "--exclude=target",
+    "-czf",
+    local_root + "/overlay.tar.gz",
+    "-C",
+    "/Users/kq/Workspace/moonrobo",
+    "moon.mod",
+    "src/learning_aligned",
+    "src/learning_aligned_gpu",
+    "src/learning_tensor",
+  ])
+  run("ssh", ["-S", socket, host, "mkdir " + remote_root])
+  for
+    name in [
+      "overlay.tar.gz", "run_followup_pairs.mbtx", "build_followup_world.mbtx",
+    ] {
+    run("scp", [
+      "-o",
+      "ControlPath=" + socket,
+      local_root + "/" + name,
+      host + ":" + remote_root + "/" + name,
+    ])
+  }
+  for
+    name in [
+      "stage_hotspot_fixture_workspace.mbtx", "summarize_hotspot_pairs.mbtx", "prepare_followup_world_spec.mbtx",
+      "run_followup_world.mbtx",
+    ] {
+    run("scp", [
+      "-o",
+      "ControlPath=" + socket,
+      "/Users/kq/Workspace/moonrobo/scripts/" + name,
+      host + ":" + remote_root + "/" + name,
+    ])
+  }
+  run("ssh", [
+    "-S",
+    socket,
+    host,
+    "cp " +
+    old_root +
+    "/libmoonrobo_learning_tensor.so " +
+    remote_root +
+    "/libmoonrobo_learning_tensor.so",
+  ])
+  println(
+    "Prepared isolated world candidate; original sources and binaries retained",
+  )
+}

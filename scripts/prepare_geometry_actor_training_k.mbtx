@@ -1,0 +1,18 @@
+import {"moonbitlang/async@0.20.2","moonbitlang/async@0.20.2/fs","moonbitlang/async@0.20.2/process"}
+///|
+async fn main {
+ let out="output/spark-runtime-20261024/geometry-math-20261029-a"
+ let source=@fs.read_file("scripts/prepare_geometry_actor_training.mbtx").text()
+ .replace_all(old="graphs-export-a",new="graphs-export-b")
+ .replace_all(old="fixture_j",new="fixture_k")
+ .replace_all(old="math_j.mbtx",new="math_k.mbtx")
+ .replace_all(old="training_j.mbtx",new="training_k.mbtx")
+ .replace_all(old="geometry-math-j",new="geometry-math-k")
+ .replace_all(old="build-j.",new="build-k.")
+ .replace_all(old="gate-j",new="gate-k")
+ .replace_all(old="run_geometry_actor_training.mbtx",new="run_geometry_actor_training_k.mbtx")
+ .replace_all(old="put(\"geometry_snapshot_gate.py\",@fs.read_file(\"providers/motion_learning/geometry_snapshot_gate.py\").text())",new="// Reuse the immutable CPU snapshot comparator staged with revision j.")
+ .replace_all(old="run_geometry_snapshot_gate.mbtx",new="run_geometry_snapshot_gate_k.mbtx")
+ @fs.write_file(out+"/prepare_actor_k.mbtx",source,create_mode=CreateNew)
+ assert_eq(@process.run("moon",["run","--target","native",out+"/prepare_actor_k.mbtx"]),0)
+}

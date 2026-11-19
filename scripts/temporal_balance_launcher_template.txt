@@ -1,0 +1,10 @@
+
+///| Historical .py names are inert routing descriptors. Each target parses
+/// original flags and calls real native APIs; unknown descriptors fail closed.
+fn native_args(root : String, command : Array[String]) -> Array[String] raise {
+  guard !command.is_empty() else {fail("missing native provider descriptor")}
+  let descriptor=command[0].split("/").last().unwrap_or("").to_owned()
+  let training=["policy.py","dynamics.py","cpu_physics.py","teacher_step_verification.py"].contains(descriptor)
+  let package=if training {"src/learning_training/launch/cmd"} else {"src/learning_balance/launch"}
+  ["run","--quiet","--warn-list","-a",root+"/scripts/run_native_learning.mbtx",root,package,..command,"--repo",root]
+}

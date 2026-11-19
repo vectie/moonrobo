@@ -1,0 +1,96 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+async fn main {
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  for phase in ["world", "actor"] {
+    for implementation in ["native", "smc"] {
+      let label = "latest-ln-" + phase + "-" + implementation + "-events-a"
+      let root = "/home/wlc004s/moonrobo/runs/hotspot-shared-" + label
+      println("Starting " + label)
+      let code = @process.run(
+        "/home/wlc004s/moonrobo/toolchain/bin/moon",
+        [
+          "run",
+          "--target",
+          "native",
+          base + "/run_full_ln_shared_a.mbtx",
+          "--",
+          phase,
+          implementation,
+          "events",
+          "13",
+          label,
+        ],
+        stdout=@process.redirect_to_file(
+          base + "/" + label + ".stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          base + "/" + label + ".stderr.log",
+          create_mode=CreateNew,
+        ),
+      )
+      let read = path => @json.parse(@fs.read_file(path).text())
+      let result = read(root + "/result.json")
+      let resource = read(root + "/training-guard.json")
+      guard field(resource, "reason") == Json("completed") &&
+        field(resource, "error") == Json::null() else {
+        fail("resource gate failed")
+      }
+      guard read(root + "/training-docker-final.json")
+        is [{ "State": { "Running": False, "OOMKilled": False, .. }, .. }] else {
+        fail("container unsafe")
+      }
+      guard field(result, "rows") is Array(rows) && rows.length() == 13 else {
+        fail("incomplete short measurement")
+      }
+      if code != 0 {
+        guard field(field(result, "numerical_comparison"), "passed") ==
+          Json(false) else {
+          fail("unexpected runtime failure")
+        }
+      }
+      @fs.write_file(
+        base + "/" + label + ".receipt.json",
+        Json({
+          "exit_code": Json(code),
+          "timing_complete": true,
+          "numerical_promotion": false,
+        }).stringify(indent=2),
+        create_mode=CreateNew,
+      )
+      println("Completed " + label + " (numeric exit " + code.to_string() + ")")
+      guard @process.run(
+          "/home/wlc004s/moonrobo/toolchain/bin/moon",
+          [
+            "run",
+            "--target",
+            "native",
+            base + "/advise_latest_phase_a.mbtx",
+            "--",
+            label,
+          ],
+          stdout=@process.redirect_to_file(
+            base + "/" + label + ".cache.log",
+            create_mode=CreateNew,
+          ),
+        ) ==
+        0 else {
+        fail("scoped cache advice failed")
+      }
+    }
+  }
+}

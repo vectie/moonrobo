@@ -1,0 +1,90 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-math-179.sock"
+  let adapter = @fs.read_file(out + "/geometry_world_backward_check_b.py")
+    .text()
+    .replace_all(
+      old="from compiler_reference_contract_f import frozen_original_compilation",
+      new="from compiler_reference_contract_f import reference_compilation",
+    )
+    .replace_all(
+      old="with frozen_original_compilation(code, root/'choices.json', out/'replay-decisions.json')",
+      new="with reference_compilation(code.parents[3]/'inductor-cache/cache/f92a497d48fc1e801d19741fe9400d6fec3acb29f7fe6611804a20fa1dda1c24', code, root/'choices.json', out/'replay-decisions.json')",
+    )
+  let runner = @fs.read_file(out + "/run_geometry_world_backward_check_b.mbtx")
+    .text()
+    .replace_all(
+      old="geometry_world_backward_check_b.py",
+      new="geometry_world_padding_a.py",
+    )
+    .replace_all(
+      old="run_geometry_world_backward_check_b.mbtx",
+      new="run_geometry_world_padding_a.mbtx",
+    )
+  for
+    (name, content) in [
+      ("geometry_world_padding_a.py", adapter),
+      ("run_geometry_world_padding_a.mbtx", runner),
+    ] {
+    @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        out + "/" + name,
+        host + ":" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  let folder = out + "/world-padding-a"
+  @fs.mkdir(folder)
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      socket,
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/run_geometry_world_padding_a.mbtx -- world geometry-world-padding-a",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "training.stdout.log", "training.stderr.log", "training-guard.json",
+      "completion.json", "replay-decisions.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-mlp-geometry-world-padding-a/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(status, 0)
+}

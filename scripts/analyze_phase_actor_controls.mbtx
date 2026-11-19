@@ -1,0 +1,110 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+let base = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+
+///|
+let moon = "/home/wlc004s/moonrobo/toolchain/bin/moon"
+
+///|
+async fn call(
+  script : String,
+  args : Array[String],
+  name : String,
+  bound : Bool,
+) -> Unit {
+  let cmd = if bound { "prlimit" } else { moon }
+  let argv = (if bound {
+      ["--as=4294967296", "--cpu=600", "--", moon]
+    } else {
+      []
+    }) +
+    ["run", "--target", "native", base + "/" + script, "--"] +
+    args
+  let code = @async.with_timeout(660000, () => {
+    @process.run(
+      cmd,
+      argv,
+      stdout=@process.redirect_to_file(
+        base + "/" + name + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        base + "/" + name + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+  })
+  guard code == 0 else { fail("analysis stopped; preserved " + name + " logs") }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_] else {
+    fail("no parameters; two frozen completed actor captures")
+  }
+  for
+    (label, kind) in [
+      ("actoroffa", "native"),
+      ("actoroffb", "smc-compiled"),
+      ("actoratenc", "native"),
+      ("actoratenb", "smc-compiled"),
+      ("actortracea", "native"),
+      ("actortraceb", "smc-compiled"),
+    ] {
+    let path = "/home/wlc004s/moonrobo/runs/operator-trace41-20261025-phase-" +
+      label +
+      "-" +
+      kind +
+      "/outer-result.json"
+    guard @json.parse(@fs.read_file(path).text()) is { "passed": True, .. } else {
+      fail("all six controls must finish successfully")
+    }
+  }
+  for
+    (label, kind, mode, reviewed) in [
+      ("actortracea", "native", "native-actor", "trace41-solo-j-native-export"),
+      (
+        "actortraceb", "smc-compiled", "smc-actor-chunk", "trace41-solo-e-smc-compiled-export",
+      ),
+    ] {
+    call(
+      "export_phase_trace.mbtx",
+      ["--export", kind, label],
+      "export-" + label,
+      false,
+    )
+    let exported = base + "/trace41-phase-" + label + "-" + kind + "-export"
+    call(
+      "discover_sqlite.mbtx",
+      ["--discover", exported + "/trace.sqlite", exported + "/schema.json"],
+      "discover-" + label,
+      true,
+    )
+    call(
+      "analyze_phase_trace_d.mbtx",
+      [
+        "--sqlite",
+        exported + "/trace.sqlite",
+        exported + "/schema.json",
+        base + "/" + reviewed + "/schema.json",
+        mode,
+        "-",
+        exported + "/phase-attribution.json",
+      ],
+      "analyze-" + label,
+      true,
+    )
+  }
+  for label in ["worldtracef-native", "worldtraced-smc-compiled"] {
+    call("attribute_world_sync_a.mbtx", [label], "sync-" + label, true)
+  }
+  println("Actor trace exports, attributions and world sync evidence complete")
+}

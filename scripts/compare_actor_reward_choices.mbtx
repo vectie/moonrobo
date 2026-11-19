@@ -1,0 +1,37 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  guard @json.parse(
+      @fs.read_file(root + "/reward-backward-original-choices.json").text(),
+    )
+    is { "smc_loaded_kernels": Object(old), .. } else {
+    fail("export choices")
+  }
+  guard @json.parse(
+      @fs.read_file(root + "/training-smc-gate-t/result.json").text(),
+    )
+    is { "launched": Array(rows), .. } else {
+    fail("actual choices")
+  }
+  for name, record in old {
+    guard record is { "configs": config, .. } else { fail("configuration") }
+    for row in rows {
+      guard row is { "kernel": String(kernel), "configs": actual, .. } &&
+        kernel == name else {
+        continue
+      }
+      if config != actual {
+        println(
+          ({ "kernel": Json(name), "export": config, "actual": actual } : Json).stringify(),
+        )
+      }
+    }
+  }
+}

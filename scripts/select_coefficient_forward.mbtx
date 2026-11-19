@@ -1,0 +1,16 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="output/spark-runtime-20261024/coefficient-assembly-20261028"
+  let path=dir+"/coefficient_assembly_suite_b.mbtx";let original=@fs.read_file(path).text()
+  @fs.write_file(dir+"/coefficient_assembly_suite_b_before_event_selection.mbtx",original,create_mode=CreateNew)
+  let old="let best=if passed(phase,\"both\"){\"both\"}else{\"forward\"}"
+  guard original.contains(old)else{fail("event selector")}
+  @fs.write_file(path,original.replace_all(old=old,new="let best=\"forward\" // Split's actor ABBA changes sign; do not use the combined path for admitted-stage reporting."))
+  let path=dir+"/report.mbtx";let original=@fs.read_file(path).text()
+  @fs.write_file(path,original.replace_all(old="[(\"world\",\"both\"),(\"actor\",\"both\")]",new="[(\"world\",\"forward\"),(\"actor\",\"forward\")]"))
+  let path=dir+"/routes.mbtx";let original=@fs.read_file(path).text()
+  @fs.write_file(path,original.replace_all(old="[(\"world\",\"both\"),(\"actor\",\"both\")]",new="[(\"world\",\"forward\"),(\"actor\",\"forward\")]"))
+  for (a,b) in [("coefficient_assembly_suite_b.mbtx","coefficient_assembly_suite_b.mbtx"),("routes.mbtx","coefficient_routes_a.mbtx")] {
+    guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+"/"+a,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/"+b])==0else{fail("stage")}
+  }
+}

@@ -1,0 +1,236 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+
+///|
+let diagnostic = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+
+///|
+fn obj(j : Json) -> Map[String, Json] raise {
+  guard j is Object(o) else { fail("object required") }
+  o
+}
+
+///|
+fn get(j : Json, key : String) -> Json raise {
+  guard obj(j).get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (reader, redirect) = @process.read_from_process()
+  defer reader.close()
+  @async.with_task_group() <| group => {
+    let child = group.spawn(() => {
+      @process.run("sha256sum", [path], stdout=redirect)
+    })
+    let bytes = FixedArray::make(4096, b'\x00')
+    let n = reader.read(bytes)
+    guard n >= 64 && n < 4096 && child.wait() == 0 else { fail("sha failed") }
+    @utf8.decode(Bytes::from_array(bytes[:64]))
+  }
+}
+
+///|
+async fn run(name : String, script : String, args : Array[String]) -> Int32 {
+  println("Starting " + name)
+  let code = @process.run(
+    "/home/wlc004s/moonrobo/toolchain/bin/moon",
+    ["run", "--target", "native", script, "--", ..args],
+    stdout=@process.redirect_to_file(
+      base + "/full-ln-" + name + ".stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      base + "/full-ln-" + name + ".stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  @fs.write_file(
+    base + "/full-ln-" + name + ".receipt.json",
+    Json({ "exit_code": Json(code), "script": Json(script), "args": Json(args) }).stringify(
+      indent=2,
+    ),
+    create_mode=CreateNew,
+  )
+  println("Finished " + name + ": " + code.to_string())
+  code
+}
+
+///|
+async fn required(name : String, script : String, args : Array[String]) -> Unit {
+  guard run(name, script, args) == 0 else {
+    fail(name + " failed; thresholds unchanged")
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["prepare", "gates", "pair"].contains(mode) else {
+    fail("prepare|gates|pair")
+  }
+  let pair = "/home/wlc004s/moonrobo/runs/native-full-ln-vs-smc512-20261026-a"
+  if mode == "prepare" {
+    let parent = "/home/wlc004s/moonrobo/runs/native-hotspot-vs-smc512-20261026-b/spec.json"
+    guard sha(parent) ==
+      "5197095bd124a4e212cd4b5c8ed07a14323c9d7d1f56115a47967489105e757f" else {
+      fail("parent identity")
+    }
+    let spec = @json.parse(@fs.read_file(parent).text())
+    let a = get(spec, "a")
+    let config = get(a, "expected_config")
+    obj(config)["layer_norm_mode"] = "native"
+    obj(config)["world_linear_mode"] = "native"
+    obj(a)["label"] = "native-layernorm-linear-full-retest"
+    obj(a)["entrypoint"] = Json(
+      "/workspace/moonrobo/private/shared-compute-20261026-a/trainer-full-ln-a",
+    )
+    guard get(a, "argv") is Array(argv) else { fail("argv") }
+    let at = argv.search("--tensor-library").unwrap()
+    argv[at + 1] = Json(
+      "/workspace/moonrobo/private/shared-compute-20261026-a/libmoonrobo_mlp_b.so",
+    )
+    obj(spec)["name"] = "native-layernorm-linear-vs-smc-4096-eight512"
+    obj(spec)["batch_layout"] = {
+      "logical_actor_batch": 4096,
+      "native_actor_physical_batch": 512,
+      "smc_actor_physical_batch": 512,
+      "physical_chunking_matches": true,
+    }
+    obj(spec)["full_ln_retest"] = {
+      "parent": Json(parent),
+      "only_selected_execution_changes": [
+        "native LayerNorm", "native world Linear",
+      ],
+      "cross_language_equivalence": "see fresh gates; diagnostic throughput does not approve numeric replacement",
+      "defaults_changed": false,
+    }
+    guard get(spec, "pins") is Array(pins) else { fail("pins") }
+    for
+      path in [
+        parent,
+        base + "/trainer-full-ln-a",
+        base + "/libmoonrobo_mlp_b.so",
+        base + "/full_ln_fixture_a.mbt",
+        base + "/build_full_ln_a.mbtx",
+        base + "/full_ln_campaign.mbtx",
+      ] {
+      pins.push({
+        "path": Json(path),
+        "sha256": Json(sha(path)),
+        "role": "full-ln-retest",
+      })
+    }
+    @fs.write_file(
+      base + "/full-ln-pair-spec-a.json",
+      spec.stringify(indent=2),
+      create_mode=CreateNew,
+    )
+    required("prepare-pair", diagnostic + "/run_smc_microbatch_pairs.mbtx", [
+      "--prepare",
+      base + "/full-ln-pair-spec-a.json",
+      pair,
+    ])
+    return
+  }
+  if mode == "gates" {
+    let results : Array[Json] = []
+    for phase in ["world", "actor"] {
+      for implementation in ["native", "smc-eager", "smc"] {
+        let label = "full-ln-" +
+          implementation +
+          "-" +
+          phase +
+          (if implementation == "native" { "-gate-a" } else { "-gate-c" })
+        let reused = phase == "world" && implementation == "native"
+        let code = if reused {
+          0
+        } else {
+          run(label, base + "/run_full_ln_shared_a.mbtx", [
+            phase, implementation, "off", "1", label,
+          ])
+        }
+        let root = "/home/wlc004s/moonrobo/runs/hotspot-shared-" + label
+        // A failed strict comparison stays failed. Only separately labelled throughput
+        // diagnostics may follow, and only after all resource/finite gates are checked.
+        let result = @json.parse(@fs.read_file(root + "/result.json").text())
+        let guard_record = @json.parse(
+          @fs.read_file(root + "/training-guard.json").text(),
+        )
+        guard get(guard_record, "reason") == Json("completed") &&
+          get(guard_record, "error") == Json::null() else {
+          fail("resource gate failed")
+        }
+        if code != 0 {
+          guard get(get(result, "numerical_comparison"), "passed") ==
+            Json(false) else {
+            fail("unexpected gate failure")
+          }
+          guard get(result, "cuda_free_bytes") is Number(free, ..) &&
+            free > 17179869184.0 else {
+            fail("CUDA reserve")
+          }
+        }
+        results.push({
+          "label": Json(label),
+          "exit_code": Json(code),
+          "result": result,
+          "guard": guard_record,
+        })
+        required("cache-c-after-" + label, base + "/advise_full_ln_b.mbtx", [
+          "c-after-" + label,
+        ])
+      }
+    }
+    @fs.write_file(
+      base + "/full-ln-gates-a.json",
+      Json({
+        "runs": Json(results),
+        "automatic_promotion": false,
+        "resource_guards_unchanged": true,
+      }).stringify(indent=2),
+      create_mode=CreateNew,
+    )
+    return
+  }
+  guard @fs.exists(base + "/full-ln-gates-a.json") else {
+    fail("complete numerical diagnostics first")
+  }
+  for i in 0..<4 {
+    let index = i.to_string()
+    required("pair-" + index, diagnostic + "/run_smc_microbatch_pairs.mbtx", [
+      "--run", pair, index,
+    ])
+    for mode in ["advise", "advise-caches"] {
+      required(
+        mode + "-" + index,
+        diagnostic + "/advise_hotspot_run_cache.mbtx",
+        [
+          "--" + mode,
+          base + "/full-ln-" + mode + "-" + index + ".json",
+          pair + "/run-" + index,
+        ],
+      )
+    }
+    required(
+      "image-pages-" + index,
+      diagnostic + "/advise_closed_smc_image_pages_f.mbtx",
+      ["--advise", "full-ln-after-" + index + ".json"],
+    )
+  }
+  required("summary", diagnostic + "/summarize_smc_microbatch_pairs.mbtx", [
+    pair,
+    pair + "/summary.json",
+  ])
+}

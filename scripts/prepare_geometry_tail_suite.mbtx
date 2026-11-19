@@ -1,0 +1,11 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let old="output/spark-runtime-20261024/fused-rotation-20261028/"
+  let dir="output/spark-runtime-20261024/geometry-tail-20261028/"
+  let mut s=@fs.read_file(old+"fused_suite_c.mbtx").text()
+  for (a,b) in [("fused_suite_c.mbtx","geometry_tail_suite_a.mbtx"),("invoke_fused_rotation_c.mbtx","invoke_geometry_tail_a.mbtx"),("heading-body-fused-","geometry-tail-"),("fused-rotation-cpu","geometry-tail-cpu"),("\"axis\"","\"cross\""),("\"skew\"","\"tail\"")] {s=rep(s,a,b)}
+  s=rep(s,"(if phase==\"actor\"&&v==\"baseline\"&&kind==\"gate\"{\"-b\"}else{\"-a\"})","\"-a\"")
+  s=rep(s,"assert_eq(field(e,\"fused_axis_rotation\"),Json(active&&(v==\"cross\"||v==\"both\")));assert_eq(field(e,\"fused_skew\"),Json(active&&(v==\"tail\"||v==\"both\")))","assert_eq(field(e,\"fused_axis_rotation\"),Json(true));assert_eq(field(e,\"fused_skew\"),Json(true));assert_eq(field(e,\"fused_cross_forward\"),Json(active&&(v==\"cross\"||v==\"both\")));assert_eq(field(e,\"fused_so3_tail\"),Json(active&&(v==\"tail\"||v==\"both\")))")
+  @fs.write_file(dir+"geometry_tail_suite_a.mbtx",s,create_mode=CreateNew)
+}

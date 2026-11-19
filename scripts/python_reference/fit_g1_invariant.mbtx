@@ -1,0 +1,168 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=stderr.text() + stdout.text())
+  stdout.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: fit_g1_invariant.mbtx REPO LONG_DATA WARM_POLICY OUTPUT",
+  )
+  let root = args[1]
+  let source = args[2]
+  let output = args[4]
+  let python = root + "/target/learning-venv/bin/python"
+  @fs.mkdir(output, recursive=true)
+  @fs.mkdir(output + "/collection", recursive=true)
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for name in ["policy.py", "dynamics.py", "cpu_physics.py", "model_probe.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  ignore(
+    run("/bin/cp", [
+      source + "/collection/dataset.json",
+      output + "/collection/dataset.json",
+    ]),
+  )
+  let config = read(root + "/examples/learning/g1-policy-long-fit.json")
+  guard config is Object(fields) else { fail("expected policy config") }
+  fields.set("test_seeds", [750, 751, 752])
+  fields.set("actor_critic_bootstrap", true)
+  fields.set(
+    "study", "Only world-model horizontal encoding changes versus the long study; same input batches, normalization, model fit budget, initial actors, policy horizon and thresholds.",
+  )
+  @fs.write_file(
+    output + "/policy-config.json",
+    config.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let dynamics_config = root +
+    "/examples/learning/g1-dynamics-invariant-fit.json"
+  @fs.write_file(
+    output + "/dynamics-config.json",
+    @fs.read_file(dynamics_config).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/fit.log",
+    run(python, [
+      root + "/providers/motion_learning/dynamics.py",
+      "--train",
+      source + "/train-batch.json",
+      "--validation",
+      source + "/validation-batch.json",
+      "--test",
+      source + "/test-batch.json",
+      "--config",
+      output + "/dynamics-config.json",
+      "--output",
+      output + "/fit",
+    ]),
+    create_mode=CreateOrTruncate,
+  )
+  for
+    (name, probe_config) in [
+      ("tail", "g1-tail-model-probe.json"),
+      ("translation", "g1-translation-model-probe.json"),
+    ] {
+    @fs.write_file(
+      output + "/" + name + "-probe.log",
+      run("moon", [
+        "run",
+        "--target",
+        "native",
+        root + "/scripts/probe_g1_tail.mbtx",
+        root,
+        source,
+        output,
+        source + "/policy/actor-seed-1.pt",
+        output + "/" + name + "-probe",
+        root + "/examples/learning/" + probe_config,
+      ]),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/policy.log",
+    run(python, [
+      root + "/providers/motion_learning/policy.py",
+      "fit",
+      "--train",
+      source + "/train-batch.json",
+      "--dynamics",
+      output + "/fit/dynamics-seed-0.pt",
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--config",
+      output + "/policy-config.json",
+      "--experiment",
+      root + "/examples/learning/g1-long-experiment.json",
+      "--warm-start-policy",
+      args[3],
+      "--output",
+      output + "/policy",
+    ]),
+    create_mode=CreateOrTruncate,
+  )
+  let policy = read(output + "/policy/report.json")
+  guard field(policy, "runs") is Array(runs) else {
+    fail("missing policy runs")
+  }
+  let candidates : Array[Json] = []
+  for run in runs {
+    assert_eq(field(run, "dynamics_unchanged"), true.to_json())
+    assert_eq(field(run, "reload_matches"), true.to_json())
+    candidates.push({
+      "seed": field(run, "seed"),
+      "selected_update": field(run, "selected_update"),
+      "training_seconds": field(run, "training_seconds"),
+      "candidate": field(run, "candidate"),
+      "qualifies": field(run, "qualifies"),
+    })
+  }
+  let summary : Json = {
+    "format": "moonrobo.g1-invariant-study.v1",
+    "dynamics": read(output + "/fit/report.json"),
+    "tail_probe": read(output + "/tail-probe/summary.json"),
+    "translation_probe": read(output + "/translation-probe/summary.json"),
+    "candidates": candidates.to_json(),
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    output + "/summary.json",
+    summary.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(candidates.to_json().stringify(indent=2))
+}

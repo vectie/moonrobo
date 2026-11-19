@@ -1,0 +1,114 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["prepare", "run"].contains(mode) else {
+    fail("prepare/run")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let runner = "run_actor_reference_vjp_c.mbtx"
+  if mode == "prepare" {
+    let code = @fs.read_file(out + "/run_actor_padding_vjp_a.mbtx")
+      .text()
+      .replace_all(old="run_actor_padding_vjp_a.mbtx", new=runner)
+      .replace_all(old="actor_padding_vjp_a.py", new="actor_reference_vjp_c.py")
+      .replace_all(
+        old="hotspot-shared-actor-adjoints-c/original-adjoints.pt",
+        new="hotspot-shared-actor-frozen-reference-e/original-adjoints.pt",
+      )
+      .replace_all(
+        old="guard n >= 0L && n <= 1073741824L else { fail(\"pin exceeds 1 GiB\") }",
+        new="guard n >= 0L && n <= (if path == \"/home/wlc004s/moonrobo/runs/hotspot-shared-actor-frozen-reference-e/original-adjoints.pt\" { 2147483648L } else { 1073741824L }) else { fail(\"pin exceeds admitted file size\") }",
+      )
+      .replace_all(
+        old="  write_json(root + \"/protocol.json\"",
+        new="  for branch in [\"initial\",\"recurrent\"] {let dir=\"/home/wlc004s/moonrobo/runs/hotspot-mlp-actor-reference-backward-b/\"+branch;for name in @fs.readdir(dir) {if name.has_suffix(\".so\")||name.has_suffix(\".cubin\")||name==\"manifest.json\"||name==\"native.spec\" {let path=dir+\"/\"+name;pins[path]=Json(hash_file(path))}}}\n  write_json(root + \"/protocol.json\"",
+      )
+    let adapter = @fs.read_file(
+        "providers/motion_learning/actor_padding_vjp_probe.py",
+      )
+      .text()
+      .replace_all(
+        old="hotspot-shared-actor-adjoints-c",
+        new="hotspot-shared-actor-frozen-reference-e",
+      )
+      .replace_all(
+        old="hotspot-shared-actor-boundary-smc-b",
+        new="hotspot-shared-actor-frozen-reference-e",
+      )
+      .replace_all(
+        old="paths=dict(baseline=runs/\"hotspot-mlp-actor-step-export-b\",padding=runs/\"hotspot-mlp-actor-backward-padding-g\")",
+        new="paths=dict(padding=runs/\"hotspot-mlp-actor-backward-padding-g\",reference=runs/\"hotspot-mlp-actor-reference-backward-b\")",
+      )
+    for
+      (name, content) in [(runner, code), ("actor_reference_vjp_c.py", adapter)] {
+      @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+      if name == runner {
+        assert_eq(
+          @process.run("moon", ["check", "--target", "native", out + "/" + name]),
+          0,
+        )
+      }
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/reference-vjp-c"
+  @fs.mkdir(folder)
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      runner +
+      " -- actor smc off 1 actor-reference-vjp-c bf16-full",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "progress.json", "completion.json", "training-guard.json", "training-docker-final.json",
+      "training.stdout.log", "training.stderr.log", "protocol.json", "compilation-audit.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-reference-vjp-c/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(code, 0)
+}

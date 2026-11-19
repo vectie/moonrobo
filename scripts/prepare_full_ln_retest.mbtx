@@ -1,0 +1,123 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn run(program : String, args : Array[String]) -> Unit {
+  guard @process.run(program, args) == 0 else { fail(program + " failed") }
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let root = repo +
+    "/output/spark-runtime-20261024/layernorm-full-retest-20261026"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let socket = "/tmp/moonrobo-operator-179.sock"
+  let host = "wlc004s@192.168.2.179"
+  guard !@fs.exists(root) else { fail("fresh campaign required") }
+  @fs.mkdir(root)
+  let fixture = @fs.read_file(
+      repo + "/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt",
+    )
+    .text()
+    .replace_all(
+      old="      adam_checked_norm: true,",
+      new="      adam_checked_norm: true,\n      layer_norm_mode: @gpu.Native,\n      world_linear_mode: @gpu.NativeLinear,",
+    )
+    .replace_all(
+      old="learner.restore_metadata(fixture.metadata)",
+      new="// Explicit benchmark-only execution-mode conversion of the immutable fixture.\n    // Weights, optimizer moments and normalizers remain identical; resume code is unchanged.\n    learner.restore_metadata({ ..fixture.metadata, world_layer_norm_mode: Some(@gpu.Native), world_linear_mode: Some(@gpu.NativeLinear) })",
+    )
+  let build = @fs.read_file(
+      repo +
+      "/output/spark-runtime-20261024/layernorm-mlp-20261026/build_mlp_comparison_c.mbtx",
+    )
+    .text()
+    .replace_all(old="moonrobo-mlp-c", new="moonrobo-full-ln-a")
+    .replace_all(old="mlp-gate-c", new="full-ln-gate-a")
+    .replace_all(old="mlp-tensor-gate-c", new="full-ln-tensor-a")
+    .replace_all(old="mlp-runtime-gate-c", new="full-ln-runtime-a")
+    .replace_all(
+      old="    ])\n    run(mode + \"-copy\",",
+      new="    ], workdir=\"/workspace/moonrobo-full-ln-a\")\n    run(mode + \"-copy\",",
+    )
+    .replace_all(
+      old="/moonrobo/_build/native/release/build/",
+      new="/moonrobo-full-ln-a/_build/native/release/build/",
+    )
+    .replace_all(
+      old="base + \"/trainer\",",
+      new="base + \"/trainer-full-ln-a\",",
+    )
+  let runner = @fs.read_file(
+      repo +
+      "/output/spark-runtime-20261024/shared-compute-20261026/run_shared_compute_v17.mbtx",
+    )
+    .text()
+    .replace_all(old="numeric-gate-v3", new="full-ln-gate-a")
+    .replace_all(
+      old="libmoonrobo_learning_tensor.so",
+      new="libmoonrobo_mlp_b.so",
+    )
+    .replace_all(
+      old="run_shared_compute_v17.mbtx",
+      new="run_full_ln_shared_a.mbtx",
+    )
+    .replace_all(
+      old="hotspot-shared-trained-native-",
+      new="hotspot-shared-full-ln-native-",
+    )
+    .replace_all(
+      old="shared_fixture_v3_wbtest.mbt",
+      new="full_ln_fixture_a.mbt",
+    )
+    .replace_all(old="build_shared_probe_v3.mbtx", new="build_full_ln_a.mbtx")
+  for
+    (name, content) in [
+      ("full_ln_fixture_a.mbt", fixture),
+      ("build_full_ln_a.mbtx", build),
+      ("run_full_ln_shared_a.mbtx", runner),
+    ] {
+    @fs.write_file(root + "/" + name, content, create_mode=CreateNew)
+    run("scp", [
+      "-o",
+      "ControlPath=" + socket,
+      root + "/" + name,
+      host + ":" + base + "/" + name,
+    ])
+  }
+  run("ssh", [
+    "-S",
+    socket,
+    host,
+    "cp -a --reflink=auto " +
+    base +
+    "/workspace/moonrobo-mlp-c " +
+    base +
+    "/workspace/moonrobo-full-ln-a",
+  ])
+  run("scp", [
+    "-o",
+    "ControlPath=" + socket,
+    root + "/full_ln_fixture_a.mbt",
+    host +
+    ":" +
+    base +
+    "/workspace/moonrobo-full-ln-a/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt",
+  ])
+  for mode in ["gate-build-full-ln-a", "trainer-full-ln-a"] {
+    run("ssh", [
+      "-S",
+      socket,
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/build_full_ln_a.mbtx -- " +
+      mode,
+    ])
+  }
+}

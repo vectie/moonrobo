@@ -1,0 +1,101 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() == 6 || args.length() == 7,
+    msg="usage: probe_g1_tail.mbtx REPO PREVIOUS_MODEL_RUN LONG_MODEL_RUN ACTOR_CHECKPOINT OUTPUT [CONFIG]",
+  )
+  let root = args[1]
+  let output = args[5]
+  @fs.mkdir(output, recursive=true)
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for name in ["model_probe.py", "policy.py", "dynamics.py", "cpu_physics.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let config = if args.length() == 7 {
+    args[6]
+  } else {
+    root + "/examples/learning/g1-tail-model-probe.json"
+  }
+  @fs.write_file(
+    output + "/config.json",
+    @fs.read_file(config).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let report_path = output + "/report.json"
+  let (code, stdout, stderr) = @process.collect_output(
+    root + "/target/learning-venv/bin/python",
+    [
+      root + "/providers/motion_learning/model_probe.py",
+      "--initial",
+      args[2] + "/fit/dynamics-seed-0.pt",
+      "--corrected",
+      args[3] + "/fit/dynamics-seed-0.pt",
+      "--actor",
+      args[4],
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--config",
+      config,
+      "--experiment",
+      root + "/examples/learning/g1-long-experiment.json",
+      "--output",
+      report_path,
+    ],
+  )
+  @fs.write_file(
+    output + "/probe.log",
+    stdout.text() + stderr.text(),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(code, 0, msg=stderr.text())
+  let report = @json.parse(@fs.read_file(report_path).text())
+  guard field(report, "maximum_restore_error") is Number(error, ..) else {
+    fail("missing replay error")
+  }
+  assert_true(error <= 1.0e-8)
+  guard field(report, "records") is Array(records) && !records.is_empty() else {
+    fail("empty probe")
+  }
+  guard field(report, "omitted") is Array(omitted) else {
+    fail("missing coverage accounting")
+  }
+  let summary : Json = {
+    "format": "moonrobo.g1-tail-probe-summary.v1",
+    "config": field(report, "config"),
+    "actor_sha256": field(report, "actor_sha256"),
+    "checkpoints": field(report, "checkpoints"),
+    "maximum_restore_error": field(report, "maximum_restore_error"),
+    "records": records.length().to_json(),
+    "omitted_windows": omitted.length().to_json(),
+    "summaries": field(report, "summaries"),
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    output + "/summary.json",
+    summary.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(summary.stringify(indent=2))
+}

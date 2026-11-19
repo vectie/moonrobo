@@ -1,0 +1,47 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(o) && o.get(k) is Some(v) else { fail(k) }
+  v
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let read = p => @json.parse(@fs.read_file(p).text())
+  let old = read(
+    "output/spark-runtime-20261024/world-backward-boundaries-20261029-a/world-reference-native-gate-f/final.json",
+  )
+  let current = read(out + "/training-native-world1-o/final.json")
+  let hashes : Map[String, Json] = Map([])
+  guard field(old, "records") is Array(records) else { fail("records") }
+  for row in records {
+    guard field(row, "name") is String(name) else { fail("name") }
+    hashes[name] = field(field(row, "blob"), "sha256")
+  }
+  guard field(current, "records") is Array(records) else { fail("records") }
+  for row in records {
+    guard field(row, "name") is String(name) else { fail("name") }
+    if name.has_prefix("world-") {
+      let equal = hashes[name] == field(field(row, "blob"), "sha256")
+      println("\{name} equal_hash=\{equal}")
+    }
+  }
+  let comparison = read(
+    out + "/training-smc-gate-n/first-world-comparison.json",
+  )
+  guard field(comparison, "tensors") is Array(rows) else { fail("rows") }
+  for row in rows {
+    guard field(row, "name") is String(name) else { fail("name") }
+    if name.has_prefix("world-") && name.has_suffix("gradient") {
+      let value = field(row, "max_abs").stringify()
+      println("SMC vs old \{name}: \{value}")
+    }
+  }
+}

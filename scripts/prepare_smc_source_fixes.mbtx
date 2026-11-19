@@ -1,0 +1,50 @@
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+async fn run(cmd : String, args : Array[String]) -> Unit {
+  guard @process.run(cmd, args) == 0 else { fail(cmd + " failed") }
+}
+fn replace(s : String, a : String, b : String) -> String raise {
+  guard s.contains(a) else { fail("missing: " + a) }
+  s.replace_all(old=a, new=b)
+}
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let prev = repo + "/output/spark-runtime-20261024/top3-frequency-20261026"
+  let out = repo + "/output/spark-runtime-20261024/smc-source-fixes-20261027"
+  @fs.mkdir(out, recursive=true)
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-operator-179.sock"
+  let mut fixture = @fs.read_file(prev + "/top3_fixture_b.mbt").text()
+  fixture = replace(fixture, "      reuse_geometry: true,", "      policy_linear_mode: if @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") == Some(\"aligned\") || @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") == Some(\"linear\") { @gpu.NativeLinear } else { @gpu.MatmulBias },\n      critic_linear_mode: if @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") == Some(\"aligned\") || @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") == Some(\"linear\") { @gpu.NativeLinear } else { @gpu.MatmulBias },\n      rotation_error_mode: if @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") == Some(\"aligned\") || @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") == Some(\"rotation\") { @geometry.TraceAcos } else { @geometry.QuaternionLog },\n      reuse_geometry: true,")
+  fixture = replace(fixture, "== Some(\"world-batched\"),", "== Some(\"world-batched\") || @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") == Some(\"aligned\"),")
+  fixture = replace(fixture, "== Some(\"sparse-axis\"),", "== Some(\"sparse-axis\") || @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") == Some(\"aligned\"),")
+  fixture = replace(fixture, "world_linear_mode: Some(@gpu.NativeLinear) }", "world_linear_mode: Some(@gpu.NativeLinear), policy_linear_mode: Some(learner.optimizations.policy_linear_mode), critic_linear_mode: Some(learner.optimizations.critic_linear_mode), rotation_error_mode: Some(learner.optimizations.rotation_error_mode) }")
+  @fs.write_file(out + "/smc_fix_fixture_a.mbt", fixture, create_mode=CreateNew)
+  let mut builder = @fs.read_file(prev + "/build_top3_b.mbtx").text()
+  for (a,b) in [("top3-b","smc-fix-a"),("top3-gate-b","smc-fix-gate-a"),("top3-tensor-b","smc-fix-tensor-a"),("top3-runtime-b","smc-fix-runtime-a"),("top3-tests-b","smc-fix-tests-a"),("top3-geometry-cpu-b","smc-fix-rotation-cpu-a"),("top3-config-cpu-b","smc-fix-config-cpu-a"),("geometry.blackbox_test.exe","geometry.whitebox_test.exe"),("geometry_test.mbt:0-1","rotation_error_wbtest.mbt:0-1")] {
+    builder = replace(builder,a,b)
+  }
+  @fs.write_file(out + "/build_smc_fix_a.mbtx",builder,create_mode=CreateNew)
+  let mut driver = @fs.read_file(prev + "/run_top3_shared_b.mbtx").text()
+  for (a,b) in [("top3-gate-b","smc-fix-gate-a"),("run_top3_shared_b.mbtx","run_smc_fix_a.mbtx"),("top3_fixture_b.mbt","smc_fix_fixture_a.mbt"),("build_top3_b.mbtx","build_smc_fix_a.mbtx"),("\"norm-snapshot\", \"sparse-axis\"","\"norm-snapshot\", \"sparse-axis\", \"aligned\", \"rotation\", \"linear\"")] {
+    driver = replace(driver,a,b)
+  }
+  driver = replace(driver, "hotspot-shared-full-ln-native-\" + phase + \"-gate-a", "hotspot-shared-fix-aligned-\" + phase + \"-gate-a")
+  @fs.write_file(out + "/run_smc_fix_a.mbtx",driver,create_mode=CreateNew)
+  for file in ["smc_fix_fixture_a.mbt","build_smc_fix_a.mbtx","run_smc_fix_a.mbtx"] {
+    run("scp",["-o","ControlPath="+socket,out+"/"+file,host+":"+base+"/"+file])
+  }
+  run("ssh",["-S",socket,host,"test ! -e "+base+"/workspace/moonrobo-smc-fix-a"])
+  run("ssh",["-S",socket,host,"cp -a --reflink=auto "+base+"/workspace/moonrobo-top3-b "+base+"/workspace/moonrobo-smc-fix-a"])
+  for path in ["execution_optimizations.mbt","learning.mbt","networks.mbt","checkpoint.mbt","audit.mbt","audit_wbtest.mbt","cmd/optimizations.mbt","cmd/optimizations_wbtest.mbt","geometry/context.mbt","geometry/body_orientation.mbt","geometry/rotations.mbt","geometry/rotation_error_wbtest.mbt","geometry/moon.pkg","inference/actor.mbt","inference/actor_wbtest.mbt"] {
+    run("scp",["-o","ControlPath="+socket,repo+"/src/learning_aligned_gpu/"+path,host+":"+base+"/workspace/moonrobo-smc-fix-a/src/learning_aligned_gpu/"+path])
+  }
+  run("ssh",["-S",socket,host,"cp "+base+"/smc_fix_fixture_a.mbt "+base+"/workspace/moonrobo-smc-fix-a/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"])
+  for mode in ["gate-build-smc-fix-a","smc-fix-tests-a"] {
+    run("ssh",["-S",socket,host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/build_smc_fix_a.mbtx -- "+mode])
+  }
+}

@@ -1,0 +1,15 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/json" }
+async fn main {
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  guard @json.parse(@fs.read_file(base+"/algebra-numeric-actor-return.json").text()) is {"passed":True,..} else {fail("return full-update numerical gate failed; no promotion")}
+  guard @process.run("/home/wlc004s/moonrobo/toolchain/bin/moon",["run","--target","native",base+"/advise_algebra_b.mbtx","--","algebra-before-return-reverse-b"])==0 else {fail("cache guard")}
+  for (label,variant) in [("algebra-actor-return-b","return"),("algebra-actor-baseline-b","baseline")] {
+    guard @process.run("/home/wlc004s/moonrobo/toolchain/bin/moon",["run","--target","native",base+"/invoke_algebra_b.mbtx","--","actor","native","off","13",label,variant])==0 else {fail(label)}
+    guard @json.parse(@fs.read_file(base+"/"+label+".exit.json").text()) is {"exit_code":Number(0,..),..} else {fail("native exit")}
+    let root="/home/wlc004s/moonrobo/runs/hotspot-shared-"+label
+    guard @json.parse(@fs.read_file(root+"/result.json").text()) is {"rows":Array(rows),..} && rows.length()==13 else {fail("incomplete")}
+    guard @json.parse(@fs.read_file(root+"/training-guard.json").text()) is {"reason":"completed",..} else {fail("memory guard")}
+    guard @json.parse(@fs.read_file(root+"/training-docker-final.json").text()) is [{"State":{"OOMKilled":False,"Running":False,..},..}] else {fail("container state")}
+  }
+  guard @process.run("/home/wlc004s/moonrobo/toolchain/bin/moon",["run","--target","native",base+"/advise_algebra_b.mbtx","--","algebra-closed-files-final-b"])==0 else {fail("final cache guard")}
+}

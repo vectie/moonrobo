@@ -1,0 +1,117 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    6,
+    msg="usage: fit_g1_learned_balance.mbtx REPO INTERVENTION DISTURBANCE TEMPORAL OUTPUT",
+  )
+  let root = args[1]
+  let output = args[5]
+  assert_false(
+    @fs.exists(output),
+    msg="choose a fresh learned-balance study directory",
+  )
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "learned_balance.py", "learned_balance_study.py", "balance_features.py", "balance_feature_study.py",
+      "balance_intervention.py", "temporal_actor.py", "temporal_training.py", "policy.py",
+      "dynamics.py", "cpu_physics.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/provider-sources/teacher_feedback.py",
+    @fs.read_file(args[4] + "/provider-sources/teacher_feedback.py").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  for name in ["collection.json", "experiment.json", "teacher.json"] {
+    @fs.write_file(
+      output + "/" + name,
+      @fs.read_file(args[4] + "/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let config = @json.parse(
+    @fs.read_file(root + "/examples/learning/g1-learned-balance.json").text(),
+  )
+  @fs.write_file(
+    output + "/config.json",
+    config.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-learned-balance-charter.v1",
+        "config": config,
+        "source_intervention": Json(args[2]),
+        "incoming_policies": Json(args[3] + "/disturbed/policy"),
+        "teacher_study": Json(args[4]),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(
+    @process.run(
+      root + "/target/learning-venv/bin/python",
+      [
+        output + "/provider-sources/learned_balance_study.py",
+        "--config",
+        output + "/config.json",
+        "--collection",
+        output + "/collection.json",
+        "--experiment",
+        output + "/experiment.json",
+        "--teacher",
+        output + "/teacher.json",
+        "--intervention",
+        args[2],
+        "--policies",
+        args[3] + "/disturbed/policy",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--output",
+        output,
+      ],
+      stdout=@process.redirect_to_file(
+        output + "/train.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  guard @json.parse(@fs.read_file(output + "/report.json").text())
+    is {
+      "format": "moonrobo.g1-learned-balance-study.v1",
+      "evaluation": Array(rows),
+      "release_qualified": false,
+      "physical_execution_allowed": false,
+      ..
+    } else {
+    fail("missing learned-balance report")
+  }
+  assert_eq(rows.length(), 9)
+  println(
+    "Fitted two shared ankle heads and completed nine paired physical evaluation cells.",
+  )
+}

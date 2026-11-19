@@ -1,0 +1,97 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/compiled-vjp-detail-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  guard @env.args() is [_, op, label] &&
+    ["prepare", "run"].contains(op) &&
+    label.all(c => c is ('a'..<='z' | '0'..<='9' | '-')) else {
+    fail("prepare/run label")
+  }
+  if op == "prepare" {
+    let insertion =
+      #|  let seed_cache="/home/wlc004s/moonrobo/runs/hotspot-mlp-aoti-final2-smc-bf16-gate/inductor-cache/cache/f92a497d48fc1e801d19741fe9400d6fec3acb29f7fe6611804a20fa1dda1c24"
+      #|  guard field(read_json("/home/wlc004s/moonrobo/runs/hotspot-mlp-aoti-final2-smc-bf16-gate/completion.json"),"passed")==Json(true) else {fail("seed incomplete")}
+      #|  let payload=read_json(seed_cache)
+      #|  guard payload is Object(p) && p.get("cache") is Some(Object(c)) else {fail("decision cache schema")}
+      #|  let key="((torch.Size([2048, 2048]), (2048, 1), torch.bfloat16), (torch.Size([2048, 133]), (133, 1), torch.bfloat16), 'exclude_pad:True', 'exclude_pad:True', <OpOverloadPacket(op='aten.mm')>, None, None)"
+      #|  guard c.get(key)==Some(Json(true)) else {fail("original selected padding")}
+      #|  let pad = !label.contains("nopad")
+      #|  c[key]=Json(pad)
+      #|  @fs.mkdir(root+"/inductor-cache/cache")
+      #|  write_json(root+"/inductor-cache/cache/f92a497d48fc1e801d19741fe9400d6fec3acb29f7fe6611804a20fa1dda1c24",payload)
+      #|  write_json(root+"/padding-control.json",{"source":Json(seed_cache),"source_sha256":Json(hash_file(seed_cache)),"changed_key":Json(key),"pad":Json(pad),"only_changed_decision":true,"diagnostic_only":true})
+      #|  let passed=guarded(side,root,false)
+    let runner = @fs.read_file(out + "/run_compiled_detail_b.mbtx")
+      .text()
+      .replace_all(
+        old="run_compiled_detail_b.mbtx",
+        new="run_compiled_causal_a.mbtx",
+      )
+      .replace_all(old="let passed=guarded(side,root,false)", new=insertion)
+    assert_true(runner.contains("padding-control.json"))
+    @fs.write_file(
+      out + "/run_compiled_causal_a.mbtx",
+      runner,
+      create_mode=CreateNew,
+    )
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/run_compiled_causal_a.mbtx",
+        host + ":" + base + "/run_compiled_causal_a.mbtx",
+      ]),
+      0,
+    )
+    return
+  }
+  let folder = out + "/" + label
+  @fs.mkdir(folder)
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/run_compiled_causal_a.mbtx -- smc bf16 0 " +
+      label,
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    file in [
+      "result.json", "protocol.json", "completion.json", "training-guard.json", "training-docker-final.json",
+      "training.stdout.log", "training.stderr.log", "autotune-seed.json", "padding-control.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host + ":/home/wlc004s/moonrobo/runs/hotspot-mlp-" + label + "/" + file,
+        folder + "/" + file,
+      ]),
+    )
+  }
+  println(label + " exit=" + code.to_string())
+  assert_eq(code, 0)
+}

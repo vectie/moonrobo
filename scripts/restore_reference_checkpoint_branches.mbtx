@@ -1,0 +1,42 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+/// Restore only the 29 owned launchers after an unintended cross-scope suffix
+/// rewrite. No original source/archive or other group's package is modified.
+async fn main {
+  guard @json.parse(
+      @fs.read_file("scripts/python_reference/reference-aligned-sources.json").text(),
+    )
+    is Array(entries) else {
+    fail("source inventory")
+  }
+  let changed : Array[String] = []
+  for entry in entries {
+    guard entry is { "script": String(name), .. } else { fail("source entry") }
+    guard entry
+      is { "sha256": String(expected), "legacy_entry": String(legacy), .. } else {
+      fail("archive identity")
+    }
+    let mut digest = ""
+    for byte in @crypto.sha256(@fs.read_file(legacy).binary()) {
+      digest += byte.to_hex()
+    }
+    assert_eq(digest, expected, msg="original archive changed: " + name)
+    let path = "scripts/" + name
+    let original = @fs.read_file(path).text()
+    let repaired = original.replace_all(old=".moon.json", new=".pt")
+    if repaired != original {
+      @fs.write_file(path, repaired, create_mode=CreateOrTruncate)
+      changed.push(name)
+    }
+  }
+  println(
+    "Restored known historical Torch branches in \{changed.length()} owned launchers; native .json outputs unchanged",
+  )
+}

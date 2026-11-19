@@ -1,0 +1,186 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+
+///|
+let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+
+///|
+async fn send(path : String, name : String) -> Unit {
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      path,
+      "wlc004s@192.168.2.179:" + base + "/" + name,
+    ]),
+    0,
+  )
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, .. args] else { fail("mode") }
+  if mode == "rebuild" {
+    let parent = @fs.read_file(dir + "/build_compiled_world_a.mbtx").text()
+    let code = parent[:parent.find("async fn main {").unwrap()].to_owned() +
+      (
+        #|async fn main {
+        #|  require_idle()
+        #|  container("aoti-world-build-b","/toolchain/bin/moon",["test","--build-only","--release","--target","native","-j","2","--frozen","src/learning_aligned_gpu/cmd"],workdir="/workspace/moonrobo-compiled-world-a")
+        #|  run("aoti-world-binary-b","cp",[base+"/workspace/moonrobo-compiled-world-a/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/cmd/cmd.whitebox_test.exe",base+"/compiled-world-gate-a"])
+        #|}
+      )
+    @fs.write_file(
+      dir + "/build_compiled_world_b.mbtx",
+      code,
+      create_mode=CreateNew,
+    )
+    send(dir + "/build_compiled_world_b.mbtx", "build_compiled_world_b.mbtx")
+    send(
+      "src/learning_aligned_gpu/cmd/compiled_mlp_wbtest.mbt", "workspace/moonrobo-compiled-world-a/src/learning_aligned_gpu/cmd/compiled_mlp_wbtest.mbt",
+    )
+    assert_eq(
+      @process.run(
+        "ssh",
+        [
+          "-S",
+          "/tmp/moonrobo-operator-179.sock",
+          "wlc004s@192.168.2.179",
+          "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+          base +
+          "/build_compiled_world_b.mbtx",
+        ],
+        stdout=@process.redirect_to_file(
+          dir + "/world-build-b.stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          dir + "/world-build-b.stderr.log",
+          create_mode=CreateNew,
+        ),
+      ),
+      0,
+    )
+    return
+  }
+  if mode == "prepare" {
+    let world = @fs.read_file(dir + "/run_compiled_world_a.mbtx")
+      .text()
+      .replace_all(
+        old="run_compiled_world_a.mbtx",
+        new="run_compiled_world_b.mbtx",
+      )
+      .replace_all(
+        old="e[\"SHARED_NATIVE_BASELINE\"] = Json(if amp == \"none\" {\"/workspace/moonrobo/runs/hotspot-shared-pscale-native-fp32-off-a\"} else {\"/workspace/moonrobo/runs/hotspot-shared-bf16-native-world-bf16-full-gate-a\"})",
+        new="e[\"SHARED_NATIVE_BASELINE\"] = Json(\"/workspace/moonrobo/runs/hotspot-shared-aoti-world-native-\"+amp+\"-gate-a\")",
+      )
+      .replace_all(
+        old="  let pins : Map[String, Json] = {}",
+        new=(
+          #|  let pins : Map[String, Json] = Map([])
+          #|  let pack="/home/wlc004s/moonrobo/runs/hotspot-mlp-aoti-export-"+amp+(if amp=="none" {"-c"}else{"-b"})
+          #|  for name in @fs.readdir(pack) {if name.has_suffix(".so") || name.has_suffix(".cubin") || name=="native.spec" {pins[pack+"/"+name]=Json(hash_file(pack+"/"+name))}}
+        ),
+      )
+    assert_true(world.contains("hotspot-shared-aoti-world-native-"))
+    let contract = @fs.read_file(dir + "/run_compiled_mlp_d.mbtx")
+      .text()
+      .replace_all(
+        old="run_compiled_mlp_d.mbtx",
+        new="run_compiled_contracts_a.mbtx",
+      )
+      .replace_all(old="compiled-mlp-gate-a", new="compiled-world-gate-a")
+    for
+      (name, value) in [
+        ("run_compiled_world_b.mbtx", world),
+        ("run_compiled_contracts_a.mbtx", contract),
+      ] {
+      @fs.write_file(dir + "/" + name, value, create_mode=CreateNew)
+      send(dir + "/" + name, name)
+    }
+    return
+  }
+  guard args is [side, amp, reps, label] &&
+    ["native", "smc", "aoti"].contains(side) &&
+    ["bf16", "none"].contains(amp) &&
+    ["1", "13"].contains(reps) &&
+    label.all(c => c is ('a'..<='z' | '0'..<='9' | '-')) else {
+    fail("fixed args")
+  }
+  let (runner, argv, prefix) = if mode == "world" {
+    (
+      "run_compiled_world_c.mbtx",
+      [
+        "world",
+        side,
+        "off",
+        reps,
+        label,
+        if amp == "bf16" {
+          "bf16-chunk"
+        } else {
+          "fp32-chunk"
+        },
+      ],
+      "hotspot-shared-",
+    )
+  } else {
+    guard mode == "contracts" else { fail("mode") }
+    ("run_compiled_contracts_a.mbtx", [side, amp, "1", label], "hotspot-mlp-")
+  }
+  let folder = dir + "/" + label
+  @fs.mkdir(folder)
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179",
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      runner +
+      " -- " +
+      argv.join(" "),
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "protocol.json", "completion.json", "result.json", "final.json", "training-guard.json",
+      "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/runs/" +
+        prefix +
+        label +
+        "/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  println("EXIT \{code}")
+  assert_eq(code, 0)
+}

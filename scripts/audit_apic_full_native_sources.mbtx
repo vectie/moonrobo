@@ -1,0 +1,439 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn digest(bytes : Bytes) -> String {
+  let mut value = ""
+  for byte in @crypto.sha256(bytes) {
+    value += byte.to_hex()
+  }
+  value
+}
+
+///|
+/// Lexical declaration inventory only, never Python parsing/import/execution.
+fn declarations(bytes : Bytes) -> Json raise {
+  let rows : Array[Json] = []
+  let lines = @utf8.decode(bytes).split("\n").collect()
+  for index, line in lines {
+    let text = line.trim()
+    if text.strip_prefix("def ") is Some(tail) {
+      let name = tail.split("(").next().unwrap().trim().to_owned()
+      rows.push({
+        "name": Json(name),
+        "line": Json(index + 1),
+        "indent_bytes": Json(line.length() - line.trim_start().length()),
+      })
+    }
+  }
+  Json(rows)
+}
+
+///|
+struct Source {
+  project : String
+  path : String
+  cached : String
+  sha : String
+  anchors : Array[String]
+}
+
+///|
+/// Passive fixed-source and immutable-evidence-chain verification only.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 || (args.length() == 4 && args[3] == "--verify") else {
+    fail("usage: audit_apic_full_native_sources.mbtx REPO CACHE [--verify]")
+  }
+  let root = args[1]
+  let cache = args[2]
+  let previous_sha = "2dd58233da2de716625b38dcaa4fe190549dda27e8704ed5c1fc621494160fd1"
+  let previous_bytes = @fs.read_file(
+    root + "/docs/APIC_COOKING_DEVICE_SOURCE_EVIDENCE.json",
+  ).binary()
+  guard digest(previous_bytes) == previous_sha else {
+    fail(
+      "previous 32-source cooking/device evidence must remain byte-for-byte frozen",
+    )
+  }
+  guard @json.parse(@utf8.decode(previous_bytes))
+    is { "sources": Array(previous), .. } &&
+    previous.length() == 32 else {
+    fail("fixed prior cooking/device source inventory missing")
+  }
+  let archive_sha = "e87442ab4594d8132b7cf6e38b32aaa6130467b654bee260616e5817041e7045"
+  guard digest(
+      @fs.read_file(cache + "/apic-audit-mujoco_warp-3.15.0.tar.gz").binary(),
+    ) ==
+    archive_sha else {
+    fail("official MuJoCo-Warp source archive bytes changed")
+  }
+  let rows : Array[Json] = []
+  let seen : Map[String, Unit] = {}
+  for row in previous {
+    guard row is Object(fields) &&
+      row
+      is {
+        "source_path": String(path),
+        "cached_relative_path": String(cached),
+        "sha256": String(expected),
+        ..
+      } else {
+      fail("invalid previous source row")
+    }
+    guard !seen.contains(path) else { fail("duplicate previous source path") }
+    seen[path] = ()
+    let bytes = @fs.read_file(cache + "/" + cached).binary()
+    guard digest(bytes) == expected else {
+      fail("fixed source changed: " + path)
+    }
+    let copy : Map[String, Json] = {}
+    for key, value in fields {
+      copy[key] = value
+    }
+    copy["lexical_callables"] = declarations(bytes)
+    rows.push(Json(copy))
+  }
+  let extra : Array[Source] = [
+    {
+      project: "Newton",
+      path: "newton/_src/core/types.py",
+      cached: "moonrobo-pinned-newton-core-types.py",
+      sha: "66e4c36cab0cdd8efc8cc27cd804db344e5ab20cce72e731642b5b84b84e6713",
+      anchors: ["MAXVAL = 1e10", "class Axis("],
+    },
+    {
+      project: "Newton",
+      path: "newton/_src/geometry/utils.py",
+      cached: "moonrobo-pinned-newton-geometry-utils.py",
+      sha: "ba16f5dfaf3b6ace4c7cd73eb9d9b37e1576899f80ac33a29702176069a9efd3",
+      anchors: [
+        "def remesh_convex_hull(", "def _degenerate_hull_point(", "def _degenerate_hull_line(",
+        "def _convex_hull_2d_indices(",
+      ],
+    },
+    {
+      project: "Newton",
+      path: "newton/_src/geometry/sdf_utils.py",
+      cached: "moonrobo-pinned-newton-sdf-utils.py",
+      sha: "127d04518563ef85b715d336033b109a9c6b48ac3b57c59a9a3cd381f640ece3",
+      anchors: [
+        "def _compute_sdf_from_shape_impl(", "def compute_sdf_from_shape(", "def sdf_from_mesh_kernel(",
+        "def sdf_from_primitive_kernel(", "def compute_offset_mesh_analytical(",
+      ],
+    },
+    {
+      project: "Newton",
+      path: "newton/_src/geometry/sdf_mc.py",
+      cached: "moonrobo-pinned-newton-sdf-mc.py",
+      sha: "b40c1cac0d974f347e3ec2483a8298046e88a7c8ddcbfbae36f7e9662ac989e7",
+      anchors: ["def get_mc_tables(", "def mc_calc_face("],
+    },
+    {
+      project: "Newton",
+      path: "newton/_src/geometry/_sdf_cache.py",
+      cached: "moonrobo-pinned-newton-sdf-cache.py",
+      sha: "7336f4b61c259dba9d244999233d1e70edcd07f0caff5b3e295201194f818c9a",
+      anchors: [
+        "def hash_inputs(", "def cache_path(", "def save_sparse_data(", "def try_load_sparse_data(",
+      ],
+    },
+    {
+      project: "Warp",
+      path: "warp/_src/marching_cubes.py",
+      cached: "moonrobo-warp-marching-cubes.py",
+      sha: "a4223c064131b71ec9897a8665f0226da5ad17f51bd67f916d773e3dbedc8d36",
+      anchors: [
+        "def marching_cubes_extract_vertices(", "def marching_cubes_extract_faces(",
+        "def _get_mc_case_to_tri_range_table(",
+      ],
+    },
+  ]
+  for
+    (file, cached, sha, anchors) in [
+      (
+        "sdf_texture.py",
+        "sdf-texture",
+        "e96a947eea0f857943676b1ffa49b05b1df0d17de1b25bd6558fcbd665bee3e8",
+        [
+          "def _build_sparse_sdf(", "def create_sparse_sdf_textures(", "def _pack_sdf_x_pairs(",
+        ],
+      ),
+      (
+        "kernels.py",
+        "geometry-kernels",
+        "ab58040a7ca391ff15816692a4979ea116e3cc2cc29964d8f3ca05c2a7f7a9be",
+        [
+          "def mesh_query_point_sign(", "def sdf_ellipsoid(", "def sdf_cylinder(",
+        ],
+      ),
+      (
+        "terrain_generator.py",
+        "terrain",
+        "e84bb83a1539b10c4a43b98a33c5bfe602dcf0cc12fbe9dedc56f6792f2df872",
+        ["def _heightfield_terrain(", "def create_mesh_terrain("],
+      ),
+      (
+        "edge_concave_filter.py",
+        "edge-concave",
+        "82510a1c2586a4a6811d5bb6dbeb5680bd91f5f6e8cbb790236e38039460d823",
+        ["def filter_fully_concave_edges("],
+      ),
+      (
+        "edge_redundancy.py",
+        "edge-redundancy",
+        "8b3d49757e9c3123d70ba9b80d5e86cf96222bdeed4dfa51b606645fde0230d2",
+        [
+          "def find_redundant_edges(", "def resolve_edge_removals(", "def remove_redundant_edges(",
+        ],
+      ),
+    ] {
+    extra.push({
+      project: "Newton",
+      path: "newton/_src/geometry/" + file,
+      cached: "moonrobo-pinned-newton-" + cached + ".py",
+      sha,
+      anchors,
+    })
+  }
+  for
+    (file, sha, anchors) in [
+      (
+        "mesh.h",
+        "eb743e454c5d1ca1f27cf74ad43871e0812f620ada1cdb6b1b87eedfca706a57",
+        [
+          "mesh_query_point_sign_winding_number(", "mesh_query_point_sign_parity(",
+        ],
+      ),
+      (
+        "volume.h",
+        "03aab674ed5e5724d5371c65d16d99ef61b32683b10fd66a7a9af5630bcf2b9d",
+        ["volume_store_f("],
+      ),
+      (
+        "volume.cpp",
+        "0b8aaf8b46bce08faabaf6bbdf6f2a807a5fa7d488c50215e38c0293f1dae535",
+        ["wp_volume_from_tiles_host(", "wp_volume_create_device("],
+      ),
+      (
+        "volume_builder.cpp",
+        "5c9b5f307ec4b95fa4541607fafe4c9933f8e5816cda3019df4521343667facf",
+        ["allocate_grid_from_tiles_host("],
+      ),
+      (
+        "texture.h",
+        "542c9c7315a5a4a161d4206b887fe8f1a06bd5cc1da9dee304b3f494e9c8a388",
+        ["texture_sample("],
+      ),
+      (
+        "texture.cpp",
+        "e999050b7dd2119b265c7c89e6c4ba21e6df8bc254f64e9639db19b9218fc07d",
+        [
+          "wp_texture_create_host(", "wp_texture_copy_device(", "wp_texture_object_create_device(",
+        ],
+      ),
+    ] {
+    extra.push({
+      project: "Warp",
+      path: "warp/native/" + file,
+      cached: "warp-1.17.0/warp/native/" + file,
+      sha,
+      anchors,
+    })
+  }
+  extra.push({
+    project: "MuJoCo",
+    path: "include/mujoco/mjmodel.h",
+    cached: "moonrobo-apic-mujoco-3.3.7-mjmodel.h",
+    sha: "9462092aa6d958d54d7d20edfb85f2c16585e712fea15ed4c1593c5cb430522a",
+    anchors: ["#define mjMAXVAL", "#define mjMAXCONPAIR"],
+  })
+  for
+    (file, sha, anchors) in [
+      (
+        "libqhull_r.h",
+        "4de1419bdf80976cda49602af3f517ecca139625c94607f162dca2ff819b2ae9",
+        ["qh_new_qhull("],
+      ),
+      (
+        "user_r.h",
+        "3d8b709af53501e4b0616af33874db4b4fad5e866ba0bb38b9fdbfa7b13b84b0",
+        ["#define qh_FILENAMElen"],
+      ),
+    ] {
+    extra.push({
+      project: "Qhull",
+      path: "src/libqhull_r/" + file,
+      cached: "qhull-2020.2/src/libqhull_r/" + file,
+      sha,
+      anchors,
+    })
+  }
+  for
+    (file, sha, anchors) in [
+      (
+        "support.py",
+        "c924593f7be8447c76328bcf7dc5b4ce92b6a54458c4afdbf36806cb8e036d46",
+        ["def mul_m(", "def mul_m_kernel("],
+      ),
+      (
+        "derivative.py",
+        "d2fb5a758e8774ea49546a0d7936534be48cc1f714629239aef71413be670a4a",
+        ["def eff_prec_fold(", "def _zero_sleeping_dofs("],
+      ),
+      (
+        "island.py",
+        "af6c95a63a84151b242a9c9760ec98bc4ba8da1be9fcc52a8487fd40ae860e4e",
+        ["def update_active_dofs(", "def compute_island_mapping("],
+      ),
+      (
+        "forward.py",
+        "f234bfe59134c25726405ccc5078de15d60fe2f3729b1a265d579607ac48a837",
+        ["def forward(", "def step("],
+      ),
+      (
+        "io.py",
+        "2334b394e8f319f0fd2a2957240cdcc77a998513be11767a00f55f26ae07f4b0",
+        ["def put_model(", "def put_data("],
+      ),
+      (
+        "collision_driver.py",
+        "186f59493726610a4bf477301852fc06c306a12101a12161198a78b785affa6d",
+        ["def collision(", "def _nxn_broadphase("],
+      ),
+      (
+        "collision_primitive.py",
+        "0896a97ff122639ffc8c583d5edcb4f64ca3fd27210989e3b736039000327e28",
+        ["def capsule_capsule_wrapper(", "def plane_box_wrapper("],
+      ),
+      (
+        "collision_primitive_core.py",
+        "4638635965216a19e52a910bccb4a92ad955036eb0525acf7b0ab78dc9f93f5b",
+        ["def capsule_capsule(", "def sphere_sphere("],
+      ),
+      (
+        "collision_sdf.py",
+        "3a8dab0c8459dd69dc8d48464db3c4aa693dc0e37148964a380afd205fb65b53",
+        ["def sdf_narrowphase(", "def gradient_descent("],
+      ),
+      (
+        "collision_flex.py",
+        "b42a68595bc385ce49197967f51b5f1a1250b27b5f8bea1801f33bbe9d6a5659",
+        ["def flex_collision(", "def _run_filter_flex_fps("],
+      ),
+    ] {
+    let path = "mujoco_warp/_src/" + file
+    extra.push({
+      project: "MuJoCo-Warp",
+      path,
+      cached: "mujoco_warp-3.15.0/" + path,
+      sha,
+      anchors,
+    })
+  }
+  for source in extra {
+    guard !seen.contains(source.path) else {
+      fail("duplicate full-native source path")
+    }
+    seen[source.path] = ()
+    let bytes = @fs.read_file(cache + "/" + source.cached).binary()
+    guard digest(bytes) == source.sha else {
+      fail("fixed added source changed: " + source.path)
+    }
+    let lines = @utf8.decode(bytes).split("\n").collect()
+    let anchors : Array[Json] = []
+    for symbol in source.anchors {
+      guard lines.find_index(line => line.contains(symbol)) is Some(index) else {
+        fail("fixed source anchor missing: " + source.path + ":" + symbol)
+      }
+      anchors.push({ "symbol": Json(symbol), "line": Json(index + 1) })
+    }
+    let (pin, url) = if source.project == "Newton" {
+      (
+        "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+        "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/" +
+        source.path,
+      )
+    } else if source.project == "Warp" {
+      (
+        "v1.17.0",
+        "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/" + source.path,
+      )
+    } else if source.project == "MuJoCo" {
+      (
+        "3.3.7",
+        "https://raw.githubusercontent.com/google-deepmind/mujoco/3.3.7/" +
+        source.path,
+      )
+    } else if source.project == "Qhull" {
+      (
+        "2020.2",
+        "https://raw.githubusercontent.com/qhull/qhull/2020.2/" + source.path,
+      )
+    } else {
+      (
+        "official PyPI 3.15.0 sdist", "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      )
+    }
+    rows.push({
+      "project": Json(source.project),
+      "pin": Json(pin),
+      "source_path": Json(source.path),
+      "cached_relative_path": Json(source.cached),
+      "source_url": Json(url),
+      "sha256": Json(source.sha),
+      "bytes": Json(bytes.length()),
+      "anchors": Json(anchors),
+      "lexical_callables": declarations(bytes),
+    })
+  }
+  let report : Json = {
+    "format": "moonrobo.apic-full-native-source-evidence.v1",
+    "sources": Json(rows),
+    "previous_32_source_evidence_sha256": Json(previous_sha),
+    "previous_report_modified": false,
+    "mujoco_warp_archive_sha256": Json(archive_sha),
+    "lexical_inventory_is_call_graph": false,
+    "declarations_imply_translation_completion": false,
+    "scope": "Fixed primary-source bytes, lexical callable inventory and immutable prior-evidence chain; implemented source/callable closure is separately mapped in APIC_FULL_NATIVE_TRANSLATION.md",
+    "source_bytes_only": true,
+    "child_processes_started": false,
+    "upstream_code_executed": false,
+    "tests_executed": false,
+    "numerical_algorithms_executed": false,
+    "sdk_initialized": false,
+    "gpu_initialized": false,
+    "model_compiled": false,
+    "kernel_compiled": false,
+    "mathdx_lto_compiled": false,
+    "apic_exported": false,
+    "full_source_translation_attested": false,
+    "runtime_equivalence_verified": false,
+  }
+  let output = root + "/docs/APIC_FULL_NATIVE_SOURCE_EVIDENCE.json"
+  if args.length() == 4 {
+    guard @json.parse(@fs.read_file(output).text()) == report else {
+      fail(
+        "full-native source evidence differs; do not refresh historical evidence",
+      )
+    }
+  } else {
+    @fs.write_file(
+      output,
+      report.stringify(indent=2) + "\n",
+      create_mode=CreateOrTruncate,
+    )
+  }
+  println(
+    "Verified " +
+    rows.length().to_string() +
+    " fixed full-native source identities and lexical declarations; filesystem/text/crypto only",
+  )
+}

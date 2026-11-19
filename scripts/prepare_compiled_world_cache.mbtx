@@ -1,0 +1,62 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let previous = @fs.read_file(dir + "/run_compiled_world_b.mbtx")
+    .text()
+    .replace_all(
+      old="run_compiled_world_b.mbtx",
+      new="run_compiled_world_c.mbtx",
+    )
+  let code = previous.replace_all(
+    old="  let passed = guarded(side, root, false)",
+    new=(
+      #|  // Release only page-cache pages of verified closed numerical exports.
+      #|  // Both sides reload them before warmup; no source data is changed.
+      #|  guard docker(["ps","--quiet"])=="" && checkpoint_command("nvidia-smi",["--query-compute-apps=pid","--format=csv,noheader"])=="" else {fail("idle cache advice")}
+      #|  let advice:Array[Json]=[]
+      #|  for data in ["/home/wlc004s/moonrobo/runs/hotspot-shared-trained-export-b","/home/wlc004s/moonrobo/runs/hotspot-shared-aoti-world-native-bf16-gate-a"] {
+      #|    if !@fs.exists(data+"/completion.json") {continue}
+      #|    guard field(read_json(data+"/completion.json"),"passed")==Json(true) && read_json(data+"/training-docker-final.json") is [{"State":{"OOMKilled":False,"Running":False,"Pid":0,..},..}] else {fail("completed cache owner")}
+      #|    let files:Array[String]=[];let mut bytes=0L
+      #|    for name in @fs.readdir(data) {
+      #|      if !name.has_suffix(".f64"){continue}
+      #|      let path=data+"/"+name
+      #|      guard @fs.realpath(path)==path && @fs.kind(path,follow_symlink=false)==Regular else {fail("regular fixture")}
+      #|      let f=@fs.open(path,mode=ReadOnly);bytes+=f.size();f.close();files.push(path)
+      #|    }
+      #|    guard bytes<2147483648L else {fail("fixture bound")}
+      #|    for path in files {
+      #|      let stamp=checkpoint_command("stat",["--format=%d %i %s %Y %Z %h %u",path]);guard stamp.has_suffix(" 1 1000") else {fail("fixture owner")}
+      #|      ignore(checkpoint_command("sync",["-d",path]));ignore(checkpoint_command("dd",["if="+path,"iflag=nocache,nofollow","count=0","status=none"]))
+      #|      assert_eq(checkpoint_command("stat",["--format=%d %i %s %Y %Z %h %u",path]),stamp)
+      #|    }
+      #|    advice.push({"directory":Json(data),"files":Json(files),"advised_bytes":Json(bytes.to_double())})
+      #|  }
+      #|  write_json(root+"/cache-advice.json",{"guards_unchanged":true,"files_deleted":0,"records":Json(advice)})
+      #|  let passed = guarded(side, root, false)
+    ),
+  )
+  @fs.write_file(
+    dir + "/run_compiled_world_c.mbtx",
+    code,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      dir + "/run_compiled_world_c.mbtx",
+      "wlc004s@192.168.2.179:" + base + "/run_compiled_world_c.mbtx",
+    ]),
+    0,
+  )
+}

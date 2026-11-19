@@ -1,0 +1,18 @@
+{
+  "format": "moonrobo.g1-reference-quality.v1",
+  "scope": "Coverage of nine known training-family full-body reference clips; local engineering target, not unseen-motion or release qualification",
+  "reference_manifest_sha256": "8b310f2a6ab44e8a997aaba92f62a23ec13ceb0fa79ddeb0e0eaf5299bf569b5",
+  "dt_s": 0.02,
+  "reference_ids": ["stand", "stand-medium-friction", "stand-low-friction", "pose-offset", "pose-offset-medium-friction", "pose-offset-low-friction", "joint-sines-high", "joint-sines-medium", "joint-sines-low"],
+  "origins_s": [0, 10, 20],
+  "maximum_per_trial": {
+    "joint_rmse_rad": 0.03,
+    "body_position_rmse_m": 0.05,
+    "root_position_rmse_m": 0.05,
+    "root_orientation_rmse_rad": 0.1
+  },
+  "requirement": "All 27 cells must be present exactly once, complete their reference remainder and pass every per-trial metric. Do not exclude falls or score only surviving trials.",
+  "comparison_status": "Quality target fixed after feasibility baselines and before learned reference-tracking development. A separate pre-training run charter must freeze the shared initialization, complete goal/observation/action/reward semantics, noise, update/collection budgets, selection and cost accounting before any world-model/PPO comparison.",
+  "cost_accounting": "Report shared reference/teacher/parent/initialization development separately from incremental learner collection, world-model/critic/actor updates, evaluation and serialization. If the shared initialization already passes, both incremental cost-to-this-target values are zero; do not infer a learning speedup.",
+  "physical_execution_allowed": false
+}

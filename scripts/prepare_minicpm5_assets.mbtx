@@ -1,0 +1,37 @@
+///|
+// Offline model metadata only. Model weights are acquired on Spark separately.
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/http",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 2 && !@fs.exists(args[1]) else {
+    fail("usage: prepare_minicpm5_assets.mbtx NEW_DIRECTORY")
+  }
+  let revision = "42433e90dad95123ab87729fd7011e7110629556"
+  @fs.mkdir(args[1], recursive=true)
+  for
+    file in [
+      "config.json", "tokenizer.json", "tokenizer_config.json", "chat_template.jinja",
+    ] {
+    let (response, data) = @http.get(
+      "https://huggingface.co/openbmb/MiniCPM5-2B/raw/" + revision + "/" + file,
+    )
+    guard response.code == 200 else {
+      fail("MiniCPM asset download failed: " + file)
+    }
+    @fs.write_file(args[1] + "/" + file, data.binary(), create_mode=CreateNew)
+  }
+  @fs.write_file(
+    args[1] + "/revision.txt",
+    @utf8.encode(revision + "\n"),
+    create_mode=CreateNew,
+  )
+  println("Prepared pinned MiniCPM5 metadata; no model weights downloaded")
+}

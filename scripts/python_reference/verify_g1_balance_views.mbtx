@@ -1,0 +1,102 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn route(exe : String, book : String, path : String) -> Json {
+  let (code, out, err) = @process.collect_output(exe, [
+    "api-route", book, "GET", path,
+  ])
+  assert_eq(code, 0, msg=err.text())
+  @json.parse(out.text())
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: verify_g1_balance_views.mbtx REPO EXPORTED BOOK OUTPUT_JSON",
+  )
+  let exe = args[1] + "/_build/native/debug/build/cmd/main/main.exe"
+  let prefix = "/api/moondata/learning-experiments"
+  let listed = route(exe, args[3], prefix)
+  guard listed
+    is {
+      "initialized": true,
+      "experiments": Array(experiments),
+      "physical_execution_allowed": false,
+      ..
+    } else {
+    fail("missing registered experiments")
+  }
+  let checked : Array[Json] = []
+  for scope in ["ten-second", "thirty-second"] {
+    for mode in ["h10", "full"] {
+      let id = "balance-" + mode + "-" + scope
+      let matched = experiments.filter(e => {
+        field(e, "experiment_id") == Json(id)
+      })
+      assert_eq(matched.length(), 1)
+      assert_eq(field(matched[0], "physical_execution_allowed"), false)
+      for seed in [0, 1, 2] {
+        let result = route(exe, args[3], prefix + "/" + id + "/physics/\{seed}")
+        assert_eq(field(result, "format"), "moonrobo.learning-physics.v1")
+        assert_eq(field(result, "experiment_id"), Json(id))
+        assert_eq(field(result, "seed"), Json(seed))
+        assert_eq(field(result, "physical_execution_allowed"), false)
+        assert_eq(
+          field(result, "original_duration_s"),
+          Json(if scope == "ten-second" { 10 } else { 30 }),
+        )
+        let expected = @json.parse(
+          @fs.read_file(
+            args[2] +
+            "/" +
+            scope +
+            "-" +
+            mode +
+            "/policy/physics-seed-\{seed}.json",
+          ).text(),
+        )
+        assert_eq(field(result, "report"), expected)
+        checked.push({
+          "experiment_id": Json(id),
+          "seed": Json(seed),
+          "duration_s": field(result, "original_duration_s"),
+          "physics_ref": field(result, "data_ref"),
+        })
+      }
+    }
+  }
+  assert_eq(checked.length(), 12)
+  @fs.write_file(
+    args[4],
+    (
+      {
+        "format": "moonrobo.g1-balance-platform-views.v1",
+        "registered_experiment_count": Json(experiments.length()),
+        "checked": Json(checked),
+        "scope": "Existing native api-route entry point; stored summaries and all twelve physics envelopes match exported records. No browser interaction claimed.",
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "Existing API reopened all four experiments and twelve stored physics reports.",
+  )
+}

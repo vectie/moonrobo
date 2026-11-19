@@ -1,0 +1,162 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(result) else {
+    fail("missing " + key)
+  }
+  result
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn str(value : Json) -> String raise {
+  guard value is String(value) else { fail("expected string") }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: export_g1_reference_registry.mbtx REPO STUDY VERIFIED_REPORT OUTPUT",
+  )
+  let root = args[1]
+  let study = args[2]
+  let output = args[4]
+  assert_false(@fs.exists(output))
+  for folder in ["policy", "provider-sources", "collection/reference/clips"] {
+    @fs.mkdir(output + "/" + folder, recursive=true)
+  }
+  let report = @json.parse(@fs.read_file(study + "/report.json").text())
+  let charter = @json.parse(@fs.read_file(study + "/charter.json").text())
+  let references = str(field(charter, "references"))
+  let manifest = @json.parse(
+    @fs.read_file(references + "/manifest.json").text(),
+  )
+  let origins : Array[Json] = []
+  let copy = async fn(source : String, relative : String) -> Unit {
+    assert_eq(
+      @process.run("/bin/cp", ["-c", source, output + "/" + relative]),
+      0,
+    )
+    origins.push({ "relative_path": Json(relative), "source": Json(source) })
+  }
+  for
+    (source, target) in [
+      (study + "/report.json", "policy/reference-study.json"),
+      (args[3], "policy/reference-verification.json"),
+      (study + "/charter.json", "policy/reference-charter.json"),
+      (study + "/quality.json", "collection/reference-quality.json"),
+      (
+        str(field(charter, "feedback_checkpoint")),
+        "collection/reference-feedback.pt",
+      ),
+      (references + "/manifest.json", "collection/reference/manifest.json"),
+      (
+        references + "/source-physics.jsonl.gz",
+        "collection/reference/source-physics.jsonl.gz",
+      ),
+      (study + "/policy/actor-zero-output.pt", "policy/actor-zero-output.pt"),
+    ] {
+    copy(source, target)
+  }
+  for
+    name in [
+      "reference_actor.py", "reference_initialization.py", "full_body_reference.py",
+      "balance_features.py", "cpu_physics.py", "reference_initialization_export.py",
+    ] {
+    copy(study + "/provider-sources/" + name, "provider-sources/" + name)
+  }
+  @fs.write_file(
+    output + "/provider-sources/reference_registry_export.py",
+    @fs.read_file(
+      root + "/providers/motion_learning/reference_registry_export.py",
+    ).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  for clip in array(field(manifest, "clips")) {
+    let file = str(field(clip, "file"))
+    assert_true(file.has_prefix("clips/") && !file.contains(".."))
+    copy(references + "/" + file, "collection/reference/" + file)
+  }
+  for
+    evaluation in array(field(report, "evaluations")) +
+    [field(report, "baseline")] {
+    for record in array(field(evaluation, "records")) {
+      let file = str(field(record, "file"))
+      let parts = file.split("/").to_array()
+      assert_eq(parts.length(), 3)
+      assert_eq(parts[0], "physics")
+      assert_false(file.contains(".."))
+      let folder = output + "/physics/" + parts[1].to_owned()
+      if !@fs.exists(folder) {
+        @fs.mkdir(folder, recursive=true)
+      }
+      copy(study + "/" + file, file)
+    }
+  }
+  for fit in array(field(report, "fits")) {
+    let file = str(field(fit, "checkpoint"))
+    copy(study + "/" + file, file)
+  }
+  @fs.write_file(
+    output + "/export-sources.json",
+    Json(origins).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(
+    @process.run(
+      root + "/target/learning-venv/bin/python",
+      [
+        output + "/provider-sources/reference_registry_export.py",
+        "--study",
+        study,
+        "--references",
+        references,
+        "--verification",
+        args[3],
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--output",
+        output,
+      ],
+      stdout=@process.redirect_to_file(
+        output + "/export.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  guard @json.parse(@fs.read_file(output + "/export.json").text())
+    is {
+      "format": "moonrobo.g1-reference-registry-export.v1",
+      "physical_episodes": 108,
+      "reference_clips": 9,
+      "physical_execution_allowed": False,
+      ..
+    } else {
+    fail("reference registry export did not finish")
+  }
+  println(
+    "Prepared reference registry package with original clips, all recorded physics and compact viewer traces.",
+  )
+}

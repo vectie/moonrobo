@@ -1,0 +1,116 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(m) && m.get(k) is Some(v) else { fail(k) }
+  v
+}
+
+///|
+fn num(j : Json) -> Double raise {
+  match j {
+    Number(v, ..) => v
+    String(s) => @string.parse_double(s)
+    _ => fail("number")
+  }
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/geometry-cost-20261030-a"
+  let labels = @env.args()[1:].to_owned()
+  let reports : Array[Json] = []
+  for label in labels {
+    let j = @json.parse(
+      @fs.read_file(root + "/" + label + "/result.json").text(),
+    )
+    guard field(j, "rows") is Array(rows) else { fail("rows") }
+    let steady = rows.filter(r => field(r, "steady") == Json(true))
+    guard steady.length() == 10 || steady.length() == 40 else {
+      fail("ten steady rows, or four ten-row ABBA blocks required")
+    }
+    let divisor = steady.length().to_double()
+    let cpu : Map[String, Double] = Map([])
+    let stream : Map[String, Double] = Map([])
+    let counts : Map[String, Int32] = Map([])
+    let mut wall = 0.0
+    for row in steady {
+      wall += num(field(row, "wall_ms"))
+      let profile = field(row, "profile")
+      let spans = match profile {
+        Array(spans) => spans
+        Object(_) => {
+          assert_eq(field(profile, "dropped_spans"), Json(0))
+          assert_eq(field(profile, "open_spans"), Json(0))
+          guard field(profile, "spans") is Array(spans) else { fail("spans") }
+          spans
+        }
+        _ => []
+      }
+      for span in spans {
+        guard field(span, "label") is String(name) else { fail("label") }
+        if name == "shared.compute.capture" ||
+          name == "actor.reward.result_view" ||
+          name == "critic.network" {
+          continue
+        }
+        let (host, gpu) = match profile {
+          Array(_) =>
+            (num(field(span, "cpu_ms")), num(field(span, "stream_elapsed_ms")))
+          _ =>
+            (
+              num(field(span, "cpu_submit_us")) / 1000.0,
+              num(field(span, "gpu_elapsed_ms")),
+            )
+        }
+        cpu[name] = cpu.get(name).unwrap_or(0.0) + host
+        stream[name] = stream.get(name).unwrap_or(0.0) + gpu
+        counts[name] = counts.get(name).unwrap_or(0) + 1
+      }
+    }
+    let phases : Array[Json] = []
+    let mut sum = 0.0
+    for name, value in stream {
+      sum += value / divisor
+      phases.push({
+        "phase": Json(name),
+        "count_per_cycle": Json(counts[name] / steady.length()),
+        "cpu_inclusive_ms": Json(cpu[name] / divisor),
+        "stream_elapsed_ms": Json(value / divisor),
+      })
+    }
+    let blocks : Array[Json] = []
+    if steady.length() == 40 {
+      for block in 0..<4 {
+        let selected = steady.filter(r => field(r, "abba_block") == Json(block))
+        assert_eq(selected.length(), 10)
+        let values = selected.map(r => num(field(r, "wall_ms")))
+        let mean = values.fold(init=0.0, (s, v) => s + v) / 10.0
+        blocks.push({
+          "block": Json(block),
+          "candidate": Json(block == 1 || block == 2),
+          "wall_ms": Json(mean),
+          "values_ms": Json(values),
+        })
+      }
+    }
+    let result : Json = {
+      "label": Json(label),
+      "steady_count": Json(steady.length()),
+      "wall_ms": Json(wall / divisor),
+      "summed_disjoint_stream_ms": Json(sum),
+      "unassigned_wall_ms": Json(wall / divisor - sum),
+      "phases": Json(phases),
+      "abba_blocks": Json(blocks),
+    }
+    reports.push(result)
+  }
+  println(Json(reports).stringify(indent=2))
+}

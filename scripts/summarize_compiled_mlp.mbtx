@@ -1,0 +1,55 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+}
+
+///|
+fn median(xs : Array[Double]) -> Double {
+  let sorted = xs.copy()
+  sorted.sort()
+  (sorted[(sorted.length() - 1) / 2] + sorted[sorted.length() / 2]) / 2.0
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let summary : Array[Json] = []
+  for name in @fs.readdir(dir, sort=true) {
+    if !name.has_prefix("aoti-bench-") ||
+      !@fs.exists(dir + "/" + name + "/result.json") {
+      continue
+    }
+    let result = @json.parse(
+      @fs.read_file(dir + "/" + name + "/result.json").text(),
+    )
+    guard result is Object(r) && r.get("rows") is Some(Array(rows)) else {
+      fail("rows")
+    }
+    let samples = rows.filter_map(row => {
+      match row {
+        { "steady": True, "wall_ms": Number(ms, ..), .. } => Some(ms)
+        _ => None
+      }
+    })
+    guard samples.length() == 50 else { fail("steady count") }
+    let record : Json = {
+      "run": Json(name),
+      "median_ms": Json(median(samples)),
+      "samples": samples.length(),
+      "numeric_passed": r.get("passed").unwrap_or(Json(null)),
+    }
+    summary.push(record)
+    println(record.stringify())
+  }
+  @fs.write_file(
+    dir + "/mlp-timings.json",
+    Json(summary).stringify(indent=2),
+    create_mode=if @fs.exists(dir + "/mlp-timings.json") {
+      OpenExisting
+    } else {
+      CreateNew
+    },
+  )
+}

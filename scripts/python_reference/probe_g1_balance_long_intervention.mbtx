@@ -1,0 +1,104 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: probe_g1_balance_long_intervention.mbtx REPO FIT_STUDY LONG_STUDY OUTPUT",
+  )
+  let root = args[1]
+  let output = args[4]
+  assert_false(@fs.exists(output))
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "learned_balance.py", "learned_balance_study.py", "balance_features.py", "balance_feature_study.py",
+      "balance_intervention.py", "temporal_actor.py", "temporal_training.py", "policy.py",
+      "dynamics.py", "cpu_physics.py", "teacher_feedback.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(args[2] + "/provider-sources/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/provider-sources/balance_long_intervention.py",
+    @fs.read_file(
+      root + "/providers/motion_learning/balance_long_intervention.py",
+    ).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let config = @json.parse(
+    @fs.read_file(root + "/examples/learning/g1-balance-long-intervention.json").text(),
+  )
+  @fs.write_file(
+    output + "/config.json",
+    config.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-balance-long-intervention-charter.v1",
+        "config": config,
+        "fit_study": Json(args[2]),
+        "long_study": Json(args[3]),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(
+    @process.run(
+      root + "/target/learning-venv/bin/python",
+      [
+        output + "/provider-sources/balance_long_intervention.py",
+        "--config",
+        output + "/config.json",
+        "--study",
+        args[2],
+        "--long",
+        args[3],
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--output",
+        output,
+      ],
+      stdout=@process.redirect_to_file(
+        output + "/train.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  guard @json.parse(@fs.read_file(output + "/report.json").text())
+    is {
+      "format": "moonrobo.g1-balance-long-intervention.v1",
+      "rows": Array(rows),
+      "exact_prior_learned_episodes": 15,
+      "actor_and_head_unchanged": true,
+      "learned_policy_qualified": false,
+      "physical_execution_allowed": false,
+      ..
+    } else {
+    fail("missing intervention report")
+  }
+  assert_eq(rows.length(), 16)
+  println(
+    "Completed 86 long interventions and reproduced all fifteen prior learned conditions.",
+  )
+}

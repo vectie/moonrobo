@@ -1,0 +1,563 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/x/crypto",
+}
+
+///|
+let repo : String = "/workspace/moonrobo"
+
+///|
+let config : String = repo +
+  "/examples/learning/g1-native-tensor-paper-n2-method-gate.json"
+
+///|
+let manifest : String = repo + "/data/manifest.json"
+
+///|
+let bundle : String = repo +
+  "/runs/apic-paper-n2-20261024-c/g1-paper-n2-self-collision-apic/manifest.json"
+
+///|
+let tensor : String = repo +
+  "/private/native-tensor-nccl/libmoonrobo_learning_tensor.so"
+
+///|
+let physics : String = "/opt/moonrobo/apic-runtime/libmoonrobo_aligned_apic.so"
+
+///|
+let mujoco : String = "/opt/isaaclab-venv/lib/python3.12/site-packages/mujoco/libmujoco.so.3.15.0"
+
+///|
+let scene : String = repo +
+  "/data/g1_description-paper-self-collision/scene.xml"
+
+///|
+let usd : String = repo +
+  "/data/g1_usd-paper-self-collision/g1_29dof/g1_29dof.usda"
+
+///|
+let usd_file_limit_bytes = 67108864L
+
+///|
+let memory_limit = 51539607552L
+
+///|
+let manifest_sha = "760c59585d792da74e9437f12dced4d216afd5d17411cf4bfa507ed51e6bc60f"
+
+///|
+let tensor_sha = "a1176bb28ce4fb928006c7e5db20fbe1b693bcabab6d482e0f766a00ad802f1f"
+
+///|
+let physics_sha = "6c5df912291754b37ac2c60a0b0c13253d2486e87c42ca20fb0ad19e910099e1"
+
+///|
+let mujoco_sha = "76845f2712200efaa5a38da7a004e944ecdb7397c41fd8b8ea7684a82d3e4bd0"
+
+///|
+let image_id = "sha256:9d517324498da0ab109841d666bd49b9e9838bf3878e678c226c15848cbcac3b"
+
+///|
+fn valid_sha(value : String) -> Bool {
+  value.length() == 64 &&
+  value.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+fn integer(value : Json) -> Int64 raise {
+  match value {
+    String(text) => @string.parse_int64(text)
+    Number(n, ..) => {
+      guard n >= 0.0 && n <= 9007199254740991.0 && n.to_int64().to_double() == n else {
+        fail("expected exact nonnegative integer")
+      }
+      n.to_int64()
+    }
+    _ => fail("expected integer")
+  }
+}
+
+///|
+fn verify_memory(plan : Json) -> Unit raise {
+  let host = integer(field(plan, "host_free_bytes"))
+  let cuda = integer(field(plan, "cuda_free_bytes"))
+  let budget = integer(field(plan, "budget_bytes"))
+  let peak = integer(field(plan, "peak_bytes"))
+  guard host > 0L &&
+    cuda > 0L &&
+    host <= 1099511627776L &&
+    cuda <= 1099511627776L &&
+    budget == host.min(cuda) * 65L / 100L &&
+    peak <= budget &&
+    integer(field(field(plan, "components"), "physics_scene_reserve")) ==
+    25769803776L &&
+    integer(
+      field(field(plan, "components"), "distributed_communicator_staging"),
+    ) ==
+    0L else {
+    fail("paper method gate fails unchanged 65%/24 GiB memory admission")
+  }
+}
+
+///|
+fn field(value : Json, name : String) -> Json raise {
+  guard value is Object(fields) && fields.get(name) is Some(result) else {
+    fail("missing JSON field: " + name)
+  }
+  result
+}
+
+///|
+fn empty_variants() -> Json {
+  let variants : Map[String, String] = Map([])
+  Json(variants)
+}
+
+///|
+async fn file_sha(path : String, max_bytes : Int64) -> String {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected regular pinned input: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= max_bytes else {
+    fail("pinned input exceeds byte bound: " + path)
+  }
+  let hash = @crypto.SHA256::new()
+  for offset = 0L; offset < size; {
+    let count = (size - offset).min(65536L).to_int()
+    hash.update(file.read_exactly_at(count, position=offset))
+    continue offset + count.to_int64()
+  }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn bounded_json(path : String, max_bytes : Int64) -> Json {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected regular JSON: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= max_bytes else {
+    fail("JSON exceeds byte bound: " + path)
+  }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else {
+    fail("JSON file changed size while reading: " + path)
+  }
+  @json.parse(@utf8.decode(bytes))
+}
+
+///|
+async fn write_json(path : String, value : Json) -> Unit {
+  @fs.write_file(
+    path,
+    value.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+}
+
+///|
+struct CgroupSnapshot {
+  format : String
+  files : Map[String, String]
+  errors : Map[String, String]
+} derive(ToJson)
+
+///|
+async fn cgroup_snapshot() -> CgroupSnapshot {
+  let files : Map[String, String] = Map([])
+  let errors : Map[String, String] = Map([])
+  for
+    name in [
+      "memory.max", "memory.current", "memory.peak", "memory.events", "memory.events.local",
+      "memory.swap.max", "memory.swap.current", "memory.swap.peak", "cpu.max",
+    ] {
+    try {
+      let data = @fs.read_file("/sys/fs/cgroup/" + name)
+      guard data.binary().length() <= 16384 else {
+        fail("cgroup value exceeds 16 KiB")
+      }
+      files[name] = data.text().trim().to_owned()
+    } catch {
+      error => errors[name] = error.to_string()
+    }
+  }
+  { format: "moonrobo.cgroup-v2-snapshot.v1", files, errors, }
+}
+
+///|
+fn metric(snapshot : CgroupSnapshot, key : String) -> String raise {
+  guard snapshot.files.get(key) is Some(value) else {
+    fail("missing actual cgroup metric: " + key)
+  }
+  value
+}
+
+///|
+fn oom_events(value : String) -> (Int64, Int64, Int64) raise {
+  let values : Map[String, Int64] = Map([])
+  for line in value.split("\n") {
+    let parts = line.trim().split(" ").filter(x => x != "").to_array()
+    guard parts.length() == 2 else { fail("invalid memory.events") }
+    values[parts[0].to_owned()] = @string.parse_int64(parts[1])
+  }
+  guard values.get("oom") is Some(oom) && values.get("oom_kill") is Some(kill) else {
+    fail("missing cgroup OOM counters")
+  }
+  (oom, kill, values.get("oom_group_kill").unwrap_or(0L))
+}
+
+///|
+fn verify_cgroup(snapshot : CgroupSnapshot) -> Int64 raise {
+  guard @string.parse_int64(metric(snapshot, "memory.max")) == memory_limit &&
+    metric(snapshot, "memory.swap.max") == "0" else {
+    fail("requires actual 48 GiB cgroup memory and zero swap")
+  }
+  let cpu = metric(snapshot, "cpu.max")
+    .split(" ")
+    .filter(x => x != "")
+    .to_array()
+  guard cpu.length() == 2 &&
+    @string.parse_int64(cpu[1]) > 0L &&
+    @string.parse_int64(cpu[0]) == 4L * @string.parse_int64(cpu[1]) else {
+    fail("requires actual four-CPU cgroup quota")
+  }
+  let peak = @string.parse_int64(metric(snapshot, "memory.peak"))
+  let (oom, kill, group_kill) = oom_events(metric(snapshot, "memory.events"))
+  guard peak > 0L && oom == 0L && kill == 0L && group_kill == 0L else {
+    fail("cgroup peak/OOM evidence failed")
+  }
+  peak
+}
+
+///|
+test "cgroup peak preserves observed bytes and treats OOM as separate evidence" {
+  let snapshot : CgroupSnapshot = {
+    format: "moonrobo.cgroup-v2-snapshot.v1",
+    files: {
+      "memory.max": "51539607552",
+      "memory.swap.max": "0",
+      "cpu.max": "400000 100000",
+      "memory.peak": "51539615744",
+      "memory.events": "low 0\nhigh 0\nmax 1\noom 0\noom_kill 0\noom_group_kill 0",
+    },
+    errors: Map([]),
+  }
+  assert_eq(verify_cgroup(snapshot), 51539615744L)
+}
+
+///|
+async fn verify_inputs(
+  trainer : String,
+  trainer_sha : String,
+  config_sha : String,
+  scene_sha : String,
+  usd_sha : String,
+  bundle_sha : String,
+) -> Json {
+  guard @fs.realpath(repo) == repo &&
+    @fs.realpath("/motion-cache") == "/motion-cache" &&
+    @fs.realpath("/gate") == "/gate" &&
+    @fs.realpath(trainer) == trainer &&
+    trainer.has_prefix("/") &&
+    [trainer_sha, config_sha, scene_sha, usd_sha, bundle_sha].all(valid_sha) &&
+    trainer_sha ==
+    "1dd7a5f95017e3865489dbb65cec490934a82c87acaac5da7aad11fe971c4c27" &&
+    config_sha ==
+    "e5be4369cac9c789059310fcc9ee86e624263591e243dceaf17732653ac338c5" &&
+    scene_sha ==
+    "b9f8b0e0cbfa4a82c125ac330b38e1a8bf4c825252caf2c3d0dffe678ca5f7af" &&
+    usd_sha ==
+    "7bba6e39dd3da53e5d0b8fa1466c2551f953066bb213d84decdb576eae159c1b" else {
+    fail("unexpected mount, trainer path, or SHA argument")
+  }
+  let pins = [
+    (trainer, trainer_sha, 1073741824L),
+    (config, config_sha, 1048576L),
+    (manifest, manifest_sha, 4194304L),
+    (bundle, bundle_sha, 268435456L),
+    (tensor, tensor_sha, 1073741824L),
+    (physics, physics_sha, 268435456L),
+    (mujoco, mujoco_sha, 268435456L),
+    (scene, scene_sha, 16777216L),
+    (usd, usd_sha, usd_file_limit_bytes),
+  ]
+  let actual : Map[String, Json] = Map([])
+  for (path, expected, max_bytes) in pins {
+    guard file_sha(path, max_bytes) == expected else {
+      fail("pinned SHA mismatch: " + path)
+    }
+    actual[path] = Json(expected)
+  }
+  let settings = bounded_json(config, 1048576L)
+  guard field(settings, "reference_storage") == Json("mmap") &&
+    field(settings, "motion_cache_dir") == Json("/motion-cache") &&
+    field(settings, "motion_cache_advice") == Json(true) &&
+    field(settings, "observation_mode") == Json("paper") &&
+    field(settings, "num_envs") == Json(2) &&
+    field(settings, "wm_batch") == Json(2) &&
+    field(settings, "pi_batch") == Json(2) &&
+    field(settings, "wm_microbatch") == Json(0) &&
+    field(settings, "pi_microbatch") == Json(0) &&
+    field(settings, "hist") == Json(10) &&
+    field(settings, "goal_frames") == Json(10) &&
+    field(settings, "horizon") == Json(32) &&
+    field(settings, "wm_window") == Json(8) &&
+    field(settings, "wm_batches") == Json(10) &&
+    field(settings, "wm_only_iters") == Json(0) &&
+    field(settings, "critic_epochs") == Json(5) &&
+    field(settings, "critic_minibatches") == Json(4) &&
+    field(settings, "context_resampling") == Json("episode") &&
+    field(settings, "self_collisions") == Json(true) &&
+    field(settings, "iterations") == Json(1) else {
+    fail("paper N2 method config differs")
+  }
+  let artifact = bounded_json(bundle, 4194304L)
+  guard field(artifact, "num_envs") == Json(2) &&
+    field(artifact, "self_collisions") == Json(true) &&
+    field(artifact, "usd_variants") == empty_variants() &&
+    field(field(artifact, "asset"), "mjcf_sha256") == Json(scene_sha) &&
+    field(field(artifact, "asset"), "source_mjcf_sha256") == Json(scene_sha) &&
+    field(field(artifact, "asset"), "usd_sha256") == Json(usd_sha) else {
+    fail("paper N2 artifact is not bound to true collision scene and USD")
+  }
+  Json(actual)
+}
+
+///|
+fn command(trainer : String, mode : String) -> Array[String] {
+  let deadline = if mode == "preflight" { "120s" } else { "1200s" }
+  let args = [
+    "--foreground", "--signal=TERM", "--kill-after=5s", deadline, trainer, mode,
+  ]
+  args.append([
+    "--tensor-library", tensor, "--library", mujoco, "--scene", scene,
+  ])
+  args.append(["--manifest", manifest, "--config", config])
+  args.append(["--physics-library", physics, "--physics-artifact", bundle])
+  args.append(["--output", "/gate/train", "--checkpoint-format", "stream-v2"])
+  if mode == "train" {
+    args.append(["--iterations", "1"])
+  }
+  args
+}
+
+///|
+async fn verify_result(
+  trainer_sha : String,
+  scene_sha : String,
+  bundle_sha : String,
+) -> Json {
+  let report = bounded_json("/gate/train/report.json", 4194304L)
+  let counters = field(report, "global_counters")
+  let identity = field(report, "identity")
+  let batch_execution : Json = { "world_microbatch": 0, "actor_microbatch": 0 }
+  guard field(report, "format") ==
+    Json("moonrobo.native-tensor-training-report.v1") &&
+    field(report, "iteration") == Json(1) &&
+    field(report, "checkpoint_format") == Json("stream-v2") &&
+    field(report, "distributed") == Json(false) &&
+    field(report, "resume_kind") == Json("fresh") &&
+    field(report, "precision") == Json("float32") &&
+    field(report, "amp") == Json("none") &&
+    field(report, "physics_backend") == Json("isaac-newton-warp-apic-native") &&
+    field(report, "training_complete_for_requested_iterations") == Json(true) &&
+    field(identity, "config") == bounded_json(config, 1048576L) &&
+    field(identity, "batch_execution") == batch_execution &&
+    field(report, "batch_execution") == batch_execution &&
+    field(identity, "manifest_sha256") == Json(manifest_sha) &&
+    field(identity, "native_executable_sha256") == Json(trainer_sha) &&
+    field(identity, "tensor_library_sha256") == Json(tensor_sha) &&
+    field(identity, "physics_library_sha256") == Json(physics_sha) &&
+    field(identity, "mujoco_library_sha256") == Json(mujoco_sha) &&
+    field(identity, "physics_artifact_sha256") == Json(bundle_sha) &&
+    field(identity, "scene_sha256") == Json(scene_sha) &&
+    field(identity, "split") == Json("train") &&
+    field(identity, "seed") == Json(179) &&
+    field(identity, "distributed_session") == Json::null() &&
+    field(counters, "model_updates") == Json("10") &&
+    field(counters, "actor_updates") == Json("1") &&
+    field(counters, "critic_updates") == Json("20") &&
+    field(counters, "imagined_transitions") == Json("64") &&
+    field(counters, "model_fit_transition_slots") == Json("160") &&
+    integer(field(counters, "physical_transitions")) > 0L &&
+    integer(field(counters, "physical_transitions")) <= 2048L else {
+    fail("native one-iteration report or shared counters differ")
+  }
+  verify_memory(field(report, "memory_plan"))
+  verify_memory(field(report, "post_catalog_memory_plan"))
+  counters
+}
+
+///|
+async fn saved_catalog_count() -> Int32 {
+  let pointer = bounded_json("/gate/train/current.json", 65536L)
+  guard field(pointer, "format") ==
+    Json("moonrobo.native-tensor-checkpoint-pointer.v2") &&
+    field(pointer, "iteration") == Json(1) &&
+    field(pointer, "generation") is String(generation) &&
+    generation.has_prefix("generation-1-") &&
+    generation.length() <= 255 &&
+    generation
+    .iter()
+    .all(c => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') &&
+    field(field(pointer, "files"), "state.json") is String(expected) &&
+    expected.length() == 64 else {
+    fail("invalid stream-v2 checkpoint pointer")
+  }
+  let state_path = "/gate/train/" + generation + "/state.json"
+  guard file_sha(state_path, 4194304L) == expected else {
+    fail("stream-v2 state metadata SHA differs from pointer")
+  }
+  let state = bounded_json(state_path, 4194304L)
+  guard field(state, "format") ==
+    Json("moonrobo.native-tensor-training-generation.v2") &&
+    field(field(state, "runtime"), "catalog_count") == Json(40) else {
+    fail("saved stream-v2 catalog_count differs from accepted motion count")
+  }
+  40
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args.length() == 2 && args[1] == "--self-test" {
+    assert_eq(empty_variants(), @json.parse("{}"))
+    assert_true(valid_sha("a".repeat(64)))
+    assert_true(!valid_sha("A".repeat(64)))
+    assert_true(!valid_sha("a".repeat(63)))
+    assert_eq(usd_file_limit_bytes, 67108864L)
+    assert_eq(integer(Json("160")), 160L)
+    assert_eq(
+      verify_cgroup({
+        format: "moonrobo.cgroup-v2-snapshot.v1",
+        files: {
+          "memory.max": "51539607552",
+          "memory.swap.max": "0",
+          "cpu.max": "400000 100000",
+          "memory.peak": "51539615744",
+          "memory.events": "low 0\nhigh 0\nmax 1\noom 0\noom_kill 0\noom_group_kill 0",
+        },
+        errors: Map([]),
+      }),
+      51539615744L,
+    )
+    assert_true(command("train", "/trainer").contains("1200s"))
+    println(
+      "paper N2 native helper self-test passed without filesystem/GPU work",
+    )
+    return
+  }
+  guard args.length() == 7 else {
+    fail(
+      "usage: run_spark_native_paper_n2_gate TRAINER_ABSOLUTE_PATH TRAINER_SHA CONFIG_SHA TRUE_SCENE_SHA TRUE_USD_SHA TRUE_BUNDLE_MANIFEST_SHA",
+    )
+  }
+  guard !@fs.exists("/gate/train") && !@fs.exists("/gate/inside-summary.json") else {
+    fail("/gate must be fresh; existing training output cannot be overwritten")
+  }
+  let before = cgroup_snapshot()
+  write_json("/gate/cgroup-before.json", Json(before))
+  let preflight = command(args[1], "preflight")
+  let train = command(args[1], "train")
+  write_json("/gate/command-plan.json", {
+    "format": "moonrobo.native-paper-n2-method-gate-plan.v1",
+    "expected_image_id": Json(image_id),
+    "image_id_verification": "host-launcher-required; not verified inside container",
+    "trainer": Json(args[1]),
+    "trainer_sha256": Json(args[2]),
+    "config_sha256": Json(args[3]),
+    "scene_sha256": Json(args[4]),
+    "usd_sha256": Json(args[5]),
+    "bundle_manifest_sha256": Json(args[6]),
+    "preflight": Json(preflight),
+    "train": Json(train),
+    "motion_set": "40-LAFAN1-retargeted-training-clips",
+    "physics_collision_on": true,
+    "paper_exact_physics": false,
+    "benchmark": false,
+    "convergence_claim": false,
+  })
+  let mut preflight_code = -1
+  let mut train_code = -1
+  let mut checkpoint_catalog_count : Int32? = None
+  let mut counters : Json? = None
+  let mut pins : Json? = None
+  let mut failure : String? = None
+  try {
+    ignore(verify_cgroup(before))
+    pins = Some(
+      verify_inputs(args[1], args[2], args[3], args[4], args[5], args[6]),
+    )
+    preflight_code = @shell.Cmd(
+      "/usr/bin/timeout",
+      preflight,
+      stdout=ToFile("/gate/preflight.stdout.log"),
+      stderr=ToFile("/gate/preflight.stderr.log"),
+    ).status(timeout_ms=140000)
+    guard preflight_code == 0 else { fail("bounded preflight failed") }
+    train_code = @shell.Cmd(
+      "/usr/bin/timeout",
+      train,
+      stdout=ToFile("/gate/trainer.stdout.log"),
+      stderr=ToFile("/gate/trainer.stderr.log"),
+    ).status(timeout_ms=1220000)
+    guard train_code == 0 else { fail("bounded trainer failed") }
+    let shared = verify_result(args[2], args[4], args[6])
+    checkpoint_catalog_count = Some(saved_catalog_count())
+    counters = Some(shared)
+  } catch {
+    error => failure = Some(error.to_string())
+  }
+  let after = cgroup_snapshot()
+  write_json("/gate/cgroup-after.json", Json(after))
+  let peak : Int64? = Some(verify_cgroup(after)) catch {
+    error => {
+      if failure is None {
+        failure = Some(error.to_string())
+      }
+      None
+    }
+  }
+  write_json("/gate/inside-summary.json", {
+    "format": "moonrobo.native-paper-n2-method-gate-result.v1",
+    "preflight_exit_code": Json(preflight_code),
+    "trainer_exit_code": Json(train_code),
+    "error": failure.map(value => Json(value)).unwrap_or(Json::null()),
+    "verified_pins": pins.unwrap_or(Json::null()),
+    "manifest_identity_sha256": Json(manifest_sha),
+    "saved_checkpoint_catalog_count": checkpoint_catalog_count
+    .map(value => Json(value))
+    .unwrap_or(Json::null()),
+    "global_counters": counters.unwrap_or(Json::null()),
+    "actual_cgroup_memory_peak_bytes": peak
+    .map(value => Json(value))
+    .unwrap_or(Json::null()),
+    "memory_peak_above_configured_limit": peak
+    .map(value => Json(value > memory_limit))
+    .unwrap_or(Json::null()),
+    "memory_metrics_source": "kernel-cgroup-v2-before-helper-exit; not a full-lifetime peak",
+    "checkpoint_semantic_audit_deferred": true,
+    "paper_exact_motion_set": false,
+    "paper_exact_physics": false,
+    "convergence_verified": false,
+  })
+  guard failure is None &&
+    preflight_code == 0 &&
+    train_code == 0 &&
+    checkpoint_catalog_count == Some(40) &&
+    peak is Some(_) else {
+    fail("paper N2 method gate failed; retained /gate logs and cgroup evidence")
+  }
+}

@@ -1,0 +1,38 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn replace(s : String,a : String,b : String) -> String raise {guard s.contains(a) else {fail(a)}; s.replace_all(old=a,new=b)}
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo/src/learning_aligned_gpu/"
+  for file in ["learning.mbt","microbatch.mbt","actor_microbatch.mbt"] {
+    let path=root+file
+    let mut s=@fs.read_file(path).text()
+    guard !s.contains("let packed_return =") else {fail("already wired")}
+    s=replace(s,"@geometry.normalize_xi(self.backend, ","self.normalize_xi(")
+    if file!="actor_microbatch.mbt" {
+      s=replace(s,"          target,\n          heading_mode=self.optimizations.heading_mode,","          target,\n          heading_mode=self.optimizations.heading_mode,\n          smc_rotation=self.optimizations.smc_world_rotation,")
+    }
+    if file=="learning.mbt" {
+      s=replace(s,"      s1,\n      heading_mode=self.optimizations.heading_mode,","      s1,\n      heading_mode=self.optimizations.heading_mode,\n      smc_rotation=self.optimizations.smc_world_rotation,")
+      s=replace(s,"  let context = context","  if optimizations.smc_world_rotation || optimizations.smc_xi_normalization || optimizations.smc_actor_return {\n    guard backend.has_smc_algebra() else { fail(\"SMC algebra requires its optional LibTorch extension\") }\n  }\n  if optimizations.smc_actor_return {\n    let rows = if actor_microbatch > 0 { actor_microbatch.min(config.policy_batch) } else { config.policy_batch }\n    guard config.horizon <= 64 && config.horizon.to_int64() * rows.to_int64() <= 262144L else { fail(\"SMC actor return exceeds its admitted shape\") }\n  }\n  let context = context")
+    }
+    if file!="microbatch.mbt" {
+      s=replace(s,"  for t in 0..<c.horizon {\n    let reward = rewards", "  for t in 0..<(if self.optimizations.smc_actor_return { 0 } else { c.horizon }) {\n    let reward = rewards")
+      let old="  let loss = objective\n    .add(survival.mul(tail).affine(@math.pow(c.gamma, c.horizon.to_double())))"
+      let replacement="  let packed_return = if self.optimizations.smc_actor_return {\n    Some(rewards.actor_return_smc(failures, tail, c.gamma))\n  } else { None }\n  let total = match packed_return {\n    Some(packed) => {\n      survival = packed.narrow(0, 2, 1).reshape([n])\n      packed.narrow(0, 0, 1).reshape([n])\n    }\n    None => objective.add(survival.mul(tail).affine(@math.pow(c.gamma, c.horizon.to_double())))\n  }\n  let loss = total"
+      s=replace(s,old,replacement)
+      if file=="actor_microbatch.mbt" {
+        s=replace(s,"weighted_reward_sum: self.backend.stack(weighted).sum().stop_gradient(),","weighted_reward_sum: (match packed_return { Some(packed) => packed.narrow(0,1,1).sum(); None => self.backend.stack(weighted).sum() }).stop_gradient(),")
+      } else {
+        s=replace(s,"imagined_reward: self.backend.stack(weighted).mean().values()[0] / 0.1,","imagined_reward: (match packed_return { Some(packed) => packed.narrow(0,1,1).mean().affine(1.0/c.horizon.to_double()); None => self.backend.stack(weighted).mean() }).values()[0] / 0.1,")
+      }
+    }
+    @fs.write_file(path,s)
+  }
+  let path=root+"world_error_batched.mbt"
+  @fs.write_file(path,replace(@fs.read_file(path).text(),"      packed_targets,","      packed_targets,\n      smc_rotation=self.optimizations.smc_world_rotation,"))
+  for file in ["audit_wbtest.mbt","inference/actor_wbtest.mbt"] {
+    let path=root+file
+    @fs.write_file(path,replace(@fs.read_file(path).text(),"    heading_mode: None,","    heading_mode: None,\n    smc_world_rotation: None,\n    smc_xi_normalization: None,\n    smc_actor_return: None,"))
+  }
+  let path=root+"audit.mbt"
+  @fs.write_file(path,replace(@fs.read_file(path).text(),"  let learner_config_sha256 =","  for (key,enabled) in [(\"smc_world_rotation\",metadata.smc_world_rotation.unwrap_or(false)),(\"smc_xi_normalization\",metadata.smc_xi_normalization.unwrap_or(false)),(\"smc_actor_return\",metadata.smc_actor_return.unwrap_or(false))] {\n    if enabled {\n      guard config is Object(fields) else { fail(\"invalid audit config\") }\n      fields[key] = Json(true)\n    }\n  }\n  let learner_config_sha256 ="))
+}

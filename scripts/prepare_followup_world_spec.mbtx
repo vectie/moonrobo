@@ -1,0 +1,123 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x/crypto",
+}
+
+///|
+fn get(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn obj(j : Json) -> Map[String, Json] raise {
+  guard j is Object(m) else { fail("object required") }
+  m
+}
+
+///|
+async fn sha(path : String) -> String {
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  let h = @crypto.SHA256::new()
+  let size = f.size()
+  for offset = 0L; offset < size; {
+    let count = (size - offset).min(1048576L).to_int()
+    h.update(f.read_exactly_at(count, position=offset))
+    continue offset + count.to_int64()
+  }
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["gate", "pair"].contains(mode) else {
+    fail("gate|pair")
+  }
+  let base = "/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a"
+  let mapped = "/workspace/moonrobo/private/hotspot-followup-world-20261026-a"
+  let parent = "/home/wlc004s/moonrobo/runs/native-hotspot-vs-smc512-20261026-b/spec.json"
+  guard sha(parent) ==
+    "5197095bd124a4e212cd4b5c8ed07a14323c9d7d1f56115a47967489105e757f" else {
+    fail("parent changed")
+  }
+  let spec = @json.parse(@fs.read_file(parent).text())
+  let native = get(spec, "a")
+  for side in ["a", "b"] {
+    let member = @json.parse(native.stringify())
+    obj(member)["entrypoint"] = Json(mapped + "/trainer")
+    obj(member)["label"] = Json("world-packed-" + side)
+    guard get(member, "argv") is Array(argv) else { fail("argv required") }
+    for i in 0..<(argv.length() - 1) {
+      if argv[i] == Json("--tensor-library") {
+        argv[i + 1] = Json(mapped + "/libmoonrobo_learning_tensor.so")
+      }
+    }
+    let config = obj(get(member, "expected_config"))
+    guard config.get("reference_fk_cache") == Some(Json(true)) &&
+      config.get("world_staging_batch") == Some(Json(true)) else {
+      fail("combo baseline required")
+    }
+    config["world_packed_replay"] = Json(side == "b")
+    obj(spec)[side] = member
+  }
+  obj(spec)["name"] = Json(
+    "world-packed-replay-frozen-combo4096-eight512-" + mode,
+  )
+  guard get(spec, "pins") is Array(pins) else { fail("pins required") }
+  for
+    name in [
+      "trainer", "numeric-gate", "runtime-gate", "tensor-gate", "libmoonrobo_learning_tensor.so",
+      "overlay.tar.gz", "run_followup_pairs.mbtx", "build_followup_world.mbtx", "prepare_followup_world_spec.mbtx",
+      "run_followup_world.mbtx", "workspace/moonrobo-fixtures/fixture-staging-manifest.json",
+      "appledouble-quarantine.json", "quarantine_followup_metadata_v3.mbtx", "trainer-clean-build.receipt.json",
+      "gate-build-clean.receipt.json",
+    ] {
+    let path = base + "/" + name
+    pins.push({
+      "path": Json(path),
+      "sha256": Json(sha(path)),
+      "role": "world-packed-frozen-build",
+    })
+  }
+  if mode == "pair" {
+    for gate in ["world-fields", "world_packed"] {
+      let root = "/home/wlc004s/moonrobo/runs/hotspot-followup-" +
+        gate +
+        "-20261026-a"
+      guard get(
+          @json.parse(@fs.read_file(root + "/result.json").text()),
+          "passed",
+        ) ==
+        Json(true) else {
+        fail("numerical gate failed")
+      }
+      for file in ["result.json", "training.stdout.log", "training-guard.json"] {
+        let path = root + "/" + file
+        pins.push({
+          "path": Json(path),
+          "sha256": Json(sha(path)),
+          "role": "required-world-packed-numeric-gate",
+        })
+      }
+    }
+  }
+  obj(spec)["known_differences"] = Json([
+    "Both native members preserve accepted APIC bulk plus immutable reference FK, batch4096/eight512 and all original memory guards. Only world_packed_replay differs.",
+    "Packed sampler retains start/env RNG order, block validation boundary, original masks and Float64-to-Float32 conversion. No objective, gradients, normalizers, GAE, physics, update count or precision change.",
+    "Same rebuilt binary and unchanged tensor plugin on both sides; original staging code and frozen baseline binaries retained. Full conservative staging/admission reserves retained without crediting freed buffers.",
+    "Fresh60-round processes in ABBA order, steady41-60, profiler disabled. No old timing rows reused.",
+  ])
+  @fs.write_file(
+    base + "/spec-" + mode + ".json",
+    spec.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(
+    "Prepared " + mode + " spec: " + sha(base + "/spec-" + mode + ".json"),
+  )
+}

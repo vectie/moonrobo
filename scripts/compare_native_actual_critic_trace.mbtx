@@ -1,0 +1,840 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+// Read-only CPU evidence reader. No tensor, process, network, training or write API.
+struct Blob {
+  file : String
+  dtype : String
+  shape : Array[Int32]
+  count : Int64
+  byte_length : Int64
+  sha256 : String
+} derive(FromJson)
+
+///|
+struct Record {
+  name : String
+  source_dtype : String
+  source_shape : Array[Int32]
+  blob : Blob
+} derive(FromJson)
+
+///|
+struct Spec {
+  name : String
+  shape : Array[Int32]
+  dtype : String
+  stage : String
+  step : Int32
+}
+
+///|
+struct Stats {
+  mut values : Int64
+  mut bitwise_differences : Int64
+  mut material_differences : Int64
+  mut signed_zero_differences : Int64
+  mut first_bitwise : Int64
+  mut first_material : Int64
+  mut max_absolute_difference : Double
+  mut max_tolerance_ratio : Double
+  mut worst_index : Int64
+  mut worst_full : Double
+  mut worst_split : Double
+  mut first_bitwise_full : Double
+  mut first_bitwise_split : Double
+  mut first_material_full : Double
+  mut first_material_split : Double
+}
+
+///|
+fn Stats::new() -> Stats {
+  {
+    values: 0L,
+    bitwise_differences: 0L,
+    material_differences: 0L,
+    signed_zero_differences: 0L,
+    first_bitwise: -1L,
+    first_material: -1L,
+    max_absolute_difference: 0.0,
+    max_tolerance_ratio: 0.0,
+    worst_index: 0L,
+    worst_full: 0.0,
+    worst_split: 0.0,
+    first_bitwise_full: 0.0,
+    first_bitwise_split: 0.0,
+    first_material_full: 0.0,
+    first_material_split: 0.0,
+  }
+}
+
+///|
+fn Stats::add(self : Stats, full : Double, split : Double) -> Unit raise {
+  guard !full.is_nan() && !full.is_inf() && !split.is_nan() && !split.is_inf() else {
+    fail("nonfinite trace value")
+  }
+  let index = self.values
+  if full.reinterpret_as_uint64() != split.reinterpret_as_uint64() {
+    self.bitwise_differences += 1L
+    if self.first_bitwise < 0L {
+      self.first_bitwise = index
+      self.first_bitwise_full = full
+      self.first_bitwise_split = split
+    }
+    if full == 0.0 && split == 0.0 {
+      self.signed_zero_differences += 1L
+    }
+  }
+  let difference = (full - split).abs()
+  let ratio = difference / (0.000002 + 0.0002 * full.abs())
+  guard !difference.is_inf() && !ratio.is_nan() && !ratio.is_inf() else {
+    fail("trace difference overflow")
+  }
+  if ratio > 1.0 {
+    self.material_differences += 1L
+    if self.first_material < 0L {
+      self.first_material = index
+      self.first_material_full = full
+      self.first_material_split = split
+    }
+  }
+  self.max_absolute_difference = self.max_absolute_difference.max(difference)
+  if ratio > self.max_tolerance_ratio {
+    self.max_tolerance_ratio = ratio
+    self.worst_index = index
+    self.worst_full = full
+    self.worst_split = split
+  }
+  self.values += 1L
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(result) else {
+    fail("missing field: " + key)
+  }
+  result
+}
+
+///|
+fn sha_valid(value : String) -> Bool {
+  value.length() == 64 &&
+  value.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+async fn read_json(path : String) -> (Json, String) {
+  guard @fs.realpath(path) == path &&
+    @fs.kind(path, follow_symlink=false) is Regular else {
+    fail("metadata must be a canonical regular file")
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 1048576L else { fail("metadata exceeds 1MiB") }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else { fail("metadata changed length") }
+  let hash = @crypto.SHA256::new()
+  hash.update(bytes)
+  (
+    @json.parse(@utf8.decode(bytes)),
+    @crypto.bytes_to_hex_string(hash.finalize()),
+  )
+}
+
+///|
+fn number(bytes : Bytes, i : Int32) -> Double {
+  let mut bits = 0L
+  for j in 0..<8 {
+    bits = bits | (bytes[i * 8 + j].to_int().to_int64() << (j * 8))
+  }
+  bits.reinterpret_as_double()
+}
+
+///|
+fn inventory() -> Array[Spec] {
+  let out : Array[Spec] = []
+  fn add(name : String, shape : Array[Int32], stage : String, step : Int32) {
+    out.push({
+      name,
+      shape,
+      stage,
+      step,
+      dtype: if name.has_prefix("order-") || name.has_suffix("-indices") {
+        "int64-exact-small-index"
+      } else {
+        "float32"
+      },
+    })
+  }
+  add("raw-input", [132, 914], "prepare", -1)
+  add("norm-mean", [914], "prepare", -1)
+  add("norm-variance", [914], "prepare", -1)
+  add("rewards", [32, 4], "prepare", -1)
+  add("failures", [32, 4], "prepare", -1)
+  for i in 0..<5 {
+    add("order-\{i}", [128], "prepare", -1)
+  }
+  add("bootstrap-normalized-input", [132, 914], "bootstrap", -1)
+  add("bootstrap-values", [33, 4], "bootstrap", -1)
+  add("gae-targets", [128], "bootstrap", -1)
+  for step in 0..<20 {
+    let prefix = "step-\{step}-"
+    add(prefix + "normalized-input", [32, 914], "critic-forward", step)
+    add(prefix + "indices", [32], "before-step", step)
+    add(prefix + "targets", [32], "before-step", step)
+    add(prefix + "loss", [], "before-step", step)
+    for position in ["before", "after"] {
+      let stage = position + "-step"
+      add(prefix + position + "-weight", [256, 2], stage, step)
+      add(prefix + position + "-gradient", [256, 2], stage, step)
+      if step > 0 || position == "after" {
+        add(prefix + position + "-m", [256, 2], stage, step)
+        add(prefix + position + "-v", [256, 2], stage, step)
+      }
+    }
+  }
+  out
+}
+
+///|
+fn validate(record : Record, spec : Spec) -> Unit raise {
+  let shape = if spec.shape.is_empty() { [1] } else { spec.shape }
+  let mut count = 1L
+  for dim in shape {
+    guard dim > 0 && count <= 120648L / dim.to_int64() else {
+      fail("trace member shape overflow")
+    }
+    count *= dim.to_int64()
+  }
+  guard record.name == spec.name &&
+    record.source_dtype == spec.dtype &&
+    record.source_shape == spec.shape &&
+    record.blob.file == spec.name + ".f64" &&
+    record.blob.dtype == "f64le" &&
+    record.blob.shape == shape &&
+    record.blob.count == count &&
+    record.blob.byte_length == count * 8L &&
+    sha_valid(record.blob.sha256) else {
+    fail("trace descriptor differs from fixed inventory: " + spec.name)
+  }
+}
+
+///|
+struct Continuity {
+  bootstrap : Array[Double]
+  targets : Array[Double]
+  orders : Array[Array[Double]]
+  after : Map[String, Array[Double]]
+  mut normalized_bit_differences : Int64
+}
+
+///|
+fn Continuity::new() -> Continuity {
+  {
+    bootstrap: [],
+    targets: [],
+    orders: Array::makei(5, _ => []),
+    after: {},
+    normalized_bit_differences: 0L,
+  }
+}
+
+///|
+// Cache only the 132x914 bootstrap, 128 targets, 5x128 orders and the immediately
+// preceding 3x512 optimizer coordinates. All retained payloads have fixed bounds.
+fn Continuity::consume(
+  self : Continuity,
+  spec : Spec,
+  index : Int32,
+  value : Double,
+) -> Unit raise {
+  let name = spec.name
+  if name == "bootstrap-normalized-input" {
+    self.bootstrap.push(value)
+    return
+  }
+  if name == "gae-targets" {
+    self.targets.push(value)
+    return
+  }
+  if spec.step < 0 {
+    for epoch in 0..<5 {
+      if name == "order-\{epoch}" {
+        let expected = ((index * 37 + epoch * 17) % 128).to_double()
+        guard value == expected else {
+          fail("actual order differs from fixed gate permutation")
+        }
+        self.orders[epoch].push(value)
+      }
+    }
+    return
+  }
+  let step = spec.step
+  let row = if name.has_suffix("-normalized-input") {
+    index / 914
+  } else {
+    index
+  }
+  if name.has_suffix("-normalized-input") ||
+    name.has_suffix("-indices") ||
+    name.has_suffix("-targets") {
+    guard self.bootstrap.length() == 120648 &&
+      self.targets.length() == 128 &&
+      self.orders[step / 4].length() == 128 else {
+      fail("trace preparation cache incomplete")
+    }
+    let sample = self.orders[step / 4][step % 4 * 32 + row].to_int()
+    if name.has_suffix("-indices") {
+      guard value == sample.to_double() else {
+        fail("actual minibatch indices do not match actual order")
+      }
+    } else if name.has_suffix("-targets") {
+      guard value.reinterpret_as_uint64() ==
+        self.targets[sample].reinterpret_as_uint64() else {
+        fail("actual minibatch targets do not match actual GAE gather")
+      }
+    } else if value.reinterpret_as_uint64() !=
+      self.bootstrap[sample * 914 + index % 914].reinterpret_as_uint64() {
+      // Repeated normalization executes kernels with different tensor shapes;
+      // report this observed check rather than replace captured values/recompute.
+      self.normalized_bit_differences += 1L
+    }
+  }
+  for kind in ["weight", "m", "v"] {
+    if name.has_suffix("-before-" + kind) && step > 0 {
+      guard self.after.get(kind) is Some(previous) &&
+        previous.length() == 512 &&
+        value.reinterpret_as_uint64() == previous[index].reinterpret_as_uint64() else {
+        fail(
+          "before state differs from immediately previous after state: " + name,
+        )
+      }
+    }
+    if name.has_suffix("-after-" + kind) {
+      if index == 0 {
+        self.after[kind] = []
+      }
+      self.after[kind].push(value)
+    }
+  }
+}
+
+///|
+async fn compare_record(
+  left_root : String,
+  right_root : String,
+  a : Record,
+  b : Record,
+  spec : Spec,
+  left_cache : Continuity,
+  right_cache : Continuity,
+) -> Stats {
+  validate(a, spec)
+  validate(b, spec)
+  let left_path = left_root + "/" + a.blob.file
+  let right_path = right_root + "/" + b.blob.file
+  for path in [left_path, right_path] {
+    guard @fs.realpath(path) == path &&
+      @fs.kind(path, follow_symlink=false) is Regular else {
+      fail("sidecar must be canonical regular file")
+    }
+  }
+  let left = @fs.open(left_path, mode=ReadOnly)
+  defer left.close()
+  let right = @fs.open(right_path, mode=ReadOnly)
+  defer right.close()
+  guard left.size() == a.blob.byte_length && right.size() == b.blob.byte_length else {
+    fail("sidecar length differs")
+  }
+  let lh = @crypto.SHA256::new()
+  let rh = @crypto.SHA256::new()
+  let stats = Stats::new()
+  for offset = 0L; offset < a.blob.count; {
+    let n = (a.blob.count - offset).min(8192L).to_int()
+    let x = left.read_exactly_at(n * 8, position=offset * 8L)
+    let y = right.read_exactly_at(n * 8, position=offset * 8L)
+    lh.update(x)
+    rh.update(y)
+    for i in 0..<n {
+      let full = number(x, i)
+      let split = number(y, i)
+      stats.add(full, split)
+      left_cache.consume(spec, offset.to_int() + i, full)
+      right_cache.consume(spec, offset.to_int() + i, split)
+    }
+    continue offset + n.to_int64()
+  }
+  guard left.size() == a.blob.byte_length &&
+    right.size() == b.blob.byte_length &&
+    @crypto.bytes_to_hex_string(lh.finalize()) == a.blob.sha256 &&
+    @crypto.bytes_to_hex_string(rh.finalize()) == b.blob.sha256 else {
+    fail("trace sidecar SHA256 or final size differs: " + spec.name)
+  }
+  if spec.dtype == "int64-exact-small-index" && stats.bitwise_differences != 0L {
+    fail("full/split actual permutations differ")
+  }
+  stats
+}
+
+///|
+fn coordinate(
+  spec : Spec,
+  index : Int64,
+  full : Double,
+  split : Double,
+) -> Json {
+  let location : Json = if spec.shape == [256, 2] {
+    {
+      "critic_output_row": Json(index / 2L),
+      "input_column": Json(146L + index % 2L),
+      "feature": Json("reference-relative-rotation6d[\{index % 2L + 1L}]"),
+    }
+  } else if spec.shape == [914] ||
+    spec.shape == [132, 914] ||
+    spec.shape == [32, 914] {
+    { "row": Json(index / 914L), "input_column": Json(index % 914L) }
+  } else {
+    { "row": Json(index) }
+  }
+  {
+    "record": Json(spec.name),
+    "stage": Json(spec.stage),
+    "critic_step_zero_based": if spec.step < 0 {
+      Json::null()
+    } else {
+      Json(spec.step)
+    },
+    "index": Json(index),
+    "coordinate": location,
+    "full": Json(full),
+    "split": Json(split),
+    "full_ieee754_u64": Json(full.reinterpret_as_uint64().to_string()),
+    "split_ieee754_u64": Json(split.reinterpret_as_uint64().to_string()),
+    "absolute_difference": Json((full - split).abs()),
+    "tolerance_ratio": Json(
+      (full - split).abs() / (0.000002 + 0.0002 * full.abs()),
+    ),
+  }
+}
+
+///|
+fn stats_json(spec : Spec, stats : Stats) -> Json {
+  {
+    "name": Json(spec.name),
+    "shape": Json(spec.shape),
+    "stage": Json(spec.stage),
+    "critic_step_zero_based": if spec.step < 0 {
+      Json::null()
+    } else {
+      Json(spec.step)
+    },
+    "values": Json(stats.values),
+    "bitwise_differences": Json(stats.bitwise_differences),
+    "material_differences": Json(stats.material_differences),
+    "signed_zero_differences": Json(stats.signed_zero_differences),
+    "max_absolute_difference": Json(stats.max_absolute_difference),
+    "max_tolerance_ratio": Json(stats.max_tolerance_ratio),
+    "first_bitwise": if stats.first_bitwise < 0L {
+      Json::null()
+    } else {
+      coordinate(
+        spec,
+        stats.first_bitwise,
+        stats.first_bitwise_full,
+        stats.first_bitwise_split,
+      )
+    },
+    "first_material": if stats.first_material < 0L {
+      Json::null()
+    } else {
+      coordinate(
+        spec,
+        stats.first_material,
+        stats.first_material_full,
+        stats.first_material_split,
+      )
+    },
+    "worst_tolerance_ratio": if stats.max_tolerance_ratio == 0.0 {
+      Json::null()
+    } else {
+      coordinate(spec, stats.worst_index, stats.worst_full, stats.worst_split)
+    },
+  }
+}
+
+///|
+fn verify_adam(trace : Json) -> Unit raise {
+  let metadata : Array[Json] = @json.from_json(
+    field(trace, "optimizer_metadata"),
+  )
+  guard metadata.length() == 40 else {
+    fail("expected before/after Adam metadata for 20 updates")
+  }
+  let mut groups : Json = Json::null()
+  for i, item in metadata {
+    let step = i / 2
+    let before = i % 2 == 0
+    guard field(item, "step") == Json(step) &&
+      field(item, "position") == Json(if before { "before" } else { "after" }) else {
+      fail("Adam metadata ordering differs")
+    }
+    let adam = field(item, "adam")
+    let states : Array[Json] = @json.from_json(field(adam, "states"))
+    guard field(adam, "parameter_count") == 6 && states.length() == 6 else {
+      fail("paper critic parameter count differs")
+    }
+    let expected = if before { step } else { step + 1 }
+    for state in states {
+      guard field(state, "present") == Json(expected > 0) else {
+        fail("Adam presence differs")
+      }
+      if expected > 0 {
+        let actual : Int64 = @json.from_json(field(state, "step"))
+        guard actual == expected.to_int64() else { fail("Adam step differs") }
+      }
+    }
+    if i == 0 {
+      groups = field(adam, "groups")
+    }
+    guard field(adam, "groups") == groups else {
+      fail("Adam options changed during trace")
+    }
+  }
+}
+
+///|
+fn verify_trace(trace : Json, specs : Array[Spec]) -> Array[Record] raise {
+  guard field(trace, "format") == "moonrobo.actual-critic-trace.v1" &&
+    field(trace, "completed_steps") == 20 &&
+    field(trace, "first_layer_output_rows") == 256 &&
+    field(trace, "first_layer_selected_input_columns") == Json([146, 147]) &&
+    field(trace, "numeric_values") == 911436 &&
+    field(trace, "numeric_bytes") == 7291488 &&
+    field(trace, "numeric_value_limit") == 1048576 &&
+    field(trace, "record_limit") == 256 &&
+    field(trace, "transfer_chunk_bytes") == 65536 &&
+    field(trace, "norm_count") == 132 &&
+    field(trace, "norm_epsilon") == 0.01 &&
+    field(trace, "clip_coefficient") == Json::null() &&
+    field(trace, "cpu_float64_reconstruction") == false &&
+    field(trace, "native_tensor_handles_retained") == false else {
+    fail("actual trace schema/profile/bounds differ")
+  }
+  let records : Array[Record] = @json.from_json(field(trace, "records"))
+  guard records.length() == specs.length() && records.length() == 251 else {
+    fail("actual trace inventory incomplete")
+  }
+  for i, record in records {
+    validate(record, specs[i])
+  }
+  verify_adam(trace)
+  records
+}
+
+///|
+async fn verify_mode(
+  root : String,
+  baseline : String,
+  mode : String,
+  specs : Array[Spec],
+  identities : Map[String, String],
+) -> (Json, Json, Array[Record]) {
+  let (run, run_sha) = read_json(root + "/" + mode + "/run.json")
+  let (trace, trace_sha) = read_json(
+    root + "/" + mode + "/actual-critic-trace/trace.json",
+  )
+  let (summary, summary_sha) = read_json(
+    root + "/" + mode + "/actor-1-final-summary.json",
+  )
+  let (old_run, old_run_sha) = read_json(baseline + "/" + mode + "/run.json")
+  let (old, old_sha) = read_json(
+    baseline + "/" + mode + "/actor-1/snapshot.json",
+  )
+  let expected_run = if mode == "full" {
+    "b929cb44c347fa20541fbb85ba860d824f8788af809167572d5c8f4e79c883fa"
+  } else {
+    "2b7a413c3baf0a7e556a380657c9a5974f37a9732a7df719c700f70034e0b2ff"
+  }
+  let expected_snapshot = if mode == "full" {
+    "ef463fadb7956b07830e3967eeea724da7fc044ef05caa3871dbe8e3165f0975"
+  } else {
+    "b4c1ada01755a40b24e6da1af632404fa6d4f2a1b81275df8fcf1f4d5c9aa1df"
+  }
+  guard old_run_sha == expected_run &&
+    old_sha == expected_snapshot &&
+    field(run, "format") == "moonrobo.actual-critic-trace-run.v1" &&
+    field(run, "completed") == true &&
+    field(run, "mode") == Json(mode) &&
+    field(run, "profile") == "paper-cuda" &&
+    field(run, "baseline_run_sha256") == Json(old_run_sha) &&
+    field(run, "baseline_actor1_snapshot_sha256") == Json(old_sha) &&
+    field(run, "same_mode_frozen_actor1_all_record_sha256_equal") == true &&
+    field(run, "frozen_record_differences") == ([] : Json) &&
+    field(run, "world_optimizer_updates") == 2 &&
+    field(run, "actor_optimizer_updates") == 1 &&
+    field(run, "critic_optimizer_updates") == 20 &&
+    field(run, "extra_probe_rollouts") == 0 &&
+    field(run, "original_full_split_gate_passed") == false &&
+    field(run, "original_absolute_tolerance") == 0.000002 &&
+    field(run, "original_relative_tolerance") == 0.0002 &&
+    field(run, "trace") == trace else {
+    fail(
+      "trace requires completed same-mode frozen actor-1 match before attribution",
+    )
+  }
+  for
+    key in [
+      "config", "input_identity", "initial_shared_state", "execution", "plugin_sha256",
+    ] {
+    guard field(run, key) == field(old_run, key) else {
+      fail("trace changed frozen setup: " + key)
+    }
+  }
+  for key in ["optimizer_metadata", "normalizer_counts"] {
+    guard field(summary, key) == field(old, key) else {
+      fail("final summary differs from frozen metadata")
+    }
+  }
+  let current : Array[Json] = @json.from_json(field(summary, "records"))
+  let prior : Array[Json] = @json.from_json(field(old, "records"))
+  guard current.length() == prior.length() && current.length() <= 256 else {
+    fail("final inventory length differs")
+  }
+  for i, record in current {
+    let reference = prior[i]
+    let blob = field(reference, "blob")
+    for key in ["name", "source_dtype"] {
+      guard field(record, key) == field(reference, key) else {
+        fail("final record order differs")
+      }
+    }
+    for key in ["shape", "count", "sha256"] {
+      guard field(record, key) == field(blob, key) else {
+        fail("final state differs from frozen SHA inventory")
+      }
+    }
+  }
+  identities[mode + "/run.json"] = run_sha
+  identities[mode + "/actual-critic-trace/trace.json"] = trace_sha
+  identities[mode + "/actor-1-final-summary.json"] = summary_sha
+  identities[mode + "/frozen-run.json"] = old_run_sha
+  identities[mode + "/frozen-actor1.json"] = old_sha
+  (run, trace, verify_trace(trace, specs))
+}
+
+///|
+fn self_test() -> Unit raise {
+  let stats = Stats::new()
+  stats.add(0.0, -0.0)
+  stats.add(0.0, 0.000004)
+  stats.add(1.0e-10, 1.1e-10)
+  assert_eq(stats.bitwise_differences, 3L)
+  assert_eq(stats.signed_zero_differences, 1L)
+  assert_eq(stats.material_differences, 1L)
+  assert_eq(stats.first_bitwise, 0L)
+  assert_eq(stats.first_material, 1L)
+  assert_eq(stats.max_tolerance_ratio, 2.0)
+  let bits = (-0.0).reinterpret_as_uint64()
+  let bytes = Bytes::makei(65536, i => {
+    if i >= 65528 {
+      (bits >> ((i - 65528) * 8)).to_byte()
+    } else {
+      0
+    }
+  })
+  assert_eq(number(bytes, 8191).reinterpret_as_uint64(), bits)
+  let specs = inventory()
+  assert_eq(specs.length(), 251)
+  let mut count = 0L
+  for spec in specs {
+    let shape = if spec.shape.is_empty() { [1] } else { spec.shape }
+    let n = shape.fold(init=1L, (a, b) => a * b.to_int64())
+    let record : Record = {
+      name: spec.name,
+      source_dtype: spec.dtype,
+      source_shape: spec.shape,
+      blob: {
+        file: spec.name + ".f64",
+        dtype: "f64le",
+        shape,
+        count: n,
+        byte_length: n * 8L,
+        sha256: "a".repeat(64),
+      },
+    }
+    validate(record, spec)
+    count += n
+    try
+      validate(
+        { ..record, blob: { ..record.blob, file: "../escape.f64", }, },
+        spec,
+      )
+    catch {
+      _ => ()
+    } noraise {
+      _ => fail("unsafe path accepted")
+    }
+  }
+  assert_eq(count, 911436L)
+  let cache = Continuity::new()
+  let spec = specs[5]
+  for i in 0..<128 {
+    cache.consume(spec, i, (i * 37 % 128).to_double())
+  }
+  assert_eq(cache.orders[0].length(), 128)
+  try cache.consume(spec, 0, 2.0) catch {
+    _ => ()
+  } noraise {
+    _ => fail("bad permutation accepted")
+  }
+  try Stats::new().add(1.0, 0.0 / 0.0) catch {
+    _ => ()
+  } noraise {
+    _ => fail("NaN accepted")
+  }
+  println(
+    "self-test passed: fixed tolerance, signed zero, chunk boundary, exact 251-member/911436-value bounds, traversal and permutation rejection",
+  )
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args.length() == 2 && args[1] == "--self-test" {
+    self_test()
+    return
+  }
+  guard args.length() == 3 else {
+    fail(
+      "usage: compare_native_actual_critic_trace.mbtx ABS_TRACE_ROOT ABS_FROZEN_MICROBATCH_ROOT; stdout JSON, read-only CPU",
+    )
+  }
+  let root = args[1]
+  let baseline = args[2]
+  for path in [root, baseline] {
+    guard path.has_prefix("/") &&
+      @fs.realpath(path) == path &&
+      @fs.kind(path) is Directory else {
+      fail("roots must be canonical absolute directories")
+    }
+  }
+  let specs = inventory()
+  let identities : Map[String, String] = Map([])
+  let (a, ta, left) = verify_mode(root, baseline, "full", specs, identities)
+  let (b, tb, right) = verify_mode(root, baseline, "split", specs, identities)
+  for
+    key in [
+      "config", "input_identity", "initial_shared_state", "plugin_sha256", "binary_sha256",
+    ] {
+    guard field(a, key) == field(b, key) else {
+      fail("full/split trace identity differs: " + key)
+    }
+  }
+  guard field(ta, "optimizer_metadata") == field(tb, "optimizer_metadata") else {
+    fail("full/split Adam metadata differs")
+  }
+  let lc = Continuity::new()
+  let rc = Continuity::new()
+  let reports = []
+  let first_by_kind : Map[String, Json] = Map([])
+  let mut first_bitwise : Json = Json::null()
+  let mut first_material : Json = Json::null()
+  let mut total_bits = 0L
+  let mut total_material = 0L
+  let mut total_zero = 0L
+  let mut total = 0L
+  let sha : Map[String, String] = Map([])
+  for i, spec in specs {
+    let stats = compare_record(
+      root + "/full/actual-critic-trace",
+      root + "/split/actual-critic-trace",
+      left[i],
+      right[i],
+      spec,
+      lc,
+      rc,
+    )
+    let report = stats_json(spec, stats)
+    reports.push(report)
+    if first_bitwise == Json::null() && stats.bitwise_differences > 0L {
+      first_bitwise = field(report, "first_bitwise")
+    }
+    if first_material == Json::null() && stats.material_differences > 0L {
+      first_material = field(report, "first_material")
+    }
+    if spec.step >= 0 {
+      for
+        kind in [
+          "normalized-input", "indices", "targets", "loss", "before-weight", "before-gradient",
+          "before-m", "before-v", "after-weight", "after-gradient", "after-m", "after-v",
+        ] {
+        if spec.name == "step-\{spec.step}-" + kind {
+          if stats.bitwise_differences > 0L &&
+            !first_by_kind.contains(kind + "-bitwise") {
+            first_by_kind[kind + "-bitwise"] = field(report, "first_bitwise")
+          }
+          if stats.material_differences > 0L &&
+            !first_by_kind.contains(kind + "-material") {
+            first_by_kind[kind + "-material"] = field(report, "first_material")
+          }
+        }
+      }
+    }
+    total += stats.values
+    total_bits += stats.bitwise_differences
+    total_material += stats.material_differences
+    total_zero += stats.signed_zero_differences
+    sha["full/" + spec.name] = left[i].blob.sha256
+    sha["split/" + spec.name] = right[i].blob.sha256
+  }
+  guard total == 911436L else { fail("total trace values differ") }
+  println(
+    (
+      {
+        "format": "moonrobo.actual-critic-trace-comparison.v1",
+        "reader_completed": true,
+        "original_full_split_gate_passed": false,
+        "scope": "first actor update; actual captured tensors and selected critic columns; no algorithm change",
+        "same_mode_frozen_actor1_summaries_verified": true,
+        "baseline_sidecar_payloads_revalidated": false,
+        "trace_sidecars_verified": 502,
+        "values_compared": Json(total),
+        "bitwise_differences": Json(total_bits),
+        "material_differences": Json(total_material),
+        "signed_zero_differences": Json(total_zero),
+        "absolute_tolerance": 0.000002,
+        "relative_tolerance": 0.0002,
+        "reference": "full",
+        "first_bitwise_difference": first_bitwise,
+        "first_material_difference": first_material,
+        "first_divergence_by_step_field": Json(first_by_kind),
+        "records": Json(reports),
+        "actual_order_and_target_gather_verified": true,
+        "optimizer_state_continuity_verified": true,
+        "repeated_normalization_vs_bootstrap_selected_bit_differences": {
+          "full": Json(lc.normalized_bit_differences),
+          "split": Json(rc.normalized_bit_differences),
+        },
+        "metadata_sha256": Json(identities),
+        "sidecar_sha256": Json(sha),
+        "read_chunk_bytes": 65536,
+        "cached_numeric_value_bound": 245904,
+        "limits": [
+          "material uses the original fixed tolerance, even for tiny moments/gradients; bitwise differences are reported separately",
+          "only selected first-layer columns 146/147 have per-step parameter/gradient/moment captures",
+          "no exact native clip coefficient was captured; none is reconstructed",
+          "difference timing alone does not prove a kernel-level root cause or numerical equivalence",
+          "this CPU reader loads no model and performs no training",
+        ],
+      } : Json).stringify(indent=2),
+  )
+}

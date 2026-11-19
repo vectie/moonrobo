@@ -1,0 +1,75 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: probe_g1_actor_update.mbtx REPO DATA_RUN POLICIES OUTPUT",
+  )
+  let root = args[1]
+  let output = args[4]
+  @fs.mkdir(output, recursive=true)
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "actor_update_probe.py", "policy.py", "dynamics.py", "cpu_physics.py", "critic_probe.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let experiment = @json.parse(
+    @fs.read_file(root + "/examples/learning/g1-goal-collection.json").text(),
+  )
+  guard experiment is Object(fields) else { fail("expected experiment") }
+  fields.set("duration_s", 10)
+  fields.set("action_noise_std_rad", 0)
+  @fs.write_file(
+    output + "/experiment.json",
+    experiment.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/config.json",
+    @fs.read_file(root + "/examples/learning/g1-actor-update-probe.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let (code, out, err) = @process.collect_output(
+    root + "/target/learning-venv/bin/python",
+    [
+      output + "/provider-sources/actor_update_probe.py",
+      "--train",
+      args[2] + "/train-batch.json",
+      "--dynamics",
+      args[2] + "/fit/dynamics-seed-0.pt",
+      "--policies",
+      args[3],
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--config",
+      output + "/config.json",
+      "--experiment",
+      output + "/experiment.json",
+      "--output",
+      output,
+    ],
+  )
+  @fs.write_file(
+    output + "/probe.log",
+    out.text() + err.text(),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(code, 0, msg=err.text())
+  println(out.text())
+}

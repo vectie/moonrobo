@@ -1,0 +1,9 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="output/spark-runtime-20261024/coefficient-assembly-20261028"
+  let mut s=@fs.read_file("output/spark-runtime-20261024/geometry-vjp-20261028/advise_outputs.mbtx").text()
+  s=s.replace_all(old="[\"conditional-0-a\",\"conditional-1-a\",\"conditional-2-a\",\"conditional-3-a\",\"tail-world-abba-a\",\"cross-actor-abba-a\",\"tail-actor-abba-a\",\"both-actor-abba-a\"]",new="[\"baseline-world-events-a\",\"forward-world-events-a\",\"baseline-actor-events-a\",\"forward-actor-events-a\"]")
+  s=s.replace_all(old="geometry-vjp",new="coefficient-assembly")
+  @fs.write_file(dir+"/advise_events.mbtx",s,create_mode=CreateNew)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+"/advise_events.mbtx","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/advise_coefficient_events.mbtx"])==0else{fail("stage")}
+}

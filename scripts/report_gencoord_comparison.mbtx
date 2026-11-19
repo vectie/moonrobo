@@ -1,0 +1,257 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+struct Trial {
+  clip_id : String
+  expected_steps : Int32
+  executed_steps : Int32
+  normalized_return : Double
+  completed_full_duration : Bool
+  termination_frame : Json?
+} derive(@json.FromJson, Eq)
+
+///|
+struct Scores {
+  per_clip : Array[Trial]
+  norm_return : Double
+  n_completed : Int32
+  n_failed : Int32
+  benchmark_complete : Bool
+  panel_sha256 : String
+  scene_sha256 : String?
+  mujoco_library_sha256 : String?
+} derive(@json.FromJson)
+
+///|
+struct PlayRun {
+  reference_sha256 : String
+  policy_kind : String
+  checkpoint_counter : Int32
+  initial_state : Array[Double]
+  initial_context : Array[Double]
+  initial_encoder_bias : Array[Double]
+  initial_reference_max_abs : Double
+  protocol : Json
+  seed : Int32
+} derive(@json.FromJson)
+
+///|
+struct Pair {
+  clip : String
+  previous : Trial
+  gencoord : Trial
+  delta_normalized_return : Double
+} derive(@json.FromJson)
+
+///|
+struct Comparison {
+  paired : Array[Pair]
+  previous_report_sha256 : String
+  paired_mean_difference : Double
+  physical_steps : Int32
+  learner_updates : Int32
+} derive(@json.FromJson)
+
+///|
+fn fixed(x : Double, signed~ : Bool = false) -> String {
+  let scaled = (x.abs() * 10000.0 + 0.5).to_int()
+  let frac = (scaled % 10000 + 10000).to_string()
+  let sign = if x < 0.0 { "-" } else if signed { "+" } else { "" }
+  sign + (scaled / 10000).to_string() + "." + frac[1:].to_owned()
+}
+
+///|
+// Archived report_json encodes a present optional frame as [frame].
+// The typed row in the pair uses the JSON number directly.
+fn Trial::canonical(self : Trial) -> Trial {
+  match self.termination_frame {
+    Some(Array([frame])) => { ..self, termination_frame: Some(frame), }
+    Some(Null) => { ..self, termination_frame: None, }
+    _ => self
+  }
+}
+
+///|
+fn Scores::verify(self : Scores) -> Unit raise {
+  assert_true(self.benchmark_complete && self.per_clip.length() == 40)
+  let seen : Map[String, Bool] = Map([])
+  let mut sum = 0.0
+  let mut finished = 0
+  for t in self.per_clip {
+    assert_true(!seen.contains(t.clip_id))
+    seen[t.clip_id] = true
+    assert_true(t.executed_steps > 0 && t.executed_steps <= t.expected_steps)
+    if t.completed_full_duration {
+      assert_eq(t.executed_steps, t.expected_steps)
+      assert_true(t.canonical().termination_frame is None)
+      finished += 1
+    } else {
+      assert_eq(t.canonical().termination_frame, Some(Json(t.executed_steps)))
+    }
+    sum += t.normalized_return
+  }
+  assert_eq(self.n_completed, finished)
+  assert_eq(self.n_failed, 40 - finished)
+  assert_true((self.norm_return - sum / 40.0).abs() < 1.0e-10)
+}
+
+///|
+fn Trial::stop(self : Trial) -> String {
+  if self.completed_full_duration {
+    "完成"
+  } else {
+    self.executed_steps.to_string()
+  }
+}
+
+///|
+async fn main {
+  let (baseline, candidate, play) = match @env.args() {
+    [_, a, b] => (a, b, false)
+    [_, "author-play", a, b] => (a, b, true)
+    _ =>
+      fail(
+        "usage: report_gencoord_comparison.mbtx [author-play] BASELINE.json GENCOORD.json",
+      )
+  }
+  let bytes = @fs.read_file(baseline)
+  let old_raw = @json.parse(bytes.text())
+  let old : Scores = @json.from_json(old_raw)
+  let raw = @json.parse(@fs.read_file(candidate).text())
+  let new : Scores = @json.from_json(raw)
+  old.verify()
+  new.verify()
+  let digest = @crypto.bytes_to_hex_string(@crypto.sha256(bytes.binary()))
+  let cmp : Comparison = if play {
+    let a : PlayRun = @json.from_json(old_raw)
+    let b : PlayRun = @json.from_json(raw)
+    assert_eq((a.policy_kind, b.policy_kind), ("legacy", "gencoord"))
+    assert_true(a.checkpoint_counter == 14000 && b.checkpoint_counter > 0)
+    assert_eq(
+      (a.protocol, a.reference_sha256, a.seed),
+      (b.protocol, b.reference_sha256, b.seed),
+    )
+    assert_true(
+      a.initial_reference_max_abs <= 2.0e-5 &&
+      b.initial_reference_max_abs <= 2.0e-5,
+    )
+    for
+      (xs, ys, n) in [
+        (a.initial_state, b.initial_state, 71),
+        (a.initial_context, b.initial_context, 33),
+        (a.initial_encoder_bias, b.initial_encoder_bias, 29),
+      ] {
+      assert_eq((xs.length(), ys.length()), (40 * n, 40 * n))
+      for i, x in xs {
+        assert_true((x - ys[i]).abs() <= 2.0e-5)
+      }
+    }
+    let pairs = Array::makei(40, i => {
+      let x = old.per_clip[i]
+      let y = new.per_clip[i]
+      {
+        clip: x.clip_id,
+        previous: x,
+        gencoord: y,
+        delta_normalized_return: y.normalized_return - x.normalized_return,
+      }
+    })
+    {
+      paired: pairs,
+      previous_report_sha256: digest,
+      paired_mean_difference: new.norm_return - old.norm_return,
+      physical_steps: b.checkpoint_counter,
+      learner_updates: 0,
+    }
+  } else {
+    let result : Comparison = @json.from_json(raw)
+    assert_eq(result.previous_report_sha256, digest)
+    assert_true(
+      old.scene_sha256 is Some(_) && old.mujoco_library_sha256 is Some(_),
+    )
+    result
+  }
+  assert_eq(old.panel_sha256, new.panel_sha256)
+  assert_eq(old.scene_sha256, new.scene_sha256)
+  assert_eq(old.mujoco_library_sha256, new.mujoco_library_sha256)
+  assert_eq(cmp.paired.length(), 40)
+  assert_true(
+    (new.norm_return - old.norm_return - cmp.paired_mean_difference).abs() <
+    1.0e-10,
+  )
+  let counts = [0, 0, 0, 0]
+  let gaps = [0.0, 0.0, 0.0, 0.0]
+  for i, pair in cmp.paired {
+    let a = pair.previous
+    let b = pair.gencoord
+    assert_true(
+      a.canonical() == old.per_clip[i].canonical() &&
+      b.canonical() == new.per_clip[i].canonical(),
+    )
+    assert_eq((a.clip_id, a.expected_steps), (b.clip_id, b.expected_steps))
+    assert_eq(pair.clip, a.clip_id)
+    assert_true(
+      (b.normalized_return - a.normalized_return - pair.delta_normalized_return).abs() <
+      1.0e-10,
+    )
+    let group = match (a.completed_full_duration, b.completed_full_duration) {
+      (true, true) => 0
+      (false, true) => 1
+      (true, false) => 2
+      (false, false) => 3
+    }
+    counts[group] += 1
+    gaps[group] += pair.delta_normalized_return / 40.0
+  }
+  println("# G1 同一组 40 条留出动作的 MuJoCo 对照\n")
+  if play {
+    println(
+      "作者的 G1 play 环境使用 MuJoCo Warp。每条动作按作者的转换器计帧，在参考推进前计奖。两份策略使用相同的起始帧、物理上下文和编码器偏置。MoonBit GenCoord 训练了 \{cmp.physical_steps} 个并行物理步。\n",
+    )
+  } else {
+    println(
+      "MoonBit GenCoord 训练了 \{cmp.physical_steps} 个并行物理步、\{cmp.learner_updates} 次策略更新。两版都从每段第 0 帧开始，每条动作等权。\n",
+    )
+  }
+  println("| 模型 | 平均归一化回报 | 完成 | 提前停止 |")
+  println("|---|---:|---:|---:|")
+  println(
+    "| 原 MoonRobo G1 14k | \{fixed(old.norm_return)} | \{old.n_completed}/40 | \{old.n_failed} |",
+  )
+  println(
+    "| MoonBit GenCoord G1 | \{fixed(new.norm_return)} | \{new.n_completed}/40 | \{new.n_failed} |",
+  )
+  println(
+    "\n平均回报差（GenCoord 减原版）为 **\{fixed(cmp.paired_mean_difference, signed=true)}**。下表按完成情况汇总每组对该差值的贡献。\n",
+  )
+  println("| 完成情况 | 动作数 | 对 40 条平均差的贡献 |")
+  println("|---|---:|---:|")
+  for
+    i, name in [
+      "两版均完成", "仅 GenCoord 完成", "仅原版完成", "两版均提前停止",
+    ] {
+    println("| \{name} | \{counts[i]} | \{fixed(gaps[i], signed=true)} |")
+  }
+  println("\n## 逐动作结果\n")
+  println(
+    "停止帧按已执行的 50 Hz 控制步计数。两版使用同一动作输入、MuJoCo 库、场景和评分规则。\n",
+  )
+  println(
+    "| 动作 | 原版回报 | GenCoord 回报 | 差值 | 原版停止帧 | GenCoord 停止帧 | 动作总帧 |",
+  )
+  println("|---|---:|---:|---:|---:|---:|---:|")
+  for pair in cmp.paired {
+    let a = pair.previous
+    let b = pair.gencoord
+    println(
+      "| \{pair.clip} | \{fixed(a.normalized_return)} | \{fixed(b.normalized_return)} | \{fixed(pair.delta_normalized_return, signed=true)} | \{a.stop()} | \{b.stop()} | \{a.expected_steps} |",
+    )
+  }
+}

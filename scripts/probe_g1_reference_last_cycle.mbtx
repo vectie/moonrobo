@@ -1,0 +1,118 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() == 4 || args.length() == 5,
+    msg="usage: probe_g1_reference_last_cycle.mbtx REPO SOURCE_STUDY OUTPUT [CONFIG_JSON]",
+  )
+  let root = args[1]
+  let source = args[2]
+  let output = args[3]
+  assert_false(@fs.exists(output))
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  @fs.mkdir(output + "/initial", recursive=true)
+  for
+    name in [
+      "reference_last_cycle.py", "reference_learning_export.py", "reference_learning.py",
+      "reference_actor.py", "reference_task.py", "balance_features.py", "cpu_physics.py",
+      "full_body_reference.py", "policy.py", "dynamics.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  for
+    (from, to) in [
+      (
+        if args.length() == 5 {
+          args[4]
+        } else {
+          root + "/examples/learning/g1-reference-last-cycle.json"
+        },
+        "config.json",
+      ),
+      (source + "/initial/actor-zero-output.pt", "initial/actor-zero-output.pt"),
+    ] {
+    @fs.write_file(
+      output + "/" + to,
+      @fs.read_file(from).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  guard @json.parse(@fs.read_file(source + "/charter.json").text())
+    is { "references": String(references), .. } else {
+    fail("source references missing")
+  }
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "config": @json.parse(@fs.read_file(output + "/config.json").text()),
+        "source_study": Json(source),
+        "references": Json(references),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(
+    @process.run(
+      "moon",
+      native_command(root, [
+        output + "/provider-sources/reference_last_cycle.py",
+        "--source",
+        source,
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--output",
+        output,
+      ]),
+      stdout=@process.redirect_to_file(
+        output + "/train.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  guard @json.parse(@fs.read_file(output + "/report.json").text())
+    is {
+      "format": "moonrobo.g1-reference-last-cycle.v1",
+      "runs": Array(runs),
+      "physical_records": Array(records),
+      "new_physical_records": Number(18, ..),
+      "reused_physical_records": Number(18, ..),
+      "physical_execution_allowed": False,
+      ..
+    } else {
+    fail("last-cycle comparison did not complete")
+  }
+  assert_eq(runs.length(), 6)
+  assert_eq(records.length(), 36)
+  println(
+    "Compared six frozen before/after actor pairs: 18 new and 18 reused physical records.",
+  )
+}
+
+///|
+fn native_command(root : String, original : Array[String]) -> Array[String] {
+  let command = [
+    "-C", root, "run", "--quiet", "--warn-list", "-a", "--target", "native", "cmd/reference_scripts",
+    "--", root,
+  ]
+  command.append(original)
+  command
+}

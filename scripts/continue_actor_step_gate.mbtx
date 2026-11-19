@@ -1,0 +1,31 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env" }
+///|
+fn revision_b(text : String) -> String {
+  let mut text=text
+  for name in ["actor_step_learning_a.mbt","actor_step_fixture_a.mbt","build_actor_step_a.mbtx","run_actor_step_gate_a.mbtx","run_actor_step_export_a.mbtx","export_actor_steps_a.py"] {text=text.replace_all(old=name,new=name.replace_all(old="_a.",new="_b."))}
+  for name in ["actor-step-export-a","actor-step-overlay-a.tar.gz","moonrobo-actor-step-a","actor-step-copy-a","actor-step-overlay-a","actor-step-fixture-a","actor-step-build-a","actor-step-cpu-tests-a","actor-step-source-a","actor-step-binary-a","actor-step-gate-a"] {text=text.replace_all(old=name,new=name.replace_all(old="-a",new="-b"))}
+  text
+}
+///|
+async fn main {
+  guard @env.args() is [_,mode]&&["prepare","export","build","run"].contains(mode) else {fail("prepare/export/build/run")}
+  let out="output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host="wlc004s@192.168.2.179"
+  if mode=="prepare" {
+    for name in ["actor_step_learning_a.mbt","actor_step_fixture_a.mbt","build_actor_step_a.mbtx","run_actor_step_gate_a.mbtx","run_actor_step_export_a.mbtx"] {
+      let code=revision_b(@fs.read_file(out+"/"+name).text())
+      let code=if name=="run_actor_step_export_a.mbtx" {code.replace_all(old="    e[\"SHARED_SMC_TRAIN\"] = \"/workspace/supermimic/supermimic/train.py\"",new="    e[\"SHARED_SMC_TRAIN\"] = \"/workspace/supermimic/supermimic/train.py\"\n    mounts.push({\"source\":\"/home/wlc004s/moonrobo/data\",\"target\":\"/workspace/supermimic/data\",\"readonly\":true})")} else {code}
+      let target=name.replace_all(old="_a.",new="_b.")
+      @fs.write_file(out+"/"+target,code,create_mode=CreateNew)
+      assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",out+"/"+target,host+":"+base+"/"+target]),0)
+    }
+    for (src,name) in [(out+"/actor-step-overlay-a.tar.gz","actor-step-overlay-b.tar.gz"),("providers/motion_learning/export_actor_steps.py","export_actor_steps_b.py")] {assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",src,host+":"+base+"/"+name]),0)}
+    return
+  }
+  let folder=out+"/step-"+mode+"-b";@fs.mkdir(folder)
+  let command=match mode {"export"=>"run_actor_step_export_b.mbtx -- actor compiled off actor-step-export-b bf16";"build"=>"build_actor_step_b.mbtx";_=>"run_actor_step_gate_b.mbtx -- actor native off 1 actor-step-native-b bf16-full"}
+  let code=@process.run("ssh",["-S","/tmp/moonrobo-operator-179.sock",host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/"+command],stdout=@process.redirect_to_file(folder+"/controller.stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(folder+"/controller.stderr.log",create_mode=CreateNew))
+  if mode!="build" {let source=if mode=="export" {"hotspot-mlp-actor-step-export-b"} else {"hotspot-shared-actor-step-native-b"};for name in ["result.json","boundaries.json","completion.json","training-guard.json","training-docker-final.json","training.stdout.log","training.stderr.log","protocol.json","compiled-packages.json","exported-artifacts.json"] {ignore(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",host+":/home/wlc004s/moonrobo/runs/"+source+"/"+name,folder+"/"+name]))}}
+  assert_eq(code,0)
+}

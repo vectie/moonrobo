@@ -1,0 +1,203 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() == 6 || args.length() == 7,
+    msg="usage: probe_g1_tail.mbtx REPO PREVIOUS_MODEL_RUN LONG_MODEL_RUN ACTOR_CHECKPOINT OUTPUT [CONFIG]",
+  )
+  let root = args[1]
+  // The preserved fit_g1_invariant workflow invokes this child by its original
+  // path. Keep explicit historical execution from mixing in a native child.
+  if @env.get_env_var("MOONROBO_LEARNING_BACKEND") == Some("python-reference") {
+    let code = @process.run(
+      "moon",
+      [
+        "run",
+        "--warn-list",
+        "-a",
+        root + "/scripts/run_python_reference.mbtx",
+        root,
+        "probe_g1_tail.mbtx",
+        ..args[2:].to_owned(),
+      ],
+      cwd=root,
+    )
+    assert_eq(code, 0)
+    return
+  }
+  let output = args[5]
+  @fs.mkdir(output, recursive=true)
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for name in ["model_probe.py", "policy.py", "dynamics.py", "cpu_physics.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let config = if args.length() == 7 {
+    args[6]
+  } else {
+    root + "/examples/learning/g1-tail-model-probe.json"
+  }
+  @fs.write_file(
+    output + "/config.json",
+    @fs.read_file(config).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let report_path = output + "/report.json"
+  let (code, stdout, stderr) = native_collect_output(
+    root + "/scripts/run_native_learning.mbtx",
+    [
+      root + "/providers/motion_learning/model_probe.py",
+      "--initial",
+      args[2] + "/fit/dynamics-seed-0.moon.json",
+      "--corrected",
+      args[3] + "/fit/dynamics-seed-0.moon.json",
+      "--actor",
+      args[4],
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--config",
+      config,
+      "--experiment",
+      root + "/examples/learning/g1-long-experiment.json",
+      "--output",
+      report_path,
+    ],
+  )
+  @fs.write_file(
+    output + "/probe.log",
+    stdout.text() + stderr.text(),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(code, 0, msg=stderr.text())
+  let report = @json.parse(@fs.read_file(report_path).text())
+  guard field(report, "maximum_restore_error") is Number(error, ..) else {
+    fail("missing replay error")
+  }
+  assert_true(error <= 1.0e-8)
+  guard field(report, "records") is Array(records) && !records.is_empty() else {
+    fail("empty probe")
+  }
+  guard field(report, "omitted") is Array(omitted) else {
+    fail("missing coverage accounting")
+  }
+  let summary : Json = {
+    "format": "moonrobo.g1-tail-probe-summary.v1",
+    "config": field(report, "config"),
+    "actor_sha256": field(report, "actor_sha256"),
+    "checkpoints": field(report, "checkpoints"),
+    "maximum_restore_error": field(report, "maximum_restore_error"),
+    "records": records.length().to_json(),
+    "omitted_windows": omitted.length().to_json(),
+    "summaries": field(report, "summaries"),
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    output + "/summary.json",
+    summary.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(summary.stringify(indent=2))
+}
+
+///|
+/// Checkpoint copies are validated or converted by the reviewed native loader.
+fn native_checkpoint_copy_command(
+  exe : String,
+  args : Array[String],
+) -> (String, Array[String])? raise {
+  if exe != "/bin/cp" || args.length() < 2 {
+    return None
+  }
+  if !args[0].has_suffix(".moon.json") &&
+    !args[0].has_suffix(".pt") &&
+    !args[1].has_suffix(".moon.json") {
+    return None
+  }
+  guard args.length() == 2 && args[1].has_suffix(".moon.json") else {
+    fail("checkpoint copies require SOURCE and native .moon.json DESTINATION")
+  }
+  let name = args[0].split("/").last().unwrap_or("").to_owned()
+  let kind = if name.contains("dynamics-seed-") {
+    "residual-dynamics"
+  } else if name.contains("actor-seed-") {
+    "g1-actor"
+  } else {
+    fail("unreviewed checkpoint copy kind: " + name)
+  }
+  let root = @env.args()[1]
+  Some(
+    (
+      root,
+      [
+        "run",
+        root + "/scripts/run_native_learning.mbtx",
+        root,
+        "src/learning_training/launch/cmd",
+        "checkpoint-copy",
+        args[0],
+        args[1],
+        kind,
+      ],
+    ),
+  )
+}
+
+///|
+/// Structured native dispatch. A .py argument is a reviewed provider descriptor, never an executable or an interpreter fallback.
+async fn native_collect_output(
+  exe : String,
+  args : Array[String],
+) -> (Int32, &@io.Data, &@io.Data) {
+  let suffix = "/scripts/run_native_learning.mbtx"
+  if exe.has_suffix(suffix) {
+    let root = exe[:exe.length() - suffix.length()].to_owned()
+    let command = ["run", exe, root, "src/learning_training/launch/cmd"]
+    command.append(args)
+    return @process.collect_output("moon", command, cwd=root)
+  }
+  if native_checkpoint_copy_command(exe, args) is Some((root, command)) {
+    return @process.collect_output("moon", command, cwd=root)
+  }
+  @process.collect_output(exe, args)
+}
+
+///|
+async fn native_process_run(
+  exe : String,
+  args : Array[String],
+  stdout? : &@process.ProcessOutput,
+  stderr? : &@process.ProcessOutput,
+) -> Int32 {
+  let suffix = "/scripts/run_native_learning.mbtx"
+  if exe.has_suffix(suffix) {
+    let root = exe[:exe.length() - suffix.length()].to_owned()
+    let command = ["run", exe, root, "src/learning_training/launch/cmd"]
+    command.append(args)
+    return @process.run("moon", command, cwd=root, stdout?, stderr?)
+  }
+  if native_checkpoint_copy_command(exe, args) is Some((root, command)) {
+    return @process.run("moon", command, cwd=root, stdout?, stderr?)
+  }
+  @process.run(exe, args, stdout?, stderr?)
+}

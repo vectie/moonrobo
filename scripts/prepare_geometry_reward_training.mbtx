@@ -1,0 +1,71 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let prior = "hotspot-geometry-math-ieee-packages-a/reward"
+  let next = "hotspot-mlp-geometry-world-reward-graph-export-b"
+  let put = async fn(name : String, content : String) {
+    @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-math-179.sock",
+        out + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  put(
+    "geometry_math_fixture_l.mbt",
+    @fs.read_file(out + "/geometry_math_fixture_k.mbt")
+    .text()
+    .replace_all(old=prior, new=next + "/reward"),
+  )
+  put(
+    "build_geometry_math_l.mbtx",
+    @fs.read_file(out + "/build_geometry_math_k.mbtx")
+    .text()
+    .replace_all(old="geometry-math-k", new="geometry-math-l")
+    .replace_all(
+      old="geometry_math_fixture_k.mbt",
+      new="geometry_math_fixture_l.mbt",
+    ),
+  )
+  put(
+    "run_geometry_math_training_l.mbtx",
+    @fs.read_file(out + "/run_geometry_math_training_k.mbtx")
+    .text()
+    .replace_all(old=prior, new=next + "/reward")
+    .replace_all(old="geometry-math-k", new="geometry-math-l")
+    .replace_all(old="training_k.mbtx", new="training_l.mbtx")
+    .replace_all(
+      old="  e[\"MOONROBO_SHARED_AMP\"]",
+      new="  guard field(read_json(\"/home/wlc004s/moonrobo/runs/" +
+        next +
+        "/result.json\"),\"numerical_pass\")==Json(true) else{fail(\"reward export gate\")}\n  mounts.push({\"source\":\"/home/wlc004s/moonrobo/runs/" +
+        next +
+        "\",\"target\":\"/workspace/moonrobo/runs/" +
+        next +
+        "\",\"readonly\":true})\n  e[\"MOONROBO_SHARED_AMP\"]",
+    ),
+  )
+  @fs.write_file(
+    out + "/run_geometry_reward_training_l.mbtx",
+    @fs.read_file(out + "/run_geometry_actor_training_k.mbtx")
+    .text()
+    .replace_all(old="math_k.mbtx", new="math_l.mbtx")
+    .replace_all(old="training_k.mbtx", new="training_l.mbtx")
+    .replace_all(old="gate-k", new="gate-l")
+    .replace_all(old="build-k.", new="build-l."),
+    create_mode=CreateNew,
+  )
+}

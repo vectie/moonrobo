@@ -1,0 +1,66 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+// Fixed, serial control sequence. Each worker pins its input/build artifacts,
+// checks idle GPU ownership and enforces the existing memory guard unchanged.
+async fn main {
+  let closed = ["cost-tail-abba-a", "cost-layout-abba-a", "cost-both-gate-a"]
+  let jobs = [
+    ("c", "smc-ieee", "events", "cost-ieee-events-d"),
+    ("c", "smc-ieee", "off", "cost-ieee-off-a"),
+    ("a", "smc-corrected", "off", "cost-corrected-off-a"),
+    ("a", "smc", "off", "cost-smc-off-a"),
+    ("b", "native-abba-both", "off", "cost-both-abba-a"),
+    ("a", "smc", "off", "cost-smc-off-b"),
+    ("a", "smc-corrected", "off", "cost-corrected-off-b"),
+    ("b", "native-both", "events", "cost-both-events-a"),
+  ]
+  for i, (runner, kind, observer, label) in jobs {
+    println("CONTROL_START " + label)
+    assert_eq(
+      @process.run(
+        "moon",
+        [
+          "run",
+          "--target",
+          "native",
+          "scripts/reclaim_geometry_cost.mbtx",
+          "--",
+          "control_retry_two_" + i.to_string(),
+          ..closed,
+        ],
+      ),
+      0,
+    )
+    assert_eq(
+      @process.run("env", [
+        "GEOMETRY_COST_RUNNER=" + runner,
+        "moon",
+        "run",
+        "--target",
+        "native",
+        "scripts/run_geometry_cost.mbtx",
+        "--",
+        kind,
+        observer,
+        label,
+      ]),
+      0,
+    )
+    if runner == "b" {
+      assert_eq(
+        @process.run("moon", [
+          "run", "--target", "native", "scripts/check_geometry_cost_snapshot.mbtx",
+          "--", label,
+        ]),
+        0,
+      )
+    }
+    closed.push(label)
+    println("CONTROL_COMPLETE " + label)
+  }
+}

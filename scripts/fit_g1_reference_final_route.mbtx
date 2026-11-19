@@ -1,0 +1,131 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) else { fail("expected object") }
+  fields[key]
+}
+
+///|
+fn str(value : Json) -> String raise {
+  guard value is String(text) else { fail("expected string") }
+  text
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() == 4 || args.length() == 5,
+    msg="usage: fit_g1_reference_final_route.mbtx REPO PARAMETER_STUDY OUTPUT [CONFIG_JSON]",
+  )
+  let root = args[1]
+  let output = args[3]
+  assert_false(@fs.exists(output))
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  @fs.mkdir(output + "/initial", recursive=true)
+  for
+    name in [
+      "reference_final_route_training.py", "reference_learning_export.py", "reference_action_response.py",
+      "reference_learning.py", "reference_actor.py", "reference_task.py", "balance_features.py",
+      "cpu_physics.py", "full_body_reference.py", "policy.py", "dynamics.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let diagnostic = read(args[2] + "/report.json")
+  let source = str(field(diagnostic, "source_study"))
+  @fs.write_file(
+    output + "/initial/actor-zero-output.pt",
+    @fs.read_file(source + "/initial/actor-zero-output.pt").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/config.json",
+    @fs.read_file(
+      if args.length() == 5 {
+        args[4]
+      } else {
+        root + "/examples/learning/g1-reference-final-route-training.json"
+      },
+    ).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "config": read(output + "/config.json"),
+        "references": field(diagnostic, "references"),
+        "diagnostic_study": Json(args[2]),
+        "source_study": Json(source),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(
+    @process.run(
+      "moon",
+      native_command(root, [
+        output + "/provider-sources/reference_final_route_training.py",
+        "--source",
+        args[2],
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--output",
+        output,
+      ]),
+      stdout=@process.redirect_to_file(
+        output + "/train.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  guard read(output + "/report.json")
+    is {
+      "format": "moonrobo.g1-reference-final-route-training.v1",
+      "runs": Array(runs),
+      "physical_records": Array(records),
+      "new_physical_records": Number(162, ..),
+      "reused_physical_records": Number(162, ..),
+      "physical_execution_allowed": False,
+      ..
+    } else {
+    fail("final-cycle route study did not complete")
+  }
+  assert_eq(runs.length(), 12)
+  assert_eq(records.length(), 324)
+  println(
+    "Reconstructed all six original final actors and evaluated all six stopped-route policies on 27 conditions each.",
+  )
+}
+
+///|
+fn native_command(root : String, original : Array[String]) -> Array[String] {
+  let command = [
+    "-C", root, "run", "--quiet", "--warn-list", "-a", "--target", "native", "cmd/reference_scripts",
+    "--", root,
+  ]
+  command.append(original)
+  command
+}

@@ -1,0 +1,45 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(o) && o.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, folder] else { fail("directory with four training logs") }
+  let result : Array[Json] = []
+  for index in 0..<4 {
+    let path = folder + "/run-" + index.to_string() + ".stdout.log"
+    let contents = @fs.read_file(path).text()
+    guard contents.length() < 4194304 else { fail("bounded text log required") }
+    let matches : Array[Json] = []
+    for line in contents.split("\n") {
+      if !line.has_prefix("{") { continue }
+      let row = @json.parse(line)
+      if row is Object(o) && o.get("stage") == Some(Json("resident-reference-cache-ready")) {
+        matches.push(row)
+      }
+    }
+    guard matches.length() == 1 else { fail("exactly one cache construction event required") }
+    result.push({
+      "index": Json(index),
+      "side": Json(if index == 0 || index == 3 { "a" } else { "b" }),
+      "runner_construction_ms": field(matches[0], "runner_construction_ms"),
+      "reference_fk_resident_bytes": field(matches[0], "reference_fk_resident_bytes"),
+      "reference_usage": field(matches[0], "usage"),
+      "includes_learner_state_synchronization": field(matches[0], "includes_learner_state_synchronization"),
+    })
+  }
+  @fs.write_file(folder + "/startup.json", ({
+    "scope": "Observed runner construction including reference tables and learner state synchronization; outside steady iteration timing; not total process startup",
+    "runs": Json(result),
+  } : Json).stringify(indent=2), create_mode=CreateNew)
+}

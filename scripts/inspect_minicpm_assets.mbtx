@@ -1,0 +1,32 @@
+///|
+// Offline upstream asset inspection; no weights or executable model code.
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 2 else {
+    fail("usage: inspect_minicpm_assets.mbtx TOKENIZER.json")
+  }
+  guard @fs.read_file(args[1]).json() is Object(root) &&
+    root.get("model") is Some(Object(model)) else {
+    fail("invalid tokenizer")
+  }
+  println(
+    Json({
+      "normalizer": root.get("normalizer"),
+      "pre_tokenizer": root.get("pre_tokenizer"),
+      "decoder": root.get("decoder"),
+      "post_processor": root.get("post_processor"),
+      "model_type": model.get("type"),
+      "byte_fallback": model.get("byte_fallback"),
+      "ignore_merges": model.get("ignore_merges"),
+      "unk_token": model.get("unk_token"),
+    }).stringify(indent=2),
+  )
+}

@@ -1,0 +1,93 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn command(p : String, argv : Array[String]) -> String {
+  let (reader, stdout) = @process.read_from_process()
+  defer reader.close()
+  @async.with_task_group() <| group => {
+    let child = group.spawn(() => @process.run(p, argv, stdout~))
+    let b = FixedArray::make(4194304, b'\x00')
+    let mut n = 0
+    for ;; {
+      let k = reader.read(b, offset=n, max_len=b.length() - n)
+      if k == 0 {
+        break
+      }
+      n += k
+      guard n < b.length() else { fail("4MiB bound") }
+    }
+    guard child.wait() == 0 else { fail("inventory command failed") }
+    @utf8.decode(Bytes::from_array(b[:n]))
+  }
+}
+
+///|
+async fn main {
+  let root = "/home/wlc004s/moonrobo"
+  guard command("docker", ["ps", "--quiet"]).trim() == "" &&
+    command("nvidia-smi", [
+      "--query-compute-apps=pid", "--format=csv,noheader,nounits",
+    ]).trim() ==
+    "" else {
+    fail("idle only")
+  }
+  let names = command("find", [
+      "-P",
+      root + "/runs",
+      root + "/private",
+      root + "/data",
+      "-xdev",
+      "-maxdepth",
+      "24",
+      "-type",
+      "f",
+      "-size",
+      "+1M",
+      "-printf",
+      "%p\n",
+    ])
+    .trim()
+    .split("\n")
+    .map(x => x.to_owned())
+    .to_array()
+  guard names.length() < 32768 else { fail("file count bound") }
+  let rows : Array[Json] = []
+  for start = 0; start < names.length(); start = start + 64 {
+    let paths = names[start:(start + 64).min(names.length())].to_owned()
+    let value = @json.parse(
+      command(
+        root + "/private/fincore-official-20261024-a/root/usr/bin/fincore",
+        ["--json", "--bytes", "--output", "FILE,SIZE,RES", ..paths],
+      ),
+    )
+    guard value is { "fincore": Array(files), .. } else {
+      fail("fincore schema")
+    }
+    rows.append(
+      files.filter(j => {
+        match j {
+          { "res": Number(n, ..), .. } => n > 0.0
+          _ => false
+        }
+      }),
+    )
+  }
+  @fs.write_file(
+    root + "/private/shared-compute-20261026-a/full-ln-residency-b.json",
+    Json({
+      "files_examined": Json(names.length()),
+      "resident_files": Json(rows),
+      "read_only": true,
+    }).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println("Inventory complete: " + names.length().to_string())
+}

@@ -1,0 +1,51 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/world-ln-fk-20261026"
+  let source = @fs.read_file(root + "/run_followup_measured_d.mbtx")
+    .text()
+    .replace_all(
+      old="run_followup_measured_d.mbtx",
+      new="run_followup_measured_e.mbtx",
+    )
+    .replace_all(old="/measured-d-", new="/measured-e-")
+    .replace_all(old="spec-measured-d.json", new="spec-measured-e.json")
+    .replace_all(
+      old="candidate + \"-20261026-d\"",
+      new="candidate + \"-20261026-e\"",
+    )
+    .replace_all(
+      old="if candidate != \"world\" {",
+      new="if candidate != \"world\" && candidate != \"ln\" {",
+    )
+    .replace_all(
+      old="for path in [control +",
+      new="for path in [base + \"/spec-pair.json\", tools + \"/cache-followup-ended-old-phase-cuda-20261026-a.json\", control +",
+    )
+    .replace_all(
+      old="    run(candidate + \"-image-\"",
+      new="    run(candidate + \"-checkpoint-\" + i.to_string(), tools + \"/advise_hotspot_run_cache.mbtx\", [\"--advise\", tools + \"/cache-followup-e-\" + candidate + \"-checkpoints-\" + i.to_string() + \".json\", root + \"/run-\" + i.to_string()])\n    run(candidate + \"-image-\"",
+    )
+    .replace_all(
+      old="cache-followup-measured-",
+      new="cache-followup-e-measured-",
+    )
+    .replace_all(
+      old="Failed world startup groups excluded.",
+      new="Failed world startup groups and LN revision-d incomplete ABBA (B preflight memory admission rejected) excluded. Per-file cache advice includes committed checkpoints after each ended process, equally on A and B, outside timing.",
+    )
+  let path = root + "/run_followup_measured_e.mbtx"
+  @fs.write_file(path, source, create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o", "ControlPath=/tmp/moonrobo-operator-179.sock", path, "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a/run_followup_measured_e.mbtx",
+    ]) ==
+    0 else {
+    fail("copy")
+  }
+}

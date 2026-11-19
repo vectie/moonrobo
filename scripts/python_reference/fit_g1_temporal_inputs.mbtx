@@ -1,0 +1,209 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: fit_g1_temporal_inputs.mbtx REPO TEACHER_DATA INCOMING_POLICIES OUTPUT",
+  )
+  let root = args[1]
+  let output = args[4]
+  assert_true(!@fs.exists(output), msg="choose a fresh study directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "temporal_actor.py", "temporal_training.py", "policy.py", "dynamics.py", "cpu_physics.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/provider-sources/teacher_feedback.py",
+    @fs.read_file(args[2] + "/provider-sources/balance_teacher.py").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/teacher.json",
+    @fs.read_file(args[2] + "/teacher.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let collection = read(root + "/examples/learning/g1-goal-collection.json")
+  guard collection is Object(fields) &&
+    field(collection, "cases") is Array(cases) else {
+    fail("expected cases")
+  }
+  let training = cases.filter(c => field(c, "split") == ("train" : Json))
+  for (suffix, friction) in [("high", 1.0), ("medium", 0.8), ("low", 0.6)] {
+    training.push({
+      "id": Json("joint-sines-" + suffix),
+      "family": "procedural-independent-joint-sines",
+      "motion": "random_joint_sines",
+      "keyframe": "home",
+      "split": "train",
+      "friction": Json(friction),
+      "goal_offset_rad": { "lower": 0.02, "waist": 0.06, "upper": 0.12 },
+    })
+  }
+  fields.set("cases", Json(training))
+  fields.set("duration_s", 10)
+  fields.set("action_noise_std_rad", 0)
+  @fs.write_file(
+    output + "/collection.json",
+    collection.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/experiment.json",
+    @fs.read_file(root + "/examples/learning/g1-long-experiment.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let config = read(root + "/examples/learning/g1-temporal-input-study.json")
+  @fs.write_file(
+    output + "/teacher-config.json",
+    config.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let entries : Array[Json] = []
+  for (id, h, f) in [("frame", 1, 0), ("history", 10, 0), ("preview", 10, 10)] {
+    let cell = @json.parse(config.stringify())
+    guard cell is Object(c) else { fail("expected config") }
+    c.set("method", Json(id))
+    c.set("history_length", Json(h))
+    c.set("future_length", Json(f))
+    @fs.mkdir(output + "/" + id, recursive=true)
+    @fs.write_file(
+      output + "/" + id + "/config.json",
+      cell.stringify(indent=2),
+      create_mode=CreateOrTruncate,
+    )
+    entries.push({ "id": Json(id), "config": cell })
+  }
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-temporal-input-charter.v1",
+        "cells": Json(entries),
+        "incoming_policies": Json(args[3]),
+        "selection": "Physics validation seeds 30-32 after rounds 0..8; independent final seeds 8700-8702 never select weights. Dynamic training family is independent from canonical sway/wave families.",
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let base_args = [
+    "--scene",
+    root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+    "--collection",
+    output + "/collection.json",
+    "--teacher",
+    output + "/teacher.json",
+    "--experiment",
+    output + "/experiment.json",
+  ]
+  let teacher_args = [
+    output + "/provider-sources/temporal_training.py",
+    "collect-teacher",
+  ]
+  teacher_args.append(base_args)
+  teacher_args.append([
+    "--config",
+    output + "/teacher-config.json",
+    "--output",
+    output + "/teacher-data",
+  ])
+  let (code, out, err) = @process.collect_output(
+    root + "/target/learning-venv/bin/python",
+    teacher_args,
+  )
+  assert_eq(code, 0, msg=err.text())
+  println(out.text())
+  let (checked, batch, check_err) = @process.collect_output(
+    root + "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+    [output + "/teacher-data/dataset.json", "train", "1", "1000000"],
+  )
+  assert_eq(checked, 0, msg=check_err.text())
+  let validated = @json.parse(batch.text())
+  assert_eq(field(validated, "window_length"), 1)
+  @fs.write_file(
+    output + "/native-check.json",
+    batch.binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @async.with_task_group() <| group => {
+    let processes : Array[(@process.Process, String)] = []
+    for entry in entries {
+      guard field(entry, "id") is String(id) else { fail("missing id") }
+      let command = [output + "/provider-sources/temporal_training.py", "fit"]
+      command.append(base_args)
+      command.append([
+        "--config",
+        output + "/" + id + "/config.json",
+        "--data",
+        output + "/teacher-data/dataset.json",
+        "--policies",
+        args[3],
+        "--output",
+        output + "/" + id + "/policy",
+      ])
+      let process = @process.spawn(
+        group,
+        root + "/target/learning-venv/bin/python",
+        command,
+        stdout=@process.redirect_to_file(
+          output + "/" + id + "/train.log",
+          create_mode=CreateOrTruncate,
+        ),
+        stderr=@process.redirect_to_file(
+          output + "/" + id + "/stderr.log",
+          create_mode=CreateOrTruncate,
+        ),
+      )
+      processes.push((process, id))
+    }
+    for (process, id) in processes {
+      assert_eq(process.wait(), 0, msg=id + " failed")
+      let report = read(output + "/" + id + "/policy/report.json")
+      guard field(report, "runs") is Array(runs) else {
+        fail("missing results")
+      }
+      for row in runs {
+        println(
+          id +
+          ": " +
+          (
+            {
+              "seed": field(row, "seed"),
+              "selected_round": field(row, "selected_round"),
+              "candidate": field(row, "candidate"),
+              "qualifies": field(row, "qualifies"),
+            } : Json).stringify(),
+        )
+      }
+    }
+  }
+}

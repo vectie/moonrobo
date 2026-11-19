@@ -1,0 +1,16 @@
+{
+  "seeds": [0, 1, 2],
+  "updates": 3000,
+  "batch_size": 256,
+  "hidden_width": 128,
+  "actor_learning_rate": 0.001,
+  "gamma": 0.99,
+  "action_delta_rad": 0.3,
+  "critic_horizontal_translation_invariant": true,
+  "validation_seeds": [30, 31, 32],
+  "evaluation_updates": [100, 500, 1000, 2000, 3000],
+  "test_seeds": [8400, 8401, 8402],
+  "max_mean_joint_rmse_rad": 0.15,
+  "cpu_threads": 2,
+  "scope": "Supervised initialization from all 24 actual teacher episodes including failures. Same existing actor inputs and 0.3 rad bound. Half uniform point samples, half first-two-second points. Validation physics selects actor; final fresh seeds never select weights. Critic output initialized to zero and explicitly untrained; no learned dynamics or speedup claim."
+}

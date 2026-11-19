@@ -1,0 +1,16 @@
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+async fn main {
+  guard @env.args() is [_, phase, implementation, obs, reps, label, variant] else { fail("phase implementation obs reps label variant") }
+  println("Starting " + label)
+  let code = @process.run("/home/wlc004s/moonrobo/toolchain/bin/moon", ["run","--target","native",base+"/run_smc_fix_a.mbtx","--",phase,implementation,obs,reps,label,variant],
+    stdout=@process.redirect_to_file(base+"/"+label+".stdout.log",create_mode=CreateNew),
+    stderr=@process.redirect_to_file(base+"/"+label+".stderr.log",create_mode=CreateNew))
+  @fs.write_file(base+"/"+label+".exit.json", ({"exit_code":Json(code)}:Json).stringify(),create_mode=CreateNew)
+  println("Completed " + label + " exit=" + code.to_string())
+}

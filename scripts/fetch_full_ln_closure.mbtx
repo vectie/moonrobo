@@ -1,0 +1,78 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let destination = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/layernorm-full-retest-20261026/closure"
+  let remote = "/home/wlc004s/moonrobo"
+  guard !@fs.exists(destination) else { fail("preserve existing closure") }
+  @fs.mkdir(destination)
+  async fn fetch(source : String, target : String) -> Unit {
+    guard @process.run("scp", [
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179:" + source,
+        target,
+      ]) ==
+      0 else {
+      fail("fetch failed: " + source)
+    }
+  }
+  for label in ["a", "b", "c"] {
+    let source = remote +
+      "/runs/native-full-ln-vs-smc512-20261026-" +
+      label +
+      "/run-0"
+    let target = destination + "/rejected-" + label
+    @fs.mkdir(target)
+    for
+      file in [
+        "result.json", "preflight.stdout.log", "preflight.stderr.log", "preflight-guard.json",
+        "preflight-docker-final.json",
+      ] {
+      fetch(source + "/" + file, target + "/" + file)
+    }
+    if label == "c" {
+      for
+        file in [
+          "training.stdout.log", "training.stderr.log", "training-guard.json", "training-docker-final.json",
+        ] {
+        fetch(source + "/" + file, target + "/" + file)
+      }
+    }
+  }
+  for
+    (folder, names) in [
+      (
+        "shared-compute-20261026-a",
+        [
+          "full-ln-cache-before-retry-a.json", "full-ln-cache-before-retry-c.json",
+          "full-ln-shared-cache-ended-a.json", "full-ln-shared-cache-ended-reports-b.json",
+          "full-ln-parent-cache-a.json", "gate-build-full-ln-a.receipt.json", "trainer-full-ln-a-build.receipt.json",
+          "full-ln-pair-spec-a.json", "run_full_ln_pair_retry_d.mbtx",
+        ],
+      ),
+      (
+        "operator-diagnostic-20261025-a",
+        [
+          "full-ln-owned-image-packages-a.json", "full-ln-pinned-image-a.json", "full-ln-pinned-usr-a.json",
+          "full-ln-pinned-usr-b.json", "full-ln-controller-builds-a.json", "full-ln-before-d-usr.json",
+        ],
+      ),
+    ] {
+    @fs.mkdir(destination + "/" + folder)
+    for file in names {
+      fetch(
+        remote + "/private/" + folder + "/" + file,
+        destination + "/" + folder + "/" + file,
+      )
+    }
+  }
+  println(
+    "Fetched rejected starts, cache receipts and frozen build evidence; no tensor payloads.",
+  )
+}

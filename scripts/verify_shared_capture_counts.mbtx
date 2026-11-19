@@ -1,0 +1,95 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+async fn main {
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  guard @process.run(
+      "docker",
+      ["ps", "--quiet"],
+      stdout=@process.redirect_to_file(
+        base + "/count-verification-active-containers.txt",
+        create_mode=CreateNew,
+      ),
+    ) ==
+    0 &&
+    @fs.read_file(base + "/count-verification-active-containers.txt")
+    .text()
+    .trim()
+    .is_empty() else {
+    fail("GPU/CPU jobs must be idle")
+  }
+  let records : Array[Json] = []
+  for
+    (id, label, wanted) in [
+      ("0", "actor.backward", 8),
+      ("2b", "actor.backward", 1),
+      ("1", "diag.actor.backward", 8),
+      ("3c", "diag.actor.backward", 1),
+    ] {
+    let root = "/home/wlc004s/moonrobo/runs/hotspot-shared-diag-actor-captures-" +
+      id
+    let sql = "WITH scopes AS (SELECT n.rowid scope_id,n.start,n.end,n.globalTid FROM NVTX_EVENTS n LEFT JOIN StringIds s ON s.id=n.textId WHERE COALESCE(n.text,s.value)='" +
+      label +
+      "' AND n.end>n.start), launched AS (SELECT n.scope_id,n.start scope_start,k.rowid kernel_id,k.start,k.end FROM scopes n JOIN CUPTI_ACTIVITY_KIND_RUNTIME r ON (r.globalTid & -16777216)=(n.globalTid & -16777216) AND r.start>=n.start AND r.end<=n.end JOIN CUPTI_ACTIVITY_KIND_KERNEL k ON k.globalPid=(r.globalTid & -16777216) AND k.correlationId=r.correlationId) SELECT scope_id,scope_start,COUNT(*) kernels,COUNT(DISTINCT kernel_id) distinct_kernels,SUM(end-start)/1e6 kernel_ms FROM launched GROUP BY scope_id ORDER BY scope_start LIMIT 16;"
+    let file = base + "/capture-counts-" + id + ".json"
+    guard @process.run(
+        "prlimit",
+        [
+          "--as=4294967296",
+          "--cpu=60",
+          "--",
+          "sqlite3",
+          "-batch",
+          "-readonly",
+          "-json",
+          root + "/analysis/trace.sqlite",
+          sql,
+        ],
+        stdout=@process.redirect_to_file(file, create_mode=CreateNew),
+      ) ==
+      0 else {
+      fail("bounded count query")
+    }
+    let rows = @json.parse(@fs.read_file(file).text())
+    guard rows is Array(spans) &&
+      spans.length() == wanted &&
+      spans.all(s => field(s, "kernels") == field(s, "distinct_kernels")) else {
+      fail("scope/count completeness")
+    }
+    records.push({ "capture": Json(id), "scope": Json(label), "rows": rows })
+  }
+  guard field(records[0], "rows") is Array(a) &&
+    field(records[1], "rows") is Array(b) &&
+    field(records[2], "rows") is Array(c) &&
+    field(records[3], "rows") is Array(d) else {
+    fail("count arrays")
+  }
+  let same_native = field(a[0], "kernels") == field(b[0], "kernels")
+  let same_smc = field(c[0], "kernels") == field(d[0], "kernels")
+  @fs.write_file(
+    base + "/capture-count-validation.json",
+    Json({
+      "records": Json(records),
+      "native_first_backward_count_matches": Json(same_native),
+      "smc_first_backward_count_matches": Json(same_smc),
+      "notes": "Counts compare the first backward against the same first backward in the drained whole-phase CUDA window. Counts matching are a consistency check, not proof that every event is present. GPU sums remain instrumented; no throughput correction inferred. SMC retry explicitly synchronizes before closing the first-backward capture, so CPU range includes that diagnostic wait.",
+    }).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  guard same_native && same_smc else {
+    fail("short capture count mismatch; retain failure")
+  }
+  println("First-backward kernel counts match both whole-phase traces")
+}

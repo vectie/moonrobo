@@ -1,0 +1,49 @@
+///|
+async fn main {
+  guard @env.args() is [_, label] && component(label) else { fail("fresh cache receipt") }
+  let report = base + "/mlp-cuda-cache-" + label + ".json"
+  guard !@fs.exists(report) else { fail("fresh cache receipt") }
+  idle("")
+  let receipts : Array[Json] = []
+  let labels = ["native-gate-a", "native-gate-b", "smc-gate-a", "smc-gate-b", "compiled-gate-b", "off-actor-5-retry-c", "off-actor-6-retry-d"]
+  for group in ["off", "events"] {
+    for phase in ["world", "actor"] {
+      for i in 0..<10 { labels.push(group + "-" + phase + "-\{i}-b") }
+    }
+  }
+  if label.has_prefix("after-") {
+    labels.clear()
+    labels.push(label[6:].to_owned())
+  }
+  let mut reclaimed = 0L
+  for name in labels {
+    let root = "/home/wlc004s/moonrobo/runs/hotspot-mlp-" + name
+    if !@fs.exists(root + "/training-docker-final.json") || !@fs.exists(root + "/cuda-cache") { continue }
+    guard read_json(root + "/training-docker-final.json") is [saved] else { fail("closed receipt") }
+    let actual = inspect(text(field(saved, "Id")))
+    stopped(actual)
+    for key in ["Id", "Image", "Config", "State"] { guard field(actual, key) == field(saved, key) else { fail("changed task identity") } }
+    guard field(actual, "Mounts") is Array(mounts) && mounts.any(m => field(m, "Source") == Json(root) && field(m, "Destination") == Json("/pair") && field(m, "RW") == Json(true)) else { fail("task-owned output") }
+    let source = root + "/cuda-cache"
+    guard @fs.realpath(source) == source else { fail("canonical CUDA cache") }
+    let entries = inventory(command("find", ["-P", source, "-xdev", "-maxdepth", "14", "-printf", "%y\t%s\t%n\t%U\t%D\t%i\t%T@\t%C@\t%P\\0"]))
+    for entry in entries {
+      let path = source + "/" + entry.path
+      let before = @json.parse(command(fincore, ["--json", "--bytes", "--output", "FILE,SIZE,RES", path]))
+      guard field(before, "fincore") is [b] else { fail("resident file") }
+      if num(field(b, "res")) == 0L { continue }
+      idle("")
+      guard @fs.realpath(path) == path && @fs.kind(path, follow_symlink=false) == Regular else { fail("canonical file") }
+      let stamp = command("stat", ["-c", "%u:%h:%d:%i:%s:%Y:%Z", path])
+      ignore(command("dd", ["if=" + path, "iflag=nocache,nofollow", "count=0", "status=none"]))
+      guard command("stat", ["-c", "%u:%h:%d:%i:%s:%Y:%Z", path]) == stamp else { fail("file changed") }
+      let after = @json.parse(command(fincore, ["--json", "--bytes", "--output", "FILE,SIZE,RES", path]))
+      guard field(after, "fincore") is [a] else { fail("resident after") }
+      reclaimed += num(field(b, "res")) - num(field(a, "res"))
+      receipts.push({ "path": Json(path), "owner": field(actual, "Id"), "before": b, "after": a, "identity_preserved": true })
+    }
+  }
+  idle("")
+  @fs.write_file(report, Json({ "reclaimed_resident_bytes": Json(reclaimed), "files": Json(receipts), "no_deletion": true, "no_global_cache_drop": true }).stringify(indent=2), create_mode=CreateNew)
+  println("MLP_CACHE_RECLAIMED " + reclaimed.to_string())
+}

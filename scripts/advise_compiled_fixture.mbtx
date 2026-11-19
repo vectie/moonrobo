@@ -1,0 +1,80 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let original = @fs.read_file(dir + "/reclaim_compiled_outputs_a.mbtx").text()
+  let prefix = original[:original.find("async fn main {").unwrap()].to_owned()
+  let main =
+    #|async fn main {
+    #|  idle();let before=@fs.read_file("/proc/meminfo").text();let receipts=[]
+    #|  for name in ["hotspot-shared-trained-export-b","hotspot-mlp-aoti-native-bf16-gate-a"] {
+    #|    let dir=root+"/"+name
+    #|    guard field(read(dir+"/completion.json"),"passed")==Json(true) && field(read(dir+"/training-guard.json"),"reason")==Json("completed") else {fail("closed fixture required")}
+    #|    guard read(dir+"/training-docker-final.json") is [{"State":{"OOMKilled":False,"Running":False,"Pid":0,..},..}] else {fail("closed container")}
+    #|    let files=[];let mut total=0L
+    #|    for file in @fs.readdir(dir) {
+    #|      if !file.has_suffix(".f64"){continue}
+    #|      let path=dir+"/"+file
+    #|      guard @fs.realpath(path)==path&&@fs.kind(path,follow_symlink=false)==Regular else {fail("regular file required")}
+    #|      let f=@fs.open(path,mode=ReadOnly);total+=f.size();f.close();files.push(path)
+    #|    }
+    #|    guard total<2147483648L else {fail("2GiB fixture bound")}
+    #|    idle()
+    #|    for path in files {
+    #|      let stamp=output("stat",["--format=%d %i %s %Y %Z %h %u",path])
+    #|      assert_true(stamp.has_suffix(" 1 1000"))
+    #|      assert_eq(@process.run("sync",["-d",path]),0)
+    #|      assert_eq(@process.run("dd",["if="+path,"iflag=nocache,nofollow","count=0","status=none"]),0)
+    #|      assert_eq(output("stat",["--format=%d %i %s %Y %Z %h %u",path]),stamp)
+    #|    }
+    #|    receipts.push({"directory":Json(dir),"files":Json(files),"advised_bytes":Json(total.to_double())})
+    #|  }
+    #|  idle();let after=@fs.read_file("/proc/meminfo").text()
+    #|  @fs.write_file("/home/wlc004s/moonrobo/private/shared-compute-20261026-a/compiled-fixture-cache-advice-a.json",({"passed":true,"before":Json(before),"after":Json(after),"records":Json(receipts),"guards_unchanged":true,"files_deleted":0,"scope":"exact closed task-exported numerical fixtures only; per-file cache advice, content/stat preserved"}:Json).stringify(indent=2),create_mode=CreateNew)
+    #|  println(after)
+    #|}
+  @fs.write_file(
+    dir + "/advise_compiled_fixture_a.mbtx",
+    prefix + main,
+    create_mode=CreateNew,
+  )
+  let runner = @fs.read_file(dir + "/run_compiled_mlp_c.mbtx")
+    .text()
+    .replace_all(old="run_compiled_mlp_c.mbtx", new="run_compiled_mlp_d.mbtx")
+    .replace_all(old="\"-gate-c\"", new="\"-gate-d\"")
+  @fs.write_file(
+    dir + "/run_compiled_mlp_d.mbtx",
+    runner,
+    create_mode=CreateNew,
+  )
+  for name in ["advise_compiled_fixture_a.mbtx", "run_compiled_mlp_d.mbtx"] {
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        dir + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  assert_eq(
+    @process.run("ssh", [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179",
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/advise_compiled_fixture_a.mbtx",
+    ]),
+    0,
+  )
+}

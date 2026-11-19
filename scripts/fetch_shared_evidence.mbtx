@@ -1,0 +1,77 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn copy(remote : String, local : String) -> Unit {
+  guard !@fs.exists(local) else { fail("fresh evidence destination required") }
+  guard @process.run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179:" + remote,
+      local,
+    ]) ==
+    0 else {
+    fail("copy " + remote)
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, phase] &&
+    ["world", "actor", "numerics"].contains(phase) else {
+    fail("world|actor|numerics")
+  }
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/shared-compute-20261026"
+  let remote = "/home/wlc004s/moonrobo"
+  if phase != "numerics" {
+    for i in 0..<4 {
+      let suffix = if phase == "world" && i == 1 {
+        "1b"
+      } else if phase == "actor" && i == 2 {
+        "2b"
+      } else {
+        i.to_string()
+      }
+      copy(
+        remote +
+        "/runs/hotspot-shared-diag-" +
+        phase +
+        "-captures-" +
+        suffix +
+        "/analysis/report.json",
+        root +
+        "/" +
+        phase +
+        "-captures/" +
+        i.to_string() +
+        "/trace-analysis.json",
+      )
+    }
+  } else {
+    let directory = root + "/numerics"
+    guard !@fs.exists(directory) else { fail("fresh numerical receipts") }
+    @fs.mkdir(directory)
+    for
+      name in [
+        "trained-export-b", "trained-native-world-gate-a", "trained-smc-eager-world-gate-a",
+        "trained-smc-compiled-world-gate-a", "trained-smc-world-adam-replay-a", "trained-native-actor-gate-a",
+        "trained-smc-eager-actor-gate-a", "trained-smc-compiled-actor-gate-a", "diag-actor-rotation-control-0",
+        "diag-actor-rotation-control-1",
+      ] {
+      copy(
+        remote + "/runs/hotspot-shared-" + name + "/result.json",
+        directory + "/" + name + ".json",
+      )
+    }
+    copy(
+      remote +
+      "/private/shared-compute-20261026-a/finished-snapshot-advice-b.json",
+      directory + "/finished-snapshot-advice-b.json",
+    )
+  }
+}

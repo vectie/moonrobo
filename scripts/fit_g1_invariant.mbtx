@@ -1,0 +1,251 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = native_collect_output(exe, args)
+  assert_eq(code, 0, msg=stderr.text() + stdout.text())
+  stdout.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: fit_g1_invariant.mbtx REPO LONG_DATA WARM_POLICY OUTPUT",
+  )
+  let root = args[1]
+  let source = args[2]
+  let output = args[4]
+  let launcher = root + "/scripts/run_native_learning.mbtx"
+  @fs.mkdir(output, recursive=true)
+  @fs.mkdir(output + "/collection", recursive=true)
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for name in ["policy.py", "dynamics.py", "cpu_physics.py", "model_probe.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  ignore(
+    run("/bin/cp", [
+      source + "/collection/dataset.json",
+      output + "/collection/dataset.json",
+    ]),
+  )
+  let config = read(root + "/examples/learning/g1-policy-long-fit.json")
+  guard config is Object(fields) else { fail("expected policy config") }
+  fields.set("test_seeds", [750, 751, 752])
+  fields.set("actor_critic_bootstrap", true)
+  fields.set(
+    "study", "Only world-model horizontal encoding changes versus the long study; same input batches, normalization, model fit budget, initial actors, policy horizon and thresholds.",
+  )
+  @fs.write_file(
+    output + "/policy-config.json",
+    config.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let dynamics_config = root +
+    "/examples/learning/g1-dynamics-invariant-fit.json"
+  @fs.write_file(
+    output + "/dynamics-config.json",
+    @fs.read_file(dynamics_config).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/fit.log",
+    run(launcher, [
+      root + "/providers/motion_learning/dynamics.py",
+      "--train",
+      source + "/train-batch.json",
+      "--validation",
+      source + "/validation-batch.json",
+      "--test",
+      source + "/test-batch.json",
+      "--config",
+      output + "/dynamics-config.json",
+      "--output",
+      output + "/fit",
+    ]),
+    create_mode=CreateOrTruncate,
+  )
+  for
+    (name, probe_config) in [
+      ("tail", "g1-tail-model-probe.json"),
+      ("translation", "g1-translation-model-probe.json"),
+    ] {
+    @fs.write_file(
+      output + "/" + name + "-probe.log",
+      run("moon", [
+        "run",
+        "--target",
+        "native",
+        root + "/scripts/probe_g1_tail.mbtx",
+        root,
+        source,
+        output,
+        source + "/policy/actor-seed-1.moon.json",
+        output + "/" + name + "-probe",
+        root + "/examples/learning/" + probe_config,
+      ]),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/policy.log",
+    run(launcher, [
+      root + "/providers/motion_learning/policy.py",
+      "fit",
+      "--train",
+      source + "/train-batch.json",
+      "--dynamics",
+      output + "/fit/dynamics-seed-0.moon.json",
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--config",
+      output + "/policy-config.json",
+      "--experiment",
+      root + "/examples/learning/g1-long-experiment.json",
+      "--warm-start-policy",
+      args[3],
+      "--output",
+      output + "/policy",
+    ]),
+    create_mode=CreateOrTruncate,
+  )
+  let policy = read(output + "/policy/report.json")
+  guard field(policy, "runs") is Array(runs) else {
+    fail("missing policy runs")
+  }
+  let candidates : Array[Json] = []
+  for run in runs {
+    assert_eq(field(run, "dynamics_unchanged"), true.to_json())
+    assert_eq(field(run, "reload_matches"), true.to_json())
+    candidates.push({
+      "seed": field(run, "seed"),
+      "selected_update": field(run, "selected_update"),
+      "training_seconds": field(run, "training_seconds"),
+      "candidate": field(run, "candidate"),
+      "qualifies": field(run, "qualifies"),
+    })
+  }
+  let summary : Json = {
+    "format": "moonrobo.g1-invariant-study.v1",
+    "dynamics": read(output + "/fit/report.json"),
+    "tail_probe": read(output + "/tail-probe/summary.json"),
+    "translation_probe": read(output + "/translation-probe/summary.json"),
+    "candidates": candidates.to_json(),
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    output + "/summary.json",
+    summary.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(candidates.to_json().stringify(indent=2))
+}
+
+///|
+/// Checkpoint copies are validated or converted by the reviewed native loader.
+fn native_checkpoint_copy_command(
+  exe : String,
+  args : Array[String],
+) -> (String, Array[String])? raise {
+  if exe != "/bin/cp" || args.length() < 2 {
+    return None
+  }
+  if !args[0].has_suffix(".moon.json") &&
+    !args[0].has_suffix(".pt") &&
+    !args[1].has_suffix(".moon.json") {
+    return None
+  }
+  guard args.length() == 2 && args[1].has_suffix(".moon.json") else {
+    fail("checkpoint copies require SOURCE and native .moon.json DESTINATION")
+  }
+  let name = args[0].split("/").last().unwrap_or("").to_owned()
+  let kind = if name.contains("dynamics-seed-") {
+    "residual-dynamics"
+  } else if name.contains("actor-seed-") {
+    "g1-actor"
+  } else {
+    fail("unreviewed checkpoint copy kind: " + name)
+  }
+  let root = @env.args()[1]
+  Some(
+    (
+      root,
+      [
+        "run",
+        root + "/scripts/run_native_learning.mbtx",
+        root,
+        "src/learning_training/launch/cmd",
+        "checkpoint-copy",
+        args[0],
+        args[1],
+        kind,
+      ],
+    ),
+  )
+}
+
+///|
+/// Structured native dispatch. A .py argument is a reviewed provider descriptor, never an executable or an interpreter fallback.
+async fn native_collect_output(
+  exe : String,
+  args : Array[String],
+) -> (Int32, &@io.Data, &@io.Data) {
+  let suffix = "/scripts/run_native_learning.mbtx"
+  if exe.has_suffix(suffix) {
+    let root = exe[:exe.length() - suffix.length()].to_owned()
+    let command = ["run", exe, root, "src/learning_training/launch/cmd"]
+    command.append(args)
+    return @process.collect_output("moon", command, cwd=root)
+  }
+  if native_checkpoint_copy_command(exe, args) is Some((root, command)) {
+    return @process.collect_output("moon", command, cwd=root)
+  }
+  @process.collect_output(exe, args)
+}
+
+///|
+async fn native_process_run(
+  exe : String,
+  args : Array[String],
+  stdout? : &@process.ProcessOutput,
+  stderr? : &@process.ProcessOutput,
+) -> Int32 {
+  let suffix = "/scripts/run_native_learning.mbtx"
+  if exe.has_suffix(suffix) {
+    let root = exe[:exe.length() - suffix.length()].to_owned()
+    let command = ["run", exe, root, "src/learning_training/launch/cmd"]
+    command.append(args)
+    return @process.run("moon", command, cwd=root, stdout?, stderr?)
+  }
+  if native_checkpoint_copy_command(exe, args) is Some((root, command)) {
+    return @process.run("moon", command, cwd=root, stdout?, stderr?)
+  }
+  @process.run(exe, args, stdout?, stderr?)
+}

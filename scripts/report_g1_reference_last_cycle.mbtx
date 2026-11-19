@@ -1,0 +1,311 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) else { fail("expected object") }
+  fields[key]
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn str(value : Json) -> String raise {
+  guard value is String(text) else { fail("expected string") }
+  text
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(number, ..) else { fail("expected number") }
+  number
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (code, bytes, error) = @process.collect_output("/usr/bin/shasum", [
+    "-a", "256", path,
+  ])
+  assert_eq(code, 0, msg=error.text())
+  bytes.text().split(" ").to_array()[0].to_owned()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: report_g1_reference_last_cycle.mbtx REPO STUDY OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let report = read(study + "/report.json")
+  let source = str(field(report, "source_study"))
+  assert_eq(
+    Json(sha(source + "/report.json")),
+    field(report, "source_report_sha256"),
+  )
+  let original = read(source + "/report.json")
+  let config = field(report, "config")
+  assert_eq(field(report, "physical_execution_allowed"), false)
+  assert_eq(field(report, "release_qualified"), false)
+  let records = array(field(report, "physical_records"))
+  assert_eq(records.length(), 36)
+  let by_id : Map[String, Json] = Map([])
+  let inherited : Map[String, Json] = Map([])
+  for record in array(field(original, "physical_records")) {
+    inherited[str(field(record, "episode_id"))] = record
+  }
+  let returns : Map[String, Json] = Map([])
+  let rows : Array[Json] = []
+  for record in records {
+    let id = str(field(record, "episode_id"))
+    assert_false(by_id.contains(id))
+    by_id[id] = record
+    assert_eq(field(record, "origin_step"), 0)
+    assert_eq(field(record, "action_std"), 0)
+    if inherited.get(id) is Some(old) {
+      assert_eq(field(record, "sha256"), field(old, "sha256"))
+      assert_eq(field(record, "steps"), field(old, "steps"))
+    }
+  }
+  assert_eq(array(field(report, "runs")).length(), 6)
+  for run in array(field(report, "runs")) {
+    assert_eq(field(run, "frozen_weights_unchanged"), true)
+    assert_eq(
+      Json(sha(str(field(run, "before_checkpoint")))),
+      field(run, "before_sha256"),
+    )
+    assert_eq(
+      Json(sha(str(field(run, "after_checkpoint")))),
+      field(run, "after_sha256"),
+    )
+    assert_eq(
+      Json(sha(str(field(run, "model_checkpoint")))),
+      field(run, "model_sha256"),
+    )
+    assert_eq(array(field(run, "comparisons")).length(), 3)
+    for comparison in array(field(run, "comparisons")) {
+      assert_eq(field(comparison, "paired_initial_state_and_memory"), true)
+      let before_id = str(field(comparison, "before_episode_id"))
+      let after_id = str(field(comparison, "after_episode_id"))
+      assert_false(inherited.contains(before_id))
+      assert_true(inherited.contains(after_id))
+      assert_eq(
+        field(field(by_id[before_id], "behavior"), "sha256"),
+        field(run, "before_sha256"),
+      )
+      assert_eq(
+        field(field(by_id[after_id], "behavior"), "sha256"),
+        field(run, "after_sha256"),
+      )
+      returns[before_id] = field(comparison, "actual_before")
+      returns[after_id] = field(comparison, "actual_after")
+      rows.push({
+        "method": field(run, "method"),
+        "seed": field(run, "seed"),
+        "reference_id": field(comparison, "reference_id"),
+        "predicted_prefix_change": field(comparison, "predicted_prefix_change"),
+        "actual_prefix_change": field(comparison, "actual_prefix_change"),
+        "actual_full_change": field(comparison, "actual_full_change"),
+        "before_survival_s": field(
+          field(comparison, "before_trial"),
+          "simulated_seconds",
+        ),
+        "after_survival_s": field(
+          field(comparison, "after_trial"),
+          "simulated_seconds",
+        ),
+        "before_failed": field(field(comparison, "before_trial"), "failed"),
+        "after_failed": field(field(comparison, "after_trial"), "failed"),
+        "before_prediction": field(comparison, "before_prediction"),
+        "after_prediction": field(comparison, "after_prediction"),
+      })
+    }
+  }
+  let seen : Map[String, Bool] = Map([])
+  let maxima : Map[String, Double] = Map([])
+  let mut transitions = 0
+  let mut new_transitions = 0
+  @async.with_task_group() <| group => {
+    let (reader, out) = @process.read_from_process()
+    let child = @process.spawn(
+      group,
+      "moon",
+      native_command(root, [
+        study + "/provider-sources/reference_learning_export.py",
+        "--study",
+        study,
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      ]),
+      stdout=out,
+      stderr=@process.redirect_to_file(
+        study + "/verification-stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    )
+    while reader.read_until("\n") is Some(line) {
+      let entry = @json.parse(line)
+      let record = field(entry, "record")
+      let id = str(field(record, "episode_id"))
+      assert_eq(record, by_id[id])
+      assert_false(seen.contains(id))
+      seen[id] = true
+      let dataset = field(entry, "dataset")
+      let episodes = array(field(dataset, "episodes"))
+      assert_eq(episodes.length(), 1)
+      let steps = array(field(episodes[0], "steps"))
+      assert_eq(steps.length(), num(field(record, "steps")).to_int())
+      let mut full_return = 0.0
+      let mut prefix_return = 0.0
+      let mut weight = 1.0
+      for i, step in steps {
+        let reward = num(field(step, "reward")) * weight
+        full_return += reward
+        if i < num(field(config, "imagination_horizon")).to_int() {
+          prefix_return += reward
+        }
+        weight *= num(field(config, "gamma"))
+      }
+      assert_true(
+        (full_return - num(field(returns[id], "full_return"))).abs() < 1.0e-10,
+      )
+      assert_true(
+        (prefix_return - num(field(returns[id], "prefix_return"))).abs() <
+        1.0e-10,
+      )
+      guard field(entry, "verification") is Object(errors) else {
+        fail("expected verification errors")
+      }
+      for key, value in errors {
+        if value is Number(_, ..) {
+          maxima[key] = maxima.get(key).unwrap_or(0.0).max(num(value))
+        }
+      }
+      let scratch = study + "/native-episode.json"
+      @fs.write_file(scratch, dataset.stringify(), create_mode=CreateOrTruncate)
+      let (code, bytes, error) = @process.collect_output(
+        root +
+        "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+        [scratch, "train", "1", "1000000"],
+      )
+      assert_eq(code, 0, msg=error.text())
+      assert_eq(field(@json.parse(bytes.text()), "window_length"), 1)
+      @fs.remove(scratch)
+      transitions += steps.length()
+      if !inherited.contains(id) {
+        new_transitions += steps.length()
+      }
+      if seen.length() % 6 == 0 {
+        println("Verified \{seen.length()}/36 physical episodes")
+      }
+    }
+    reader.close()
+    assert_eq(child.wait(), 0)
+  }
+  assert_eq(seen.length(), 36)
+  guard report is Object(fields) else { fail("expected report") }
+  fields["native_verification"] = {
+    "episodes": 36,
+    "new_episodes": 18,
+    "reused_episodes": 18,
+    "transitions": Json(transitions),
+    "new_transitions": Json(new_transitions),
+    "all_records_validated": true,
+    "discounted_returns_reconstructed": true,
+    "maxima": Json(maxima),
+  }
+  fields["diagnostic_report_sha256"] = Json(sha(study + "/report.json"))
+  fields["summary"] = Json(rows)
+  let run_summaries : Array[Json] = []
+  let mut prefix_agreements = 0
+  let mut full_agreements = 0
+  for run in array(field(report, "runs")) {
+    let comparisons = array(field(run, "comparisons"))
+    let mut predicted = 0.0
+    let mut prefix = 0.0
+    let mut full = 0.0
+    let mut before_survival = 0.0
+    let mut after_survival = 0.0
+    let mut prefix_matches = 0
+    let mut full_matches = 0
+    for comparison in comparisons {
+      let p = num(field(comparison, "predicted_prefix_change"))
+      let a = num(field(comparison, "actual_prefix_change"))
+      let f = num(field(comparison, "actual_full_change"))
+      predicted += p
+      prefix += a
+      full += f
+      before_survival += num(
+        field(field(comparison, "before_trial"), "simulated_seconds"),
+      )
+      after_survival += num(
+        field(field(comparison, "after_trial"), "simulated_seconds"),
+      )
+      if p * a > 0 {
+        prefix_matches += 1
+      }
+      if p * f > 0 {
+        full_matches += 1
+      }
+    }
+    prefix_agreements += prefix_matches
+    full_agreements += full_matches
+    run_summaries.push({
+      "method": field(run, "method"),
+      "seed": field(run, "seed"),
+      "training_origin_predicted_change": field(
+        field(run, "training_origin_prediction"),
+        "predicted_change",
+      ),
+      "mean_predicted_prefix_change": Json(predicted / 3.0),
+      "mean_actual_prefix_change": Json(prefix / 3.0),
+      "mean_actual_full_change": Json(full / 3.0),
+      "mean_before_survival_s": Json(before_survival / 3.0),
+      "mean_after_survival_s": Json(after_survival / 3.0),
+      "prefix_direction_agreements": Json(prefix_matches),
+      "full_direction_agreements": Json(full_matches),
+    })
+  }
+  fields["diagnostic_summary"] = {
+    "comparisons": 18,
+    "prefix_direction_agreements": Json(prefix_agreements),
+    "full_direction_agreements": Json(full_agreements),
+    "runs": Json(run_summaries),
+    "scope": "Known development references; signs concern a finite saved twelve-step update, not a simulator Jacobian or unseen-motion generalization. Full return has a different horizon from the H32 predictor.",
+  }
+  @fs.write_file(
+    args[3],
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(fields["diagnostic_summary"].stringify(indent=2))
+}
+
+///|
+fn native_command(root : String, original : Array[String]) -> Array[String] {
+  let command = [
+    "-C", root, "run", "--quiet", "--warn-list", "-a", "--target", "native", "cmd/reference_scripts",
+    "--", root,
+  ]
+  command.append(original)
+  command
+}

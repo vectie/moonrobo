@@ -1,0 +1,29 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo";let dir=root+"/output/spark-runtime-20261024/smc-heading-body-20261028"
+  let mut helper=@fs.read_file(root+"/output/spark-runtime-20261024/smc-primitives-20261028/advise_primitives_compiler.mbtx").text()
+  helper=rep(helper,"run_name.has_prefix(\"primitives-\")","(run_name.has_prefix(\"heading-body-\") || [\"heading-smc-actor-off-a\",\"latest-ln-actor-smc-events-a\",\"trained-smc-compiled-actor-gate-a\",\"fix-actor-smc-0\",\"algebra-actor-smc-a\"].contains(run_name))")
+  @fs.write_file(dir+"/advise_heading_outputs.mbtx",helper,create_mode=CreateNew)
+  let mut s=@fs.read_file(root+"/scripts/heading_body_suite.mbtx").text()
+  s=rep(s,"kind+(if phase==\"world\"&&v==\"baseline\"&&kind==\"gate\"{\"-b\"}else{\"-a\"})","kind+\"-b\"")
+  s=rep(s,"advise_primitives_compiler.mbtx","advise_heading_outputs.mbtx")
+  s=rep(s,"invoke_heading_body_a.mbtx","invoke_heading_body_b.mbtx")
+  s=s.replace_all(old="heading_body_suite.mbtx",new="heading_body_suite_b.mbtx").replace_all(old="heading-body-cpu.json",new="heading-body-cpu-b.json").replace_all(old="-heading-body-cpu-a",new="-heading-body-cpu-b").replace_all(old="heading-body-preflight-b",new="heading-body-preflight-c")
+  s=rep(s,"[(\"primitive\",1),(\"geometry\",1),(\"pivot\",1),(\"constants\",1),(\"config\",9),(\"resume\",1),(\"inference\",1)]","[(\"primitive\",2),(\"geometry\",1),(\"constants\",1),(\"config\",9),(\"resume\",1),(\"inference\",1)]")
+  s=rep(s,"let results=[];let mut bodies_passed=true","let results=[];let mut bodies_passed=false")
+  s=rep(s,"[(\"world\",[\"baseline\",\"heading\"]),(\"actor\",[\"baseline\",\"heading\",\"bodies\",\"combined\"])]","[(\"world\",[\"baseline\",\"heading\",\"split\",\"both\"]),(\"actor\",[\"baseline\",\"heading\",\"split\",\"both\"])]")
+  s=rep(s,"[(\"world\",\"heading\"),(\"actor\",\"heading\"),(\"actor\",\"bodies\"),(\"actor\",\"combined\")]","[(\"world\",\"heading\"),(\"world\",\"split\"),(\"world\",\"both\"),(\"actor\",\"heading\"),(\"actor\",\"split\"),(\"actor\",\"both\")]")
+  s=rep(s,"assert_eq(field(e,\"compact_heading\"),Json(active&&(v==\"heading\"||v==\"combined\")));assert_eq(field(e,\"body_errors_batched\"),Json(active&&(v==\"bodies\"||v==\"combined\")))","assert_eq(field(e,\"compact_heading\"),Json(active&&(v==\"heading\"||v==\"both\")));assert_eq(field(e,\"split_world_delta\"),Json(active&&(v==\"split\"||v==\"both\")));assert_eq(field(e,\"body_errors_batched\"),Json(false))")
+  s=rep(s,"[\"cpu\",\"gates\",\"pairs\",\"smc\"]","[\"cpu\",\"cache\",\"gates\",\"pairs\",\"smc\"]")
+  s=rep(s,"  if mode==\"gates\" {",(
+    #|  if mode=="cache" {
+    #|    for name in ["heading-smc-actor-off-a","latest-ln-actor-smc-events-a","trained-smc-compiled-actor-gate-a","fix-actor-smc-0","algebra-actor-smc-a"] {
+    #|      guard command(base+"/advise_heading_outputs.mbtx",["heading-resident-"+name,name],"heading-resident-"+name)==0 else{fail("owned resident cache advice")}
+    #|    };return
+    #|  }
+    #|  if mode=="gates" {
+  ))
+  @fs.write_file(dir+"/heading_body_suite_b.mbtx",s,create_mode=CreateNew)
+  for name in ["advise_heading_outputs.mbtx","heading_body_suite_b.mbtx"] {guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+"/"+name,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/"+name])==0 else{fail("stage")}}
+}

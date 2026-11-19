@@ -1,0 +1,436 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=out.text() + err.text())
+  out.text()
+}
+
+///|
+async fn validate_log(
+  root : String,
+  study : String,
+  path : String,
+  config : Json,
+  labeled : Bool,
+  families : Array[Json],
+) -> Json {
+  let mut records = 0
+  let mut episodes = 0
+  let mut transitions = 0
+  let mut falls = 0
+  let label_errors : Array[Double] = []
+  let mut action_axes : Array[Json] = []
+  let ids : Map[String, Bool] = Map([])
+  @async.with_task_group() <| group => {
+    let (reader, child_output) = @process.read_from_process()
+    let process = @process.spawn(
+      group,
+      "gzip",
+      ["-cd", path],
+      stdout=child_output,
+    )
+    while reader.read_until("\n") is Some(line) {
+      if line.trim().is_empty() {
+        continue
+      }
+      let record = @json.parse(line)
+      let dataset = field(record, "dataset")
+      let entries = array(field(dataset, "episodes"))
+      if labeled {
+        assert_eq(num(field(record, "round")).to_int(), records + 1)
+        assert_eq(
+          field(record, "latent_std"),
+          field(config, "collection_latent_std"),
+        )
+        assert_eq(field(record, "maximum_input_alignment_error"), 0)
+        assert_eq(entries.length(), 18)
+        let labels = array(field(record, "teacher_action_targets"))
+        let latents = array(field(record, "latent_samples"))
+        assert_eq(labels.length(), entries.length())
+        assert_eq(latents.length(), entries.length())
+        if records == 0 {
+          action_axes = array(field(dataset, "action_axes"))
+          for _ in action_axes {
+            label_errors.push(0.0)
+          }
+        }
+        for index, episode in entries {
+          let steps = array(field(episode, "steps"))
+          let targets = array(labels[index])
+          assert_eq(targets.length(), steps.length())
+          assert_eq(array(latents[index]).length(), steps.length())
+          guard field(episode, "id") is String(id) else {
+            fail("missing episode id")
+          }
+          assert_false(ids.contains(id))
+          ids.set(id, true)
+          for i, step in steps {
+            let actual = array(field(step, "applied_action"))
+            let target = array(targets[i])
+            assert_eq(actual.length(), action_axes.length())
+            assert_eq(target.length(), actual.length())
+            for j in 0..<actual.length() {
+              let error = num(actual[j]) - num(target[j])
+              label_errors[j] += error * error
+            }
+          }
+        }
+      } else {
+        assert_eq(entries.length(), 9)
+        assert_eq(
+          field(record, "latent_std"),
+          array(field(config, "audit_latent_stds"))[records % 3],
+        )
+        assert_eq(
+          field(record, "role"),
+          if records < 3 {
+            "incoming-independent-audit"
+          } else {
+            "selected-independent-audit"
+          },
+        )
+      }
+      for episode in entries {
+        assert_eq(field(episode, "split"), "train")
+        assert_true(families.contains(field(episode, "source_family")))
+        let steps = array(field(episode, "steps"))
+        transitions += steps.length()
+        if field(steps.last().unwrap(), "terminated") == (true : Json) {
+          falls += 1
+        }
+      }
+      let temporary = study + "/native-chunk.json"
+      @fs.write_file(
+        temporary,
+        dataset.stringify(),
+        create_mode=CreateOrTruncate,
+      )
+      let checked = @json.parse(
+        run(
+          root +
+          "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+          [temporary, "train", "1", "1000000"],
+        ),
+      )
+      assert_eq(field(checked, "window_length"), 1)
+      @fs.remove(temporary)
+      episodes += entries.length()
+      records += 1
+      println("Native checked " + path + " chunk \{records}")
+    }
+    reader.close()
+    assert_eq(process.wait(), 0)
+  }
+  assert_eq(
+    records,
+    if labeled {
+      num(field(config, "rounds")).to_int()
+    } else {
+      6
+    },
+  )
+  let errors : Array[Json] = []
+  for i, error in label_errors {
+    errors.push({
+      "axis": field(action_axes[i], "name"),
+      "applied_vs_teacher_rmse_rad": Json(
+        (error / transitions.to_double()).sqrt(),
+      ),
+    })
+  }
+  {
+    "records": Json(records),
+    "episodes": Json(episodes),
+    "transitions": Json(transitions),
+    "falls": Json(falls),
+    "per_joint_applied_vs_teacher": Json(errors),
+    "native_checked_every_transition": true,
+    "sha256": Json(digest(path)),
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: report_g1_temporal_disturbance.mbtx REPO STUDY MOONDATA_ROOT OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let charter = read(study + "/charter.json")
+  guard field(charter, "incoming_study") is String(incoming) &&
+    field(charter, "shared_teacher_data") is String(teacher_data) else {
+    fail("missing source studies")
+  }
+  let shared_sha = digest(teacher_data)
+  let families = array(field(read(study + "/collection.json"), "cases")).map(c => {
+    field(c, "family")
+  })
+  let clean = read(study + "/clean/policy/report.json")
+  let clean_runs = array(field(clean, "runs"))
+  let cells : Array[Json] = []
+  for (arm, std) in [("clean", 0.0), ("disturbed", 0.005)] {
+    let source = study + "/" + arm
+    let report = read(source + "/policy/report.json")
+    let config = field(report, "config")
+    assert_eq(
+      field(report, "format"),
+      "moonrobo.g1-temporal-disturbance-fit.v1",
+    )
+    assert_eq(field(report, "shared_teacher_data_sha256"), Json(shared_sha))
+    assert_eq(field(config, "collection_latent_std"), Json(std))
+    assert_eq(field(report, "learned_transition_model_used"), false)
+    assert_eq(
+      field(report, "provider_sha256"),
+      Json(digest(study + "/provider-sources/temporal_disturbance.py")),
+    )
+    for
+      key in [
+        "seeds", "rounds", "updates_per_round", "batch_size", "actor_learning_rate",
+        "recent_points", "history_length", "future_length", "sampling_seed", "collection_seed_base",
+        "noise_seed", "selection_seed_base", "selection_noise_seed", "selection_latent_std",
+        "validation_seeds", "test_seeds", "audit_seed_base", "audit_noise_seed",
+        "audit_latent_stds",
+      ] {
+      assert_eq(field(config, key), field(field(clean, "config"), key))
+    }
+    let rows : Array[Json] = []
+    let runs = array(field(report, "runs"))
+    assert_eq(runs.length(), 3)
+    for result in runs {
+      let seed = num(field(result, "seed")).to_int()
+      let initial = field(result, "initialization")
+      assert_eq(
+        field(initial, "sha256"),
+        Json(digest(incoming + "/preview/policy/actor-seed-\{seed}.pt")),
+      )
+      let history = array(field(result, "history"))
+      assert_eq(history.length(), 5)
+      for key in ["summary", "training_audit", "validation"] {
+        assert_eq(
+          field(field(history[0], "selection"), key),
+          field(
+            field(array(field(clean_runs[seed], "history"))[0], "selection"),
+            key,
+          ),
+        )
+      }
+      assert_eq(field(result, "baseline"), field(clean_runs[seed], "baseline"))
+      for i, before in array(field(result, "incoming_audit")) {
+        assert_eq(
+          field(before, "summary"),
+          field(array(field(clean_runs[seed], "incoming_audit"))[i], "summary"),
+        )
+      }
+      assert_eq(field(result, "normalization_unchanged"), true)
+      assert_eq(field(result, "reload_matches"), true)
+      assert_eq(field(result, "training_episodes"), 72)
+      assert_eq(field(result, "optimizer_steps"), 3000)
+      let training = validate_log(
+        root,
+        study,
+        source + "/policy/disturbance-physics-seed-\{seed}.jsonl.gz",
+        config,
+        true,
+        families,
+      )
+      let audit = validate_log(
+        root,
+        study,
+        source + "/policy/disturbance-audit-seed-\{seed}.jsonl.gz",
+        config,
+        false,
+        families,
+      )
+      for key in ["episodes", "transitions", "falls"] {
+        assert_eq(field(training, key), field(result, "training_" + key))
+      }
+      assert_eq(
+        field(training, "sha256"),
+        field(field(result, "physics_log"), "sha256"),
+      )
+      assert_eq(
+        field(audit, "sha256"),
+        field(field(result, "audit_log"), "sha256"),
+      )
+      let actual = read(source + "/policy/physics-seed-\{seed}.json")
+      assert_eq(
+        field(field(actual, "candidate"), "summary"),
+        field(result, "candidate"),
+      )
+      let counts : Array[Json] = []
+      for case_id in ["stand", "sway", "wave"] {
+        let trials = array(field(field(actual, "candidate"), "trials")).filter(t => {
+          field(t, "case_id") == Json(case_id)
+        })
+        assert_eq(trials.length(), 3)
+        assert_eq(
+          trials.map(t => field(t, "seed")),
+          array(field(config, "test_seeds")),
+        )
+        counts.push({
+          "case": Json(case_id),
+          "trials": 3,
+          "falls": Json(
+            trials.filter(t => field(t, "failed") == (true : Json)).length(),
+          ),
+        })
+      }
+      rows.push({
+        "seed": Json(seed),
+        "selected_round": field(result, "selected_round"),
+        "incoming": field(result, "baseline"),
+        "candidate": field(result, "candidate"),
+        "case_counts": Json(counts),
+        "qualifies": field(result, "qualifies"),
+        "history": Json(history),
+        "training": training,
+        "independent_audit": audit,
+        "incoming_audit": field(result, "incoming_audit"),
+        "selected_audit": field(result, "selected_audit"),
+        "training_seconds": field(result, "training_seconds"),
+      })
+      println(
+        (
+          {
+            "arm": Json(arm),
+            "seed": Json(seed),
+            "selected_round": field(result, "selected_round"),
+            "incoming": field(result, "baseline"),
+            "candidate": field(result, "candidate"),
+            "case_counts": Json(counts),
+          } : Json).stringify(),
+      )
+    }
+    let imported = @json.parse(
+      run(
+        root +
+        "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe",
+        [
+          "import",
+          args[3],
+          source,
+          "temporal-disturbance-" + arm,
+          @env.now().reinterpret_as_int64().to_string(),
+        ],
+      ),
+    )
+    assert_eq(field(imported, "physical_execution_allowed"), false)
+    for kind in ["learning-supervised-physics", "learning-disturbance-audit"] {
+      assert_eq(
+        array(field(imported, "payloads"))
+        .filter(p => field(field(p, "data_ref"), "kind") == Json(kind))
+        .length(),
+        3,
+      )
+    }
+    cells.push({
+      "arm": Json(arm),
+      "config": config,
+      "runs": Json(rows),
+      "registered": imported,
+    })
+  }
+  let audit_summary : Array[Json] = []
+  for cell in cells {
+    for std in [0.0, 0.005, 0.05] {
+      let mut before_falls = 0
+      let mut after_falls = 0
+      let mut before_survival = 0.0
+      let mut after_survival = 0.0
+      for row in array(field(cell, "runs")) {
+        for
+          (key, before) in [("incoming_audit", true), ("selected_audit", false)] {
+          let chosen = array(field(row, key)).filter(a => {
+            num(field(a, "latent_std")) == std
+          })
+          assert_eq(chosen.length(), 1)
+          let summary = field(chosen[0], "summary")
+          if before {
+            before_falls += num(field(summary, "falls")).to_int()
+            before_survival += num(field(summary, "mean_survival_s"))
+          } else {
+            after_falls += num(field(summary, "falls")).to_int()
+            after_survival += num(field(summary, "mean_survival_s"))
+          }
+        }
+      }
+      audit_summary.push({
+        "arm": field(cell, "arm"),
+        "latent_std": Json(std),
+        "trials": 27,
+        "incoming_falls": Json(before_falls),
+        "selected_falls": Json(after_falls),
+        "incoming_survival_s": Json(before_survival / 3.0),
+        "selected_survival_s": Json(after_survival / 3.0),
+      })
+    }
+  }
+  let validation = @json.parse(
+    run(root + "/_build/native/debug/build/cmd/moondata/moondata.exe", [
+      "validate",
+      args[3],
+    ]),
+  )
+  assert_eq(field(validation, "status"), "passed")
+  assert_eq(field(validation, "finding_count"), 0)
+  @fs.write_file(
+    args[4],
+    (
+      {
+        "format": "moonrobo.g1-temporal-disturbance-study.v1",
+        "cells": Json(cells),
+        "audit_summary": Json(audit_summary),
+        "validation": validation,
+        "physical_execution_allowed": false,
+        "scope": "Clean/noisy student-state teacher supervision, same inherited H10/F10 actors and teacher replay, fixed 3000 updates. Fixed train-family disturbance audit plus sway selects. Independent noise and canonical 9600-9602 evaluation never fit/select. Actual data paths and full native parsing verified; no world-model/PPO improvement or hardware qualification claim.",
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    ({ "audit_summary": Json(audit_summary), "validation": validation } : Json).stringify(),
+  )
+}

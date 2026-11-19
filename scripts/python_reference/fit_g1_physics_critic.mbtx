@@ -1,0 +1,214 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=err.text() + out.text())
+  out.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() == 5 || args.length() == 6,
+    msg="usage: fit_g1_physics_critic.mbtx REPO DATA_RUN WARM_POLICY OUTPUT [--small-step]",
+  )
+  let small_step = args.length() == 6
+  if small_step {
+    assert_eq(args[5], "--small-step")
+  }
+  let root = args[1]
+  let source = args[2]
+  let output = args[4]
+  @fs.mkdir(output, recursive=true)
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for name in ["policy.py", "dynamics.py", "cpu_physics.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let collection = read(root + "/examples/learning/g1-goal-collection.json")
+  guard collection is Object(collection_fields) else {
+    fail("expected collection config")
+  }
+  collection_fields.set("duration_s", 10)
+  collection_fields.set("action_noise_std_rad", 0)
+  @fs.write_file(
+    output + "/collection-experiment.json",
+    collection.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let configs : Array[Json] = []
+  let methods = if small_step {
+    [
+      ("actor-lr-standard", "physics-returns"),
+      ("actor-lr-small", "physics-returns"),
+    ]
+  } else {
+    [("critic-imagined", "imagined-gae"), ("critic-physics", "physics-returns")]
+  }
+  for (id, mode) in methods {
+    let cell = output + "/" + id
+    @fs.mkdir(cell, recursive=true)
+    let config = read(root + "/examples/learning/g1-policy-long-fit.json")
+    guard config is Object(fields) else { fail("expected policy config") }
+    fields.set(
+      "test_seeds",
+      if small_step {
+        ([8000, 8001, 8002] : Json)
+      } else {
+        ([780, 781, 782] : Json)
+      },
+    )
+    fields.set("actor_critic_bootstrap", true)
+    fields.set("critic_horizontal_translation_invariant", true)
+    fields.set("critic_training_source", mode.to_json())
+    fields.set(
+      "critic_collection_experiment",
+      (output + "/collection-experiment.json").to_json(),
+    )
+    fields.set(
+      "critic_collect_seed_base",
+      if small_step {
+        (1200 : Json)
+      } else {
+        (900 : Json)
+      },
+    )
+    fields.set("critic_physics_refresh_every", 20)
+    fields.set("critic_physics_fit_steps", 160)
+    fields.set("critic_physics_minibatch_size", 512)
+    if small_step {
+      fields.set(
+        "actor_learning_rate",
+        if id == "actor-lr-small" {
+          (0.00003 : Json)
+        } else {
+          (0.0003 : Json)
+        },
+      )
+      fields.set("evaluation_updates", [1, 5, 10, 20])
+      fields.set(
+        "study", "Actor learning rate 0.0003 versus 0.00003; same replay, physical critic targets, initial weights and 200-update budget. Extra early checkpoints in both methods; no speedup claim.",
+      )
+    } else {
+      fields.set(
+        "study", "Same actor/model/replay and 1600 critic optimizer steps per seed. Physics-source method also changes target sampling and refresh timing, and adds actual physics cost; no matched learning-speed claim.",
+      )
+    }
+    @fs.write_file(
+      cell + "/config.json",
+      config.stringify(indent=2),
+      create_mode=CreateOrTruncate,
+    )
+    configs.push({ "id": id.to_json(), "config": config })
+  }
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-physics-critic-charter.v1",
+        "cells": configs.to_json(),
+        "data_run": source.to_json(),
+        "warm_policy": args[3].to_json(),
+        "selection": if small_step {
+          "Validation seeds 30-32 at updates 0/1/5/10/20/50/100/150/200; test seeds 8000-8002 never select weights."
+        } else {
+          "Validation physics seeds 30-32 at updates 0/50/100/150/200, including initial actor; test seeds 780-782 never select weights."
+        },
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let cells : Array[Json] = []
+  for entry in configs {
+    guard field(entry, "id") is String(id) else { fail("missing cell id") }
+    let cell = output + "/" + id
+    @fs.mkdir(cell + "/collection", recursive=true)
+    @fs.mkdir(cell + "/fit", recursive=true)
+    ignore(
+      run("/bin/cp", [
+        source + "/collection/dataset.json",
+        cell + "/collection/dataset.json",
+      ]),
+    )
+    for
+      name in [
+        "report.json", "dynamics-seed-0.pt", "dynamics-seed-1.pt", "dynamics-seed-2.pt",
+      ] {
+      ignore(run("/bin/cp", [source + "/fit/" + name, cell + "/fit/" + name]))
+    }
+    @fs.write_file(
+      cell + "/policy.log",
+      run(root + "/target/learning-venv/bin/python", [
+        output + "/provider-sources/policy.py",
+        "fit",
+        "--train",
+        source + "/train-batch.json",
+        "--dynamics",
+        source + "/fit/dynamics-seed-0.pt",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--config",
+        cell + "/config.json",
+        "--experiment",
+        root + "/examples/learning/g1-long-experiment.json",
+        "--warm-start-policy",
+        args[3],
+        "--output",
+        cell + "/policy",
+      ]),
+      create_mode=CreateOrTruncate,
+    )
+    let report = read(cell + "/policy/report.json")
+    guard field(report, "runs") is Array(runs) else { fail("missing runs") }
+    let rows : Array[Json] = []
+    for result in runs {
+      assert_eq(field(result, "dynamics_unchanged"), true.to_json())
+      assert_eq(field(result, "reload_matches"), true.to_json())
+      rows.push({
+        "seed": field(result, "seed"),
+        "selected_update": field(result, "selected_update"),
+        "training_seconds": field(result, "training_seconds"),
+        "candidate": field(result, "candidate"),
+        "qualifies": field(result, "qualifies"),
+        "critic_physics": field(result, "critic_physics"),
+      })
+    }
+    cells.push({ "id": id.to_json(), "runs": rows.to_json() })
+    println(id + ": " + rows.to_json().stringify())
+  }
+  @fs.write_file(
+    output + "/summary.json",
+    (
+      {
+        "format": "moonrobo.g1-physics-critic-study.v1",
+        "cells": cells.to_json(),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

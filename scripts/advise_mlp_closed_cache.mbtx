@@ -1,0 +1,81 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let root = repo + "/output/spark-runtime-20261024/layernorm-mlp-20261026"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let protocol = @json.parse(
+    @fs.read_file(root + "/off-actor-4-b/protocol.json").text(),
+  )
+  let guard_record = @json.parse(
+    @fs.read_file(root + "/off-actor-4-b/training-guard.json").text(),
+  )
+  guard protocol is { "side": { "image_id": String(image), .. }, .. } &&
+    guard_record is { "passed": True, "container_id": String(owner), .. } else {
+    fail("successful owned image required")
+  }
+  let source = @fs.read_file(
+      repo + "/scripts/advise_closed_smc_image_pages.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a",
+      new=base,
+    )
+    .replace_all(
+      old="sha256:e84e3c0d2b553e29ffa04fb6d738a3b635afa66e3d23824bfc6c6304e198ad46",
+      new=image,
+    )
+    .replace_all(
+      old="b40b887a87540aea00fb5b7349e283b895ec4f95309f9781c2140fbc9b7244cf",
+      new=owner,
+    )
+  let name = "advise_mlp_image_a.mbtx"
+  @fs.write_file(root + "/" + name, source, create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      root + "/" + name,
+      "wlc004s@192.168.2.179:" + base + "/" + name,
+    ]) ==
+    0 else {
+    fail("publish")
+  }
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179",
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      name +
+      " -- --advise mlp-image-advice-a.json",
+    ],
+    stdout=@process.redirect_to_file(
+      root + "/cache.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      root + "/cache.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  ignore(
+    @process.run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179:" + base + "/mlp-image-advice-a.json",
+      root + "/mlp-image-advice-a.json",
+    ]),
+  )
+  guard code == 0 else { fail("cache advice failed; retained") }
+}

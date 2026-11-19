@@ -1,0 +1,75 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: verify_g1_ppo.mbtx REPO INITIAL_DYNAMICS OUTPUT",
+  )
+  let root = args[1]
+  let output = args[3]
+  @fs.mkdir(output, recursive=true)
+  let config = @json.parse(
+    @fs.read_file(root + "/examples/learning/g1-ppo-fit.json").text(),
+  )
+  guard config is Object(fields) else { fail("expected PPO config") }
+  fields.set("seeds", [0])
+  fields.set("updates", 2)
+  fields.set("episodes_per_update", 3)
+  fields.set("evaluate_every", 1)
+  fields.set("max_training_steps", 600)
+  fields.set("max_training_seconds", 30)
+  let config_path = output + "/smoke-config.json"
+  @fs.write_file(
+    config_path,
+    config.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let (code, stdout, stderr) = @process.collect_output(
+    root + "/target/learning-venv/bin/python",
+    [
+      root + "/providers/motion_learning/ppo.py",
+      "--train",
+      args[2] + "/train-batch.json",
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--config",
+      config_path,
+      "--experiment",
+      root + "/examples/learning/g1-dynamics-collection.json",
+      "--evaluation-experiment",
+      root + "/examples/learning/g1-cpu-experiment.json",
+      "--output",
+      output,
+    ],
+  )
+  assert_eq(code, 0, msg=stderr.text() + stdout.text())
+  let report = @json.parse(@fs.read_file(output + "/report.json").text())
+  guard field(report, "runs") is Array([run]) else {
+    fail("expected one smoke seed")
+  }
+  assert_eq(field(run, "completed_update"), (2 : Json))
+  assert_eq(field(run, "reload_matches"), true.to_json())
+  assert_eq(field(field(run, "candidate"), "trials"), (9 : Json))
+  assert_eq(field(report, "evaluation_action_noise_std_rad"), (0 : Json))
+  println(
+    "PPO collection/update/checkpoint/evaluation smoke passed; nine canonical trials, no training-friction duplicates.",
+  )
+}

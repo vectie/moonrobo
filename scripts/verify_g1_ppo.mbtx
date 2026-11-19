@@ -1,0 +1,158 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: verify_g1_ppo.mbtx REPO INITIAL_DYNAMICS OUTPUT",
+  )
+  let root = args[1]
+  let output = args[3]
+  @fs.mkdir(output, recursive=true)
+  let config = @json.parse(
+    @fs.read_file(root + "/examples/learning/g1-ppo-fit.json").text(),
+  )
+  guard config is Object(fields) else { fail("expected PPO config") }
+  fields.set("seeds", [0])
+  fields.set("updates", 2)
+  fields.set("episodes_per_update", 3)
+  fields.set("evaluate_every", 1)
+  fields.set("max_training_steps", 600)
+  fields.set("max_training_seconds", 30)
+  let config_path = output + "/smoke-config.json"
+  @fs.write_file(
+    config_path,
+    config.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let (code, stdout, stderr) = native_collect_output(
+    root + "/scripts/run_native_learning.mbtx",
+    [
+      root + "/providers/motion_learning/ppo.py",
+      "--train",
+      args[2] + "/train-batch.json",
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--config",
+      config_path,
+      "--experiment",
+      root + "/examples/learning/g1-dynamics-collection.json",
+      "--evaluation-experiment",
+      root + "/examples/learning/g1-cpu-experiment.json",
+      "--output",
+      output,
+    ],
+  )
+  assert_eq(code, 0, msg=stderr.text() + stdout.text())
+  let report = @json.parse(@fs.read_file(output + "/report.json").text())
+  guard field(report, "runs") is Array([run]) else {
+    fail("expected one smoke seed")
+  }
+  assert_eq(field(run, "completed_update"), (2 : Json))
+  assert_eq(field(run, "reload_matches"), true.to_json())
+  assert_eq(field(field(run, "candidate"), "trials"), (9 : Json))
+  assert_eq(field(report, "evaluation_action_noise_std_rad"), (0 : Json))
+  println(
+    "PPO collection/update/checkpoint/evaluation smoke passed; nine canonical trials, no training-friction duplicates.",
+  )
+}
+
+///|
+/// Checkpoint copies are validated or converted by the reviewed native loader.
+fn native_checkpoint_copy_command(
+  exe : String,
+  args : Array[String],
+) -> (String, Array[String])? raise {
+  if exe != "/bin/cp" || args.length() < 2 {
+    return None
+  }
+  if !args[0].has_suffix(".moon.json") &&
+    !args[0].has_suffix(".pt") &&
+    !args[1].has_suffix(".moon.json") {
+    return None
+  }
+  guard args.length() == 2 && args[1].has_suffix(".moon.json") else {
+    fail("checkpoint copies require SOURCE and native .moon.json DESTINATION")
+  }
+  let name = args[0].split("/").last().unwrap_or("").to_owned()
+  let kind = if name.contains("dynamics-seed-") {
+    "residual-dynamics"
+  } else if name.contains("actor-seed-") {
+    "g1-actor"
+  } else {
+    fail("unreviewed checkpoint copy kind: " + name)
+  }
+  let root = @env.args()[1]
+  Some(
+    (
+      root,
+      [
+        "run",
+        root + "/scripts/run_native_learning.mbtx",
+        root,
+        "src/learning_training/launch/cmd",
+        "checkpoint-copy",
+        args[0],
+        args[1],
+        kind,
+      ],
+    ),
+  )
+}
+
+///|
+/// Structured native dispatch. A .py argument is a reviewed provider descriptor, never an executable or an interpreter fallback.
+async fn native_collect_output(
+  exe : String,
+  args : Array[String],
+) -> (Int32, &@io.Data, &@io.Data) {
+  let suffix = "/scripts/run_native_learning.mbtx"
+  if exe.has_suffix(suffix) {
+    let root = exe[:exe.length() - suffix.length()].to_owned()
+    let command = ["run", exe, root, "src/learning_training/launch/cmd"]
+    command.append(args)
+    return @process.collect_output("moon", command, cwd=root)
+  }
+  if native_checkpoint_copy_command(exe, args) is Some((root, command)) {
+    return @process.collect_output("moon", command, cwd=root)
+  }
+  @process.collect_output(exe, args)
+}
+
+///|
+async fn native_process_run(
+  exe : String,
+  args : Array[String],
+  stdout? : &@process.ProcessOutput,
+  stderr? : &@process.ProcessOutput,
+) -> Int32 {
+  let suffix = "/scripts/run_native_learning.mbtx"
+  if exe.has_suffix(suffix) {
+    let root = exe[:exe.length() - suffix.length()].to_owned()
+    let command = ["run", exe, root, "src/learning_training/launch/cmd"]
+    command.append(args)
+    return @process.run("moon", command, cwd=root, stdout?, stderr?)
+  }
+  if native_checkpoint_copy_command(exe, args) is Some((root, command)) {
+    return @process.run("moon", command, cwd=root, stdout?, stderr?)
+  }
+  @process.run(exe, args, stdout?, stderr?)
+}

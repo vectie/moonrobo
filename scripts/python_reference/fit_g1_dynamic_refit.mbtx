@@ -1,0 +1,88 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    6,
+    msg="usage: fit_g1_dynamic_refit.mbtx REPO DYNAMIC_REPLAY BASE_REPLAY INITIAL_FIT OUTPUT",
+  )
+  let root = args[1]
+  let output = args[5]
+  assert_true(!@fs.exists(output), msg="choose a fresh refit directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for name in ["dynamic_refit.py", "dynamics.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/config.json",
+    @fs.read_file(root + "/examples/learning/g1-dynamic-refit.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-dynamic-refit-charter.v1",
+        "manifest": Json(args[2] + "/manifest.json"),
+        "base_replay": Json(args[3]),
+        "initial": Json(args[4]),
+        "config": @json.parse(@fs.read_file(output + "/config.json").text()),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(
+    @process.run(
+      root + "/target/learning-venv/bin/python",
+      [
+        output + "/provider-sources/dynamic_refit.py",
+        "--config",
+        output + "/config.json",
+        "--manifest",
+        args[2] + "/manifest.json",
+        "--initial",
+        args[4] + "/dynamics-seed-0.pt",
+        "--validation",
+        args[3] + "/validation-batch.json",
+        "--test",
+        args[3] + "/test-batch.json",
+        "--output",
+        output,
+      ],
+      stdout=@process.redirect_to_file(
+        output + "/train.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  for arm in ["old-only", "mixed"] {
+    let report = @json.parse(
+      @fs.read_file(output + "/" + arm + "/report.json").text(),
+    )
+    guard report is { "runs": Array(runs), .. } else {
+      fail("missing refit runs")
+    }
+    assert_eq(runs.length(), 3)
+    for row in runs {
+      println(arm + ": " + row.stringify())
+    }
+  }
+}

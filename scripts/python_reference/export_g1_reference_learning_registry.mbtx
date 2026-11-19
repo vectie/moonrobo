@@ -1,0 +1,322 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn f(v : Json, k : String) -> Json raise {
+  guard v is Object(fields) else { fail("object") }
+  fields[k]
+}
+
+///|
+fn a(v : Json) -> Array[Json] raise {
+  guard v is Array(x) else { fail("array") }
+  x
+}
+
+///|
+fn s(v : Json) -> String raise {
+  guard v is String(x) else { fail("string") }
+  x
+}
+
+///|
+fn resolved(base : String, path : String) -> String {
+  if path.has_prefix("/") {
+    path
+  } else {
+    base + "/" + path
+  }
+}
+
+///|
+fn parent(path : String) -> String {
+  let parts = path.split("/").to_array()
+  let dirs : Array[String] = []
+  for i in 0..<(parts.length() - 1) {
+    dirs.push(parts[i].to_owned())
+  }
+  dirs.join("/")
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (code, out, err) = @process.collect_output("/usr/bin/shasum", [
+    "-a", "256", path,
+  ])
+  assert_eq(code, 0, msg=err.text())
+  out.text().split(" ").to_array()[0].to_owned()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    6,
+    msg="usage: export_g1_reference_learning_registry.mbtx REPO STUDY VERIFIED METHOD OUTPUT",
+  )
+  let root = args[1]
+  let study = args[2]
+  let algorithm = args[4]
+  let output = args[5]
+  let report = read(study + "/report.json")
+  assert_true(
+    [
+      "prefix-only", "replay-prefix", "replay-prefix-extended", "replay-prefix-anchor",
+    ].contains(algorithm),
+  )
+  assert_true(a(f(f(report, "config"), "methods")).contains(Json(algorithm)))
+  assert_false(@fs.exists(output))
+  @fs.mkdir(output, recursive=true)
+  let charter = read(study + "/charter.json")
+  let references = s(f(charter, "references"))
+  let manifest = read(references + "/manifest.json")
+  let files : Array[Json] = []
+  let origins : Array[Json] = []
+  let copy = async fn(
+    source : String,
+    relative : String,
+    kind : String,
+    episode : String,
+  ) -> Unit {
+    let folder = parent(output + "/" + relative)
+    if !@fs.exists(folder) {
+      @fs.mkdir(folder, recursive=true)
+    }
+    assert_eq(
+      @process.run("/bin/cp", ["-c", source, output + "/" + relative]),
+      0,
+    )
+    if !kind.is_empty() {
+      files.push({
+        "file": Json(relative),
+        "sha256": Json(sha(output + "/" + relative)),
+        "kind": Json(kind),
+        "episode_id": Json(episode),
+      })
+    }
+    if source.has_prefix(root + "/target/learning/") ||
+      source.has_prefix(root + "/output/research/") {
+      origins.push({ "relative_path": Json(relative), "source": Json(source) })
+    }
+  }
+  for
+    (source, target, kind) in [
+      (
+        study + "/report.json",
+        "policy/reference-study.json",
+        "learning-reference-study",
+      ),
+      (
+        args[3],
+        "policy/reference-verification.json",
+        "learning-reference-verification",
+      ),
+      (
+        study + "/charter.json",
+        "policy/reference-charter.json",
+        "learning-reference-charter",
+      ),
+      (
+        study + "/quality.json",
+        "collection/reference-quality.json",
+        "learning-reference-quality",
+      ),
+      (
+        study + "/initial/actor-zero-output.pt",
+        "policy/actor-zero-output.pt",
+        "learning-reference-baseline",
+      ),
+      (
+        references + "/manifest.json",
+        "collection/reference/manifest.json",
+        "learning-reference-manifest",
+      ),
+      (
+        references + "/source-physics.jsonl.gz",
+        "collection/reference/source-physics.jsonl.gz",
+        "learning-reference-source-physics",
+      ),
+    ] {
+    copy(source, target, kind, "")
+  }
+  let proofs = [
+    "common-fit-verification.json", "actor-origin-verification.json",
+  ]
+  for algorithm_name in a(f(f(report, "config"), "methods")) {
+    proofs.push("gradient-verification-" + s(algorithm_name) + ".json")
+  }
+  for
+    name in [
+      "reconstruction-verification.json", "model-replay-verification.json",
+    ] {
+    if @fs.exists(study + "/" + name) {
+      proofs.push(name)
+    }
+  }
+  for name in proofs {
+    copy(
+      study + "/" + name,
+      "policy/" + name,
+      "learning-reference-verification",
+      "",
+    )
+  }
+  for clip in a(f(manifest, "clips")) {
+    let path = s(f(clip, "file"))
+    copy(
+      references + "/" + path,
+      "collection/reference/" + path,
+      "learning-reference-clip",
+      "",
+    )
+  }
+  for record in a(f(report, "physical_records")) {
+    let id = s(f(record, "episode_id"))
+    assert_false(id.contains("/") || id.contains("\\"))
+    let relative = "physics/" + id + ".npz"
+    copy(
+      resolved(study, s(f(record, "file"))),
+      relative,
+      "learning-reference-physics",
+      id,
+    )
+    assert_eq(f(files[files.length() - 1], "sha256"), f(record, "sha256"))
+  }
+  for run in a(f(report, "runs")) {
+    let name = s(f(run, "method"))
+    let seed = f(run, "seed").stringify()
+    for cycle in a(f(run, "cycles")) {
+      let number = f(cycle, "cycle").stringify()
+      let actor = resolved(study, s(f(f(cycle, "checkpoint"), "checkpoint")))
+      let target = "evidence/checkpoints/" + name + "/seed-" + seed + "/"
+      copy(
+        actor,
+        target + "actor-cycle-" + number + ".pt",
+        "learning-reference-cycle-policy",
+        "",
+      )
+      for
+        (prefix, kind) in [
+          ("dynamics", "learning-dynamics-checkpoint"),
+          ("value", "learning-reference-value"),
+        ] {
+        let file = prefix + "-cycle-" + number + ".pt"
+        copy(parent(actor) + "/" + file, target + file, kind, "")
+      }
+    }
+    if name == algorithm {
+      copy(
+        resolved(study, s(f(f(run, "checkpoint"), "checkpoint"))),
+        "policy/actor-seed-" + seed + ".pt",
+        "",
+        "",
+      )
+    }
+  }
+  let inherited = s(f(report, "reused_source_study"))
+  copy(
+    inherited + "/report.json",
+    "policy/inherited-study.json",
+    "learning-inherited-study",
+    "",
+  )
+  for source in [study, inherited] {
+    let prefix = if source == study {
+      "provider-sources/"
+    } else {
+      "provider-sources/inherited/"
+    }
+    for
+      name in [
+        "reference_actor.py", "reference_task.py", "reference_learning.py", "reference_learning_study.py",
+        "balance_features.py", "cpu_physics.py", "full_body_reference.py", "policy.py",
+        "dynamics.py",
+      ] {
+      copy(
+        source + "/provider-sources/" + name,
+        prefix + name,
+        "learning-reference-provider",
+        "",
+      )
+    }
+  }
+  for name in ["reference_learning_export.py", "reference_learning_probe.py"] {
+    copy(
+      study + "/provider-sources/" + name,
+      "provider-sources/" + name,
+      "learning-reference-provider",
+      "",
+    )
+  }
+  for
+    name in [
+      "reference_registry_export.py", "reference_learning_registry_export.py",
+    ] {
+    copy(
+      root + "/providers/motion_learning/" + name,
+      "provider-sources/" + name,
+      "learning-reference-provider",
+      "",
+    )
+  }
+  @fs.write_file(
+    output + "/policy/reference-learning-evidence.json",
+    (
+      {
+        "format": "moonrobo.g1-reference-learning-evidence.v1",
+        "files": Json(files),
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/export-sources.json",
+    Json(origins).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(
+    @process.run(
+      root + "/target/learning-venv/bin/python",
+      [
+        output + "/provider-sources/reference_learning_registry_export.py",
+        "--study",
+        study,
+        "--verification",
+        args[3],
+        "--method",
+        algorithm,
+        "--output",
+        output,
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      ],
+      stdout=@process.redirect_to_file(
+        output + "/export.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  assert_eq(
+    f(read(output + "/export.json"), "physical_episodes"),
+    Json(a(f(report, "physical_records")).length()),
+  )
+  println(
+    "Prepared full reference-learning evidence and three paired viewer reports.",
+  )
+}

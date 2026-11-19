@@ -1,0 +1,147 @@
+[
+  {
+    "script": "run_g1_aligned.mbtx",
+    "sha256": "16cadb8892d4169e7ea45db42202552325efae4c36a9c8ee723743a8a93881b5",
+    "legacy_entry": "scripts/python_reference/run_g1_aligned.mbtx"
+  },
+  {
+    "script": "register_g1_aligned.mbtx",
+    "sha256": "750482f0f279ea5bff633cd2536c6b4284538e5c927fe2f0a58d8deeb0662bbf",
+    "legacy_entry": "scripts/python_reference/register_g1_aligned.mbtx"
+  },
+  {
+    "script": "export_g1_aligned_apic.mbtx",
+    "sha256": "8eb2118bed38f750bd854a4e9d813eb4e819ebccef1787fd48cdb53de4a3da92",
+    "legacy_entry": "scripts/python_reference/export_g1_aligned_apic.mbtx"
+  },
+  {
+    "script": "prepare_g1_aligned_data.mbtx",
+    "sha256": "5f7150cb10540f224dfccbdced925ad843b7562ac800af10908f9ea96ffa5cdc",
+    "legacy_entry": "scripts/python_reference/prepare_g1_aligned_data.mbtx"
+  },
+  {
+    "script": "probe_g1_reference_root.mbtx",
+    "sha256": "1794d0e3959da68618bf493fc6a7a9b08ae28b2a38ebfe2f95a59df0bcac4ef5",
+    "legacy_entry": "scripts/python_reference/probe_g1_reference_root.mbtx"
+  },
+  {
+    "script": "probe_g1_reference_tail.mbtx",
+    "sha256": "18b97d940b55465c483aab523c433cb728dbd3cf1ef4b7cb052f8036aa98e3c9",
+    "legacy_entry": "scripts/python_reference/probe_g1_reference_tail.mbtx"
+  },
+  {
+    "script": "report_g1_reference_root.mbtx",
+    "sha256": "832e5748146b066436792b29aa28d3dcda72d38ba710da4130a100c475358a3f",
+    "legacy_entry": "scripts/python_reference/report_g1_reference_root.mbtx"
+  },
+  {
+    "script": "fit_g1_reference_learning.mbtx",
+    "sha256": "7848b538c5a789546e21a86a8292a6a7629e3753d41a9fac4287dfbc2cd6f0ad",
+    "legacy_entry": "scripts/python_reference/fit_g1_reference_learning.mbtx"
+  },
+  {
+    "script": "prepare_g1_reference_replay.mbtx",
+    "sha256": "676d3dea6db81c7e869bbeea3282dd5191dc01ddd5e1e0501db78ab48ce79349",
+    "legacy_entry": "scripts/python_reference/prepare_g1_reference_replay.mbtx"
+  },
+  {
+    "script": "export_g1_reference_registry.mbtx",
+    "sha256": "347b80a092eb9e8b29de7df8094fdaf7e48a308cbffd21084b8c01daa442cec5",
+    "legacy_entry": "scripts/python_reference/export_g1_reference_registry.mbtx"
+  },
+  {
+    "script": "fit_g1_reference_final_route.mbtx",
+    "sha256": "27fab9245dca1d2f6d283dd5fa1d9107a0cd0c7f90703f52a59c2fdf9394d820",
+    "legacy_entry": "scripts/python_reference/fit_g1_reference_final_route.mbtx"
+  },
+  {
+    "script": "report_g1_reference_learning.mbtx",
+    "sha256": "28e77d45530af233d66c9e2f1cf94f6641e7930a222f1f3c3945a452a886b073",
+    "legacy_entry": "scripts/python_reference/report_g1_reference_learning.mbtx"
+  },
+  {
+    "script": "probe_g1_reference_last_cycle.mbtx",
+    "sha256": "7c8c2ad43bc6962dcd14e76f5324eb8e97fc512b4ce40ad45b98247ab2140dc5",
+    "legacy_entry": "scripts/python_reference/probe_g1_reference_last_cycle.mbtx"
+  },
+  {
+    "script": "report_g1_full_body_reference.mbtx",
+    "sha256": "28cda5eeef7f5884530fc35655b7a6e3abda0d71f6277ee1e20ff31b708f03fe",
+    "legacy_entry": "scripts/python_reference/report_g1_full_body_reference.mbtx"
+  },
+  {
+    "script": "collect_g1_full_body_reference.mbtx",
+    "sha256": "54c7a68ef7ad7c6ae4b0b949a5792c36a39be6e5f9d5065c8eeefdb314e2fed3",
+    "legacy_entry": "scripts/python_reference/collect_g1_full_body_reference.mbtx"
+  },
+  {
+    "script": "prepare_g1_reference_extension.mbtx",
+    "sha256": "cea0fb67d4e8b9ed069846f6baaaab3a514fe6c5fa883664bc5fa0e7c63a2e00",
+    "legacy_entry": "scripts/python_reference/prepare_g1_reference_extension.mbtx"
+  },
+  {
+    "script": "register_g1_reference_registry.mbtx",
+    "sha256": "8c1bc52c1c56e2cd065d10347dbbe3a57ea11b4b465babbec753dff4d6c939df",
+    "legacy_entry": "scripts/python_reference/register_g1_reference_registry.mbtx"
+  },
+  {
+    "script": "report_g1_reference_last_cycle.mbtx",
+    "sha256": "177b1abf8bf797c49d658a89025e4b18f54bb4375b14c9c863d42883101c4039",
+    "legacy_entry": "scripts/python_reference/report_g1_reference_last_cycle.mbtx"
+  },
+  {
+    "script": "fit_g1_reference_initialization.mbtx",
+    "sha256": "9847fea0ac1f65145ba246599d7f4bf1623d9ba8062ef57438cf5113269fa3e7",
+    "legacy_entry": "scripts/python_reference/fit_g1_reference_initialization.mbtx"
+  },
+  {
+    "script": "report_g1_reference_final_route.mbtx",
+    "sha256": "387857d8b8be684f5f399423546a93dec07d987cced62c6b86dd53115c5abab7",
+    "legacy_entry": "scripts/python_reference/report_g1_reference_final_route.mbtx"
+  },
+  {
+    "script": "summarize_g1_reference_extension.mbtx",
+    "sha256": "ebffba3a02238cc7eca6e9b2725aacd38137e20e987ac18fd83af06dd43d8ee3",
+    "legacy_entry": "scripts/python_reference/summarize_g1_reference_extension.mbtx"
+  },
+  {
+    "script": "probe_g1_reference_gradient_route.mbtx",
+    "sha256": "b5a627d1ad9f0732bdf62fe0ccdc9269afa2ed69ef00a56c432d9e0ca68dc82b",
+    "legacy_entry": "scripts/python_reference/probe_g1_reference_gradient_route.mbtx"
+  },
+  {
+    "script": "probe_g1_reference_action_response.mbtx",
+    "sha256": "e3cb466f33156cb6cb2179d157a8a9c9ad3be76689219f5c9a62c6777181bd7d",
+    "legacy_entry": "scripts/python_reference/probe_g1_reference_action_response.mbtx"
+  },
+  {
+    "script": "report_g1_reference_gradient_route.mbtx",
+    "sha256": "117a88403f22a258e5702660e71b5655aab66908c6b738acdc27df9deb1c5f2a",
+    "legacy_entry": "scripts/python_reference/report_g1_reference_gradient_route.mbtx"
+  },
+  {
+    "script": "report_g1_reference_initialization.mbtx",
+    "sha256": "83a6da5630cce87dd859f993df17ae7e01b6dfe2bc5e8410ed34934385ac1ceb",
+    "legacy_entry": "scripts/python_reference/report_g1_reference_initialization.mbtx"
+  },
+  {
+    "script": "report_g1_reference_action_response.mbtx",
+    "sha256": "b6752a64ad031aa3db1401a67ffd361fcf2d3d212708c69c052d0b235a3c0454",
+    "legacy_entry": "scripts/python_reference/report_g1_reference_action_response.mbtx"
+  },
+  {
+    "script": "probe_g1_reference_feedback_response.mbtx",
+    "sha256": "cf3b4c51cca5d64e6edff1efcacfd4b9252773de87c2847cc7de6e31ade8ef79",
+    "legacy_entry": "scripts/python_reference/probe_g1_reference_feedback_response.mbtx"
+  },
+  {
+    "script": "export_g1_reference_learning_registry.mbtx",
+    "sha256": "e7509c650f1d0195a4dfab24eedee7293231540344c59f91b33f2a521e8a923f",
+    "legacy_entry": "scripts/python_reference/export_g1_reference_learning_registry.mbtx"
+  },
+  {
+    "script": "report_g1_reference_feedback_response.mbtx",
+    "sha256": "a01c11ab84b0af88091fcba06309729d28ebe5f0534fa43ec3d61b82fcdcba0e",
+    "legacy_entry": "scripts/python_reference/report_g1_reference_feedback_response.mbtx"
+  }
+]

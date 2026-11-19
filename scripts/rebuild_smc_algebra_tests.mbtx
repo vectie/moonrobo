@@ -1,0 +1,20 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn run(cmd : String,args : Array[String]) -> Unit {guard @process.run(cmd,args)==0 else {fail(cmd)}}
+async fn main {
+  let out="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-algebra-20261028"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host="wlc004s@192.168.2.179"; let socket="/tmp/moonrobo-operator-179.sock"
+  // Only the analytical pi expectation changes. Preserve plugin A and its evidence.
+  for stem in ["build_algebra","run_algebra","invoke_algebra"] {
+    let mut s=@fs.read_file(out+"/"+stem+"_a.mbtx").text()
+    for (a,b) in [("smc-algebra-a","smc-algebra-b"),("smc-algebra-gate-a","smc-algebra-gate-b"),("smc-algebra-tensor-a","smc-algebra-tensor-b"),("smc-algebra-runtime-a","smc-algebra-runtime-b"),("smc-algebra-tests-a","smc-algebra-tests-b"),("-cpu-a","-cpu-b"),("build_algebra_a","build_algebra_b"),("run_algebra_a","run_algebra_b")] {s=s.replace_all(old=a,new=b)}
+    @fs.write_file(out+"/"+stem+"_b.mbtx",s,create_mode=CreateNew)
+    run("scp",["-o","ControlPath="+socket,out+"/"+stem+"_b.mbtx",host+":"+base+"/"+stem+"_b.mbtx"])
+  }
+  run("ssh",["-S",socket,host,"test ! -e "+base+"/workspace/moonrobo-smc-algebra-b"])
+  run("ssh",["-S",socket,host,"cp -a --reflink=auto "+base+"/workspace/moonrobo-smc-algebra-a "+base+"/workspace/moonrobo-smc-algebra-b"])
+  run("scp",["-o","ControlPath="+socket,"/Users/kq/Workspace/moonrobo/src/learning_tensor/smc_algebra_test.mbt",host+":"+base+"/workspace/moonrobo-smc-algebra-b/src/learning_tensor/smc_algebra_test.mbt"])
+  for mode in ["gate-build-smc-algebra-b","smc-algebra-tests-b"] {
+    run("ssh",["-S",socket,host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/build_algebra_b.mbtx -- "+mode])
+  }
+}

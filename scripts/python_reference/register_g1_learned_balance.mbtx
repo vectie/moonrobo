@@ -1,0 +1,244 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> Json {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=err.text() + out.text())
+  @json.parse(out.text())
+}
+
+///|
+async fn native_log(
+  root : String,
+  log : String,
+  scratch : String,
+  training : Bool,
+) -> Json {
+  let mut chunks = 0
+  let mut episodes = 0
+  let mut transitions = 0
+  @async.with_task_group() <| group => {
+    let (reader, output) = @process.read_from_process()
+    let process = @process.spawn(group, "gzip", ["-cd", log], stdout=output)
+    while reader.read_until("\n") is Some(line) {
+      if line.trim().is_empty() {
+        continue
+      }
+      let record = @json.parse(line)
+      let dataset = field(record, "dataset")
+      let batch = array(field(dataset, "episodes"))
+      if training {
+        assert_eq(field(record, "role"), "train-only")
+        let labels = array(field(record, "teacher_action_targets"))
+        assert_eq(batch.length(), labels.length())
+        for i, episode in batch {
+          assert_eq(field(episode, "split"), "train")
+          assert_eq(
+            array(field(episode, "steps")).length(),
+            array(labels[i]).length(),
+          )
+        }
+      }
+      for episode in batch {
+        transitions += array(field(episode, "steps")).length()
+      }
+      @fs.write_file(scratch, dataset.stringify(), create_mode=CreateOrTruncate)
+      let checked = run(
+        root +
+        "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+        [scratch, "train", "1", "1000000"],
+      )
+      assert_eq(field(checked, "window_length"), 1)
+      @fs.remove(scratch)
+      chunks += 1
+      episodes += batch.length()
+      println(
+        "Native checked " +
+        (if training { "training" } else { "long evaluation" }) +
+        " chunk \{chunks}",
+      )
+    }
+    reader.close()
+    assert_eq(process.wait(), 0)
+  }
+  {
+    "chunks": Json(chunks),
+    "episodes": Json(episodes),
+    "transitions": Json(transitions),
+    "all_splits_validated": true,
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    8,
+    msg="usage: register_g1_learned_balance.mbtx REPO FIT LONG EXPORTED MOONDATA NOW_MS OUTPUT_JSON",
+  )
+  let root = args[1]
+  let fit = args[2]
+  let long = args[3]
+  let exported = args[4]
+  let store = args[5]
+  let metadata = read(exported + "/export.json")
+  let original = read(fit + "/report.json")
+  let extended = read(long + "/report.json")
+  assert_eq(field(metadata, "exact_refit_matches_all_six_heads"), true)
+  assert_eq(
+    field(metadata, "fit_report_sha256"),
+    Json(digest(fit + "/report.json")),
+  )
+  assert_eq(
+    field(metadata, "long_report_sha256"),
+    Json(digest(long + "/report.json")),
+  )
+  assert_eq(
+    field(extended, "fit_report_sha256"),
+    field(metadata, "fit_report_sha256"),
+  )
+  assert_eq(
+    field(extended, "provider_sha256"),
+    Json(digest(long + "/provider-sources/learned_balance_long.py")),
+  )
+  assert_eq(
+    field(metadata, "provider_sha256"),
+    Json(digest(exported + "/provider-sources/learned_balance_export.py")),
+  )
+  assert_eq(
+    field(extended, "evaluation_log_sha256"),
+    Json(digest(long + "/evaluation-physics.jsonl.gz")),
+  )
+  assert_eq(
+    field(original, "evaluation_log_sha256"),
+    Json(digest(fit + "/evaluation-physics.jsonl.gz")),
+  )
+  let training = native_log(
+    root,
+    exported + "/common/balance-training.jsonl.gz",
+    exported + "/native-chunk.json",
+    true,
+  )
+  assert_eq(field(training, "chunks"), 6)
+  assert_eq(field(training, "episodes"), 54)
+  assert_eq(field(training, "transitions"), field(metadata, "training_points"))
+  let physical = native_log(
+    root,
+    long + "/evaluation-physics.jsonl.gz",
+    exported + "/native-chunk.json",
+    false,
+  )
+  assert_eq(field(physical, "chunks"), 9)
+  assert_eq(field(physical, "episodes"), 54)
+  let imported : Array[Json] = []
+  let cli = root +
+    "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe"
+  for scope in ["ten-second", "thirty-second"] {
+    for mode in ["h10", "full"] {
+      let id = "balance-" + mode + "-" + scope
+      let folder = exported + "/" + scope + "-" + mode
+      let registered = run(cli, ["import", store, folder, id, args[6]])
+      assert_eq(field(registered, "physical_execution_allowed"), false)
+      let candidates = array(field(registered, "candidates"))
+      assert_eq(candidates.length(), 3)
+      let passes = candidates
+        .filter(c => field(c, "producer_qualified") == (true : Json))
+        .length()
+      assert_eq(
+        passes,
+        if scope == "ten-second" {
+          if mode == "full" {
+            3
+          } else {
+            2
+          }
+        } else {
+          0
+        },
+      )
+      let stored = run(cli, ["inspect", store, id])
+      assert_eq(stored, registered)
+      let policy = read(folder + "/policy/report.json")
+      assert_eq(field(policy, "release_qualified"), false)
+      for candidate in candidates {
+        let seed = num(field(candidate, "seed")).to_int()
+        let trace = read(folder + "/policy/physics-seed-\{seed}.json")
+        assert_eq(
+          field(candidate, "baseline"),
+          field(field(trace, "baseline"), "summary"),
+        )
+        assert_eq(
+          field(candidate, "candidate"),
+          field(field(trace, "candidate"), "summary"),
+        )
+      }
+      imported.push(registered)
+      println(
+        "Registered " + id + ": \{passes}/3 pass the declared simulator scope",
+      )
+    }
+  }
+  let validation = run(
+    root + "/_build/native/debug/build/cmd/moondata/moondata.exe",
+    ["validate", store],
+  )
+  assert_eq(field(validation, "status"), "passed")
+  @fs.write_file(
+    args[7],
+    (
+      {
+        "format": "moonrobo.g1-balance-platform-study.v1",
+        "export": metadata,
+        "long_evaluation": extended,
+        "native_training": training,
+        "native_long_evaluation": physical,
+        "experiments": Json(imported),
+        "moondata_validation": validation,
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "Registered four balance experiments and validated the complete MoonData root.",
+  )
+}

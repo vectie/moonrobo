@@ -1,0 +1,204 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=err.text() + out.text())
+  out.text()
+}
+
+///|
+async fn copy(source : String, destination : String) -> Unit {
+  ignore(run("/bin/cp", [source, destination]))
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: fit_g1_paired_tail.mbtx REPO DATA_RUN ADAPTIVE_RUN OUTPUT",
+  )
+  let root = args[1]
+  let source = args[2]
+  let incoming = args[3]
+  let output = args[4]
+  assert_true(!@fs.exists(output), msg="choose a fresh study directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for name in ["policy.py", "dynamics.py", "cpu_physics.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let cells : Array[Json] = []
+  for id in ["paired-tail-on", "paired-tail-off"] {
+    let cell = output + "/" + id
+    @fs.mkdir(cell + "/policy", recursive=true)
+    @fs.mkdir(cell + "/fit", recursive=true)
+    @fs.mkdir(cell + "/collection", recursive=true)
+    let config = read(root + "/examples/learning/g1-policy-long-fit.json")
+    guard config is Object(fields) else { fail("expected config") }
+    fields.set("test_seeds", [8200, 8201, 8202])
+    fields.set("actor_critic_bootstrap", Json(id == "paired-tail-on"))
+    fields.set("critic_horizontal_translation_invariant", true)
+    fields.set("critic_training_source", "frozen")
+    fields.set("evaluation_updates", [1, 5, 10, 20])
+    fields.set(
+      "study", "Selected adaptive actor/critic/model triples, fixed model and critic. Only terminal critic contribution to actor objective differs. 200 actor updates at learning rate 0.0003; no critic or model fitting and no new training collection. Weights-only warm start, not exact restart.",
+    )
+    fields.set(
+      "physical_qualification", "All nine fresh ten-second physics trials must have zero falls and mean joint RMSE at most 0.15 rad. No hardware authority.",
+    )
+    @fs.write_file(
+      cell + "/config.json",
+      config.stringify(indent=2),
+      create_mode=CreateOrTruncate,
+    )
+    for seed in 0..<3 {
+      let one = @json.parse(config.stringify())
+      guard one is Object(one_fields) else { fail("expected config") }
+      one_fields.set("seeds", Json([seed]))
+      @fs.write_file(
+        cell + "/config-seed-\{seed}.json",
+        one.stringify(indent=2),
+        create_mode=CreateOrTruncate,
+      )
+    }
+    cells.push({ "id": Json(id), "config": config })
+  }
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-paired-tail-charter.v1",
+        "data_run": Json(source),
+        "incoming": Json(incoming),
+        "cells": Json(cells),
+        "selection": "Validation seeds 30-32 at updates 0/1/5/10/20/50/100/150/200, including initial actor. Fresh final seeds 8200-8202 never select weights. Each seed starts from its own paired selected model and critic.",
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let summaries : Array[Json] = []
+  for entry in cells {
+    guard field(entry, "id") is String(id) else { fail("expected id") }
+    let cell = output + "/" + id
+    copy(source + "/collection/dataset.json", cell + "/collection/dataset.json")
+    copy(incoming + "/fit/report.json", cell + "/fit/report.json")
+    let results : Array[Json] = []
+    let initial_models : Map[String, Json] = Map([])
+    for seed in 0..<3 {
+      let model = incoming + "/fit/dynamics-seed-\{seed}.pt"
+      copy(model, cell + "/fit/dynamics-seed-\{seed}.pt")
+      copy(
+        incoming + "/fit/latest-dynamics-seed-\{seed}.pt",
+        cell + "/fit/latest-dynamics-seed-\{seed}.pt",
+      )
+      let seed_output = cell + "/seed-\{seed}"
+      @fs.write_file(
+        cell + "/policy-seed-\{seed}.log",
+        run(root + "/target/learning-venv/bin/python", [
+          output + "/provider-sources/policy.py",
+          "fit",
+          "--train",
+          source + "/train-batch.json",
+          "--dynamics",
+          model,
+          "--scene",
+          root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+          "--config",
+          cell + "/config-seed-\{seed}.json",
+          "--experiment",
+          root + "/examples/learning/g1-long-experiment.json",
+          "--warm-start-policy",
+          incoming + "/policy",
+          "--output",
+          seed_output,
+        ]),
+        create_mode=CreateOrTruncate,
+      )
+      let report = read(seed_output + "/report.json")
+      guard field(report, "runs") is Array(runs) && runs.length() == 1 else {
+        fail("expected one run")
+      }
+      let result = runs[0]
+      assert_eq(field(result, "critic_unchanged"), true)
+      assert_eq(field(result, "dynamics_unchanged"), true)
+      assert_eq(field(result, "reload_matches"), true)
+      results.push(result)
+      initial_models.set(seed.to_string(), field(report, "dynamics_sha256"))
+      for
+        name in [
+          "actor-seed-\{seed}.pt",
+          "latest-actor-seed-\{seed}.pt",
+          "physics-seed-\{seed}.json",
+          "candidate-data-seed-\{seed}.json",
+        ] {
+        copy(seed_output + "/" + name, cell + "/policy/" + name)
+      }
+      println(
+        id +
+        " seed \{seed}: " +
+        (
+          {
+            "selected_update": field(result, "selected_update"),
+            "candidate": field(result, "candidate"),
+            "qualifies": field(result, "qualifies"),
+          } : Json).stringify(),
+      )
+    }
+    let aggregate : Json = {
+      "format": "moonrobo.g1-policy-fit.v1",
+      "config": field(entry, "config"),
+      "runs": Json(results),
+      "evidence_class": "physics-simulation",
+      "checkpoint_selection": "validation-physics-only",
+      "initial_dynamics_by_seed": Json(initial_models),
+      "dynamics_sha256": null,
+      "experiment": read(root + "/examples/learning/g1-long-experiment.json"),
+      "any_qualified": Json(
+        results.any(r => field(r, "qualifies") == (true : Json)),
+      ),
+      "scope": "No additional model fitting: fit/ preserves incoming selected model diagnostics. Single-seed trainer reports retain provider digests. Initial model is per-seed, not a shared checkpoint.",
+    }
+    @fs.write_file(
+      cell + "/policy/report.json",
+      aggregate.stringify(indent=2),
+      create_mode=CreateOrTruncate,
+    )
+    summaries.push({ "id": Json(id), "runs": Json(results) })
+  }
+  @fs.write_file(
+    output + "/summary.json",
+    (
+      {
+        "format": "moonrobo.g1-paired-tail-study.v1",
+        "cells": Json(summaries),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

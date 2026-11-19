@@ -1,0 +1,157 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+let remote_base = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+
+///|
+let local_base = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/phase-comparison4096-20261025"
+
+///|
+async fn fetch(source : String, destination : String) -> Unit {
+  // Review-sized JSON only. Never copy raw profiler files or databases locally.
+  guard source.has_suffix(".json") && destination.has_suffix(".json") else {
+    fail("JSON evidence only")
+  }
+  if @fs.exists(destination) {
+    println("Preserved existing " + destination)
+    return
+  }
+  let code = @async.with_timeout(60000, () => {
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179:" + source,
+      destination,
+    ])
+  })
+  guard code == 0 else { fail("copy failed: " + source) }
+  let f = @fs.open(destination, mode=ReadOnly)
+  defer f.close()
+  guard f.size() <= 16777216L else { fail("review artifact exceeds16MiB") }
+}
+
+///|
+async fn receipt(label : String, kind : String, directory : String) -> Unit {
+  if !@fs.exists(local_base + "/controls") {
+    @fs.mkdir(local_base + "/controls")
+  }
+  if !@fs.exists(local_base + "/" + directory) {
+    @fs.mkdir(local_base + "/" + directory)
+  }
+  let root = "/home/wlc004s/moonrobo/runs/operator-trace41-20261025-phase-" +
+    label +
+    "-" +
+    kind
+  let dest = local_base + "/" + directory
+  fetch(root + "/outer-result.json", dest + "/outer-result.json")
+  fetch(
+    root + "/run/" + kind + "/inner-receipt.json",
+    dest + "/inner-receipt.json",
+  )
+  fetch(root + "/launch.json", dest + "/launch.json")
+  if kind == "native" {
+    fetch(
+      root + "/pair/train/operator-diagnostics.json",
+      dest + "/operator-diagnostics.json",
+    )
+    fetch(
+      root + "/pair/train/operator-diagnostic-run.json",
+      dest + "/operator-diagnostic-run.json",
+    )
+  } else {
+    fetch(
+      root + "/pair/logs/moonrobo-trace-capture.json",
+      dest + "/capture.json",
+    )
+  }
+}
+
+///|
+async fn trace(
+  label : String,
+  kind : String,
+  directory : String,
+  copies : Bool,
+) -> Unit {
+  receipt(label, kind, directory)
+  let root = remote_base + "/trace41-phase-" + label + "-" + kind + "-export"
+  for name in ["phase-attribution.json", "schema.json", "export-receipt.json"] {
+    fetch(root + "/" + name, local_base + "/" + directory + "/" + name)
+  }
+  if copies {
+    fetch(
+      root + "/copy-attribution.json",
+      local_base + "/" + directory + "/copy-attribution.json",
+    )
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] else {
+    fail("phases|actor-receipts|actor-traces")
+  }
+  match mode {
+    "phases" => {
+      trace("worldtracef", "native", "native-world-trace", false)
+      trace("worldtraced", "smc-compiled", "smc-world-trace", false)
+      trace("collectnativea", "native", "native-collection-trace", true)
+      trace("collecttrace", "smc-compiled", "smc-collection-trace", true)
+      receipt("worldoffa", "native", "controls/world-native-off")
+      receipt("worldoffb", "smc-compiled", "controls/world-smc-off")
+      receipt("collectoffb", "native", "controls/collection-native-off")
+      receipt("collectoffa", "smc-compiled", "controls/collection-smc-off")
+    }
+    "actor-receipts" => {
+      receipt("actoroffa", "native", "controls/actor-native-off")
+      receipt("actoroffb", "smc-compiled", "controls/actor-smc-chunk-off")
+      receipt("actoratenc", "native", "controls/actor-native-aten")
+      receipt("actoratenb", "smc-compiled", "controls/actor-smc-chunk-aten")
+    }
+    "actor-traces" => {
+      trace("actortracea", "native", "native-actor-trace", false)
+      trace("actortraceb", "smc-compiled", "smc-chunk-actor-trace", false)
+    }
+    "resources" => {
+      let directory = local_base + "/resource-history"
+      if !@fs.exists(directory) {
+        @fs.mkdir(directory)
+      }
+      for
+        name in [
+          "cache-phase-r-pair-pages.json", "cache-phase-s-image-pages.json", "cache-actor-controls-phase-compiler.json",
+        ] {
+        fetch(remote_base + "/" + name, directory + "/" + name)
+      }
+      let rejected = "/home/wlc004s/moonrobo/runs/operator-trace41-20261025-phase-actoratena-native-preflight"
+      fetch(
+        rejected + "/outer-result.json",
+        directory + "/actoratena-admission-rejected.json",
+      )
+      fetch(
+        rejected + "/run/native-cuda-guard/receipt.json",
+        directory + "/actoratena-guard.json",
+      )
+    }
+    "world-sync" => {
+      fetch(
+        remote_base +
+        "/trace41-phase-worldtracef-native-export/sync-attribution.json",
+        local_base + "/native-world-trace/sync-attribution.json",
+      )
+      fetch(
+        remote_base +
+        "/trace41-phase-worldtraced-smc-compiled-export/sync-attribution.json",
+        local_base + "/smc-world-trace/sync-attribution.json",
+      )
+    }
+    _ => fail("unknown evidence group")
+  }
+}

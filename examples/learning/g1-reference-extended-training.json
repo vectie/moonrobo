@@ -1,0 +1,103 @@
+{
+  "format": "moonrobo.g1-reference-extended-training-charter.v1",
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "methods": [
+    "replay-prefix",
+    "replay-prefix-extended"
+  ],
+  "incoming_actor_sha256": "799850fb2ee31bdd3a3267ac42742e17e6137c5f20bbabb5881543f26124f94e",
+  "reference_manifest_sha256": "8b310f2a6ab44e8a997aaba92f62a23ec13ceb0fa79ddeb0e0eaf5299bf569b5",
+  "cycles": 6,
+  "collection_origins_s": [
+    0,
+    10,
+    20
+  ],
+  "raw_action_std": 0.03,
+  "noise_seed_base": 810000,
+  "gamma": 0.99,
+  "gae_lambda": 0.95,
+  "actor_learning_rate": 0.0003,
+  "maximum_actor_steps_per_cycle": 12,
+  "actor_batch_size": 64,
+  "ppo_minibatch_size": 256,
+  "ppo_epochs": 3,
+  "ppo_clip": 0.2,
+  "ppo_target_kl": 0.02,
+  "critic_updates_per_cycle": 128,
+  "critic_batch_size": 256,
+  "critic_learning_rate": 0.001,
+  "model_updates_per_cycle": 900,
+  "model_batch_size": 64,
+  "model_window": 8,
+  "model_width": 128,
+  "model_learning_rate": 0.001,
+  "model_replay_windows": 20000,
+  "model_normalization_floor": 0.05,
+  "imagination_horizon": 32,
+  "model_diagnostic_clip_indices": [
+    0,
+    3,
+    6
+  ],
+  "cpu_threads": 2,
+  "maximum_feature_alignment_error": 0.00002,
+  "maximum_action_alignment_error_rad": 0.00008,
+  "reward": "dt * [exp(-mean_body_squared_distance/0.05^2) + 0.5*exp(-root_squared_distance/0.05^2) + 0.5*exp(-4*(1-quaternion_dot^2)/0.1^2) + exp(-mean_joint_squared_error/0.03^2) - 0.01*mean(((action-previous)/0.1)^2)]",
+  "termination": "Actual and imagined fall at root height <0.35m or upright Z<0.5. Reference end is finite-task terminal with zero tail; score terminal-step reward once. Model fall mask is hard and not differentiated.",
+  "common_prior": "One identical pre-supervision zero-output checkpoint for all methods and training seeds. It includes previously fitted balance slopes, static kinematics and normalization from reference-source observations; no claim of training from scratch or a prior-free mocap method. Independently seeded collection/optimization defines the three new training runs.",
+  "data_access": "Reuse the verified trajectory-state study's initial/common/diagnostic records, all three trajectory training runs and their fixed final evaluations. Reconstruct the first three cycles from original float32 archives with the original optimizer and RNG sequences. Check actor/model/value tensors at every reconstructed cycle against the original checkpoints before collecting new data. Only cycles 4-6 and the extended final evaluations are new physics. Reference-source controls remain commands/setup, never RL fitting labels.",
+  "critic": "Keep the original physical-return critic and 128 fitting steps each cycle. Neither actor objective uses its critic; it is reconstructed, fitted and stored without changing the training recipe.",
+  "actor_objective": "Continue the existing no-tail H32 discounted-reward objective with uniform current-cycle physical-transition origins, exact causal H10 history/EMA and planned reference phase. Keep the 12 Adam steps/cycle, learning rate and 0.005 local logit RMS cap. Longer surviving episodes receive more origin weight.",
+  "budget_and_selection": "Three seeds, six total cycles versus the frozen three-cycle trajectory baseline. Deterministically rebuild cycles 1-3, retaining actor/model/value optimizer moments, replay and RNG by replaying the original fitting operations. Then run exactly three further cycles with 27 fresh episodes, 900 model, 128 value and 12 actor updates per cycle. Evaluate all three final actors on the unchanged 27-cell suite; no intermediate qualification, early stopping, checkpoint/seed selection or threshold changes.",
+  "costs": "This intentionally increases training budget, not a matched-efficiency study. Separate 360 inherited records from 324 new records (243 collection +81 final evaluation). Newly incurred CPU time includes reconstruction fitting; original collection timings remain in standalone learner accounting. Do not claim reused physics is new collection or a learning speedup.",
+  "scope": "Sustained trajectory-state learning on the same known training references after all three seed means improved at three cycles. Six total cycles is fixed before running; no broad-motion, hardware, exact-restart product or full phase acceptance claim.",
+  "physical_execution_allowed": false,
+  "protocol_revision_reason": "Test whether the observed trajectory-origin improvement survives three additional unchanged collection/model/actor cycles. The intended intervention is training duration; compare final three-cycle and six-cycle policies without new initialization, supervision or algorithm changes.",
+  "collection_origins_per_cycle_s": [
+    [
+      0,
+      10,
+      20
+    ],
+    [
+      0,
+      10,
+      20
+    ],
+    [
+      0,
+      10,
+      20
+    ],
+    [
+      0,
+      10,
+      20
+    ],
+    [
+      0,
+      10,
+      20
+    ],
+    [
+      0,
+      10,
+      20
+    ]
+  ],
+  "noise_seed_origin_stride": 17,
+  "actor_logit_rms_cap": 0.005,
+  "actor_calibration_batch_size": 256,
+  "expected_physical_records": 684,
+  "reused_source_report_sha256": "c9713dd0cdc6118d83c598a05120fbda15f7e29e946c57387704217d34c95387",
+  "expected_reused_physical_records": 360,
+  "expected_new_physical_records": 324,
+  "gradient_probe_offset_steps": 50,
+  "baseline_cycles": 3,
+  "reused_baseline_method": "replay-prefix"
+}

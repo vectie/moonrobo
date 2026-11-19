@@ -1,0 +1,48 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let runner = @fs.read_file(dir + "/run_compiled_window_export_a.mbtx")
+    .text()
+    .replace_all(
+      old="run_compiled_window_export_a.mbtx",
+      new="run_compiled_window_export_b.mbtx",
+    )
+    .replace_all(
+      old="export_compiled_world_a.py",
+      new="export_compiled_world_b.py",
+    )
+  @fs.write_file(
+    dir + "/run_compiled_window_export_b.mbtx",
+    runner,
+    create_mode=CreateNew,
+  )
+  for
+    (source, name) in [
+      (
+        dir + "/run_compiled_window_export_b.mbtx",
+        "run_compiled_window_export_b.mbtx",
+      ),
+      (
+        "providers/motion_learning/export_compiled_world.py", "export_compiled_world_b.py",
+      ),
+    ] {
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        source,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+}

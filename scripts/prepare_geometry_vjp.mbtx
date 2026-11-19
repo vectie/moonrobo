@@ -1,0 +1,25 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+async fn edit(p : String, changes : Array[(String,String)]) -> Unit {
+  let mut s=@fs.read_file(p).text()
+  for (a,b) in changes {guard s.contains(a)else{fail(p+": "+a)};s=s.replace_all(old=a,new=b)}
+  @fs.write_file(p,s)
+}
+async fn main {
+  let g="src/learning_aligned_gpu/";let t="src/learning_tensor/"
+  edit(t+"adapter.cpp",[("#include \"geometry_tail.inc\"","#include \"geometry_tail.inc\"\n#include \"geometry_vjp.inc\"")])
+  edit(t+"loader.c",[("#include \"geometry_tail_loader.inc\"","#include \"geometry_tail_loader.inc\"\n#include \"geometry_vjp_loader.inc\"")])
+  edit(t+"moon.pkg",[("\"geometry_tail.mbt\": [ \"native\" ],","\"geometry_tail.mbt\": [ \"native\" ],\n    \"geometry_vjp.mbt\": [ \"native\" ],")])
+  edit(t+"CMakeLists.txt",[("fused_rotation.cu geometry_tail.cu","fused_rotation.cu geometry_tail.cu geometry_vjp.cu")])
+  edit(g+"execution_optimizations.mbt",[("  fused_cross_forward : Bool","  fused_cross_forward : Bool\n  fused_cross_vjp : Bool\n  fused_so3_coefficients : Bool"),("    fused_cross_forward: false,","    fused_cross_forward: false,\n    fused_cross_vjp: false,\n    fused_so3_coefficients: false,")])
+  edit(g+"cmd/optimizations.mbt",[("    fused_cross_forward: setting(config, \"fused_cross_forward\", false),","    fused_cross_forward: setting(config, \"fused_cross_forward\", false),\n    fused_cross_vjp: setting(config, \"fused_cross_vjp\", false),\n    fused_so3_coefficients: setting(config, \"fused_so3_coefficients\", false),"),("  if s.optimizations.split_world_delta {","  if s.optimizations.fused_cross_vjp || s.optimizations.fused_so3_coefficients {\n    values[\"execution_geometry_vjp\"] = 33554432L.max(4L * 6L * c.horizon.to_int64() * actor_rows.to_int64() + 1048576L)\n  }\n  if s.optimizations.split_world_delta {")])
+  edit(g+"geometry/context.mbt",[("  fused_cross_forward : Bool","  fused_cross_forward : Bool\n  fused_cross_vjp : Bool"),("    fused_cross_forward: false,","    fused_cross_forward: false,\n    fused_cross_vjp: false,"),("  if self.fused_cross_forward {","  if self.fused_cross_vjp {\n    a.fused_cross_vjp(b)\n  } else if self.fused_cross_forward {")])
+  @fs.write_file(g+"geometry/geometry_vjp.mbt","///|\npub fn Context::with_fused_cross_vjp(self : Context, enabled : Bool) -> Context raise {\n  guard !enabled || (self.backend.has_geometry_vjp() && self.fused_cross_forward && self.cross_preserve_forward && !self.native_cross) else { fail(\"joint cross VJP requires fused forward and geometry VJP plugin\") }\n  { ..self, fused_cross_vjp: enabled, }\n}\n",create_mode=CreateNew)
+  edit(g+"geometry/rotations.mbt",[("  fused_so3_tail~ : Bool = false,","  fused_so3_tail~ : Bool = false,\n  fused_so3_coefficients~ : Bool = false,"),("  let theta = theta2.affine", "  let (a, b) = if fused_so3_coefficients {\n    let coefficients = theta2.so3_coefficients()\n    (col(coefficients, 0), col(coefficients, 1))\n  } else {\n  let theta = theta2.affine"),("  let k = if fused_skew {","    (a, b)\n  }\n  let k = if fused_skew {")])
+  edit(g+"geometry/state.mbt",[("  fused_so3_tail~ : Bool = false,","  fused_so3_tail~ : Bool = false,\n  fused_so3_coefficients~ : Bool = false,"),("        fused_so3_tail~,","        fused_so3_tail~,\n        fused_so3_coefficients~,")])
+  for f in ["learning.mbt","microbatch.mbt","actor_microbatch.mbt"] {
+    edit(g+f,[("fused_so3_tail=self.optimizations.fused_so3_tail,","fused_so3_tail=self.optimizations.fused_so3_tail,\n        fused_so3_coefficients=self.optimizations.fused_so3_coefficients,")])
+  }
+  edit(g+"learning.mbt",[("  if optimizations.compact_skew {","  if optimizations.fused_cross_vjp || optimizations.fused_so3_coefficients {\n    guard backend.has_geometry_vjp() else { fail(\"geometry VJP plugin required\") }\n  }\n  if optimizations.compact_skew {"),("    .with_fused_cross_forward(optimizations.fused_cross_forward)","    .with_fused_cross_forward(optimizations.fused_cross_forward)\n    .with_fused_cross_vjp(optimizations.fused_cross_vjp)")])
+  edit(g+"cmd/optimizations_wbtest.mbt",[("  assert_false(execution_optimizations({}).fused_so3_tail)","  assert_false(execution_optimizations({}).fused_cross_vjp)\n  assert_false(execution_optimizations({}).fused_so3_coefficients)\n  assert_true(execution_optimizations({ \"fused_cross_vjp\": true }).fused_cross_vjp)\n  assert_true(execution_optimizations({ \"fused_so3_coefficients\": true }).fused_so3_coefficients)\n  assert_false(execution_optimizations({}).fused_so3_tail)"),("    { \"fused_so3_tail\": \"true\" },","    { \"fused_so3_tail\": \"true\" },\n    { \"fused_cross_vjp\": \"true\" },\n    { \"fused_so3_coefficients\": \"true\" },")])
+  edit(g+"geometry/moon.pkg",[("\"geometry_tail_wbtest.mbt\": [ \"native\" ],","\"geometry_tail_wbtest.mbt\": [ \"native\" ],\n    \"geometry_vjp_wbtest.mbt\": [ \"native\" ],")])
+}

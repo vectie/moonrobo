@@ -1,0 +1,174 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+///|
+fn digest(bytes : Bytes) -> String {
+  let hash = @crypto.SHA256::new()
+  hash.update(bytes)
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+fn replace_required(text : String, old : String, new : String) -> String raise {
+  guard text.contains(old) else { fail("reviewed source anchor changed: " + old) }
+  text.replace_all(old~, new~)
+}
+
+///|
+async fn json_file(path : String, value : Json) -> Unit {
+  @fs.write_file(path, value.stringify(indent=2) + "\n", create_mode=CreateNew)
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 else {
+    fail("usage: prepare_smc_n256_off_apic_gate.mbtx REPO FRESH_LOCAL_PLAN_DIR; no subprocess or GPU launch")
+  }
+  let repo = args[1]
+  let output = args[2]
+  let original_file = @fs.open(repo + "/scripts/run_spark_apic_paper_n256_gate.mbtx", mode=ReadOnly)
+  defer original_file.close()
+  guard original_file.size() < 1048576L else { fail("source exceeds bound") }
+  let original = original_file.read_exactly_at(original_file.size().to_int(), position=0L)
+  guard digest(original) == "2cf359c8e9986a5df519a71d7c02899c95b5b87a35e75aac518e406c480f44bb" else {
+    fail("original collision-on helper changed; inspect before deriving a new gate")
+  }
+  guard !@fs.exists(output) else { fail("fresh plan directory required") }
+  let replacements : Array[(String, String)] = [
+    ("moonrobo.apic-paper-n256", "moonrobo.apic-smc-n256-off"),
+    ("repo + \"/examples/learning/g1-apic-export-paper-n256.json\"", "\"/gate/export.json\""),
+    ("/workspace/moonrobo/examples/learning/g1-apic-export-paper-n256.json", "/gate/export.json"),
+    ("/gate/g1-paper-n256-self-collision-apic", "/gate/g1-smc-n256-apic"),
+    ("/gate/sdk-oracle-paper-n256.json", "/gate/sdk-oracle-smc-n256-off.json"),
+    ("/gate/replay-report-paper-n256.json", "/gate/replay-report-smc-n256-off.json"),
+    ("/data/g1_description-paper-self-collision/scene.xml", "/data/g1_description/scene-no-self-collision.xml"),
+    ("/data/g1_usd-paper-self-collision/g1_29dof/g1_29dof.usda", "/data/g1_usd/g1_29dof/g1_29dof.usda"),
+    ("b9f8b0e0cbfa4a82c125ac330b38e1a8bf4c825252caf2c3d0dffe678ca5f7af", "34cf0cf3c5fa5452fc24d33d9f31fb4a4435f3050366041e1dc853b39bdd20ee"),
+    ("7bba6e39dd3da53e5d0b8fa1466c2551f953066bb213d84decdb576eae159c1b", "b79f5d54982304f3b33919d24fdd1290f470a2f0629409572cb2f7b2d0b28b67"),
+    ("let cgroup_limit_bytes = 68719476736L", "let cgroup_limit_bytes = 107374182400L"),
+    ("64 GiB", "100 GiB"),
+    ("64GiB", "100GiB"),
+    ("collision-on", "collision-off"),
+    ("true self collisions", "false self collisions"),
+    ("\"self_collisions\": true", "\"self_collisions\": false"),
+    ("field(bundle, \"self_collisions\") == Json(true)", "field(bundle, \"self_collisions\") == Json(false)"),
+    ("\"--self-collisions\",\n        \"true\",", "\"--self-collisions\",\n        \"false\","),
+    ("let variants : Map[String, String] = Map([])", "let variants : Map[String, String] = { \"Physics\": \"mujoco\" }"),
+    ("\"usd_variants\": {},", "\"usd_variants\": { \"Physics\": \"mujoco\" },"),
+    ("assert_eq(empty_variants(), @json.parse(\"{}\"))", "assert_eq(empty_variants(), @json.parse(\"{\\\"Physics\\\":\\\"mujoco\\\"}\"))"),
+    ("mode == \"export\" || mode == \"oracle\" || mode == \"replay\"", "mode == \"oracle\" || mode == \"replay\""),
+    ("assert_eq(gate_mode([\"gate\", \"export\", \"pins.json\"]), \"export\")", "assert_eq(gate_mode([\"gate\", \"oracle\", \"pins.json\"]), \"oracle\")"),
+    ("{export|oracle|replay}", "{oracle|replay}"),
+    ("run_spark_apic_paper_n256_gate.mbtx", "run_smc_n256_off_apic_gate.mbtx"),
+    ("\"600s\"", "\"480s\""),
+    ("620000", "500000"),
+    ("\"590\"", "\"470\""),
+  ]
+  let mut source = @utf8.decode(original)
+  for (old, new) in replacements {
+    source = replace_required(source, old, new)
+  }
+  let pin_anchor =
+    #|      write_json(folder + "/oracle-pin.json", {
+    #|        "oracle_sha256": Json(file_sha(oracle, 16777216L)),
+    #|      })
+  let pin_replacement = pin_anchor + "\n" +
+    #|      // The new oracle's actual bytes produce the replay pin only after all
+    #|      // identity checks succeed. Old collision-on oracles are never used.
+    #|      write_json("/gate/replay-pins.json", {
+    #|        "format": "moonrobo.apic-smc-n256-off-gate-pins.v1",
+    #|        "executable": pins.audit_executable,
+    #|        "executable_sha256": pins.audit_executable_sha256,
+    #|        "expected_image_id": "sha256:c76815627562a180052cef8e7e07edb37fe8547d83158eed6182ebd99bb8385d",
+    #|        "adapter_sha256": pins.runtime_adapter_sha256,
+    #|        "audit_executable": pins.audit_executable,
+    #|        "audit_executable_sha256": pins.audit_executable_sha256,
+    #|        "runtime_adapter": pins.runtime_adapter,
+    #|        "runtime_adapter_sha256": pins.runtime_adapter_sha256,
+    #|        "scene_sha256": pins.scene_sha256,
+    #|        "usd_sha256": pins.usd_sha256,
+    #|        "manifest_sha256": pins.manifest_sha256.unwrap(),
+    #|        "tape_sha256": pins.tape_sha256.unwrap(),
+    #|        "oracle_sha256": file_sha(oracle, 16777216L),
+    #|      })
+  source = replace_required(source, pin_anchor, pin_replacement)
+  @fs.mkdir(output, recursive=true)
+  let source_name = "run_smc_n256_off_apic_gate.mbtx"
+  @fs.write_file(output + "/" + source_name, source, create_mode=CreateNew)
+  let pins : Json = {
+    "format": "moonrobo.apic-smc-n256-off-gate-pins.v1",
+    "executable": "/workspace/moonrobo/private/native-paper-capacity-20261024-a/producer",
+    "executable_sha256": "969a4c9587a3aadbb08a4d119ef4fdebea8c075b87c30490b1b02fac68a7f6bf",
+    "expected_image_id": "sha256:3f0487da0faaf353f14c43c8a135efad70c8a988e7735bba6b991fef0e50899c",
+    "adapter_sha256": "7bf09deb614960d820de6cdbbe127613d31c72da2d6af460b0e6bf943b150b52",
+    "audit_executable": "/workspace/moonrobo/private/native-paper-batch-20261024-b/audit",
+    "audit_executable_sha256": "9fe2341592bd0db1c97175522fa66191a649f23480ac1413be20dc53a42986fc",
+    "runtime_adapter": "/workspace/moonrobo/private/apic-paper-capacity-runtime-20261024-a/libmoonrobo_aligned_apic.so",
+    "runtime_adapter_sha256": "f6eb6a4c4e52aee7ecb300c0f49024cf32311b2e272698039ecfde9acd5c2913",
+    "scene_sha256": "34cf0cf3c5fa5452fc24d33d9f31fb4a4435f3050366041e1dc853b39bdd20ee",
+    "usd_sha256": "b79f5d54982304f3b33919d24fdd1290f470a2f0629409572cb2f7b2d0b28b67",
+    "manifest_sha256": "5125dd55906ec0e5ffc9669007f60266137ee866c3b528574f6a11e6fa325c9b",
+    "tape_sha256": "d34e9722f74d1b896bb797e74832e29e8bae07ba5268ac31a2a65c27d8a55860",
+  }
+  json_file(output + "/oracle.json", pins)
+  let host = "/home/wlc004s/moonrobo"
+  let gate = host + "/runs/smc-original-benchmark-apic-preparation-20261024-a"
+  let tools = host + "/private/smc-n256-off-gate-20261024-a"
+  let helper = "/workspace/moonrobo/private/smc-n256-off-gate-20261024-a/helper"
+  let oracle_image = "sha256:3f0487da0faaf353f14c43c8a135efad70c8a988e7735bba6b991fef0e50899c"
+  let replay_image = "sha256:c76815627562a180052cef8e7e07edb37fe8547d83158eed6182ebd99bb8385d"
+  let commands : Array[Json] = []
+  for (mode, image, network, pinfile) in [
+    ("oracle", oracle_image, "host", "/pins/oracle.json"),
+    ("replay", replay_image, "none", "/gate/replay-pins.json"),
+  ] {
+    commands.push({
+      "mode": mode,
+      "start_only_after_previous_mode_exit_zero_and_report_success": true,
+      "host_argv": [
+        "docker", "run", "--detach", "--name", "smc-n256-off-" + mode + "-20261024-a",
+        "--init", "--gpus", "device=0", "--memory=100g", "--memory-swap=100g",
+        "--cpus=4", "--network=" + network,
+        "--mount", "type=bind,src=" + host + ",dst=/workspace/moonrobo,readonly",
+        "--mount", "type=bind,src=" + gate + ",dst=/gate",
+        "--mount", "type=bind,src=" + gate + "/g1-smc-n256-apic,dst=/gate/g1-smc-n256-apic,readonly",
+        "--mount", "type=bind,src=" + gate + "/export.json,dst=/gate/export.json,readonly",
+        "--mount", "type=bind,src=" + host + "/runs/apic-paper-n256-20261024-c/tape-paper-n256-v2.json,dst=/gate/tape-paper-n256-v2.json,readonly",
+        "--mount", "type=bind,src=" + tools + ",dst=/pins,readonly",
+        "--entrypoint", "/usr/bin/timeout", image,
+        "--signal=TERM", "--kill-after=10s", "600s", helper, mode, pinfile,
+      ],
+    })
+  }
+  json_file(output + "/commands.json", {
+    "format": "moonrobo.smc-n256-off-apic-preparation.v1",
+    "gpu_launched": false,
+    "helper_source_sha256": digest(@utf8.encode(source)),
+    "derived_from_source_sha256": digest(original),
+    "remote_helper_directory": tools,
+    "source_filename": source_name,
+    "linux_helper_filename": "helper",
+    "helper_build_and_sha256_verification_required_before_gpu": true,
+    "image_ids_must_be_verified_with_docker_inspect_before_launch": [oracle_image, replay_image],
+    "resource_monitor_required": "scripts/watch_container_memory.mbtx; retain monitor coverage, Docker final state and all failed outputs",
+    "old_tape_unchanged": true,
+    "tape_has_collision_or_asset_binding": false,
+    "sdk_oracle_must_be_new_for_this_manifest": true,
+    "operations": 27,
+    "control_steps": 8,
+    "simulated_world_steps": 2048,
+    "selected_worlds": [0,128,255],
+    "export_json_sha256": "d55c927d87a6cf4c1310670f06b18f5ed9d9c7c7992f865ce9fc83a1c38c06eb",
+    "unchanged_admission": "min(host available,cgroup remaining,CUDA free)*0.65 >= 32GiB; audit caps16GiB each; no auto retry",
+    "commands": commands,
+  })
+  println(output)
+}

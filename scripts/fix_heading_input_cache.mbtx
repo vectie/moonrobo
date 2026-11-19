@@ -1,0 +1,34 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-heading-body-20261028"
+  let helper=rep(@fs.read_file(root+"/advise_heading_outputs.mbtx").text(),"[\"heading-smc-actor-off-a\"","[\"trained-export-b\",\"heading-smc-actor-off-a\"")
+  @fs.write_file(root+"/advise_heading_inputs.mbtx",helper,create_mode=CreateNew)
+  let mut driver=rep(@fs.read_file(root+"/run_heading_body_b.mbtx").text(),"run_heading_body_b.mbtx","run_heading_body_c.mbtx")
+  driver=rep(driver,"  write_json(root + \"/protocol.json\", { \"phase\": Json(phase),",(
+    #|  // Pinning the frozen export faults its checkpoint pages into host cache.
+    #|  // Advise only this verified CLOSED producer's immutable output files
+    #|  // after hashing, before CUDA startup. Loading is outside all measured
+    #|  // regions and all warmups still run; no file or threshold is changed.
+    #|  guard @process.run(allowed_root+"toolchain/bin/moon",["run","--target","native",base+"/advise_heading_inputs.mbtx","--",label+"-post-pin-export","trained-export-b"],stdout=@process.redirect_to_file(root+"/export-cache.stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(root+"/export-cache.stderr.log",create_mode=CreateNew))==0 else{fail("closed export cache advice failed")}
+    #|  write_json(root + "/protocol.json", { "phase": Json(phase),
+  ))
+  driver=rep(driver,"  let pins : Map[String, Json] = {}","  let pins : Map[String, Json] = {}\n  pins[base+\"/advise_heading_inputs.mbtx\"]=Json(hash_file(base+\"/advise_heading_inputs.mbtx\"))")
+  @fs.write_file(root+"/run_heading_body_c.mbtx",driver,create_mode=CreateNew)
+  @fs.write_file(root+"/invoke_heading_body_c.mbtx",rep(@fs.read_file(root+"/invoke_heading_body_b.mbtx").text(),"run_heading_body_b.mbtx","run_heading_body_c.mbtx"),create_mode=CreateNew)
+  let old="kind+(if phase==\"actor\"&&v==\"heading\"&&kind==\"gate\"{\"-d\"}else{\"-c\"})"
+  let next="kind+(if (phase==\"actor\"&&v==\"heading\"&&kind==\"gate\")||(phase==\"world\"&&v==\"both\"&&kind==\"abba\"){\"-d\"}else{\"-c\"})"
+  let mut suite=rep(@fs.read_file(root+"/heading_body_suite_c.mbtx").text(),old,next)
+  suite=rep(suite,"heading_body_suite_c.mbtx","heading_body_suite_d.mbtx")
+  suite=rep(suite,"invoke_heading_body_b.mbtx","invoke_heading_body_c.mbtx")
+  suite=rep(suite,"  if mode==\"resume\"", "  if mode==\"post-gates\" {for m in [\"pairs\",\"smc\"]{guard @process.run(moon,[\"run\",\"--target\",\"native\",base+\"/heading_body_suite_d.mbtx\",\"--\",m])==0 else{fail(m)}};return}\n  if mode==\"resume\"")
+  suite=rep(suite,"let name=label(phase,v,\"abba\");invoke", "let name=label(phase,v,\"abba\");if @fs.exists(base+\"/\"+name+\".block-validation.json\"){assert_eq(field(read(base+\"/\"+name+\".block-validation.json\"),\"passed\"),Json(true));println(\"Retained completed ABBA \"+name);continue};invoke")
+  @fs.write_file(root+"/heading_body_suite_d.mbtx",suite,create_mode=CreateNew)
+  let events=rep(rep(@fs.read_file(root+"/heading_events.mbtx").text(),old,next),"invoke_heading_body_b.mbtx","invoke_heading_body_c.mbtx")
+  @fs.write_file(root+"/heading_events.mbtx",events)
+  let report=rep(@fs.read_file(root+"/report_heading_body.mbtx").text(),old.replace_all(old="&&v==",new="&&variant=="),next.replace_all(old="&&v==",new="&&variant=="))
+  @fs.write_file(root+"/report_heading_body.mbtx",report)
+  for file in ["advise_heading_inputs.mbtx","run_heading_body_c.mbtx","invoke_heading_body_c.mbtx","heading_body_suite_d.mbtx","heading_events.mbtx"] {
+    guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",root+"/"+file,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/"+file])==0 else{fail("stage")}
+  }
+}

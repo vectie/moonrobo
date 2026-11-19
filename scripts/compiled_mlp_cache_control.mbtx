@@ -1,0 +1,85 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let reclaim = @fs.read_file(dir + "/reclaim_compiled_outputs_a.mbtx")
+    .text()
+    .replace_all(
+      old="let visited : Array[Json] = []",
+      new="guard field(read(\"" +
+        base +
+        "/compiled-mlp-closed-output-reclaim-a.json\"),\"records\") is Array(previous) else {fail(\"prior receipt\")};let visited=previous.map(r=>field(r,\"directory\"))",
+    )
+    .replace_all(old="base-impossible-marker", new="unused")
+    .replace_all(
+      old="@fs.write_file(\"" +
+        base +
+        "/compiled-mlp-closed-output-reclaim-a.json\"",
+      new="@fs.write_file(\"" +
+        base +
+        "/compiled-mlp-closed-output-reclaim-b.json\"",
+    )
+  let runner = @fs.read_file(dir + "/run_compiled_mlp_b.mbtx")
+    .text()
+    .replace_all(old="run_compiled_mlp_b.mbtx", new="run_compiled_mlp_c.mbtx")
+    .replace_all(old="\"-gate-b\"", new="\"-gate-c\"")
+    .replace_all(
+      old="  let passed=guarded(side,root,false)",
+      new=(
+        #|  if route=="smc" && amp=="bf16" {
+        #|    let seed="/home/wlc004s/moonrobo/runs/hotspot-mlp-aoti-bench-smc-bf16-a/inductor-cache"
+        #|    guard field(read_json("/home/wlc004s/moonrobo/runs/hotspot-mlp-aoti-bench-smc-bf16-a/completion.json"),"passed")==Json(true) else {fail("completed original SMC seed")}
+        #|    @fs.mkdir(root+"/inductor-cache")
+        #|    let copied:Map[String,Json]=Map([])
+        #|    for child in @fs.readdir(seed) {
+        #|      if @fs.kind(seed+"/"+child,follow_symlink=false)!=Directory {continue}
+        #|      for name in @fs.readdir(seed+"/"+child) {
+        #|        if !name.has_suffix(".best_config"){continue}
+        #|        let path=seed+"/"+child+"/"+name
+        #|        guard @fs.kind(path,follow_symlink=false)==Regular && @fs.realpath(path)==path else {fail("seed path")}
+        #|        if !@fs.exists(root+"/inductor-cache/"+child){@fs.mkdir(root+"/inductor-cache/"+child)}
+        #|        @fs.write_file(root+"/inductor-cache/"+child+"/"+name,@fs.read_file(path),create_mode=CreateNew)
+        #|        copied[path]=Json(hash_file(path))
+        #|      }
+        #|    }
+        #|    write_json(root+"/autotune-seed.json",{"original_smc_code_unchanged":true,"seed":Json(seed),"files":Json(copied)})
+        #|  }
+        #|  let passed=guarded(side,root,false)
+      ),
+    )
+  for
+    (name, text) in [
+      ("reclaim_compiled_outputs_b.mbtx", reclaim),
+      ("run_compiled_mlp_c.mbtx", runner),
+    ] {
+    @fs.write_file(dir + "/" + name, text, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        dir + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  assert_eq(
+    @process.run("ssh", [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179",
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/reclaim_compiled_outputs_b.mbtx",
+    ]),
+    0,
+  )
+}

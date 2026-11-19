@@ -1,0 +1,90 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=stderr.text() + stdout.text())
+  stdout.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: register_g1_diagnostic_runs.mbtx REPO ABLATION_RUN INVARIANT_RUN MOONDATA_ROOT",
+  )
+  let root = args[1]
+  let data_root = args[4]
+  let executable = root +
+    "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe"
+  let results : Array[Json] = []
+  for
+    (id, path) in [
+      ("h8-no-bootstrap", args[2] + "/h8-bootstrap-off"),
+      ("h8-bootstrap", args[2] + "/h8-bootstrap-on"),
+      ("h32-no-bootstrap", args[2] + "/h32-bootstrap-off"),
+      ("h32-bootstrap", args[2] + "/h32-bootstrap-on"),
+      ("invariant-refinement", args[3]),
+    ] {
+    let summary = @json.parse(
+      run(executable, [
+        "import",
+        data_root,
+        path,
+        id,
+        @env.now().reinterpret_as_int64().to_string(),
+      ]),
+    )
+    assert_eq(field(summary, "physical_execution_allowed"), false.to_json())
+    guard field(summary, "candidates") is Array(candidates) else {
+      fail("missing candidates")
+    }
+    assert_eq(candidates.length(), 3)
+    for candidate in candidates {
+      assert_eq(field(candidate, "producer_qualified"), false.to_json())
+      assert_eq(field(field(candidate, "candidate"), "falls"), (9 : Json))
+    }
+    results.push({
+      "experiment_id": id.to_json(),
+      "candidates": candidates.to_json(),
+    })
+  }
+  let validation = @json.parse(
+    run(root + "/_build/native/debug/build/cmd/moondata/moondata.exe", [
+      "validate", data_root,
+    ]),
+  )
+  assert_eq(field(validation, "status"), "passed".to_json())
+  assert_eq(field(validation, "finding_count"), (0 : Json))
+  let report : Json = {
+    "format": "moonrobo.g1-diagnostic-registration.v1",
+    "experiments": results.to_json(),
+    "validation": validation,
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    args[3] + "/registration.json",
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "Registered four ablation cells and invariant refinement; MoonData validation has zero findings.",
+  )
+}

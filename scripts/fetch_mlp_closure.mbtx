@@ -1,0 +1,87 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let root = repo +
+    "/output/spark-runtime-20261024/layernorm-mlp-20261026/closure"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-operator-179.sock"
+  @fs.mkdir(root)
+  let files = [
+    "mlp-linear-cpu-c.stdout.log", "mlp-frozen-cpu-c.stdout.log", "mlp-config-c.stdout.log",
+    "mlp-linear-cpu-c.receipt.json", "mlp-frozen-cpu-c.receipt.json", "mlp-config-c.receipt.json",
+    "gate-build-mlp-c2.receipt.json", "mlp-plugin-build-b.receipt.json", "mlp-cuda-cache-before-off-tail-e.json",
+  ]
+  for file in files {
+    guard @process.run("scp", [
+        "-o",
+        "ControlPath=" + socket,
+        host + ":" + base + "/" + file,
+        root + "/" + file,
+      ]) ==
+      0 else {
+      fail("fetch receipt")
+    }
+  }
+  guard @process.run("scp", [
+      "-o",
+      "ControlPath=" + socket,
+      host + ":/home/wlc004s/moonrobo/runs/hotspot-mlp-smc-gate-a/result.json",
+      root + "/ln-only-numerical-result.json",
+    ]) ==
+    0 else {
+    fail("LN-only numerical evidence")
+  }
+  for
+    (file, command) in [
+      (
+        "gpu-processes.txt", "nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv,noheader",
+      ),
+      ("docker-ps.txt", "docker --host unix:///var/run/docker.sock ps --quiet"),
+      ("host-memory.txt", "cat /proc/meminfo"),
+    ] {
+    guard @process.run(
+        "ssh",
+        ["-S", socket, host, command],
+        stdout=@process.redirect_to_file(
+          root + "/" + file,
+          create_mode=CreateNew,
+        ),
+      ) ==
+      0 else {
+      fail("closure inventory")
+    }
+  }
+  guard @process.run("env", [
+      "COPYFILE_DISABLE=1",
+      "tar",
+      "-czf",
+      root + "/source-current.tar.gz",
+      "-C",
+      repo,
+      "src/learning_tensor/precision.inc",
+      "src/learning_tensor/precision_loader.inc",
+      "src/learning_tensor/precision.mbt",
+      "src/learning_tensor/layer_norm.inc",
+      "src/learning_tensor/linear_test.mbt",
+      "src/learning_aligned_gpu/networks.mbt",
+      "src/learning_aligned_gpu/learning.mbt",
+      "src/learning_aligned_gpu/execution_optimizations.mbt",
+      "src/learning_aligned_gpu/checkpoint.mbt",
+      "src/learning_aligned_gpu/audit.mbt",
+      "src/learning_aligned_gpu/cmd/optimizations.mbt",
+      "src/learning_aligned_gpu/cmd/optimizations_wbtest.mbt",
+      "src/learning_aligned_gpu/cmd/mlp_comparison_wbtest.mbt",
+      "providers/motion_learning/mlp_smc_probe.py",
+    ]) ==
+    0 else {
+    fail("source archive")
+  }
+}

@@ -1,0 +1,151 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+
+///|
+let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, .. rest] else { fail("mode") }
+  if mode == "prepare" {
+    let source = @fs.read_file(
+      "output/spark-runtime-20261024/precision-scaling-20261028-a/run_precision_components_a.mbtx",
+    ).text()
+    let code = source[:source.find("async fn main {").unwrap()].to_owned() +
+      (
+        #|async fn main {
+        #|  guard @env.args() is [_,route,amp,gate,label] && ["eager","aoti","smc"].contains(route) && ["none","bf16"].contains(amp) && ["0","1"].contains(gate) && label.all(c=>c is ('a'..<='z'|'0'..<='9'|'-')) else {fail("fixed args")}
+        #|  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+        #|  let mapped="/workspace/moonrobo/private/shared-compute-20261026-a"
+        #|  let spec=read_json("/home/wlc004s/moonrobo/runs/native-hotspot-vs-smc512-20261026-b/spec.json")
+        #|  verify_pins(spec)
+        #|  let side=@json.parse(field(spec,if route=="smc" {"b"}else{"a"}).stringify())
+        #|  guard side is Object(s) && field(side,"env") is Object(e) && field(side,"mounts") is Array(mounts) else {fail("side")}
+        #|  let package="/home/wlc004s/moonrobo/runs/hotspot-mlp-aoti-export-"+amp+"-b"
+        #|  let manifest=read_json(package+"/manifest.json")
+        #|  guard field(manifest,"amp")==Json(amp) else {fail("precision package")}
+        #|  if !@fs.exists(package+"/native.spec") {
+        #|    let fw=field(field(manifest,"graphs"),"forward")
+        #|    let bw=field(field(manifest,"graphs"),"backward")
+        #|    guard field(fw,"inputs") is Array(fi) && field(bw,"inputs") is Array(bi) else {fail("input specs")}
+        #|    let lines=["MR_AOTI_V1","2.11.0","12 1","\{fi.length()} \{bi.length()} 1"]
+        #|    for item in [..fi,..bi] {
+        #|      guard field(item,"shape") is Array(shape) && field(item,"stride") is Array(stride) else {fail("shape")}
+        #|      let dtype=if field(item,"dtype")==Json("torch.float32"){6}else{guard field(item,"dtype")==Json("torch.bfloat16") else {fail("dtype")};15}
+        #|      lines.push("\{shape.length()} \{dtype} "+shape.map(n=>integer(n).to_string()).join(" ")+" "+stride.map(n=>integer(n).to_string()).join(" "))
+        #|    }
+        #|    @fs.write_file(package+"/native.spec",lines.join("\n")+"\n",create_mode=CreateNew)
+        #|  }
+        #|  e["MOONROBO_TENSOR_LIBRARY"]=Json(mapped+"/libmoonrobo_compiled_mlp_a.so")
+        #|  e["MOONROBO_SHARED_INPUT"]="/workspace/moonrobo/runs/hotspot-shared-trained-export-b"
+        #|  e["MOONROBO_SHARED_OUTPUT"]="/pair"
+        #|  e["MOONROBO_SHARED_AMP"]=Json(amp)
+        #|  e["MOONROBO_COMPILED_MLP"]=Json(route)
+        #|  e["MOONROBO_COMPILED_GATE"]=Json(gate)
+        #|  e["MOONROBO_COMPILED_PACKAGE"]=Json(package.replace_all(old="/home/wlc004s/moonrobo",new="/workspace/moonrobo"))
+        #|  e["COMPILED_NATIVE_GATE"]=Json("/workspace/moonrobo/runs/hotspot-mlp-aoti-native-"+amp+"-gate-a")
+        #|  if route=="smc" {
+        #|    mounts.clear();mounts.append([{"source":"/home/wlc004s/moonrobo","target":"/workspace/moonrobo","readonly":true},{"source":Json(base),"target":"/workspace/supermimic","readonly":true}])
+        #|    e["PYTHONPATH"]="/workspace/supermimic"
+        #|    e["SHARED_SMC_TRAIN"]="/workspace/supermimic/supermimic/train.py"
+        #|  }
+        #|  s["entrypoint"]=Json(if route=="smc" {"python"}else{mapped+"/compiled-mlp-gate-a"})
+        #|  s["argv"]=Json(if route=="smc" {[mapped+"/compiled_mlp_reference_a.py"]}else{["compiled_mlp_wbtest.mbt:0-1"]})
+        #|  let root="/home/wlc004s/moonrobo/runs/hotspot-mlp-"+label
+        #|  guard !@fs.exists(root) else {fail("fresh output required")};@fs.mkdir(root)
+        #|  let pins:Map[String,Json]=Map([])
+        #|  for path in [base+"/compiled-mlp-gate-a",base+"/libmoonrobo_compiled_mlp_a.so",base+"/run_compiled_mlp_a.mbtx",base+"/compiled_mlp_reference_a.py",base+"/supermimic/networks.py",base+"/precision_mlp_probe_a.py"] {pins[path]=Json(hash_file(path))}
+        #|  for name in @fs.readdir(package) {if name.has_suffix(".so") || name.has_suffix(".cubin") || name=="native.spec" || name=="manifest.json" {pins[package+"/"+name]=Json(hash_file(package+"/"+name))}}
+        #|  write_json(root+"/protocol.json",{"route":Json(route),"amp":Json(amp),"gate":Json(gate),"side":side,"pins":Json(pins),"guards_unchanged":true})
+        #|  let passed=guarded(side,root,false)
+        #|  for path,digest in pins {guard Json(hash_file(path))==digest else {fail("pin changed")}}
+        #|  write_json(root+"/completion.json",{"passed":Json(passed),"result_present":Json(@fs.exists(root+"/result.json"))})
+        #|  guard passed && @fs.exists(root+"/result.json") else {fail("compiled gate failed; evidence retained")}
+        #|}
+      )
+    @fs.write_file(
+      dir + "/run_compiled_mlp_a.mbtx",
+      code,
+      create_mode=CreateNew,
+    )
+    for
+      (src, name) in [
+        (dir + "/run_compiled_mlp_a.mbtx", "run_compiled_mlp_a.mbtx"),
+        (
+          "providers/motion_learning/compiled_mlp_reference.py", "compiled_mlp_reference_a.py",
+        ),
+      ] {
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          src,
+          "wlc004s@192.168.2.179:" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  guard rest is [route, amp, gate, label] else { fail("route amp gate label") }
+  let folder = dir + "/" + label
+  guard ["aoti", "eager", "smc"].contains(route) &&
+    ["none", "bf16"].contains(amp) &&
+    ["0", "1"].contains(gate) &&
+    label.all(c => c is ('a'..<='z' | '0'..<='9' | '-')) else {
+    fail("bounded remote arguments")
+  }
+  if mode == "run" {
+    @fs.mkdir(folder)
+    let result = @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179",
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/run_compiled_mlp_d.mbtx -- " +
+        [route, amp, gate, label].join(" "),
+      ],
+      stdout=@process.redirect_to_file(
+        folder + "/controller.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        folder + "/controller.stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    println("EXIT \{result}")
+  } else {
+    guard mode == "fetch" else { fail("mode") }
+  }
+  for
+    name in [
+      "protocol.json", "completion.json", "result.json", "training-guard.json", "training-docker-final.json",
+      "training.stdout.log", "training.stderr.log",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/runs/hotspot-mlp-" +
+        label +
+        "/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+}

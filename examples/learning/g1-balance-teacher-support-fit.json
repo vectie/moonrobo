@@ -1,0 +1,8 @@
+{
+  "development_seeds": [2100, 2101],
+  "evaluation_seeds": [8300, 8301, 8302],
+  "collection_seeds": [2200, 2201, 2202, 2203],
+  "fixed": {"residual_bound_rad": 0.3, "joint_damping": 0.02, "angle_gain": 0.0, "rate_gain": 0.0, "hip_share": 0.0, "waist_share": 0.0, "pitch_bias_rad": 0.0},
+  "grid": {"support_gain": [0.5, 1.0], "com_gain": [4.0, 8.0, 16.0], "velocity_gain": [1.0, 4.0, 8.0]},
+  "scope": "Train-only quasistatic joint load compensation: estimated vertical foot support via current Jacobians and simulator bias forces becomes a servo setpoint offset, within the same 0.3 rad cap. Actual mass, contacts, actuator gains and forces are unchanged. This addresses measured hip/knee/ankle load deflection before COM feedback. No external support is applied; privileged handcrafted teacher only."
+}

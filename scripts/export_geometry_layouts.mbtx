@@ -1,0 +1,87 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/geometry-cost-20261030-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-cost-179.sock"
+  let runner = @fs.read_file(
+      "output/spark-runtime-20261024/geometry-math-20261029-a/run_geometry_actor_graphs_b.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="export_geometry_actor_graphs_b.py",
+      new="export_geometry_actor_layouts_a.py",
+    )
+    .replace_all(
+      old="run_geometry_actor_graphs_b.mbtx",
+      new="run_geometry_actor_layouts_a.mbtx",
+    )
+  for
+    (name, text) in [
+      ("run_geometry_actor_layouts_a.mbtx", runner),
+      (
+        "export_geometry_actor_layouts_a.py",
+        @fs.read_file(
+          "providers/motion_learning/export_geometry_actor_layouts.py",
+        ).text(),
+      ),
+    ] {
+    @fs.write_file(root + "/" + name, text, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        root + "/" + name,
+        host + ":" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  let folder = root + "/actor-layouts-a"
+  @fs.mkdir(folder)
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      socket,
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/run_geometry_actor_layouts_a.mbtx -- steps geometry-actor-layouts-a",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "training.stdout.log", "training.stderr.log", "training-guard.json",
+      "training-docker-final.json", "completion.json", "exported-artifacts.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-mlp-geometry-actor-layouts-a/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(status, 0)
+}

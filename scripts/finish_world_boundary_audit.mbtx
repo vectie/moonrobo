@@ -1,0 +1,137 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/world-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let prefix = @fs.read_file(
+    "output/spark-runtime-20261024/compiled-vjp-detail-20261029-a/run_frozen_compilation_b.mbtx",
+  )
+  .text()
+  .split("async fn main {")
+  .to_array()[0].to_owned()
+  let code = prefix +
+    (
+      #|async fn audit_tree(dir:String,known:Map[String,Json],added:Array[Json])->Unit {
+      #|  for name in @fs.readdir(dir) {
+      #|    let path=dir+"/"+name;guard @fs.realpath(path)==path else {fail("symlink")}
+      #|    if @fs.kind(path,follow_symlink=false)==Directory {audit_tree(path,known,added)} else {
+      #|      guard @fs.kind(path,follow_symlink=false)==Regular else {fail("special file")}
+      #|      if known.get(path) is Some(expected) {assert_eq(Json(hash_file(path)),expected)} else {added.push({"path":Json(path),"sha256":Json(hash_file(path))})}
+      #|    }
+      #|  }
+      #|}
+      #|async fn main {
+      #|  let runs="/home/wlc004s/moonrobo/runs/"
+      #|  let audits:Array[Json]=[]
+      #|  for label in ["hotspot-shared-world-reference-smc-gate-e","hotspot-mlp-world-boundary-h"] {
+      #|    let dir=runs+label
+      #|    guard field(read_json(dir+"/compilation-snapshot.json"),"files") is Array(files) else {fail("snapshot")}
+      #|    let known:Map[String,Json]={}
+      #|    for row in files {let target=text(field(row,"target"));let source=text(field(row,"source"));let expected=field(row,"sha256");assert_eq(Json(hash_file(source)),expected);assert_eq(Json(hash_file(target)),expected);known[target]=expected}
+      #|    let added:Array[Json]=[]
+      #|    for name in ["inductor-cache","triton-cache"] {audit_tree(dir+"/"+name,known,added)}
+      #|    audits.push({"run":Json(label),"copied_count":Json(files.length()),"source_and_copy_unchanged":true,"added":Json(added)})
+      #|  }
+      #|  let pack=runs+"hotspot-mlp-world-reference-export-i"
+      #|  guard field(read_json(pack+"/exported-artifacts.json"),"files") is Object(pins) else {fail("binary manifest")}
+      #|  for path,expected in pins {assert_eq(Json(hash_file(path)),expected)}
+      #|  let original=runs+"hotspot-mlp-aoti-window-export-bf16-g"
+      #|  let equal:Array[Json]=[]
+      #|  for branch in ["rollout","error"] {for name in @fs.readdir(original+"/"+branch) {
+      #|    if name.has_suffix(".cubin")||name=="native.spec"||name=="forward.so"||(branch=="error"&&name=="backward.so") {
+      #|      let hash=hash_file(original+"/"+branch+"/"+name);assert_eq(hash_file(pack+"/"+branch+"/"+name),hash);equal.push(Json(branch+"/"+name))
+      #|    }
+      #|  }}
+      #|  write_json("/home/wlc004s/moonrobo/private/shared-compute-20261026-a/world-final-artifact-audit-a.json",{"cache_audits":Json(audits),"exported_binary_pins_unchanged":true,"exported_pin_count":Json(pins.length()),"original_forward_error_files_unchanged":Json(equal)})
+      #|}
+    )
+  @fs.write_file(
+    out + "/finish_world_boundary_audit_a.mbtx",
+    code,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/finish_world_boundary_audit_a.mbtx",
+      host + ":" + base + "/finish_world_boundary_audit_a.mbtx",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/finish_world_boundary_audit_a.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/final-audit.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/final-audit.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+  for
+    (source, target) in [
+      (
+        base + "/world-final-artifact-audit-a.json",
+        "world-final-artifact-audit-a.json",
+      ),
+      (
+        base + "/export_reference_world_backward_a.py",
+        "frozen-sources/export_reference_world_backward_a.py",
+      ),
+      (
+        base + "/export_reference_world_backward_b.py",
+        "frozen-sources/export_reference_world_backward_b.py",
+      ),
+      (
+        base + "/compiled_world_boundaries_g.py",
+        "frozen-sources/compiled_world_boundaries_g.py",
+      ),
+      (
+        "/home/wlc004s/moonrobo/runs/hotspot-mlp-world-reference-export-i/rollout/ccshemljbvx56mahceefrxqwvqvzs2lsafd3yx3gvuwct3zhngzs.wrapper.cpp",
+        "reference-fx-native.wrapper.cpp",
+      ),
+      (
+        "/home/wlc004s/moonrobo/runs/hotspot-mlp-world-boundary-f/triton-cache/VM4O7KQD6XQY5DEO24AA5SL52EXLDGA3HSGFUSTOA74J2XK4IB7A/triton_poi_fused__to_copy_add_cat_div_expand_mm_mul_select_slice_sqrt_squeeze_sum_18.ptx",
+        "smc-cross-step-18-w8.ptx",
+      ),
+      (
+        "/home/wlc004s/moonrobo/runs/hotspot-mlp-world-boundary-f/triton-cache/VM4O7KQD6XQY5DEO24AA5SL52EXLDGA3HSGFUSTOA74J2XK4IB7A/triton_poi_fused__to_copy_add_cat_div_expand_mm_mul_select_slice_sqrt_squeeze_sum_18.json",
+        "smc-cross-step-18-w8.json",
+      ),
+    ] {
+    guard !@fs.exists(out + "/" + target) else {
+      fail("preserve frozen output")
+    }
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host + ":" + source,
+        out + "/" + target,
+      ]),
+      0,
+    )
+  }
+}

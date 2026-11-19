@@ -1,0 +1,23 @@
+{
+  "format": "moonrobo.g1-reference-gradient-route-charter.v1",
+  "source_report_sha256": "a8308c60c8c1d9eb3e561eb667daac8736d7374989dd21e69182ebd0bd65ae25",
+  "baseline_report_sha256": "3dfd575b497e9def98807c0a4543a3c8baaea5725a2f133b93dc452435466405",
+  "diagnostic_report_sha256": "a2f5a9665311ef69e606016d04b1a79f91ab97e73dfa41b74b23083d49a71890",
+  "methods": ["replay-prefix-extended", "replay-prefix-anchor"],
+  "seeds": [0, 1, 2],
+  "gradient_routes": ["full", "stop-policy-inputs"],
+  "gradient_origin_samples": 256,
+  "gradient_origin_seed_base": 44100,
+  "calibration_origin_samples": 256,
+  "calibration_origin_seed_base": 44200,
+  "logit_rms_steps": [0.001, 0.005],
+  "probe_signs": [-1, 1],
+  "probe_clip_indices": [0, 3, 6],
+  "expected_physical_records": 162,
+  "expected_new_physical_records": 144,
+  "expected_reused_physical_records": 18,
+  "comparison": "At each of the six saved cycle-5 actors and frozen cycle-6 models, sample one fixed batch of 256 actual cycle-6 collection states with exact causal history/EMA. Compute H32 no-tail actor parameter directions using full feedback backpropagation or detaching only history/features at the policy input edge. Require exactly equal forward objective and active-step count. Keep plant-state BPTT, direct parameter dependence and previous-action reward derivatives in both routes. Normalize each raw parameter direction to unit L2. On a second fixed 256-state calibration batch, adjust only coefficient magnitude to the prescribed latent-mean RMS tolerance (0.1 percent). Test both signs and both amplitudes on the same three representative origin-zero full-thirty-second references; reuse all eighteen existing cycle-5 baselines.",
+  "gradient_semantics": "The stopped-input route is a surrogate/semi-gradient, not the true derivative of the unchanged forward scalar. Report its projection and the full objective gradient's projection separately, alongside actual model-return changes and physical outcomes. No claim that its own projection must match a finite difference of the full controller.",
+  "budget_and_selection": "No Adam step, optimizer moment reconstruction, value/model refit, checkpoint selection, early stopping or physical outcome-based amplitude search. Calibration uses only fixed training inputs, never physical rewards. Include all six runs, both routes, signs, amplitudes and failed full-thirty-second trials. These three known reference cases do not constitute the full 27-cell policy gate or an unseen-motion test.",
+  "physical_execution_allowed": false
+}

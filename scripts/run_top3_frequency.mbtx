@@ -1,0 +1,114 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+
+///|
+let runs = "/home/wlc004s/moonrobo/runs/hotspot-shared-"
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+async fn run(script : String, args : Array[String], label : String) -> Unit {
+  println("Starting " + label)
+  let code = @process.run(
+    "/home/wlc004s/moonrobo/toolchain/bin/moon",
+    ["run", "--target", "native", base + "/" + script + ".mbtx", "--", ..args],
+    stdout=@process.redirect_to_file(
+      base + "/" + label + ".stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      base + "/" + label + ".stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  guard code == 0 else { fail(label + " failed; evidence retained") }
+  println("Completed " + label)
+}
+
+///|
+async fn measurement(
+  phase : String,
+  variant : String,
+  reps : String,
+  label : String,
+) -> Unit {
+  run(
+    "run_top3_shared_a",
+    [phase, "native", "off", reps, label, variant],
+    label,
+  )
+  let guard_json = @json.parse(
+    @fs.read_file(runs + label + "/training-guard.json").text(),
+  )
+  guard field(guard_json, "reason") == Json("completed") &&
+    field(guard_json, "error") == Json::null() else {
+    fail("resource guard rejected")
+  }
+  guard @json.parse(
+      @fs.read_file(runs + label + "/training-docker-final.json").text(),
+    )
+    is [{ "State": { "OOMKilled": False, "Running": False, .. }, .. }] else {
+    fail("unsafe completion")
+  }
+}
+
+///|
+async fn main {
+  // One saved baseline checkpoint, identical random inputs. Numeric acceptance
+  // precedes repeated timing; no candidate is promoted by timing alone.
+  let accepted : Array[(String, String)] = []
+  for
+    (phase, variant, baseline) in [
+      ("world", "world-batched", "top3-world-base-gate-a"),
+      ("actor", "actor1024", "latest-ln-actor-native-events-a"),
+      ("actor", "norm-snapshot", "latest-ln-actor-native-events-a"),
+    ] {
+    let label = "top3-" + variant + "-gate-a"
+    measurement(phase, variant, "1", label)
+    let result = base + "/" + label + ".numeric.json"
+    run(
+      "compare_top3_snapshots",
+      [runs + baseline, runs + label, result],
+      label + "-compare",
+    )
+    let comparison = @json.parse(@fs.read_file(result).text())
+    if field(comparison, "passed") == Json(true) {
+      accepted.push((phase, variant))
+    } else {
+      println("REJECTED_NUMERIC " + variant)
+    }
+  }
+  // Short, no-profiler ABBA: each process uses three warmups and ten measured
+  // updates. Full sixty-round training is intentionally outside this screen.
+  for (phase, variant) in accepted {
+    for i, choice in ["baseline", variant, variant, "baseline"] {
+      measurement(
+        phase,
+        choice,
+        "13",
+        "top3-" + variant + "-off-" + i.to_string(),
+      )
+    }
+  }
+  @fs.write_file(
+    base + "/top3-campaign-completed.json",
+    Json({
+      "accepted": Json(accepted),
+      "complete": true,
+      "scope": "fixed-input numeric gates then short no-profiler ABBA",
+    }).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+}

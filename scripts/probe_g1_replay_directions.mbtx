@@ -1,0 +1,139 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    6,
+    msg="usage: probe_g1_replay_directions.mbtx REPO TEMPORAL_STUDY VALUE_STUDY MIXED_FIT OUTPUT",
+  )
+  let root = args[1]
+  let output = args[5]
+  assert_true(!@fs.exists(output), msg="choose a fresh probe directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "replay_direction_probe.py", "temporal_value.py", "temporal_actor.py", "temporal_probe.py",
+      "actor_update_probe.py", "critic_probe.py", "policy.py", "dynamics.py", "cpu_physics.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/probe-config.json",
+    @fs.read_file(root + "/examples/learning/g1-replay-direction-probe.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-replay-direction-charter.v1",
+        "incoming": Json(args[2]),
+        "value_study": Json(args[3]),
+        "world_fit": Json(args[4]),
+        "config": @json.parse(
+          @fs.read_file(output + "/probe-config.json").text(),
+        ),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @async.with_task_group() <| group => {
+    let running : Array[(@process.Process, String)] = []
+    for variant in ["frame", "preview"] {
+      let cell = output + "/" + variant
+      @fs.mkdir(cell, recursive=true)
+      let study = args[3] + "/" + variant + "-value-on"
+      let process = @process.spawn(
+        group,
+        "moon",
+        native_args(root, [
+          output + "/provider-sources/replay_direction_probe.py",
+          "--config",
+          study + "/config.json",
+          "--probe-config",
+          output + "/probe-config.json",
+          "--collection",
+          args[2] + "/collection.json",
+          "--data",
+          args[2] + "/teacher-data/dataset.json",
+          "--policies",
+          args[2] + "/" + variant + "/policy",
+          "--study",
+          study,
+          "--dynamics",
+          args[4] + "/dynamics-seed-0.moon.json",
+          "--scene",
+          root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+          "--output",
+          cell,
+        ]),
+        stdout=@process.redirect_to_file(
+          cell + "/probe.log",
+          create_mode=CreateOrTruncate,
+        ),
+        stderr=@process.redirect_to_file(
+          cell + "/stderr.log",
+          create_mode=CreateOrTruncate,
+        ),
+      )
+      running.push((process, variant))
+    }
+    for (process, variant) in running {
+      assert_eq(process.wait(), 0, msg=variant + " probe failed")
+      let report = @json.parse(
+        @fs.read_file(output + "/" + variant + "/summary.json").text(),
+      )
+      guard report
+        is { "frozen_models_unchanged": true, "summaries": Array(rows), .. } else {
+        fail("missing probe results")
+      }
+      assert_eq(rows.length(), 162)
+      println(variant + " replay directions complete")
+    }
+  }
+}
+
+///|
+/// Historical .py names are inert routing descriptors. Each target parses
+/// original flags and calls real native APIs; unknown descriptors fail closed.
+fn native_args(root : String, command : Array[String]) -> Array[String] raise {
+  guard !command.is_empty() else { fail("missing native provider descriptor") }
+  let descriptor = command[0].split("/").last().unwrap_or("").to_owned()
+  let training = [
+    "policy.py", "dynamics.py", "cpu_physics.py", "teacher_step_verification.py",
+    "compare_dynamics.py",
+  ].contains(descriptor)
+  let package = if training {
+    "src/learning_training/launch/cmd"
+  } else {
+    "src/learning_balance/launch"
+  }
+  [
+    "run",
+    "--quiet",
+    "--warn-list",
+    "-a",
+    root + "/scripts/run_native_learning.mbtx",
+    root,
+    package,
+    ..command,
+    ..if training {
+      []
+    } else {
+      ["--repo", root]
+    },
+  ]
+}

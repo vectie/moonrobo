@@ -1,0 +1,32 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo";let dir=root+"/output/spark-runtime-20261024/smc-heading-body-20261028"
+  let mut s=@fs.read_file(root+"/output/spark-runtime-20261024/smc-structural-20261028/advise_structural_runtime_image.mbtx").text()
+  s=s.replace_all(old="sha256:c76815627562a180052cef8e7e07edb37fe8547d83158eed6182ebd99bb8385d",new="sha256:5b1332bafb8e0bd31065cfd4a7ea2d57b81dd68f96c4cb6b4ebac477bf921b23")
+  s=s.replace_all(old="a08d2d4fa710e742cfe5f9cc09cbd892e545fad6d5acc2ac5feb9921427e20c8",new="/home/wlc004s/moonrobo/private/shared-compute-20261026-a/smc-heading-body-plugin-a.receipt.json")
+  let old=(
+    #|  let o = inspect(owner)
+    #|  let s = field(o, "State")
+    #|  guard field(o, "Image") == Json(image) &&
+    #|    field(s, "Running") == Json(false) &&
+    #|    field(s, "Status") == Json("exited") &&
+    #|    field(s, "Pid") == Json(0) &&
+    #|    field(s, "ExitCode") == Json(0) &&
+    #|    field(s, "OOMKilled") == Json(false) else {
+    #|    fail("exact successful closed task required")
+    #|  }
+  )
+  let replacement=(
+    #|  // Build containers used --rm. Validate their task-specific completed
+    #|  // receipts and exact image/resource settings instead of a stale ID.
+    #|  for receipt in [owner, owner.replace_all(old="smc-heading-body-plugin-a",new="heading-body-cuda-build-a"),owner.replace_all(old="smc-heading-body-plugin-a",new="gate-build-smc-heading-body-a")] {
+    #|    let r=@json.parse(@fs.read_file(receipt).text())
+    #|    guard field(r,"exit_code")==Json(0) && field(r,"gpu_access")==Json(false) && field(r,"program")==Json("docker") && field(r,"argv") is Array(argv) else {fail("successful owned build receipt required")}
+    #|    for arg in ["--rm","--network","none","--memory","8g","--memory-swap","--cpus","2","--user","1000:1000",image] {guard argv.contains(Json(arg))else{fail("build image/resource identity")}}
+    #|  }
+  )
+  guard s.contains(old)else{fail("owner check")};s=s.replace_all(old~,new=replacement)
+  s=s.replace_all(old="exact closed SMC image",new="exact completed task build image")
+  @fs.write_file(dir+"/advise_heading_build_image_a.mbtx",s,create_mode=CreateNew)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+"/advise_heading_build_image_a.mbtx","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_heading_build_image_a.mbtx"])==0 else{fail("stage")}
+}

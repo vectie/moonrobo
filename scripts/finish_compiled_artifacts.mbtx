@@ -1,0 +1,109 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  guard @env.args() is [_, mode] else { fail("mode") }
+  if mode == "fmt" {
+    for
+      path in [
+        "src/learning_tensor/compiled_block.mbt", "src/learning_aligned_gpu/compiled_world.mbt",
+        "src/learning_aligned_gpu/cmd/compiled_mlp_wbtest.mbt",
+      ] {
+      assert_eq(@process.run("moon", ["fmt", path]), 0)
+    }
+    for
+      name in [
+        "prepare_compiled_mlp", "build_compiled_mlp", "run_compiled_mlp", "benchmark_compiled_mlp",
+        "summarize_compiled_mlp", "prepare_compiled_mlp_followup", "compiled_mlp_cache_control",
+        "advise_compiled_fixture", "prepare_compiled_world", "build_compiled_world",
+        "finish_compiled_mlp", "prepare_compiled_world_cache", "reclaim_resident_benchmark_outputs",
+        "reclaim_compiled_headroom", "prepare_compiled_window", "retry_compiled_window_export",
+        "prepare_compiled_window_final", "complete_compiled_window", "finish_compiled_artifacts",
+        "advise_closed_mlp_outputs", "advise_closed_cuda_pages", "advise_closed_world_cuda_pages",
+        "diagnose_compiled_window", "fix_compiled_precision_guard", "rebuild_compiled_plugin",
+        "validate_final_compiled_mlp", "summarize_compiled_final", "benchmark_compiled_window",
+        "finish_compiled_fp32_timing",
+      ] {
+      assert_eq(@process.run("moon", ["fmt", "scripts/" + name + ".mbtx"]), 0)
+    }
+    return
+  }
+  guard mode == "fetch" else { fail("mode") }
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let runs = "/home/wlc004s/moonrobo/runs"
+  let sources = [
+    (base + "/compiled-resident-cuda-advice-d.json", "cache-advice-cuda-d.json"),
+    (base + "/compiled-resident-cuda-advice-e.json", "cache-advice-cuda-e.json"),
+    (
+      base + "/aoti-window-plugin-build-e.receipt.json",
+      "final-plugin-build-receipt.json",
+    ),
+    (
+      base + "/aoti-window-plugin-build-e.stderr.log",
+      "final-plugin-build.stderr.log",
+    ),
+    (
+      base + "/aoti-window-native-build-c.receipt.json",
+      "final-native-build-receipt.json",
+    ),
+    (
+      runs + "/hotspot-mlp-aoti-window-export-bf16-g/rollout/manifest.json",
+      "world-g-rollout-manifest.json",
+    ),
+    (
+      runs + "/hotspot-mlp-aoti-window-export-bf16-g/error/manifest.json",
+      "world-g-error-manifest.json",
+    ),
+    (
+      runs + "/hotspot-mlp-aoti-window-export-bf16-i/error/manifest.json",
+      "world-i-error-manifest.json",
+    ),
+    (
+      runs + "/hotspot-mlp-aoti-window-export-bf16-g/error/backward.fx.txt",
+      "world-g-error-backward.fx.txt",
+    ),
+    (
+      runs + "/hotspot-mlp-aoti-bench-smc-bf16-seeded-a/autotune-seed.json",
+      "autotune-seed.json",
+    ),
+    (
+      base + "/compiled-resident-output-advice-b.json",
+      "cache-advice-resident-b.json",
+    ),
+    (
+      base + "/aoti-window-plugin-build-a.receipt.json",
+      "window-plugin-build-receipt.json",
+    ),
+    (
+      base + "/aoti-window-native-build-a.receipt.json",
+      "window-native-build-receipt.json",
+    ),
+    (
+      base + "/aoti-window-plugin-build-a.stderr.log",
+      "window-plugin-build.stderr.log",
+    ),
+    (
+      base + "/aoti-window-native-build-a.stderr.log",
+      "window-native-build.stderr.log",
+    ),
+  ]
+  for (source, target) in sources {
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179:" + source,
+        root + "/" + target,
+      ]),
+      0,
+    )
+  }
+}

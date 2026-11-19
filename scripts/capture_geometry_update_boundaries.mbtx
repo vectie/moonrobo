@@ -1,0 +1,174 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, stage] &&
+    ["prepare", "build", "native", "reference"].contains(stage) else {
+    fail("stage")
+  }
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-math-179.sock"
+  let put = async fn(name : String, content : String) {
+    @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        out + "/" + name,
+        host + ":" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  if stage == "prepare" {
+    let helper =
+      #|let geometry_capture_records : Array[(String,Array[Int],Array[Double])] = []
+      #|///|
+      #|pub fn actor_boundaries() -> Array[(String,Array[Int],Array[Double])] { geometry_capture_records }
+      #|///|
+      #|fn geometry_capture(name:String,value:@tensor.Tensor) -> Unit raise {
+      #| guard geometry_capture_records.length()<128 else{fail("capture count")}
+      #| let flat=value.stop_gradient().reshape([-1]);let n=flat.shape()[0]
+      #| guard n<=4194304 else{fail("capture member")}
+      #| let used=geometry_capture_records.fold(init=0,(sum,row)=>sum+row.2.length())
+      #| guard used+n<=16777216 else{fail("128 MiB total capture limit")}
+      #| let values:Array[Double]=[]
+      #| for offset=0;offset<n;{let count=(n-offset).min(8192);values.append(flat.narrow(0,offset,count).values());continue offset+count}
+      #| geometry_capture_records.push((name,value.shape(),values))
+      #|}
+    let source = @fs.read_file(out + "/candidate-o-learning.mbt").text()
+    let modified = source
+      .replace_all(
+        old="pub fn actor_boundaries() -> Array[(String,Array[Int],Array[Double])] { [] }",
+        new=helper,
+      )
+      .replace_all(
+        old="  let return_range =",
+        new="  geometry_capture(\"rewards\",rewards)\n  geometry_capture(\"failures\",failures)\n  for (name,tensor) in [(\"p\",state.p),(\"r\",state.rotation),(\"v\",state.v),(\"w\",state.w),(\"q\",state.q),(\"qd\",state.qd)] {geometry_capture(\"final-\"+name,tensor)}\n  let return_range =",
+      )
+      .replace_all(
+        old="  @tensor.profile_end(actor_tail_timing)",
+        new="  geometry_capture(\"tail-input\",tail_input)\n  geometry_capture(\"tail\",tail)\n  @tensor.profile_end(actor_tail_timing)",
+      )
+      .replace_all(
+        old="  let adam_range = @tensor.operator_range_begin(\"diag.actor.adam\")",
+        new="  geometry_capture(\"raw-policy-18\",self.policy.parameters()[18].gradient())\n  let adam_range = @tensor.operator_range_begin(\"diag.actor.adam\")",
+      )
+      .replace_all(
+        old="    @tensor.operator_range_end(gae_range)",
+        new="    geometry_capture(\"bootstrap\",values)\n    geometry_capture(\"targets\",targets)\n    @tensor.operator_range_end(gae_range)",
+      )
+      .replace_all(
+        old="            @tensor.operator_range_end(prediction_range)",
+        new="            geometry_capture(\"prediction-\\{critic_updates}\",prediction)\n            @tensor.operator_range_end(prediction_range)",
+      )
+    assert_true(modified.contains("geometry_capture(\"rewards\""))
+    put("geometry_boundary_learning_a.mbt", modified)
+    put(
+      "geometry_boundary_fixture_a.mbt",
+      @fs.read_file(out + "/geometry_math_fixture_o.mbt").text(),
+    )
+    let build = @fs.read_file(out + "/build_geometry_math_o.mbtx")
+      .text()
+      .replace_all(old="geometry-math-o", new="geometry-boundary-a")
+      .replace_all(
+        old="geometry_math_fixture_o.mbt",
+        new="geometry_boundary_fixture_a.mbt",
+      )
+      .replace_all(
+        old=" container(\"build-geometry-boundary-a\"",
+        new=" run(\"copy-geometry-boundary-learning-a\",\"cp\",[base+\"/geometry_boundary_learning_a.mbt\",ws+\"/src/learning_aligned_gpu/learning.mbt\"])\n container(\"build-geometry-boundary-a\"",
+      )
+    assert_true(build.contains("copy-geometry-boundary-learning-a"))
+    put("build_geometry_boundary_a.mbtx", build)
+    put(
+      "run_geometry_boundary_native_a.mbtx",
+      @fs.read_file(out + "/run_geometry_math_training_o.mbtx")
+      .text()
+      .replace_all(old="geometry-math-o", new="geometry-boundary-a")
+      .replace_all(
+        old="run_geometry_math_training_o.mbtx",
+        new="run_geometry_boundary_native_a.mbtx",
+      ),
+    )
+    put(
+      "geometry_update_boundary_a.py",
+      @fs.read_file("providers/motion_learning/geometry_update_boundary.py").text(),
+    )
+    put(
+      "run_geometry_boundary_reference_a.mbtx",
+      @fs.read_file(out + "/run_geometry_actor_forward_audit.mbtx")
+      .text()
+      .replace_all(
+        old="geometry_actor_forward_audit.py",
+        new="geometry_update_boundary_a.py",
+      )
+      .replace_all(
+        old="run_geometry_actor_forward_audit.mbtx",
+        new="run_geometry_boundary_reference_a.mbtx",
+      ),
+    )
+    return
+  }
+  let folder = out + "/geometry-boundary-" + stage + "-a"
+  @fs.mkdir(folder)
+  let command = match stage {
+    "build" => "build_geometry_boundary_a.mbtx"
+    "native" =>
+      "run_geometry_boundary_native_a.mbtx -- train native off 1 geometry-boundary-native-a bf16-full"
+    _ =>
+      "run_geometry_boundary_reference_a.mbtx -- world geometry-boundary-reference-a"
+  }
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      socket,
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      command,
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  if stage != "build" {
+    let remote = if stage == "native" {
+      "hotspot-shared-geometry-boundary-native-a"
+    } else {
+      "hotspot-mlp-geometry-boundary-reference-a"
+    }
+    for
+      name in [
+        "result.json", "boundaries.json", "completion.json", "training-guard.json",
+        "training.stdout.log", "training.stderr.log",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=" + socket,
+          host + ":/home/wlc004s/moonrobo/runs/" + remote + "/" + name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+  }
+  assert_eq(status, 0)
+}

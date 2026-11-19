@@ -1,0 +1,106 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, stage] &&
+    ["native-gate", "smc-gate", "benchmark"].contains(stage) else {
+    fail("native-gate/smc-gate/benchmark")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  guard @json.parse(
+      @fs.read_file(out + "/reward-reference-d/result.json").text(),
+    )
+    is { "numerical_pass": True, .. } else {
+    fail("original reduction export numerical gate required")
+  }
+  if stage == "benchmark" {
+    guard @json.parse(
+        @fs.read_file(out + "/training-smc-gate-aq/result.json").text(),
+      )
+      is {
+        "passed": True,
+        "original_reference_update_bitwise_unchanged": True,
+        ..
+      } else {
+      fail("coupled numerical gate required before timing")
+    }
+    guard @json.parse(
+        @fs.read_file(out + "/compare_training_snapshot_ar.json").text(),
+      )
+      is { "numerical_pass": True, "comparisons": Array(records), .. } &&
+      records.length() == 171 else {
+      fail("all 160 tensor records and 11 statistics required")
+    }
+  }
+  let jobs = match stage {
+    "native-gate" => [("native", "training-native-gate-ap", "1")]
+    "smc-gate" => [("smc", "training-smc-gate-aq", "1")]
+    _ =>
+      [
+        ("native", "training-bench-native-ap-a", "13"),
+        ("smc", "training-bench-smc-ap-a", "13"),
+        ("smc", "training-bench-smc-ap-b", "13"),
+        ("native", "training-bench-native-ap-b", "13"),
+      ]
+  }
+  for (side, label, repetitions) in jobs {
+    let folder = out + "/" + label
+    @fs.mkdir(folder)
+    let status = @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/run_aligned_training_ap.mbtx -- train " +
+        side +
+        " off " +
+        repetitions +
+        " " +
+        label +
+        " bf16-full",
+      ],
+      stdout=@process.redirect_to_file(
+        folder + "/controller.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        folder + "/controller.stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    for
+      name in [
+        "result.json", "final.json", "completion.json", "training-guard.json", "training-docker-final.json",
+        "training.stdout.log", "training.stderr.log", "protocol.json", "compiled-packages.json",
+        "compilation-audit.json", "frozen-decisions.json", "first-world-comparison.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-" +
+          label +
+          "/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+    assert_eq(status, 0)
+    println("Completed " + label)
+  }
+}

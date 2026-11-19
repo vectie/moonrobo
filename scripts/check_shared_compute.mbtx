@@ -1,0 +1,106 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, label] && ["final", "final2"].contains(label) else {
+    fail("explicit final check label")
+  }
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/shared-compute-20261026/checks-" +
+    label
+  guard !@fs.exists(root) else { fail("fresh check records required") }
+  @fs.mkdir(root)
+  let paths = [
+    "src/learning_aligned_gpu/cmd/pkg.generated.mbti", "src/learning_aligned_gpu/pkg.generated.mbti",
+    "src/learning_tensor/pkg.generated.mbti",
+  ]
+  let before : Array[(String, String)] = []
+  for path in paths {
+    before.push((path, @fs.read_file(path).text()))
+  }
+  let scripts = [
+    "prepare_shared_compute", "repair_shared_staging", "publish_shared_probe", "rebuild_shared_trained",
+    "rebuild_shared_probe_revision", "run_shared_numerical_gates", "run_shared_diagnostic_campaign",
+    "report_shared_compute", "analyze_shared_trace", "advise_shared_finished_snapshots",
+    "fetch_shared_evidence", "check_shared_compute", "reconcile_shared_compute",
+    "report_shared_observers", "finish_shared_traces", "verify_shared_capture_counts",
+    "fetch_shared_closure",
+  ]
+  for name in scripts {
+    guard @process.run(
+        "moon",
+        ["check", "--target", "native", "scripts/" + name + ".mbtx"],
+        stdout=@process.redirect_to_file(
+          root + "/check-" + name + ".log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          root + "/check-" + name + ".stderr.log",
+          create_mode=CreateNew,
+        ),
+      ) ==
+      0 else {
+      fail("typecheck " + name)
+    }
+  }
+  guard @process.run(
+      "moon",
+      ["info", "--target", "native", "src/learning_aligned_gpu/cmd"],
+      stdout=@process.redirect_to_file(
+        root + "/moon-info.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        root + "/moon-info.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ) ==
+    0 else {
+    fail("moon info")
+  }
+  let targets = [
+    "src/learning_aligned_gpu/cmd",
+    ..scripts.map(name => "scripts/" + name + ".mbtx"),
+  ]
+  guard @process.run(
+      "moon",
+      ["fmt", ..targets],
+      stdout=@process.redirect_to_file(
+        root + "/moon-fmt.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        root + "/moon-fmt.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ) ==
+    0 else {
+    fail("moon fmt")
+  }
+  let interfaces : Array[Json] = []
+  for (path, bytes) in before {
+    interfaces.push({
+      "path": Json(path),
+      "unchanged": Json(@fs.read_file(path).text() == bytes),
+    })
+  }
+  @fs.write_file(
+    root + "/local-checks.json",
+    Json({
+      "script_typechecks_passed": Json(scripts),
+      "moon_info_passed": Json(true),
+      "moon_fmt_passed": Json(true),
+      "interfaces": Json(interfaces),
+      "gpu_checks": Json(
+        "see immutable per-run numerical comparisons; cross-language strict checks are not all passing",
+      ),
+    }).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println("Shared diagnostic static checks and interface review complete")
+}

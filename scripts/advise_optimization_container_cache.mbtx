@@ -1,0 +1,800 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/x/crypto",
+}
+
+///|
+let run_root = "/home/wlc004s/moonrobo/runs/"
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn text(value : Json) -> String raise {
+  guard value is String(value) else { fail("string required") }
+  value
+}
+
+///|
+fn exact_integer(value : Json) -> Int64 raise {
+  guard value is Number(number, ..) &&
+    number >= 0.0 &&
+    number <= 9007199254740991.0 &&
+    number.to_int64().to_double() == number else {
+    fail("exact nonnegative JSON integer required")
+  }
+  number.to_int64()
+}
+
+///|
+fn validate_training_resources(host : Json) -> Unit raise {
+  guard exact_integer(field(host, "Memory")) == 107374182400L &&
+    exact_integer(field(host, "MemorySwap")) == 107374182400L &&
+    exact_integer(field(host, "NanoCpus")) == 12000000000L &&
+    field(host, "NetworkMode") == Json("none") &&
+    field(host, "UsernsMode") == Json("") else {
+    fail("training container resource or user namespace identity differs")
+  }
+}
+
+///|
+fn sha(value : String) -> Bool {
+  value.length() == 64 &&
+  value.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+fn component(value : String) -> Bool {
+  value != "" &&
+  value != "." &&
+  value != ".." &&
+  value
+  .iter()
+  .all(c => {
+    (c >= 'a' && c <= 'z') ||
+    (c >= 'A' && c <= 'Z') ||
+    (c >= '0' && c <= '9') ||
+    c == '-' ||
+    c == '_' ||
+    c == '.'
+  })
+}
+
+///|
+fn run_scope(path : String) -> Bool {
+  if !path.has_prefix(run_root) {
+    return false
+  }
+  let parts = path[run_root.length():].split("/").to_array()
+  parts.length() == 2 &&
+  parts.all(p => component(p.to_owned())) &&
+  parts[1].has_prefix("run-") &&
+  parts[1].length() > 4 &&
+  parts[1][4:].iter().all(c => c >= '0' && c <= '9')
+}
+
+///|
+fn upper_scope(path : String) -> Bool {
+  let prefix = "/var/lib/docker/overlay2/"
+  if !path.has_prefix(prefix) {
+    return false
+  }
+  let parts = path[prefix.length():].split("/").to_array()
+  parts.length() == 2 && sha(parts[0].to_owned()) && parts[1] == "diff"
+}
+
+///|
+async fn metadata_bytes(path : String, limit~ : Int64 = 16777216L) -> Bytes {
+  guard @fs.kind(path, follow_symlink=false) == Regular &&
+    @fs.realpath(path) == path else {
+    fail("canonical regular metadata file required: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= limit else { fail("metadata exceeds bound") }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else { fail("metadata changed") }
+  bytes
+}
+
+///|
+async fn read_json(path : String) -> Json {
+  @json.parse(@utf8.decode(metadata_bytes(path)))
+}
+
+///|
+async fn digest(path : String) -> String {
+  let hash = @crypto.SHA256::new()
+  hash.update(metadata_bytes(path))
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn output(reader : &@io.Reader) -> String {
+  let bytes = FixedArray::make(524289, b'\x00')
+  let mut size = 0
+  for ;; {
+    let n = reader.read(bytes, offset=size, max_len=524289 - size)
+    if n == 0 {
+      break
+    }
+    size += n
+    guard size <= 524288 else { fail("command output exceeds 512 KiB") }
+  }
+  @utf8.decode(Bytes::from_array(bytes[:size]))
+}
+
+///|
+async fn docker(args : Array[String]) -> String {
+  @async.with_timeout(30000, () => {
+    let (out, out_to) = @process.read_from_process()
+    let (err, err_to) = @process.read_from_process()
+    @async.with_task_group() <| group => {
+      let argv = ["--host", "unix:///var/run/docker.sock"]
+      for arg in args {
+        argv.push(arg)
+      }
+      let child = group.spawn(() => {
+        @process.run("docker", argv, stdout=out_to, stderr=err_to)
+      })
+      let stdout = group.spawn(() => {
+        defer out.close()
+        output(out)
+      })
+      let stderr = group.spawn(() => {
+        defer err.close()
+        output(err)
+      })
+      let code = child.wait()
+      let value = stdout.wait()
+      let error = stderr.wait()
+      guard code == 0 else { fail("Docker command failed: " + error) }
+      value
+    }
+  })
+}
+
+///|
+async fn inspect(id : String) -> Json {
+  guard sha(id) else { fail("full container ID required") }
+  guard @json.parse(docker(["inspect", id])) is Array([value]) else {
+    fail("one Docker inspection required")
+  }
+  value
+}
+
+///|
+fn require_stopped(value : Json) -> Unit raise {
+  let state = field(value, "State")
+  guard field(state, "Running") == Json(false) &&
+    field(state, "OOMKilled") == Json(false) &&
+    field(state, "ExitCode") == Json(0) &&
+    field(state, "Status") == Json("exited") else {
+    fail("owned container must have exited successfully without OOM")
+  }
+}
+
+///|
+async fn idle(worker : String?) -> Unit {
+  let ids = docker(["ps", "--no-trunc", "--quiet"])
+    .trim()
+    .split("\n")
+    .filter(s => s != "")
+    .map(s => s.to_owned())
+    .to_array()
+  match worker {
+    None => {
+      guard ids.is_empty() else { fail("Docker is not idle") }
+    }
+    Some(id) => {
+      guard ids == [id] else { fail("unrelated running Docker container") }
+    }
+  }
+}
+
+///|
+struct Selection {
+  run : String
+  id : String
+  image : String
+  source : String
+  inspection : Json
+}
+
+///|
+async fn collect(run : String, locks : Array[@fs.File]) -> Selection {
+  guard run_scope(run) &&
+    @fs.realpath(run) == run &&
+    @fs.kind(run, follow_symlink=false) == Directory else {
+    fail("explicit canonical run path required")
+  }
+  let pieces = run.split("/").to_array()
+  let series = pieces[:pieces.length() - 1].map(p => p.to_owned()).join("/")
+  let spec = read_json(series + "/spec.json")
+  let plan = read_json(series + "/plan.json")
+  let result = read_json(run + "/result.json")
+  guard field(spec, "format") ==
+    Json("moonrobo.native-optimization-pairs.spec.v1") &&
+    field(plan, "format") == Json("moonrobo.native-optimization-pairs.plan.v1") &&
+    field(plan, "spec_sha256") == Json(digest(series + "/spec.json")) &&
+    field(result, "format") == Json("moonrobo.native-optimization-pairs.run.v1") &&
+    field(result, "passed") == Json(true) &&
+    field(result, "spec_sha256") == field(plan, "spec_sha256") &&
+    field(result, "config_sha256") == Json(digest(run + "/config.json")) else {
+    fail("successful immutable paired run required")
+  }
+  let variant = text(field(result, "variant"))
+  guard ["baseline", "candidate"].contains(variant) else {
+    fail("unknown variant")
+  }
+  let config = read_json(run + "/config.json")
+  guard config == field(spec, variant + "_config") else {
+    fail("config identity differs")
+  }
+  let lock_path = run + "/train/run.lock"
+  guard @fs.kind(lock_path, follow_symlink=false) == Regular &&
+    @fs.realpath(lock_path) == lock_path else {
+    fail("canonical existing lock required")
+  }
+  let lock = @fs.open(lock_path, mode=ReadWrite, create_mode=OpenExisting)
+  guard lock.try_lock(Exclusive) else {
+    lock.close()
+    fail("training lock is held")
+  }
+  locks.push(lock)
+  let report = read_json(run + "/train/report.json")
+  let current = read_json(run + "/train/current.json")
+  let generation = text(field(current, "generation"))
+  guard component(generation) && generation.has_prefix("generation-") else {
+    fail("published generation required")
+  }
+  let receipt = read_json(run + "/train/" + generation + "/receipt.json")
+  let recorded = match field(report, "checkpoint") {
+    Array([value]) => value
+    value => value
+  }
+  guard field(report, "format") ==
+    Json("moonrobo.native-tensor-training-report.v1") &&
+    field(report, "training_complete_for_requested_iterations") == Json(true) &&
+    field(report, "distributed") == Json(false) &&
+    field(field(report, "identity"), "config") == config &&
+    field(current, "format") ==
+    Json("moonrobo.native-tensor-checkpoint-pointer.v2") &&
+    field(current, "iteration") == field(report, "iteration") &&
+    current == receipt &&
+    current == recorded else {
+    fail("completed training and matching committed checkpoint required")
+  }
+  let train = read_json(run + "/train-result.json")
+  guard field(train, "passed") == Json(true) &&
+    field(train, "attach_exit_code") == Json(0) else {
+    fail("training process failed")
+  }
+  let id = text(field(train, "container_id"))
+  let live = inspect(id)
+  require_stopped(live)
+  guard read_json(run + "/train-docker-final.json") is Array([saved]) else {
+    fail("saved Docker evidence missing")
+  }
+  require_stopped(saved)
+  let image = text(field(spec, "image_id"))
+  guard image.has_prefix("sha256:") &&
+    sha(image[7:].to_owned()) &&
+    field(live, "Id") == Json(id) &&
+    field(saved, "Id") == Json(id) &&
+    field(live, "Image") == Json(image) &&
+    field(saved, "Image") == Json(image) &&
+    field(live, "GraphDriver") == field(saved, "GraphDriver") else {
+    fail("container identity differs")
+  }
+  let host = field(live, "HostConfig")
+  validate_training_resources(host)
+  guard field(live, "Mounts") is Array(mounts) else {
+    fail("mount evidence missing")
+  }
+  let mut gates = 0
+  for mount in mounts {
+    if field(mount, "Destination") == Json("/gate") {
+      guard field(mount, "Source") == Json(run) &&
+        field(mount, "Type") == Json("bind") &&
+        field(mount, "RW") == Json(true) else {
+        fail("run ownership bind differs")
+      }
+      gates += 1
+    }
+  }
+  guard gates == 1 else { fail("exact owned run bind required") }
+  let launch = read_json(run + "/train-launch.json")
+  guard field(launch, "program") == Json("docker") &&
+    field(launch, "argv") is Array(argv) else {
+    fail("direct launch evidence missing")
+  }
+  let positions = [ for i in 0..<argv.length() if argv[i] == Json(image) => i ]
+  guard positions.length() == 1 else {
+    fail("one pinned image in launch required")
+  }
+  let command = Json(argv[positions[0] + 1:].to_owned())
+  guard field(field(live, "Config"), "Cmd") == command &&
+    field(field(live, "Config"), "Entrypoint") ==
+    Json([Json("/usr/bin/timeout")]) &&
+    argv.contains(Json("train")) &&
+    argv.contains(Json("/gate/train")) else {
+    fail("training command identity differs")
+  }
+  let driver = field(live, "GraphDriver")
+  guard field(driver, "Name") == Json("overlay2") else {
+    fail("only overlay2 is supported")
+  }
+  let upper = text(field(field(driver, "Data"), "UpperDir"))
+  guard upper_scope(upper) else { fail("UpperDir outside strict Docker scope") }
+  let source = upper + "/home/isaaclab/.nv/ComputeCache"
+  guard @fs.realpath(source) == source &&
+    @fs.kind(source, follow_symlink=false) == Directory else {
+    fail(
+      "cache must be canonical and readable by this helper; use the fixed compiled helper under sudo if needed",
+    )
+  }
+  { run, id, image, source, inspection: live, }
+}
+
+///|
+fn worker_arguments(image : String, source : String) -> Array[String] {
+  [
+    "create",
+    "--runtime",
+    "runc",
+    "--network",
+    "none",
+    "--read-only",
+    "--user",
+    "1000:1000",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--memory",
+    "268435456",
+    "--memory-swap",
+    "268435456",
+    "--cpus",
+    "1",
+    "--pids-limit",
+    "32",
+    "--env",
+    "NVIDIA_VISIBLE_DEVICES=void",
+    "--env",
+    "NVIDIA_DRIVER_CAPABILITIES=",
+    "--mount",
+    "type=bind,src=" + source + ",dst=/cache,readonly",
+    "--entrypoint",
+    "/usr/bin/sleep",
+    image,
+    "1800",
+  ]
+}
+
+///|
+fn validate_worker(value : Json, source : String, image : String) -> Unit raise {
+  let host = field(value, "HostConfig")
+  let config = field(value, "Config")
+  guard field(value, "Image") == Json(image) &&
+    field(config, "User") == Json("1000:1000") &&
+    exact_integer(field(host, "Memory")) == 268435456L &&
+    exact_integer(field(host, "MemorySwap")) == 268435456L &&
+    exact_integer(field(host, "NanoCpus")) == 1000000000L &&
+    exact_integer(field(host, "PidsLimit")) == 32L &&
+    field(host, "ReadonlyRootfs") == Json(true) &&
+    field(host, "Privileged") == Json(false) &&
+    field(host, "Runtime") == Json("runc") &&
+    field(host, "NetworkMode") == Json("none") &&
+    field(host, "CapDrop") == Json([Json("ALL")]) &&
+    (
+      field(host, "CapAdd") == Json::null() ||
+      field(host, "CapAdd") is Array([])
+    ) &&
+    (
+      field(host, "DeviceRequests") == Json::null() ||
+      field(host, "DeviceRequests") is Array([])
+    ) &&
+    (
+      field(host, "Devices") == Json::null() ||
+      field(host, "Devices") is Array([])
+    ) &&
+    field(host, "SecurityOpt") is Array(options) &&
+    options.contains(Json("no-new-privileges")) else {
+    fail("audit worker confinement differs")
+  }
+  guard field(value, "Mounts") is Array([mount]) &&
+    field(mount, "Type") == Json("bind") &&
+    field(mount, "Source") == Json(source) &&
+    field(mount, "Destination") == Json("/cache") &&
+    field(mount, "RW") == Json(false) else {
+    fail("one readonly verified cache mount required")
+  }
+}
+
+///|
+struct Entry {
+  relative : String
+  size : Int64
+}
+
+///|
+fn find_arguments(worker : String) -> Array[String] {
+  [
+    "exec", worker, "/usr/bin/find", "-P", "/cache", "-xdev", "-maxdepth", "8", "-printf",
+    "%y\t%s\t%n\t%P\\0",
+  ]
+}
+
+///|
+fn inventory(value : String) -> Array[Entry] raise {
+  guard value.has_suffix("\u0000") else { fail("truncated find inventory") }
+  let rows = value.split("\u0000").filter(s => s != "").to_array()
+  guard rows.length() <= 1024 else {
+    fail("cache inventory exceeds 1024 entries")
+  }
+  let seen : Map[String, Unit] = Map([])
+  let files : Array[Entry] = []
+  let mut bytes = 0L
+  for row in rows {
+    let cells = row.split("\t").to_array()
+    guard cells.length() == 4 else { fail("malformed find row") }
+    let kind = cells[0]
+    let size = @string.parse_int64(cells[1])
+    let links = @string.parse_int64(cells[2])
+    let path = cells[3].to_owned()
+    let parts = path.split("/").to_array()
+    guard !seen.contains(path) &&
+      size >= 0L &&
+      (path == "" || parts.all(p => component(p.to_owned()))) &&
+      parts.length() < 8 else {
+      fail("unsafe/deep/duplicate cache entry")
+    }
+    seen[path] = ()
+    match kind {
+      "d" => ()
+      "f" => {
+        guard path != "" && links == 1L && size <= 536870912L else {
+          fail("cache payload exceeds bound or has hard links")
+        }
+        bytes += size
+        guard bytes <= 4294967296L && files.length() < 512 else {
+          fail("cache files exceed count/4GiB bound")
+        }
+        files.push({ relative: path, size, })
+      }
+      _ => fail("symlink or special file in cache")
+    }
+  }
+  files
+}
+
+///|
+async fn cache_operation(
+  selection : Selection,
+  advise : Bool,
+  rows : Array[Json],
+  workers : Array[Json],
+) -> Json {
+  idle(None)
+  require_stopped(inspect(selection.id))
+  let args = worker_arguments(selection.image, selection.source)
+  let worker = docker(args).trim().to_owned()
+  guard sha(worker) else { fail("invalid audit container ID") }
+  let worker_record : Json = {
+    "id": Json(worker),
+    "argv": Json(args),
+    "success": false,
+    "final_inspection": Json::null(),
+  }
+  workers.push(worker_record)
+  guard worker_record is Object(worker_fields) else { fail("worker record") }
+  let mut error_text : String? = None
+  let mut selected = 0
+  let mut selected_bytes = 0L
+  let success = try {
+    validate_worker(inspect(worker), selection.source, selection.image)
+    ignore(docker(["start", worker]))
+    idle(Some(worker))
+    for
+      (program, prefix) in [
+        ("/usr/bin/find", "find (GNU findutils)"),
+        ("/usr/bin/sync", "sync (GNU coreutils)"),
+        ("/usr/bin/dd", "dd (GNU coreutils)"),
+      ] {
+      let version = docker(["exec", worker, program, "--version"])
+      guard version.has_prefix(prefix) ||
+        version.has_prefix(program[9:].to_owned() + " (coreutils)") else {
+        fail("GNU find/coreutils required")
+      }
+    }
+    let listing = docker(find_arguments(worker))
+    let files = inventory(listing)
+    selected = files.length()
+    for file in files {
+      selected_bytes += file.size
+    }
+    for file in files {
+      let path = "/cache/" + file.relative
+      if advise {
+        idle(Some(worker))
+        require_stopped(inspect(selection.id))
+        let stat = docker([
+            "exec", worker, "/usr/bin/stat", "--format=%F\t%s\t%h", "--", path,
+          ])
+          .trim()
+          .to_owned()
+        guard stat == "regular file\t" + file.size.to_string() + "\t1" ||
+          (file.size == 0L && stat == "regular empty file\t0\t1") else {
+          fail("cache file identity/type changed")
+        }
+        ignore(docker(["exec", worker, "/usr/bin/sync", "--data", "--", path]))
+        rows.push({
+          "container_id": Json(selection.id),
+          "relative_path": Json(file.relative),
+          "file_size_bytes": Json(file.size),
+          "operation": "sync_data",
+          "status": "returned_zero",
+        })
+        idle(Some(worker))
+        ignore(
+          docker([
+            "exec",
+            worker,
+            "/usr/bin/dd",
+            "if=" + path,
+            "iflag=nocache,nofollow",
+            "count=0",
+            "status=none",
+          ]),
+        )
+        rows.push({
+          "container_id": Json(selection.id),
+          "relative_path": Json(file.relative),
+          "file_size_bytes": Json(file.size),
+          "operation": "cache_advice",
+          "status": "returned_zero",
+        })
+      } else {
+        rows.push({
+          "container_id": Json(selection.id),
+          "relative_path": Json(file.relative),
+          "file_size_bytes": Json(file.size),
+          "operation": "plan",
+          "status": "selected",
+        })
+      }
+    }
+    true
+  } catch {
+    error => {
+      error_text = Some(error.to_string())
+      false
+    }
+  }
+  ignore(docker(["stop", "--time", "1", worker]))
+  let stopped = inspect(worker)
+  worker_fields["final_inspection"] = stopped
+  worker_fields["success"] = Json(success)
+  worker_fields["error"] = match error_text {
+    Some(error) => Json(error)
+    None => Json::null()
+  }
+  guard field(field(stopped, "State"), "Running") == Json(false) &&
+    field(field(stopped, "State"), "OOMKilled") == Json(false) else {
+    fail("audit worker did not stop cleanly or was OOM killed")
+  }
+  guard success else { fail("bounded cache operation failed; audit retained") }
+  idle(None)
+  {
+    "run": Json(selection.run),
+    "container_id": Json(selection.id),
+    "source": Json(selection.source),
+    "files": Json(selected),
+    "file_bytes": Json(selected_bytes),
+    "verified_training_container": selection.inspection,
+  }
+}
+
+///|
+async fn maintain(
+  mode : String,
+  report_path : String,
+  runs : Array[String],
+) -> Unit {
+  guard runs.length() > 0 &&
+    runs.length() <= 16 &&
+    !@fs.exists(report_path) &&
+    report_path.has_prefix(run_root) &&
+    report_path.has_suffix(".json") else {
+    fail(
+      "need 1..16 explicit runs and a fresh JSON report inside the runs root",
+    )
+  }
+  let report_parts = report_path.split("/").to_array()
+  guard report_parts[1:].all(p => component(p.to_owned())) else {
+    fail("unsafe report path")
+  }
+  let parent = report_parts[:report_parts.length() - 1]
+    .map(p => p.to_owned())
+    .join("/")
+  guard @fs.realpath(parent) == parent else {
+    fail("report parent must be canonical")
+  }
+  let locks : Array[@fs.File] = []
+  defer (for lock in locks {
+    lock.close()
+  })
+  let rows : Array[Json] = []
+  let workers : Array[Json] = []
+  let summaries : Array[Json] = []
+  let mut error_text : String? = None
+  let success = try {
+    idle(None)
+    let seen : Map[String, Unit] = Map([])
+    let selections : Array[Selection] = []
+    for run in runs {
+      guard !seen.contains(run) else { fail("duplicate run path") }
+      seen[run] = ()
+      selections.push(collect(run, locks))
+    }
+    for selection in selections {
+      summaries.push(
+        cache_operation(selection, mode == "--advise", rows, workers),
+      )
+    }
+    true
+  } catch {
+    error => {
+      error_text = Some(error.to_string())
+      false
+    }
+  }
+  let report : Json = {
+    "format": "moonrobo.optimization-container-cache-advice.v1",
+    "mode": Json(mode),
+    "success": Json(success),
+    "error": match error_text {
+      Some(error) => Json(error)
+      None => Json::null()
+    },
+    "requested_run_paths": Json(runs),
+    "runs": Json(summaries),
+    "operations": Json(rows),
+    "audit_workers": Json(workers),
+    "max_runs": 16,
+    "max_entries_per_cache": 1024,
+    "max_files_per_cache": 512,
+    "max_cache_bytes": Json(4294967296L),
+    "max_file_bytes": 536870912,
+    "command_timeout_ms": 30000,
+    "worker_lifetime_seconds": 1800,
+    "worker_memory_limit_bytes": 268435456,
+    "worker_swap_limit_bytes": 0,
+    "worker_cpus": 1,
+    "gpu_requested": false,
+    "network_enabled": false,
+    "bind_readonly": true,
+    "cache_payload_content_read_or_modified": false,
+    "dirty_pages_may_be_flushed_to_storage": true,
+    "files_deleted": 0,
+    "global_sync_or_cache_operation": false,
+    "cache_reclaim_guaranteed": false,
+    "scope": "explicit passed optimization run-owned stopped container overlay2 UpperDir /home/isaaclab/.nv/ComputeCache only; complete committed training required; no performance or lifetime-memory claim",
+    "idle_contract": "training locks held and Docker idle except current CPU audit worker; operator prevents concurrent launches; checks are not an atomic scheduler lock",
+  }
+  @fs.write_file(
+    report_path,
+    report.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+  guard success else {
+    fail("cache plan/advice failed; audit report retained: " + report_path)
+  }
+  println("Bounded stopped-container cache report: " + report_path)
+}
+
+///|
+fn self_test() -> Unit raise {
+  let host = @json.parse(
+    "{\"Memory\":107374182400,\"MemorySwap\":107374182400,\"NanoCpus\":12000000000,\"NetworkMode\":\"none\",\"UsernsMode\":\"\"}",
+  )
+  validate_training_resources(host)
+  assert_eq(exact_integer(field(host, "Memory")), 107374182400L)
+  for
+    bad in [Json("107374182400"), Json(0.5), Json(-1), Json(9007199254740992.0)] {
+    try exact_integer(bad) catch {
+      _ => ()
+    } noraise {
+      _ => fail("accepted non-exact numeric resource value")
+    }
+  }
+  guard host is Object(values) else { fail("fixture") }
+  values["MemorySwap"] = Json(107374182401.0)
+  try validate_training_resources(host) catch {
+    _ => ()
+  } noraise {
+    _ => fail("accepted different swap budget")
+  }
+  assert_true(run_scope(run_root + "graph-series-c/run-1"))
+  for bad in [run_root, run_root + "../other/run-1", run_root + "x/run-1/y"] {
+    assert_false(run_scope(bad))
+  }
+  let upper = "/var/lib/docker/overlay2/" + "a".repeat(64) + "/diff"
+  assert_true(upper_scope(upper))
+  for
+    bad in [
+      upper + "/extra",
+      "/tmp/" + "a".repeat(64) + "/diff",
+      "/var/lib/docker/overlay2/../diff",
+    ] {
+    assert_false(upper_scope(bad))
+  }
+  let args = worker_arguments(
+    "sha256:" + "b".repeat(64),
+    upper + "/home/isaaclab/.nv/ComputeCache",
+  )
+  assert_false(args.contains("--gpus"))
+  assert_true(args.contains("--read-only"))
+  assert_true(args.contains("NVIDIA_VISIBLE_DEVICES=void"))
+  assert_eq(args.filter(s => s == "--mount").length(), 1)
+  assert_true(
+    args.contains(
+      "type=bind,src=" +
+      upper +
+      "/home/isaaclab/.nv/ComputeCache,dst=/cache,readonly",
+    ),
+  )
+  let printf = find_arguments("x")[9]
+  assert_true(printf.has_suffix("\\0"))
+  assert_false(printf.has_suffix("\\\\0"))
+  assert_false(printf.contains("\u0000"))
+  let files = inventory("d\t4096\t2\t\u0000f\t10\t1\tx\u0000")
+  assert_eq(files.length(), 1)
+  assert_eq(files[0].size, 10L)
+  for
+    bad in [
+      "l\t10\t1\tx\u0000", "f\t10\t2\tx\u0000", "f\t10\t1\t../x\u0000", "f\t536870913\t1\tx\u0000",
+      "f\t10\t1\tx", "f\t10\t1\tx\u0000f\t10\t1\tx\u0000",
+    ] {
+    try inventory(bad) catch {
+      _ => ()
+    } noraise {
+      _ => fail("accepted unsafe inventory")
+    }
+  }
+  println(
+    "stopped-container cache CPU self-tests passed; no Docker/filesystem/GPU action",
+  )
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args == [args[0], "--self-test"] {
+    self_test()
+    return
+  }
+  guard args.length() >= 4 && ["--plan", "--advise"].contains(args[1]) else {
+    fail(
+      "usage: --plan|--advise FRESH_JSON_REPORT CANONICAL_PASSED_RUN_PATH...; --self-test",
+    )
+  }
+  maintain(args[1], args[2], args[3:].to_owned())
+}

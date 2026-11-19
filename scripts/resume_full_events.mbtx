@@ -1,0 +1,10 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="output/spark-runtime-20261024/coefficient-full-20261028"
+  let s=@fs.read_file(dir+"/coefficient_full_suite_e.mbtx").text()
+    .replace_all(old="if (phase==\"world\"&&v==\"both\"&&kind==\"gate\")",new="if (phase==\"world\"&&v==\"baseline\"&&kind==\"events\") || (phase==\"world\"&&v==\"both\"&&kind==\"gate\")")
+  @fs.write_file(dir+"/coefficient_full_suite_f.mbtx",s,create_mode=CreateNew)
+  let p=dir+"/report.mbtx";let r=@fs.read_file(p).text().replace_all(old="if (p==\"world\"&&v==\"both\"&&k==\"gate\")",new="if (p==\"world\"&&v==\"baseline\"&&k==\"events\") || (p==\"world\"&&v==\"both\"&&k==\"gate\")");@fs.write_file(p,r)
+  let p=dir+"/finalize.mbtx";let r=@fs.read_file(p).text().replace_all(old="[\"both-world-gate-a\",\"smc-actor-off-a\",\"smc-actor-off-after-a\"]",new="[\"both-world-gate-a\",\"smc-actor-off-a\",\"smc-actor-off-after-a\",\"baseline-world-events-a\"]").replace_all(old="\"startup_guard_rejections\":3",new="\"startup_guard_rejections\":4");@fs.write_file(p,r)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+"/coefficient_full_suite_f.mbtx","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/coefficient_full_suite_f.mbtx"])==0else{fail("stage")}
+}

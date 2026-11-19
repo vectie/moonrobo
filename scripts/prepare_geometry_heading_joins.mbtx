@@ -1,0 +1,77 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let put = async fn(name : String, content : String) {
+    @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-math-179.sock",
+        out + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  put(
+    "geometry_math_rotations_r.mbt",
+    @fs.read_file("src/learning_aligned_gpu/geometry/rotations.mbt").text(),
+  )
+  put(
+    "geometry_math_fixture_r.mbt",
+    @fs.read_file(out + "/geometry_math_fixture_o.mbt").text(),
+  )
+  put(
+    "build_geometry_math_r.mbtx",
+    @fs.read_file(out + "/build_geometry_math_o.mbtx")
+    .text()
+    .replace_all(old="geometry-math-o", new="geometry-math-r")
+    .replace_all(
+      old="geometry_math_fixture_o.mbt",
+      new="geometry_math_fixture_r.mbt",
+    )
+    .replace_all(old="math_rotations.mbt", new="geometry_math_rotations_r.mbt"),
+  )
+  put(
+    "run_geometry_math_training_r.mbtx",
+    @fs.read_file(out + "/run_geometry_math_training_o.mbtx")
+    .text()
+    .replace_all(old="geometry-math-o", new="geometry-math-r")
+    .replace_all(old="training_o.mbtx", new="training_r.mbtx"),
+  )
+  @fs.write_file(
+    out + "/run_geometry_heading_training_r.mbtx",
+    @fs.read_file(out + "/run_geometry_centered_training_o.mbtx")
+    .text()
+    .replace_all(old="math_o.mbtx", new="math_r.mbtx")
+    .replace_all(old="training_o.mbtx", new="training_r.mbtx")
+    .replace_all(old="gate-o", new="gate-r")
+    .replace_all(old="build-o.", new="build-r."),
+    create_mode=CreateNew,
+  )
+  let comparator = @fs.read_file(out + "/geometry_snapshot_gate_c.py")
+    .text()
+    .replace_all(
+      old="hotspot-shared-geometry-math-reference-gate-n",
+      new="hotspot-shared-geometry-math-reference-gate-p",
+    )
+  put("geometry_snapshot_gate_d.py", comparator)
+  put(
+    "run_geometry_snapshot_gate_r.mbtx",
+    @fs.read_file(out + "/run_geometry_snapshot_gate_o.mbtx")
+    .text()
+    .replace_all(
+      old="geometry_snapshot_gate_c.py",
+      new="geometry_snapshot_gate_d.py",
+    ),
+  )
+}

@@ -1,0 +1,57 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, revision] &&
+    [
+      "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13",
+      "v14", "v15", "v16", "v17",
+    ].contains(revision) else {
+    fail("explicit fresh revision required")
+  }
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/shared-compute-20261026"
+  let prefix = @fs.read_file(root + "/parent-runner.mbtx")
+  .text()
+  .split("///|\nasync fn main {")
+  .to_array()[0].to_owned()
+  let main = @fs.read_file(
+      "/Users/kq/Workspace/moonrobo/scripts/shared_compute_runner_main.txt",
+    )
+    .text()
+    .replace_all(
+      old="shared_smc_probe.py",
+      new="shared_smc_probe_" + revision + ".py",
+    )
+    .replace_all(
+      old="run_shared_compute.mbtx",
+      new="run_shared_compute_" + revision + ".mbtx",
+    )
+  let entries = [
+    ("run_shared_compute_" + revision + ".mbtx", prefix + main),
+    (
+      "shared_smc_probe_" + revision + ".py",
+      @fs.read_file(
+        "/Users/kq/Workspace/moonrobo/providers/motion_learning/shared_smc_probe.py",
+      ).text(),
+    ),
+  ]
+  for (name, contents) in entries {
+    @fs.write_file(root + "/" + name, contents, create_mode=CreateNew)
+    guard @process.run("scp", [
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        root + "/" + name,
+        "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/" +
+        name,
+      ]) ==
+      0 else {
+      fail("publish failed")
+    }
+  }
+}

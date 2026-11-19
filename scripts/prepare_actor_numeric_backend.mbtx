@@ -1,0 +1,146 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, rev] &&
+    ["prepare", "build"].contains(mode) &&
+    ["a", "b", "c", "d", "e"].contains(rev) else {
+    fail("prepare/build a/b/c/d")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let runner = "build_actor_numeric_backend_" + rev + ".mbtx"
+  if mode == "prepare" {
+    let source = @fs.read_file(
+      "output/spark-runtime-20261024/compiled-mlp-20261028-a/build_compiled_window_plugin_e.mbtx",
+    ).text()
+    let code = source
+      .replace_all(
+        old="aoti-window-plugin-build-e",
+        new="actor-numeric-plugin-build-a",
+      )
+      .replace_all(
+        old="libmoonrobo_compiled_window_e.so",
+        new="libmoonrobo_actor_numeric_a.so",
+      )
+      .replace_all(
+        old="moonrobo-compiled-window-a/src",
+        new="moonrobo-actor-numeric-a/src",
+      )
+      .replace_all(
+        old="\"-DMR_ENABLE_AOTI=1\"",
+        new="\"-DMR_ENABLE_AOTI=1\",\"-DMR_AOTI_ADJOINT_DIAGNOSTICS=1\"",
+      )
+      .replace_all(
+        old="async fn main {\n  require_idle()",
+        new=(
+          #|async fn main {
+          #|  require_idle()
+          #|  let ws=base+"/workspace/moonrobo-actor-numeric-a"
+          #|  guard !@fs.exists(ws) else {fail("fresh numeric backend workspace")}
+          #|  run("actor-numeric-copy-a","cp",["-a","--reflink=auto",base+"/workspace/moonrobo-compiled-window-a",ws])
+          #|  run("actor-numeric-adapter-a","cp",[base+"/actor_numeric_adapter_a.cpp",ws+"/src/learning_tensor/adapter.cpp"])
+          #|  run("actor-numeric-aoti-a","cp",[base+"/actor_numeric_aoti_a.inc",ws+"/src/learning_tensor/compiled_block.inc"])
+        ),
+      )
+    let code = code
+      .replace_all(old="-numeric-a", new="-numeric-" + rev)
+      .replace_all(old="_numeric_a.", new="_numeric_" + rev + ".")
+      .replace_all(old="-build-a", new="-build-" + rev)
+      .replace_all(old="-copy-a", new="-copy-" + rev)
+      .replace_all(old="-adapter-a", new="-adapter-" + rev)
+      .replace_all(old="-aoti-a", new="-aoti-" + rev)
+      .replace_all(old="adapter_a.cpp", new="adapter_" + rev + ".cpp")
+      .replace_all(old="aoti_a.inc", new="aoti_" + rev + ".inc")
+    let code = if ["c", "d", "e"].contains(rev) {
+      code.replace_all(
+        old="  container(\"actor-numeric-plugin-build-" + rev + "\"",
+        new="  run(\"copy-adam-" +
+          rev +
+          "\",\"cp\",[base+\"/actor_numeric_adam_" +
+          rev +
+          ".inc\",ws+\"/src/learning_tensor/adam_smc.inc\"])\n  container(\"actor-numeric-plugin-build-" +
+          rev +
+          "\"",
+      )
+    } else {
+      code
+    }
+    if ["c", "d", "e"].contains(rev) {
+      @fs.write_file(
+        out + "/actor_numeric_adam_" + rev + ".inc",
+        @fs.read_file("src/learning_tensor/adam_smc.inc"),
+        create_mode=CreateNew,
+      )
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/actor_numeric_adam_" + rev + ".inc",
+          host + ":" + base + "/actor_numeric_adam_" + rev + ".inc",
+        ]),
+        0,
+      )
+    }
+    for
+      (name, content) in [
+        (runner, code),
+        (
+          "actor_numeric_adapter_" + rev + ".cpp",
+          @fs.read_file("src/learning_tensor/adapter.cpp").text(),
+        ),
+        (
+          "actor_numeric_aoti_" + rev + ".inc",
+          @fs.read_file("src/learning_tensor/compiled_block.inc").text(),
+        ),
+      ] {
+      @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+      if name == runner {
+        assert_eq(
+          @process.run("moon", ["check", "--target", "native", out + "/" + name]),
+          0,
+        )
+      }
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      runner,
+    ],
+    stdout=@process.redirect_to_file(
+      out + "/numeric-backend-build-" + rev + ".stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      out + "/numeric-backend-build-" + rev + ".stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  assert_eq(code, 0)
+}

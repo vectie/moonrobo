@@ -1,0 +1,165 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: fit_g1_temporal_disturbance.mbtx REPO TEMPORAL_STUDY OUTPUT",
+  )
+  let root = args[1]
+  let source = args[2]
+  let output = args[3]
+  assert_false(@fs.exists(output), msg="choose a fresh study directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "temporal_disturbance.py", "temporal_training.py", "temporal_actor.py", "policy.py",
+      "dynamics.py", "cpu_physics.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/provider-sources/teacher_feedback.py",
+    @fs.read_file(source + "/provider-sources/teacher_feedback.py").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  for name in ["collection.json", "experiment.json", "teacher.json"] {
+    @fs.write_file(
+      output + "/" + name,
+      @fs.read_file(source + "/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let config = @json.parse(
+    @fs.read_file(root + "/examples/learning/g1-temporal-disturbance.json").text(),
+  )
+  let cells : Array[Json] = []
+  for (arm, std) in [("clean", 0.0), ("disturbed", 0.005)] {
+    let cell = @json.parse(config.stringify())
+    guard cell is Object(fields) else { fail("expected config") }
+    fields.set("arm", Json(arm))
+    fields.set("collection_latent_std", Json(std))
+    @fs.mkdir(output + "/" + arm, recursive=true)
+    @fs.write_file(
+      output + "/" + arm + "/config.json",
+      cell.stringify(indent=2),
+      create_mode=CreateOrTruncate,
+    )
+    cells.push({ "arm": Json(arm), "config": cell })
+  }
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-temporal-disturbance-charter.v1",
+        "cells": Json(cells),
+        "incoming_study": Json(source),
+        "shared_teacher_data": Json(source + "/teacher-data/dataset.json"),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @async.with_task_group() <| group => {
+    let processes : Array[(@process.Process, String)] = []
+    for arm in ["clean", "disturbed"] {
+      let destination = output + "/" + arm
+      let process = @process.spawn(
+        group,
+        "moon",
+        native_args(root, [
+          output + "/provider-sources/temporal_disturbance.py",
+          "--config",
+          destination + "/config.json",
+          "--collection",
+          output + "/collection.json",
+          "--experiment",
+          output + "/experiment.json",
+          "--teacher",
+          output + "/teacher.json",
+          "--data",
+          source + "/teacher-data/dataset.json",
+          "--policies",
+          source + "/preview/policy",
+          "--scene",
+          root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+          "--output",
+          destination,
+        ]),
+        stdout=@process.redirect_to_file(
+          destination + "/train.log",
+          create_mode=CreateOrTruncate,
+        ),
+        stderr=@process.redirect_to_file(
+          destination + "/stderr.log",
+          create_mode=CreateOrTruncate,
+        ),
+      )
+      processes.push((process, arm))
+    }
+    for (process, arm) in processes {
+      assert_eq(process.wait(), 0, msg=arm + " failed")
+      let report = @json.parse(
+        @fs.read_file(output + "/" + arm + "/policy/report.json").text(),
+      )
+      guard report is { "runs": Array(runs), .. } else { fail("missing runs") }
+      for row in runs {
+        guard row is Object(fields) else { fail("expected run") }
+        println(
+          (
+            {
+              "arm": Json(arm),
+              "seed": fields["seed"],
+              "selected_round": fields["selected_round"],
+              "candidate": fields["candidate"],
+              "qualifies": fields["qualifies"],
+            } : Json).stringify(),
+        )
+      }
+    }
+  }
+}
+
+///|
+/// Historical .py names are inert routing descriptors. Each target parses
+/// original flags and calls real native APIs; unknown descriptors fail closed.
+fn native_args(root : String, command : Array[String]) -> Array[String] raise {
+  guard !command.is_empty() else { fail("missing native provider descriptor") }
+  let descriptor = command[0].split("/").last().unwrap_or("").to_owned()
+  let training = [
+    "policy.py", "dynamics.py", "cpu_physics.py", "teacher_step_verification.py",
+    "compare_dynamics.py",
+  ].contains(descriptor)
+  let package = if training {
+    "src/learning_training/launch/cmd"
+  } else {
+    "src/learning_balance/launch"
+  }
+  [
+    "run",
+    "--quiet",
+    "--warn-list",
+    "-a",
+    root + "/scripts/run_native_learning.mbtx",
+    root,
+    package,
+    ..command,
+    ..if training {
+      []
+    } else {
+      ["--repo", root]
+    },
+  ]
+}

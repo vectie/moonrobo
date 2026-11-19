@@ -1,0 +1,34 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env" }
+async fn run(p : String,a : Array[String]) -> Unit {guard @process.run(p,a)==0else{fail(p)}}
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo";let dir=root+"/output/spark-runtime-20261024/coefficient-assembly-20261028"
+  let b="/home/wlc004s/moonrobo/private/shared-compute-20261026-a";let host="wlc004s@192.168.2.179";let sock="/tmp/moonrobo-operator-179.sock"
+  guard @env.args() is [_,mode]else{fail("prepare|stage|build")}
+  if mode=="prepare" {
+    let mut f=@fs.read_file(dir+"/coefficient_assembly_fixture_a.mbt").text()
+    f=rep(f,"split_so3_coefficients: [Some(\"split\"),Some(\"both\")].contains(@env.get_env_var(\"MOONROBO_TOP3_VARIANT\")),","split_so3_coefficients: false,\n      split_actor_return: @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") == Some(\"both\"),")
+    f=rep(f,"fused_so3_coefficients_forward: [Some(\"forward\"),Some(\"both\")].contains(@env.get_env_var(\"MOONROBO_TOP3_VARIANT\")),","fused_so3_coefficients_forward: true,")
+    f=rep(f,"split_so3_coefficients: split, fused_so3_coefficients_forward: forward,","split_so3_coefficients: false, fused_so3_coefficients_forward: true, split_actor_return: enabled,")
+    f=rep(f,"      let split = enabled && (factor == \"split\" || factor == \"both\")\n      let forward = enabled && (factor == \"forward\" || factor == \"both\")","      guard factor == \"both\" else { fail(\"return split ABBA variant\") }")
+    @fs.write_file(dir+"/return_split_fixture_a.mbt",f,create_mode=CreateNew)
+    for (a,to) in [("build_coefficient_assembly_a.mbtx","build_return_split_a.mbtx"),("run_coefficient_assembly_a.mbtx","run_return_split_a.mbtx"),("invoke_coefficient_assembly_a.mbtx","invoke_return_split_a.mbtx")] {
+      let s=@fs.read_file(dir+"/"+a).text().replace_all(old="coefficient-assembly",new="return-split").replace_all(old="coefficient_assembly_a",new="return_split_a").replace_all(old="coefficient_assembly_fixture_a",new="return_split_fixture_a").replace_all(old="libmoonrobo_return_split_a.so",new="libmoonrobo_coefficient_assembly_a.so")
+      @fs.write_file(dir+"/"+to,s,create_mode=CreateNew)
+    }
+    // Only closed native task outputs; no training inputs or compiler caches.
+    let mut cache=@fs.read_file(root+"/output/spark-runtime-20261024/geometry-vjp-20261028/advise_outputs.mbtx").text()
+    cache=rep(cache,"[\"conditional-0-a\",\"conditional-1-a\",\"conditional-2-a\",\"conditional-3-a\",\"tail-world-abba-a\",\"cross-actor-abba-a\",\"tail-actor-abba-a\",\"both-actor-abba-a\"]","[\"cross-actor-gate-a\",\"cross-actor-abba-a\",\"tail-actor-abba-a\",\"both-actor-abba-a\",\"scoped-both-actor-gate-b\",\"scoped-both-actor-off-b\",\"baseline-world-events-a\",\"tail-world-events-a\",\"baseline-actor-events-a\",\"both-actor-events-a\"]")
+    cache=cache.replace_all(old="geometry-vjp-",new="geometry-tail-").replace_all(old="geometry-tail-output-cache-advice-a.json",new="coefficient-assembly-older-output-cache-advice-a.json")
+    @fs.write_file(dir+"/advise_older.mbtx",cache,create_mode=CreateNew);return
+  }
+  if mode=="stage" {
+    for f in ["return_split_fixture_a.mbt","build_return_split_a.mbtx","run_return_split_a.mbtx","invoke_return_split_a.mbtx","advise_older.mbtx"] {run("scp",["-o","ControlPath="+sock,dir+"/"+f,host+":"+b+"/"+f])}
+    run("ssh",["-S",sock,host,"test ! -e "+b+"/workspace/moonrobo-return-split-a"])
+    run("ssh",["-S",sock,host,"cp -a --reflink=auto "+b+"/workspace/moonrobo-coefficient-assembly-a "+b+"/workspace/moonrobo-return-split-a"])
+    for f in ["execution_optimizations.mbt","learning.mbt","actor_microbatch.mbt","cmd/optimizations.mbt","cmd/optimizations_wbtest.mbt"] {run("scp",["-o","ControlPath="+sock,root+"/src/learning_aligned_gpu/"+f,host+":"+b+"/workspace/moonrobo-return-split-a/src/learning_aligned_gpu/"+f])}
+    run("ssh",["-S",sock,host,"cp "+b+"/return_split_fixture_a.mbt "+b+"/workspace/moonrobo-return-split-a/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"]);return
+  }
+  guard mode=="build"else{fail("mode")}
+  run("ssh",["-S",sock,host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+b+"/build_return_split_a.mbtx -- gate-build-return-split-a"])
+}

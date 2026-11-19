@@ -1,0 +1,321 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=out.text() + err.text())
+  out.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    7,
+    msg="usage: report_g1_temporal_ppo.mbtx REPO PPO_STUDY PRIOR_TEACHER_STUDY NOISE_STUDY MOONDATA_ROOT OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let report = read(study + "/policy/report.json")
+  let charter = read(study + "/charter.json")
+  assert_eq(field(report, "format"), "moonrobo.g1-temporal-ppo-fit.v1")
+  assert_eq(field(report, "config"), field(charter, "config"))
+  assert_eq(field(report, "learned_transition_model_used"), false)
+  assert_eq(field(report, "physical_execution_allowed"), false)
+  assert_eq(
+    field(report, "provider_sha256"),
+    Json(digest(study + "/provider-sources/temporal_ppo.py")),
+  )
+  guard field(charter, "incoming") is String(incoming) else {
+    fail("missing incoming study")
+  }
+  @fs.write_file(
+    study + "/provider-sources/temporal_ppo_verification.py",
+    @fs.read_file(
+      root + "/providers/motion_learning/temporal_ppo_verification.py",
+    ).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  ignore(
+    run(root + "/target/learning-venv/bin/python", [
+      study + "/provider-sources/temporal_ppo_verification.py",
+      "--study",
+      study,
+      "--incoming",
+      incoming + "/preview/policy",
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--output",
+      study + "/numerical-verification.json",
+    ]),
+  )
+  let config = field(report, "config")
+  let prior = read(args[3] + "/preview/policy/report.json")
+  let prior_runs = array(field(prior, "runs"))
+  let rows : Array[Json] = []
+  let seeds : Array[Int32] = []
+  for result in array(field(report, "runs")) {
+    let seed = num(field(result, "seed")).to_int()
+    assert_false(seeds.contains(seed))
+    seeds.push(seed)
+    let history = array(field(result, "history"))
+    assert_eq(history.length(), num(field(config, "iterations")).to_int() + 1)
+    assert_eq(field(result, "normalization_unchanged"), true)
+    assert_eq(field(result, "reload_matches"), true)
+    let initialization = field(result, "initialization")
+    assert_eq(field(initialization, "learned_transition_model_used"), false)
+    assert_eq(field(initialization, "inherited_initial_value_actor_update"), 0)
+    assert_eq(
+      field(initialization, "actor_sha256"),
+      Json(digest(incoming + "/preview/policy/actor-seed-\{seed}.pt")),
+    )
+    assert_eq(
+      field(history[0], "validation"),
+      field(array(field(prior_runs[seed], "history"))[0], "validation"),
+    )
+    let mut actor_steps = 0
+    let mut critic_steps = 0
+    let mut transitions = 0
+    let mut falls = 0
+    for index in 1..<history.length() {
+      let row = history[index]
+      assert_eq(num(field(row, "iteration")).to_int(), index)
+      let count = num(field(row, "collection_transitions")).to_int()
+      let actor = num(field(row, "actor_steps")).to_int()
+      let critic = num(field(row, "critic_steps")).to_int()
+      let maximum_steps = num(field(config, "epochs")).to_int() *
+        ((count + 255) / 256)
+      assert_true(actor > 0 && actor <= maximum_steps)
+      assert_eq(critic, maximum_steps)
+      assert_eq(field(row, "maximum_input_alignment_error"), 0)
+      actor_steps += actor
+      critic_steps += critic
+      transitions += count
+      falls += num(field(row, "collection_falls")).to_int()
+      assert_eq(num(field(row, "transitions")).to_int(), transitions)
+      assert_eq(num(field(row, "total_actor_steps")).to_int(), actor_steps)
+      assert_eq(num(field(row, "total_critic_steps")).to_int(), critic_steps)
+      assert_eq(num(field(row, "episodes")).to_int(), index * 9)
+    }
+    assert_eq(num(field(result, "training_transitions")).to_int(), transitions)
+    assert_eq(num(field(result, "training_falls")).to_int(), falls)
+    assert_eq(num(field(result, "training_episodes")).to_int(), 90)
+    assert_true(transitions <= 45000)
+    assert_eq(num(field(result, "actor_optimizer_steps")).to_int(), actor_steps)
+    assert_eq(
+      num(field(result, "critic_optimizer_steps")).to_int(),
+      critic_steps,
+    )
+    let log = study + "/policy/ppo-physics-seed-\{seed}.jsonl.gz"
+    ignore(run("gzip", ["-t", log]))
+    assert_eq(field(field(result, "physics_log"), "sha256"), Json(digest(log)))
+    let destination = study + "/prior-teacher-evaluation-seed-\{seed}"
+    ignore(
+      run(root + "/target/learning-venv/bin/python", [
+        study + "/provider-sources/temporal_training.py",
+        "evaluate",
+        "--checkpoint",
+        args[3] + "/preview/policy/actor-seed-\{seed}.pt",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--collection",
+        incoming + "/collection.json",
+        "--teacher",
+        incoming + "/teacher.json",
+        "--experiment",
+        incoming + "/experiment.json",
+        "--config",
+        study + "/config.json",
+        "--output",
+        destination,
+      ]),
+    )
+    let actual = read(study + "/policy/physics-seed-\{seed}.json")
+    assert_eq(
+      field(field(actual, "baseline"), "summary"),
+      field(result, "baseline"),
+    )
+    assert_eq(
+      field(field(actual, "candidate"), "summary"),
+      field(result, "candidate"),
+    )
+    let counts : Array[Json] = []
+    for case_id in ["stand", "sway", "wave"] {
+      let trials = array(field(field(actual, "candidate"), "trials")).filter(t => {
+        field(t, "case_id") == Json(case_id)
+      })
+      assert_eq(trials.length(), 3)
+      assert_eq(
+        trials.map(t => field(t, "seed")),
+        array(field(config, "test_seeds")),
+      )
+      counts.push({
+        "case": Json(case_id),
+        "falls": Json(
+          trials.filter(t => field(t, "failed") == (true : Json)).length(),
+        ),
+        "trials": 3,
+      })
+    }
+    let row : Json = {
+      "seed": Json(seed),
+      "selected_iteration": field(result, "selected_update"),
+      "incoming": field(result, "baseline"),
+      "ppo": field(result, "candidate"),
+      "prior_teacher_model": field(
+        read(destination + "/physics.json"),
+        "summary",
+      ),
+      "case_counts": Json(counts),
+      "qualifies": field(result, "qualifies"),
+      "training_transitions": Json(transitions),
+      "training_episodes": 90,
+      "training_falls": Json(falls),
+      "actor_optimizer_steps": Json(actor_steps),
+      "critic_optimizer_steps": Json(critic_steps),
+      "training_seconds": field(result, "training_seconds"),
+      "history": Json(history),
+    }
+    rows.push(row)
+    println(
+      (
+        {
+          "seed": Json(seed),
+          "selected_iteration": field(result, "selected_update"),
+          "incoming": field(result, "baseline"),
+          "ppo": field(result, "candidate"),
+          "prior_teacher_model": field(row, "prior_teacher_model"),
+          "case_counts": Json(counts),
+          "training_transitions": Json(transitions),
+          "actor_steps": Json(actor_steps),
+        } : Json).stringify(),
+    )
+  }
+  assert_eq(seeds, [0, 1, 2])
+  let imported = @json.parse(
+    run(
+      root +
+      "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe",
+      [
+        "import",
+        args[5],
+        study,
+        "temporal-ppo-preview",
+        @env.now().reinterpret_as_int64().to_string(),
+      ],
+    ),
+  )
+  assert_eq(field(imported, "physical_execution_allowed"), false)
+  let ppo_payloads = array(field(imported, "payloads")).filter(p => {
+    field(field(p, "data_ref"), "kind") == "learning-ppo-physics"
+  })
+  assert_eq(ppo_payloads.length(), 3)
+  for payload in ppo_payloads {
+    guard field(payload, "relative_path") is String(relative) else {
+      fail("missing PPO source")
+    }
+    assert_eq(
+      field(field(payload, "data_ref"), "checksum"),
+      Json("sha256:" + digest(study + "/" + relative)),
+    )
+  }
+  let validation = @json.parse(
+    run(root + "/_build/native/debug/build/cmd/moondata/moondata.exe", [
+      "validate",
+      args[5],
+    ]),
+  )
+  assert_eq(field(validation, "status"), "passed")
+  assert_eq(field(validation, "finding_count"), 0)
+  let noise = read(args[4] + "/report.json")
+  ignore(run("gzip", ["-t", args[4] + "/noise-physics.jsonl.gz"]))
+  assert_eq(
+    field(noise, "log_sha256"),
+    Json(digest(args[4] + "/noise-physics.jsonl.gz")),
+  )
+  assert_eq(array(field(noise, "rows")).length(), 12)
+  let noise_summary : Array[Json] = []
+  for std in [0.0, 0.005, 0.01, 0.05] {
+    let selected = array(field(noise, "rows")).filter(r => {
+      num(field(r, "latent_std")) == std
+    })
+    assert_eq(selected.length(), 3)
+    let mut survival = 0.0
+    let mut falls = 0
+    let mut transitions = 0
+    for row in selected {
+      survival += num(field(row, "mean_survival_s"))
+      falls += num(field(row, "falls")).to_int()
+      transitions += num(field(row, "transitions")).to_int()
+    }
+    noise_summary.push({
+      "latent_std": Json(std),
+      "episodes": 27,
+      "falls": Json(falls),
+      "transitions": Json(transitions),
+      "mean_survival_s": Json(survival / 3.0),
+    })
+  }
+  println(
+    ({ "noise_summary": Json(noise_summary), "validation": validation } : Json).stringify(),
+  )
+  @fs.write_file(
+    args[6],
+    (
+      {
+        "format": "moonrobo.g1-temporal-ppo-study.v1",
+        "runs": Json(rows),
+        "config": config,
+        "numerical_verification": read(study + "/numerical-verification.json"),
+        "native_representative_collection_check": read(
+          study + "/native-check.json",
+        ),
+        "noise_calibration": noise,
+        "noise_summary": Json(noise_summary),
+        "registered": imported,
+        "validation": validation,
+        "physical_execution_allowed": false,
+        "scope": "Actual finite-task temporal PPO with inherited supervised actors/initial physical values; prior teacher-only model policies re-scored at identical 9400-9402 conditions. Different training histories/budgets, no matched cost-to-quality claim. Separate training-only no-learning noise calibration.",
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

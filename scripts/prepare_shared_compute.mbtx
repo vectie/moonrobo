@@ -1,0 +1,129 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn run(program : String, args : Array[String]) -> Unit {
+  guard @process.run(program, args) == 0 else { fail(program + " failed") }
+}
+
+///|
+async fn main {
+  let local_root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/shared-compute-20261026"
+  let remote = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let old = "/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a"
+  let socket = "/tmp/moonrobo-operator-179.sock"
+  let host = "wlc004s@192.168.2.179"
+  guard !@fs.exists(local_root) else {
+    fail("fresh shared evidence root required")
+  }
+  @fs.mkdir(local_root)
+  run("scp", [
+    "-o",
+    "ControlPath=" + socket,
+    host + ":" + old + "/run_followup_pairs.mbtx",
+    local_root + "/parent-runner.mbtx",
+  ])
+  let original = @fs.read_file(local_root + "/parent-runner.mbtx").text()
+  let chunks = original.split("///|\nasync fn main {").to_array()
+  guard chunks.length() == 2 else { fail("runner main anchor") }
+  let extension = @fs.read_file(
+    "/Users/kq/Workspace/moonrobo/scripts/shared_compute_runner_main.txt",
+  ).text()
+  @fs.write_file(
+    local_root + "/run_shared_compute.mbtx",
+    chunks[0].to_owned() + extension,
+    create_mode=CreateNew,
+  )
+  let builder = @fs.read_file(
+      "/Users/kq/Workspace/moonrobo/scripts/build_hotspot_candidates_v2.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="/home/wlc004s/moonrobo/private/hotspot-optimization-20261025-b",
+      new=remote,
+    )
+  @fs.write_file(
+    local_root + "/build_shared_compute.mbtx",
+    builder,
+    create_mode=CreateNew,
+  )
+  let staging = @fs.read_file(
+      "/Users/kq/Workspace/moonrobo/scripts/stage_hotspot_fixture_workspace.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="let selected_tests = [",
+      new="let selected_tests = [\n  \"src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt\",",
+    )
+  @fs.write_file(
+    local_root + "/stage_hotspot_fixture_workspace.mbtx",
+    staging,
+    create_mode=CreateNew,
+  )
+  run("env", [
+    "COPYFILE_DISABLE=1",
+    "tar",
+    "--exclude=_build",
+    "--exclude=.mooncakes",
+    "--exclude=target",
+    "-czf",
+    local_root + "/overlay.tar.gz",
+    "-C",
+    "/Users/kq/Workspace/moonrobo",
+    "moon.mod",
+    "src/learning_aligned",
+    "src/learning_aligned_gpu",
+    "src/learning_tensor",
+  ])
+  run("env", [
+    "COPYFILE_DISABLE=1",
+    "tar",
+    "--exclude=__pycache__",
+    "-czf",
+    local_root + "/smc-source.tar.gz",
+    "-C",
+    "/Users/kq/Workspace/smc",
+    "supermimic",
+    "LICENSE",
+  ])
+  run("ssh", ["-S", socket, host, "mkdir " + remote])
+  for
+    name in [
+      "overlay.tar.gz", "smc-source.tar.gz", "run_shared_compute.mbtx", "build_shared_compute.mbtx",
+      "stage_hotspot_fixture_workspace.mbtx",
+    ] {
+    run("scp", [
+      "-o",
+      "ControlPath=" + socket,
+      local_root + "/" + name,
+      host + ":" + remote + "/" + name,
+    ])
+  }
+  run("scp", [
+    "-o",
+    "ControlPath=" + socket,
+    "/Users/kq/Workspace/moonrobo/providers/motion_learning/shared_smc_probe.py",
+    host + ":" + remote + "/shared_smc_probe.py",
+  ])
+  run("ssh", [
+    "-S",
+    socket,
+    host,
+    "cp " +
+    old +
+    "/libmoonrobo_learning_tensor.so " +
+    remote +
+    "/libmoonrobo_learning_tensor.so",
+  ])
+  run("ssh", [
+    "-S",
+    socket,
+    host,
+    "tar -xzf " + remote + "/smc-source.tar.gz -C " + remote,
+  ])
+  println("Shared fixture staged; originals and guard implementation retained")
+}

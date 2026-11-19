@@ -1,0 +1,42 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/layernorm-full-retest-20261026"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  guard @process.run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/advise_full_ln_csv_a.mbtx",
+      "wlc004s@192.168.2.179:" + base + "/advise_full_ln_csv_a.mbtx",
+    ]) ==
+    0 else {
+    fail("publish")
+  }
+  guard @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179",
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/advise_full_ln_csv_a.mbtx -- /home/wlc004s/moonrobo/private/bones-seed/source/g1/csv 20000",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/csv-cache-a.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/csv-cache-a.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ) ==
+    0 else {
+    fail("CSV advice failed")
+  }
+}

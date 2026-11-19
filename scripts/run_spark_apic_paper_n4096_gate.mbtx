@@ -1,0 +1,1211 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/x/crypto",
+}
+
+///|
+let repo = "/workspace/moonrobo"
+
+///|
+fn config_path() -> String {
+  repo + "/examples/learning/g1-apic-export-paper-n4096.json"
+}
+
+///|
+fn bundle_path() -> String {
+  "/gate/g1-paper-n4096-self-collision-apic"
+}
+
+///|
+fn manifest_path() -> String {
+  bundle_path() + "/manifest.json"
+}
+
+///|
+fn gate_mode(args : Array[String]) -> String raise {
+  match args {
+    [_, mode, _] if mode == "export" || mode == "oracle" || mode == "replay" =>
+      mode
+    _ =>
+      fail(
+        "usage: run_spark_apic_paper_n4096_gate.mbtx {export|oracle|replay} PINS.json; N4096 true self collisions, paper-4096, fresh 64GiB/no-swap/<=4CPU cgroup; host verifies image ID; no automatic retry",
+      )
+  }
+}
+
+///|
+let tape = "/gate/tape-paper-n4096-v2.json"
+
+///|
+let oracle = "/gate/sdk-oracle-paper-n4096.json"
+
+///|
+let report = "/gate/replay-report-paper-n4096.json"
+
+///|
+let scene : String = repo +
+  "/data/g1_description-paper-self-collision/scene.xml"
+
+///|
+let usd : String = repo +
+  "/data/g1_usd-paper-self-collision/g1_29dof/g1_29dof.usda"
+
+///|
+let usd_file_limit_bytes = 67108864L
+
+///|
+let authoring = "/opt/moonrobo/apic-authoring/libmoonrobo_apic_authoring.so"
+
+///|
+let manifest_limit_bytes = 67108864L
+
+///|
+let cgroup_limit_bytes = 68719476736L
+
+///|
+let physics_reserve_bytes = 25769803776L
+
+///|
+let authoring_reserve_bytes = 8589934592L
+
+///|
+let selected_worlds : Array[Int32] = [0, 2048, 4095]
+
+///|
+let payload_file_limit_bytes = 1073741824L
+
+///|
+let payload_total_limit_bytes = 4294967296L
+
+///|
+let shared_union_limit_bytes = 2147483648L
+
+///|
+let replay_planned_limit_bytes = 17179869184L
+
+///|
+fn exact_metadata_bytes(value : Json, maximum : Int64) -> Int64 raise {
+  let result = match value {
+    Number(number) => {
+      guard !number.is_nan() &&
+        !number.is_inf() &&
+        number > 0.0 &&
+        number <= maximum.to_double() else {
+        fail("invalid numeric metadata byte count")
+      }
+      let result = number.to_int64()
+      guard result.to_double() == number else {
+        fail("fractional metadata byte count")
+      }
+      result
+    }
+    String(text) => {
+      guard !text.is_empty() && text.iter().all(c => c >= '0' && c <= '9') else {
+        fail("metadata byte string must contain only digits")
+      }
+      @string.parse_int64(text)
+    }
+    _ => fail("metadata byte count must be an integer number or string")
+  }
+  guard result > 0L && result <= maximum else {
+    fail("metadata byte count exceeds Paper member bound")
+  }
+  result
+}
+
+///|
+fn bounded_inventory_add(
+  total : Int64,
+  bytes : Int64,
+  maximum : Int64,
+) -> Int64 raise {
+  guard total >= 0L &&
+    total <= maximum &&
+    bytes > 0L &&
+    bytes <= maximum - total else {
+    fail("N4096 inventory exceeds unchanged Paper capacity")
+  }
+  total + bytes
+}
+
+///|
+fn replay_projection(
+  shared : Int64,
+  payload : Int64,
+  largest : Int64,
+) -> Int64 raise {
+  guard shared > 0L &&
+    shared <= shared_union_limit_bytes &&
+    payload > 0L &&
+    payload <= payload_total_limit_bytes &&
+    largest > 0L &&
+    largest <= payload_file_limit_bytes &&
+    largest <= payload else {
+    fail("invalid N4096 resource inventory")
+  }
+  // All operands are bounded above before arithmetic; maximum is 27 GiB.
+  shared * 8L + payload * 2L + largest * 2L + 1073741824L
+}
+
+///|
+fn require_replay_projection(projected : Int64) -> Unit raise {
+  guard projected > 0L && projected <= replay_planned_limit_bytes else {
+    fail(
+      "N4096 artifact exceeds unchanged 16 GiB native replay planned cap; no cap override",
+    )
+  }
+}
+
+///|
+async fn bounded_payload_path(relative : String) -> String {
+  guard !relative.is_empty() &&
+    @utf8.encode(relative).length() <= 1024 &&
+    !relative.has_prefix("/") &&
+    !relative.contains("\u{0}") else {
+    fail("invalid N4096 payload path")
+  }
+  let parts = relative.split("/").to_array()
+  let mut path = bundle_path()
+  for i, part in parts {
+    guard part != "" && part != "." && part != ".." else {
+      fail("unsafe N4096 payload path")
+    }
+    path += "/" + part.to_owned()
+    if i + 1 == parts.length() {
+      guard @fs.kind(path, follow_symlink=false) == Regular else {
+        fail("payload must be regular")
+      }
+    } else {
+      guard @fs.kind(path, follow_symlink=false) == Directory else {
+        fail("payload directory cannot be symlink")
+      }
+    }
+  }
+  guard @fs.realpath(path) == path else {
+    fail("payload path must remain canonical")
+  }
+  path
+}
+
+///|
+async fn artifact_budget(mode : String, pins : Pins) -> Json {
+  if mode == "export" {
+    return {
+      "format": "moonrobo.apic-paper-n4096-artifact-budget.v1",
+      "status": "not_yet_exported",
+      "manifest_sha256": Json::null(),
+      "shared_numeric_union_bytes": Json::null(),
+      "payload_bytes": Json::null(),
+      "native_replay_projection_bytes": Json::null(),
+      "vendor_private_scratch_upper_bound_bytes": Json::null(),
+      "n4096_peak_bound_proved": false,
+      "fixed_reserve_is_only_floor": true,
+    }
+  }
+  let manifest = read_pinned_json(
+    manifest_path(),
+    manifest_limit_bytes,
+    pins.manifest_sha256.unwrap_or(""),
+  )
+  verify_manifest(manifest, pins)
+  guard field(manifest, "files") is Array(files) &&
+    files.length() >= 4 &&
+    files.length() <= 4096 &&
+    field(manifest, "shared_regions") is Array(regions) &&
+    regions.length() > 0 &&
+    regions.length() <= 8192 else {
+    fail("N4096 artifact file/shared-region inventory exceeds Paper bounds")
+  }
+  let names : Map[String, Bool] = {}
+  let mut payload = 0L
+  let mut largest = 0L
+  for file in files {
+    guard field(file, "path") is String(relative) &&
+      field(file, "sha256") is String(expected) &&
+      sha(expected) &&
+      !names.contains(relative) else {
+      fail("invalid/duplicate pinned payload entry")
+    }
+    names[relative] = true
+    let path = bounded_payload_path(relative)
+    let handle = @fs.open(path, mode=ReadOnly)
+    let size = handle.size()
+    handle.close()
+    guard size > 0L && size <= payload_file_limit_bytes else {
+      fail("payload exceeds Paper member bound")
+    }
+    payload = bounded_inventory_add(payload, size, payload_total_limit_bytes)
+    largest = largest.max(size)
+    guard file_sha(path, payload_file_limit_bytes) == expected else {
+      fail("N4096 payload SHA mismatch")
+    }
+  }
+  let region_names : Map[String, Bool] = {}
+  let mut shared = 0L
+  for region in regions {
+    guard field(region, "name") is String(name) &&
+      !name.is_empty() &&
+      !region_names.contains(name) else {
+      fail("invalid/duplicate shared-region identity")
+    }
+    region_names[name] = true
+    shared = bounded_inventory_add(
+      shared,
+      exact_metadata_bytes(field(region, "bytes"), payload_file_limit_bytes),
+      shared_union_limit_bytes,
+    )
+  }
+  let projected = replay_projection(shared, payload, largest)
+  {
+    "format": "moonrobo.apic-paper-n4096-artifact-budget.v1",
+    "status": "actual_manifest_and_payloads_verified",
+    "manifest_sha256": Json(pins.manifest_sha256.unwrap_or("")),
+    "file_count": Json(files.length()),
+    "region_count": Json(regions.length()),
+    "shared_numeric_union_bytes": Json(shared),
+    "payload_bytes": Json(payload),
+    "largest_payload_bytes": Json(largest),
+    "native_replay_projection_bytes": Json(projected),
+    "native_replay_planned_limit_bytes": Json(replay_planned_limit_bytes),
+    "native_replay_projection_fits": Json(
+      projected <= replay_planned_limit_bytes,
+    ),
+    "vendor_private_scratch_upper_bound_bytes": Json::null(),
+    "oracle_eager_working_peak_upper_bound_bytes": Json::null(),
+    "n4096_peak_bound_proved": false,
+    "fixed_reserve_is_only_floor": true,
+  }
+}
+
+///|
+struct Pins {
+  executable : String
+  executable_sha256 : String
+  expected_image_id : String
+  adapter_sha256 : String
+  audit_executable : String
+  audit_executable_sha256 : String
+  runtime_adapter : String
+  runtime_adapter_sha256 : String
+  scene_sha256 : String
+  usd_sha256 : String
+  tape_sha256 : String?
+  manifest_sha256 : String?
+  oracle_sha256 : String?
+}
+
+///|
+fn sha(value : String) -> Bool {
+  value.length() == 64 &&
+  value.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(result) else {
+    fail("missing JSON field: " + key)
+  }
+  result
+}
+
+///|
+fn empty_variants() -> Json {
+  let variants : Map[String, String] = Map([])
+  Json(variants)
+}
+
+///|
+fn optional_string(value : Json, key : String) -> String? raise {
+  guard value is Object(fields) else { fail("pins must be a JSON object") }
+  match fields.get(key) {
+    None | Some(Null) => None
+    Some(String(value)) => Some(value)
+    _ => fail("pin field must be a string or null: " + key)
+  }
+}
+
+///|
+fn decode_pins(value : Json) -> Pins raise {
+  guard field(value, "format") == Json("moonrobo.apic-paper-n4096-gate-pins.v1") else {
+    fail("N4096 requires its own explicit caller-supplied binary pins")
+  }
+  {
+    executable: @json.from_json(field(value, "executable")),
+    executable_sha256: @json.from_json(field(value, "executable_sha256")),
+    expected_image_id: @json.from_json(field(value, "expected_image_id")),
+    adapter_sha256: @json.from_json(field(value, "adapter_sha256")),
+    audit_executable: @json.from_json(field(value, "audit_executable")),
+    audit_executable_sha256: @json.from_json(
+      field(value, "audit_executable_sha256"),
+    ),
+    runtime_adapter: @json.from_json(field(value, "runtime_adapter")),
+    runtime_adapter_sha256: @json.from_json(
+      field(value, "runtime_adapter_sha256"),
+    ),
+    scene_sha256: @json.from_json(field(value, "scene_sha256")),
+    usd_sha256: @json.from_json(field(value, "usd_sha256")),
+    tape_sha256: optional_string(value, "tape_sha256"),
+    manifest_sha256: optional_string(value, "manifest_sha256"),
+    oracle_sha256: optional_string(value, "oracle_sha256"),
+  }
+}
+
+///|
+fn[T : ToJson] scalar_or_null(value : T?) -> Json {
+  match value {
+    Some(value) => Json(value)
+    None => Json::null()
+  }
+}
+
+///|
+async fn read_bytes(path : String, limit : Int64) -> Bytes {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected a regular input file: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= limit else { fail("input exceeds byte bound") }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else { fail("input size changed during read") }
+  bytes
+}
+
+///|
+async fn read_json(path : String, limit : Int64) -> Json {
+  @json.parse(@utf8.decode(read_bytes(path, limit)))
+}
+
+///|
+async fn read_pinned_json(
+  path : String,
+  limit : Int64,
+  expected : String,
+) -> Json {
+  let bytes = read_bytes(path, limit)
+  let hash = @crypto.SHA256::new()
+  hash.update(bytes)
+  guard @crypto.bytes_to_hex_string(hash.finalize()) == expected else {
+    fail("pinned JSON bytes differ before decoding: " + path)
+  }
+  @json.parse(@utf8.decode(bytes))
+}
+
+///|
+async fn file_sha(path : String, limit : Int64) -> String {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected a regular pinned file: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= limit else {
+    fail("pinned file exceeds byte bound")
+  }
+  let hash = @crypto.SHA256::new()
+  for offset = 0L; offset < size; {
+    let n = (size - offset).min(65536L).to_int()
+    hash.update(file.read_exactly_at(n, position=offset))
+    continue offset + n.to_int64()
+  }
+  guard file.size() == size else {
+    fail("pinned file size changed during hash")
+  }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn write_json(path : String, value : Json) -> Unit {
+  @fs.write_file(
+    path,
+    value.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+}
+
+///|
+async fn cgroup() -> Json {
+  let values : Map[String, String] = Map([])
+  let errors : Map[String, String] = Map([])
+  for
+    name in [
+      "memory.max", "memory.current", "memory.peak", "memory.events", "memory.events.local",
+      "memory.swap.max", "memory.swap.current", "cpu.max",
+    ] {
+    try {
+      let file = @fs.open("/sys/fs/cgroup/" + name, mode=ReadOnly)
+      defer file.close()
+      let bytes = FixedArray::make(16385, b'\x00')
+      let n = file.read_at(bytes, position=0L)
+      guard n > 0 && n <= 16384 else { fail("missing/oversized cgroup value") }
+      values[name] = @utf8.decode(Bytes::makei(n, i => bytes[i]))
+        .trim()
+        .to_owned()
+    } catch {
+      error => errors[name] = error.to_string()
+    }
+  }
+  { "values": Json(values), "errors": Json(errors) }
+}
+
+///|
+fn verify_cgroup(value : Json) -> Int64 raise {
+  let values : Map[String, String] = @json.from_json(field(value, "values"))
+  guard values.get("memory.max") == Some(cgroup_limit_bytes.to_string()) &&
+    values.get("memory.swap.max") == Some("0") &&
+    values.get("memory.swap.current") == Some("0") &&
+    values.get("memory.current") is Some(current) &&
+    values.get("cpu.max") is Some(cpu) &&
+    values.get("memory.peak") is Some(peak) &&
+    values.get("memory.events") is Some(events) else {
+    fail(
+      "paper N4096 physics gate requires actual 64 GiB cgroup memory, zero swap and readable counters",
+    )
+  }
+  let words = cpu.split(" ").filter(x => x != "").to_array()
+  guard words.length() == 2 else { fail("invalid cpu.max") }
+  let quota = @string.parse_int64(words[0])
+  let period = @string.parse_int64(words[1])
+  guard quota > 0L && period > 0L && period <= 1000000L && quota <= period * 4L else {
+    fail("paper N4096 gate requires a finite CPU quota of at most four cores")
+  }
+  let counts : Map[String, Int64] = Map([])
+  for line in events.split("\n") {
+    let items = line.split(" ").filter(x => x != "").to_array()
+    guard items.length() == 2 else { fail("invalid memory.events") }
+    counts[items[0].to_owned()] = @string.parse_int64(items[1])
+  }
+  guard counts.get("oom") == Some(0L) &&
+    counts.get("oom_kill") == Some(0L) &&
+    counts.get("oom_group_kill").unwrap_or(0L) == 0L else {
+    fail("cgroup reports OOM; retain evidence and stop")
+  }
+  let result = @string.parse_int64(peak)
+  let used = @string.parse_int64(current)
+  guard result > 0L && used >= 0L && used < cgroup_limit_bytes else {
+    fail("invalid cgroup peak/current or exhausted hard limit")
+  }
+  result
+}
+
+///|
+fn admission(host : Int64, used : Int64, cuda : Int64) -> Json raise {
+  guard host > 0L &&
+    host <= 1152921504606846976L &&
+    cuda > 0L &&
+    cuda <= 1152921504606846976L &&
+    used >= 0L &&
+    used < cgroup_limit_bytes else {
+    fail("unknown/invalid memory availability")
+  }
+  let remaining = cgroup_limit_bytes - used
+  let available = host.min(remaining).min(cuda)
+  // Division before multiplication avoids overflow and rounds down safely.
+  let budget = available / 100L * 65L + available % 100L * 65L / 100L
+  let required = physics_reserve_bytes + authoring_reserve_bytes
+  guard required <= budget else {
+    fail(
+      "N4096 refuses admission: 24 GiB physics + 8 GiB authoring reserve exceeds 65% of fresh host/cgroup/CUDA minimum",
+    )
+  }
+  {
+    "format": "moonrobo.apic-paper-n4096-memory-plan.v1",
+    "host_mem_available_bytes": Json(host),
+    "cgroup_remaining_bytes": Json(remaining),
+    "cuda_free_bytes": Json(cuda),
+    "available_minimum_bytes": Json(available),
+    "budget_fraction": 0.65,
+    "admission_budget_bytes": Json(budget),
+    "physics_scene_reserve_bytes": Json(physics_reserve_bytes),
+    "sdk_host_capture_reserve_bytes": Json(authoring_reserve_bytes),
+    "required_reserve_bytes": Json(required),
+    "container_memory_limit_bytes": Json(cgroup_limit_bytes),
+    "estimate_only": true,
+    "peak_bound_proved": false,
+    "n4096_peak_bound_proved": false,
+    "required_reserve_is_only_floor": true,
+    "cuda_and_host_are_not_added_on_unified_memory": true,
+  }
+}
+
+///|
+async fn linux_mem_available() -> Int64 {
+  let file = @fs.open("/proc/meminfo", mode=ReadOnly)
+  defer file.close()
+  let buffer = FixedArray::make(16385, b'\x00')
+  let n = file.read_at(buffer, position=0L)
+  guard n > 0 && n <= 16384 else { fail("unavailable/oversized Linux meminfo") }
+  let text = @utf8.decode(Bytes::makei(n, i => buffer[i]))
+  for line in text.split("\n") {
+    if line.has_prefix("MemAvailable:") {
+      let columns = line.split(" ").filter(x => x != "").to_array()
+      guard columns.length() == 3 && columns[2] == "kB" else {
+        fail("invalid Linux MemAvailable units")
+      }
+      let kb = @string.parse_int64(columns[1])
+      guard kb > 0L && kb <= 1125899906842624L else {
+        fail("invalid Linux MemAvailable")
+      }
+      return kb * 1024L
+    }
+  }
+  fail("Linux MemAvailable absent; no guessed fallback")
+}
+
+///|
+fn inspection_free(value : Json, pins : Pins, now : Int64) -> Int64 raise {
+  guard field(value, "format") == Json("moonrobo.apic-runtime-inspection.v1") &&
+    field(value, "success") == Json(true) &&
+    field(value, "adapter_library") == Json(pins.runtime_adapter) &&
+    field(value, "adapter_library_sha256") == Json(pins.runtime_adapter_sha256) &&
+    field(value, "capacity_profile") == Json("paper-4096") &&
+    field(value, "cuda_device_index") == Json(0) &&
+    field(value, "probe_num_envs") == Json(2) &&
+    field(value, "cuda_total_bytes") == Json::null() &&
+    field(value, "paper_selected_audit_capacity_checked") == Json(true) &&
+    field(value, "paper_selected_audit_capacity_confirmed") == Json(true) &&
+    field(value, "no_graphs_loaded") == Json(true) &&
+    field(value, "physics_validated") == Json(false) else {
+    fail(
+      "fresh inspection must confirm the pinned adapter's optional Paper selected audit ABI without graph loading",
+    )
+  }
+  let started : Int64 = @json.from_json(field(value, "started_unix_ms"))
+  let finished : Int64 = @json.from_json(field(value, "finished_unix_ms"))
+  let free : Int64 = @json.from_json(field(value, "cuda_free_bytes"))
+  guard started > 0L &&
+    finished >= started &&
+    finished - started <= 30000L &&
+    now >= finished &&
+    now - finished <= 15000L &&
+    free > 0L else {
+    fail("CUDA runtime inspection is stale, invalid or timed out")
+  }
+  free
+}
+
+///|
+async fn fresh_admission(folder : String, pins : Pins) -> Json {
+  let output = folder + "/runtime-inspection.json"
+  let args = [
+    "--signal=TERM",
+    "--kill-after=5s",
+    "35s",
+    pins.audit_executable,
+    "inspect-runtime",
+    "--adapter",
+    pins.runtime_adapter,
+    "--device",
+    "0",
+    "--capacity-profile",
+    "paper-4096",
+    "--output",
+    output,
+  ]
+  write_json(folder + "/runtime-inspection-command.json", Json(args))
+  let code = @shell.Cmd(
+    "/usr/bin/timeout",
+    args,
+    stdout=ToFile(folder + "/runtime-inspection.stdout.log"),
+    stderr=ToFile(folder + "/runtime-inspection.stderr.log"),
+  ).status(timeout_ms=45000)
+  guard code == 0 else {
+    fail("bounded runtime inspection failed; no physics process launched")
+  }
+  let inspection = read_json(output, 65536L)
+  let cuda = inspection_free(
+    inspection,
+    pins,
+    @env.now().reinterpret_as_int64(),
+  )
+  let group = cgroup()
+  ignore(verify_cgroup(group))
+  write_json(folder + "/cgroup-at-admission.json", group)
+  let current : String = @json.from_json(
+    field(field(group, "values"), "memory.current"),
+  )
+  let plan = admission(
+    linux_mem_available(),
+    @string.parse_int64(current),
+    cuda,
+  )
+  write_json(folder + "/memory-plan.json", plan)
+  plan
+}
+
+///|
+async fn verify(mode : String, pins : Pins) -> Json {
+  let config = config_path()
+  let manifest = manifest_path()
+  guard @fs.realpath(repo) == repo &&
+    @fs.realpath("/gate") == "/gate" &&
+    pins.executable.has_prefix("/") &&
+    @fs.realpath(pins.executable) == pins.executable &&
+    pins.audit_executable.has_prefix("/") &&
+    @fs.realpath(pins.audit_executable) == pins.audit_executable &&
+    pins.runtime_adapter.has_prefix("/") &&
+    @fs.realpath(pins.runtime_adapter) == pins.runtime_adapter &&
+    sha(pins.executable_sha256) &&
+    sha(pins.adapter_sha256) &&
+    sha(pins.audit_executable_sha256) &&
+    sha(pins.runtime_adapter_sha256) &&
+    sha(pins.scene_sha256) &&
+    sha(pins.usd_sha256) &&
+    pins.scene_sha256 ==
+    "b9f8b0e0cbfa4a82c125ac330b38e1a8bf4c825252caf2c3d0dffe678ca5f7af" &&
+    pins.usd_sha256 ==
+    "7bba6e39dd3da53e5d0b8fa1466c2551f953066bb213d84decdb576eae159c1b" &&
+    pins.expected_image_id.has_prefix("sha256:") &&
+    sha(pins.expected_image_id[7:].to_owned()) else {
+    fail("canonical mounts/executable and exact SHA pins required")
+  }
+  let expected : Json = {
+    "adapter": Json(authoring),
+    "python": "/opt/isaaclab-venv/bin/python3.12",
+    "site_packages": "/opt/isaaclab-venv/lib/python3.12/site-packages",
+    "isaaclab_root": "/opt/moonrobo/sdk/IsaacLab",
+    "newton_root": "/opt/moonrobo/sdk/newton",
+    "usd": Json(usd),
+    "usd_variants": {},
+    "source_mjcf": Json(scene),
+    "output": Json(bundle_path()),
+    "num_envs": 4096,
+    "capacity_profile": "paper-4096",
+    "device_id": 0,
+    "self_collisions": true,
+  }
+  guard read_json(config, 65536L) == expected else {
+    fail("paper N4096 collision-on export configuration changed")
+  }
+  let adapter = if mode == "replay" { pins.runtime_adapter } else { authoring }
+  if mode == "replay" {
+    guard pins.executable == pins.audit_executable &&
+      pins.executable_sha256 == pins.audit_executable_sha256 &&
+      pins.adapter_sha256 == pins.runtime_adapter_sha256 else {
+      fail(
+        "replay executable/adapter must equal the separately pinned runtime probe inputs",
+      )
+    }
+  }
+  let checked : Map[String, Json] = Map([])
+  let inputs = [
+    (pins.executable, pins.executable_sha256, 1073741824L),
+    (adapter, pins.adapter_sha256, 268435456L),
+    (pins.audit_executable, pins.audit_executable_sha256, 1073741824L),
+    (pins.runtime_adapter, pins.runtime_adapter_sha256, 268435456L),
+    (scene, pins.scene_sha256, 16777216L),
+    (usd, pins.usd_sha256, usd_file_limit_bytes),
+  ]
+  if mode != "export" {
+    guard pins.tape_sha256 is Some(tape_sha) &&
+      sha(tape_sha) &&
+      pins.manifest_sha256 is Some(manifest_sha) &&
+      sha(manifest_sha) else {
+      fail(
+        "oracle/replay requires explicitly pinned N4096 v2 tape and new collision-on manifest SHA",
+      )
+    }
+    inputs.push((tape, tape_sha, 67108864L))
+    inputs.push((manifest, manifest_sha, manifest_limit_bytes))
+    let settings = read_pinned_json(tape, 67108864L, tape_sha)
+    guard field(settings, "format") == Json("moonrobo.apic-audit-tape.v2") &&
+      field(settings, "num_envs") == Json(4096) &&
+      field(settings, "selected_worlds") == Json(selected_worlds) &&
+      field(settings, "operations") is Array(ops) &&
+      ops.length() == 27 &&
+      ops.filter(op => field(op, "kind") == Json("step")).length() == 8 else {
+      fail(
+        "paper N4096 gate requires v2 selected-three 27-operation/eight-step tape",
+      )
+    }
+    verify_manifest(
+      read_pinned_json(manifest, manifest_limit_bytes, manifest_sha),
+      pins,
+    )
+  }
+  if mode == "replay" {
+    guard pins.oracle_sha256 is Some(value) && sha(value) else {
+      fail("replay requires the actual independent oracle SHA")
+    }
+    inputs.push((oracle, value, 16777216L))
+  }
+  for (path, expected_sha, limit) in inputs {
+    guard file_sha(path, limit) == expected_sha else {
+      fail("pinned file mismatch: " + path)
+    }
+    checked[path] = Json(expected_sha)
+  }
+  checked[config] = Json(file_sha(config, 65536L))
+  Json(checked)
+}
+
+///|
+fn verify_manifest(bundle : Json, pins : Pins) -> Unit raise {
+  guard field(bundle, "format") == Json("moonrobo.aligned-apic-bundle.v1") &&
+    field(bundle, "num_envs") == Json(4096) &&
+    field(bundle, "capacity_profile") == Json("paper-4096") &&
+    field(bundle, "self_collisions") == Json(true) &&
+    field(bundle, "usd_variants") == empty_variants() &&
+    field(field(bundle, "asset"), "mjcf_sha256") == Json(pins.scene_sha256) &&
+    field(field(bundle, "asset"), "usd_sha256") == Json(pins.usd_sha256) &&
+    field(bundle, "control_dt_s") == Json(0.02) &&
+    field(bundle, "physics_dt_s") == Json(0.005) &&
+    field(bundle, "num_substeps") == Json(4) &&
+    field(bundle, "versions") ==
+    {
+      "warp": "1.17.0",
+      "isaaclab_revision": "46d6cc3d7b115906fad12efd372fbf69f4e3d3ed",
+      "newton_revision": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "mujoco_warp": "3.15.0",
+    } &&
+    field(bundle, "solver_cfg") ==
+    {
+      "njmax": 500,
+      "nconmax": 128,
+      "integrator": "implicitfast",
+      "cone": "pyramidal",
+      "use_mujoco_contacts": true,
+    } else {
+    fail(
+      "N4096 manifest differs from pinned collision-on asset/SDK/solver/timestep/profile",
+    )
+  }
+}
+
+///|
+fn command(mode : String, pins : Pins) -> Array[String] {
+  let config = config_path()
+  let manifest = manifest_path()
+  let deadline = if mode == "export" {
+    "900s"
+  } else if mode == "oracle" {
+    "600s"
+  } else {
+    "600s"
+  }
+  let args = ["--signal=TERM", "--kill-after=5s", deadline, pins.executable]
+  match mode {
+    "export" => args.append(["export", config])
+    "oracle" => args.append(["trace-sdk", config, tape, manifest, oracle])
+    _ =>
+      args.append([
+        "run",
+        "--adapter",
+        pins.runtime_adapter,
+        "--capacity-profile",
+        "paper-4096",
+        "--manifest",
+        manifest,
+        "--manifest-sha256",
+        pins.manifest_sha256.unwrap_or(""),
+        "--scene",
+        scene,
+        "--self-collisions",
+        "true",
+        "--tape",
+        tape,
+        "--oracle",
+        oracle,
+        "--output",
+        report,
+        "--device",
+        "0",
+        "--max-host-mib",
+        "16384",
+        "--max-device-mib",
+        "16384",
+        "--timeout-seconds",
+        "590",
+      ])
+  }
+  args
+}
+
+///|
+fn self_test() -> Unit raise {
+  assert_eq(selected_worlds, [0, 2048, 4095])
+  assert_eq(4096 * 8, 32768)
+  assert_eq(4096 * 8 * 4, 131072)
+  assert_eq(
+    config_path(),
+    "/workspace/moonrobo/examples/learning/g1-apic-export-paper-n4096.json",
+  )
+  assert_eq(bundle_path(), "/gate/g1-paper-n4096-self-collision-apic")
+  assert_eq(physics_reserve_bytes + authoring_reserve_bytes, 34359738368L)
+  assert_eq(cgroup_limit_bytes, 68719476736L)
+  assert_eq(
+    exact_metadata_bytes(Json(1073741824), payload_file_limit_bytes),
+    1073741824L,
+  )
+  assert_eq(
+    exact_metadata_bytes(Json("1073741824"), payload_file_limit_bytes),
+    1073741824L,
+  )
+  for
+    bad in [
+      Json(1.5),
+      Json(0),
+      Json(-1),
+      Json("1073741825"),
+      Json("9223372036854775808"),
+      Json("+1"),
+    ] {
+    try exact_metadata_bytes(bad, payload_file_limit_bytes) catch {
+      _ => ()
+    } noraise {
+      _ => fail("unsafe N4096 metadata byte count accepted")
+    }
+  }
+  assert_eq(
+    bounded_inventory_add(3221225472L, 1073741824L, payload_total_limit_bytes),
+    payload_total_limit_bytes,
+  )
+  try
+    bounded_inventory_add(
+      payload_total_limit_bytes, 1L, payload_total_limit_bytes,
+    )
+  catch {
+    _ => ()
+  } noraise {
+    _ => fail("Paper total payload cap changed")
+  }
+  assert_eq(
+    replay_projection(
+      shared_union_limit_bytes, payload_total_limit_bytes, payload_file_limit_bytes,
+    ),
+    28991029248L,
+  )
+  require_replay_projection(replay_planned_limit_bytes)
+  for projected in [0L, replay_planned_limit_bytes + 1L, 28991029248L] {
+    try require_replay_projection(projected) catch {
+      _ => ()
+    } noraise {
+      _ => fail("N4096 must not bypass the unchanged 16 GiB replay projection")
+    }
+  }
+  assert_eq(empty_variants(), @json.parse("{}"))
+  let pin_json : Json = {
+    "format": "moonrobo.apic-paper-n4096-gate-pins.v1",
+    "executable": "/tool",
+    "executable_sha256": "a".repeat(64),
+    "expected_image_id": "sha256:" + "b".repeat(64),
+    "adapter_sha256": "c".repeat(64),
+    "audit_executable": "/audit",
+    "audit_executable_sha256": "f".repeat(64),
+    "runtime_adapter": "/new-runtime.so",
+    "runtime_adapter_sha256": "1".repeat(64),
+    "scene_sha256": "d".repeat(64),
+    "usd_sha256": "e".repeat(64),
+  }
+  let pins = decode_pins(pin_json)
+  assert_eq(pins.scene_sha256, "d".repeat(64))
+  assert_eq(pins.usd_sha256, "e".repeat(64))
+  assert_eq(usd_file_limit_bytes, 67108864L)
+  assert_eq(pins.tape_sha256, None)
+  assert_eq(gate_mode(["gate", "export", "pins.json"]), "export")
+  for mode in ["oracle", "replay"] {
+    assert_eq(gate_mode(["gate", mode, "pins.json"]), mode)
+  }
+  for
+    bad in [
+      ["gate", "train", "pins.json"],
+      ["gate", "export", "pins.json", "--num-envs", "4"],
+      ["gate", "export"],
+    ] {
+    try gate_mode(bad) catch {
+      _ => ()
+    } noraise {
+      _ => fail("unsupported paper N4096 CLI accepted")
+    }
+  }
+  assert_eq(command("export", pins), [
+    "--signal=TERM", "--kill-after=5s", "900s", "/tool", "export", "/workspace/moonrobo/examples/learning/g1-apic-export-paper-n4096.json",
+  ])
+  assert_eq(command("oracle", pins), [
+    "--signal=TERM", "--kill-after=5s", "600s", "/tool", "trace-sdk", "/workspace/moonrobo/examples/learning/g1-apic-export-paper-n4096.json",
+    "/gate/tape-paper-n4096-v2.json", "/gate/g1-paper-n4096-self-collision-apic/manifest.json",
+    "/gate/sdk-oracle-paper-n4096.json",
+  ])
+  assert_true(command("replay", pins).contains("--oracle"))
+  assert_true(command("replay", pins).contains("--self-collisions"))
+  assert_true(command("replay", pins).contains(scene))
+  assert_true(command("replay", pins).contains("paper-4096"))
+  assert_true(command("replay", pins).contains("/new-runtime.so"))
+  let snapshot : Json = {
+    "values": {
+      "memory.max": Json(cgroup_limit_bytes.to_string()),
+      "memory.current": "1234567",
+      "memory.swap.max": "0",
+      "memory.swap.current": "0",
+      "cpu.max": "200000 100000",
+      "memory.peak": "1234567",
+      "memory.events": "max 0\noom 0\noom_kill 0\noom_group_kill 0",
+    },
+    "errors": {},
+  }
+  assert_eq(verify_cgroup(snapshot), 1234567L)
+  let fields : Map[String, Json] = @json.from_json(field(snapshot, "values"))
+  for
+    (key, value) in [
+      ("memory.max", "max"),
+      ("memory.max", "17179869184"),
+      ("memory.swap.max", "4096"),
+      ("memory.swap.current", "1"),
+      ("cpu.max", "500000 100000"),
+      ("memory.events", "oom 1\noom_kill 0"),
+    ] {
+    let bad = fields.copy()
+    bad[key] = Json(value)
+    try verify_cgroup({ "values": Json(bad), "errors": {} }) catch {
+      _ => ()
+    } noraise {
+      _ => fail("unsafe cgroup accepted")
+    }
+  }
+  let minimum = 52861135951L
+  let plan = admission(minimum, 0L, minimum)
+  assert_eq(field(plan, "required_reserve_bytes"), Json(34359738368L))
+  for
+    (host, current, cuda) in [
+      (minimum - 1L, 0L, minimum),
+      (minimum, 0L, minimum - 1L),
+      (minimum, cgroup_limit_bytes - minimum + 1L, minimum),
+      (0L, 0L, minimum),
+      (minimum, cgroup_limit_bytes, minimum),
+    ] {
+    try admission(host, current, cuda) catch {
+      _ => ()
+    } noraise {
+      _ => fail("unsafe availability admitted")
+    }
+  }
+  let inspection : Json = {
+    "format": "moonrobo.apic-runtime-inspection.v1",
+    "success": true,
+    "adapter_library": "/new-runtime.so",
+    "adapter_library_sha256": "1".repeat(64),
+    "capacity_profile": "paper-4096",
+    "cuda_device_index": 0,
+    "probe_num_envs": 2,
+    "cuda_free_bytes": Json(minimum),
+    "cuda_total_bytes": Json::null(),
+    "paper_selected_audit_capacity_checked": true,
+    "paper_selected_audit_capacity_confirmed": true,
+    "no_graphs_loaded": true,
+    "physics_validated": false,
+    "started_unix_ms": "1000",
+    "finished_unix_ms": "2000",
+  }
+  assert_eq(inspection_free(inspection, pins, 2001L), minimum)
+  for now in [1999L, 17001L] {
+    try inspection_free(inspection, pins, now) catch {
+      _ => ()
+    } noraise {
+      _ => fail("stale/future GPU sample accepted")
+    }
+  }
+  guard inspection is Object(base) else { fail("fixture") }
+  for
+    (key, value) in [
+      ("paper_selected_audit_capacity_confirmed", Json(false)),
+      ("capacity_profile", Json("initial")),
+      ("no_graphs_loaded", Json(false)),
+      ("adapter_library_sha256", Json("2".repeat(64))),
+    ] {
+    let invalid = base.copy()
+    invalid[key] = value
+    try inspection_free(Json(invalid), pins, 2001L) catch {
+      _ => ()
+    } noraise {
+      _ => fail("unverified runtime capability accepted")
+    }
+  }
+  println(
+    "paper N4096 physics gate self-test passed without filesystem/GPU work",
+  )
+}
+
+///|
+test "N4096 command, cgroup, exact reserve boundary and runtime freshness contracts" {
+  self_test()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args == [args[0], "--self-test"] {
+    self_test()
+    return
+  }
+  let mode = gate_mode(args)
+  let pins = decode_pins(read_json(args[2], 65536L))
+  let folder = "/gate/" + mode + "-evidence"
+  guard !@fs.exists(folder) else {
+    fail("fresh per-step evidence directory required")
+  }
+  let destination = if mode == "export" {
+    bundle_path()
+  } else if mode == "oracle" {
+    oracle
+  } else {
+    report
+  }
+  guard !@fs.exists(destination) else {
+    fail("existing result must not be overwritten")
+  }
+  @fs.mkdir(folder)
+  let before = cgroup()
+  write_json(folder + "/cgroup-before.json", before)
+  let argv = command(mode, pins)
+  write_json(folder + "/command-plan.json", {
+    "format": "moonrobo.apic-paper-n4096-gate-plan.v1",
+    "mode": Json(mode),
+    "expected_image_id": Json(pins.expected_image_id),
+    "image_id_verification": "host-launcher-required; not verified inside container",
+    "argv": Json(argv),
+    "pin_file_sha256": Json(file_sha(args[2], 65536L)),
+    "num_envs": 4096,
+    "capacity_profile": "paper-4096",
+    "selected_worlds": Json(selected_worlds),
+    "self_collisions": true,
+    "memory_limit_bytes": Json(cgroup_limit_bytes),
+    "required_reserve_bytes": Json(
+      physics_reserve_bytes + authoring_reserve_bytes,
+    ),
+    "budget_fraction": 0.65,
+    "runtime_inspection_required_before_physics": true,
+    "mutates_sdk_or_runtime_files": false,
+    "physics_equivalence_claimed": false,
+  })
+  let mut exit_code : Int32? = None
+  let mut failure : String? = None
+  let mut verified : Json? = None
+  let mut memory_plan : Json? = None
+  let started = @env.now().reinterpret_as_int64()
+  try {
+    ignore(verify_cgroup(before))
+    let current : String = @json.from_json(
+      field(field(before, "values"), "memory.current"),
+    )
+    // CPU metadata admission before parsing up to 64 MiB JSON. This is not a
+    // CUDA check; the fresh native inspection follows all input verification.
+    ignore(
+      admission(
+        linux_mem_available(),
+        @string.parse_int64(current),
+        cgroup_limit_bytes,
+      ),
+    )
+    verified = Some(verify(mode, pins))
+    write_json(folder + "/verified-inputs.json", verified.unwrap())
+    let artifact_plan = artifact_budget(mode, pins)
+    write_json(folder + "/artifact-budget.json", artifact_plan)
+    if mode != "export" {
+      require_replay_projection(
+        @json.from_json(field(artifact_plan, "native_replay_projection_bytes")),
+      )
+    }
+    memory_plan = Some(fresh_admission(folder, pins))
+    let timeout_ms = if mode == "export" {
+      920000
+    } else if mode == "oracle" {
+      620000
+    } else {
+      620000
+    }
+    let code = @shell.Cmd(
+      "/usr/bin/timeout",
+      argv,
+      stdout=ToFile(folder + "/stdout.log"),
+      stderr=ToFile(folder + "/stderr.log"),
+    ).status(timeout_ms~)
+    exit_code = Some(code)
+    guard code == 0 else {
+      fail("bounded paper N4096 operation failed; retain all evidence")
+    }
+    if mode == "export" {
+      verify_manifest(read_json(manifest_path(), manifest_limit_bytes), pins)
+      write_json(folder + "/exported-manifest-pin.json", {
+        "manifest_sha256": Json(file_sha(manifest_path(), manifest_limit_bytes)),
+        "num_envs": 4096,
+        "capacity_profile": "paper-4096",
+        "self_collisions": true,
+        "scene_sha256": Json(pins.scene_sha256),
+      })
+    }
+    if mode == "oracle" {
+      let trace = read_json(oracle, 16777216L)
+      guard field(trace, "format") == Json("moonrobo.apic-sdk-oracle.v2") &&
+        field(trace, "num_envs") == Json(4096) &&
+        field(trace, "capacity_profile") == Json("paper-4096") &&
+        field(trace, "selected_worlds") == Json(selected_worlds) &&
+        field(trace, "bundle_manifest_sha256") ==
+        Json(pins.manifest_sha256.unwrap_or("")) &&
+        field(trace, "tape_sha256") == Json(pins.tape_sha256.unwrap_or("")) &&
+        field(trace, "snapshots") is Array(snapshots) &&
+        snapshots.length() == 27 else {
+        fail("SDK oracle lacks exact N4096 profile/selection/input identity")
+      }
+      write_json(folder + "/oracle-pin.json", {
+        "oracle_sha256": Json(file_sha(oracle, 16777216L)),
+      })
+    }
+    if mode == "replay" {
+      let comparison = read_json(report, 16777216L)
+      guard field(comparison, "success") == Json(true) &&
+        field(comparison, "oracle_equal") == Json(true) &&
+        field(comparison, "num_envs") == Json(4096) &&
+        field(comparison, "capacity_profile") == Json("paper-4096") &&
+        field(comparison, "selected_worlds") == Json(selected_worlds) &&
+        field(comparison, "simulated_world_steps") == Json(32768) &&
+        field(comparison, "bundle_manifest_sha256") ==
+        Json(pins.manifest_sha256.unwrap_or("")) else {
+        fail("native paper N4096 comparison did not pass unchanged tolerance")
+      }
+    }
+  } catch {
+    error => failure = Some(error.to_string())
+  }
+  let after = cgroup()
+  write_json(folder + "/cgroup-after.json", after)
+  let peak : Int64? = Some(verify_cgroup(after)) catch {
+    error => {
+      if failure is None {
+        failure = Some(error.to_string())
+      }
+      None
+    }
+  }
+  let summary : Json = {
+    "format": "moonrobo.apic-paper-n4096-gate-result.v1",
+    "mode": Json(mode),
+    "success": Json(failure is None && exit_code == Some(0)),
+    "exit_code": scalar_or_null(exit_code),
+    "error": scalar_or_null(failure),
+    "verified_inputs": scalar_or_null(verified),
+    "memory_plan": scalar_or_null(memory_plan),
+    "num_envs": 4096,
+    "capacity_profile": "paper-4096",
+    "selected_worlds": Json(selected_worlds),
+    "elapsed_ms": Json(@env.now().reinterpret_as_int64() - started),
+    "kernel_memory_peak_observed_bytes": scalar_or_null(peak),
+    "complete_lifetime_peak_certified": false,
+    "memory_scope": "cgroup before step and before helper exit; may include earlier container activity",
+    "physics_equivalence_claimed": false,
+    "prior_sdk_numerical_gap_not_erased": true,
+  }
+  write_json(folder + "/summary.json", summary)
+  println(summary.stringify(indent=2))
+  guard failure is None && exit_code == Some(0) else {
+    fail("paper N4096 step failed; do not enlarge or overwrite evidence")
+  }
+}

@@ -1,0 +1,93 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, rev] &&
+    ["e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q"].contains(
+      rev,
+    ) else {
+    fail("fresh revision e..q")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let script = "reclaim_actor_pages_" + rev + ".mbtx"
+  let report = "actor-boundary-cache-advice-" + rev + ".json"
+  let code = @fs.read_file(out + "/reclaim_actor_pages_d.mbtx")
+    .text()
+    .replace_all(old="actor-resident-d-", new="actor-resident-" + rev + "-")
+    .replace_all(old="actor-boundary-cache-advice-d.json", new=report)
+  let code = if ["g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q"].contains(
+      rev,
+    ) {
+    code.replace_all(
+      old="    guard field(read(dir+\"/completion.json\"),\"passed\")==Json(true)&&field(read(dir+\"/training-guard.json\"),\"reason\")==Json(\"completed\") else {continue}",
+      new="    guard field(read(dir+\"/completion.json\"),\"passed\") is (True | False) else {fail(\"completed-run record required\")}\n    // Failed diagnostics are also ended jobs. Still require an unchanged,\n    // stopped Docker state with PID zero and OOMKilled=false below.",
+    )
+  } else {
+    code
+  }
+  let code = if rev == "k" {
+    code.replace_all(
+      old="  for name in dirs {",
+      new="  for name in dirs {\n    if ![\"hotspot-shared-actor-frozen-reference-\",\"hotspot-shared-actor-head-compare-\",\"hotspot-shared-actor-reference-vjp-\",\"hotspot-mlp-actor-reward-reference-\"].any(prefix => name.has_prefix(prefix)) {continue}",
+    )
+  } else if rev == "h" {
+    code.replace_all(
+      old="  for name in dirs {",
+      new="  for name in dirs {\n    if !name.has_prefix(\"hotspot-shared-actor-adjoints-\") {continue}",
+    )
+  } else {
+    code
+  }
+  @fs.write_file(out + "/" + script, code, create_mode=CreateNew)
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/" + script,
+      host + ":" + base + "/" + script,
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/" +
+        script,
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/cache-advice-" + rev + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/cache-advice-" + rev + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      host + ":" + base + "/" + report,
+      out + "/cache-advice-" + rev + ".json",
+    ]),
+    0,
+  )
+}

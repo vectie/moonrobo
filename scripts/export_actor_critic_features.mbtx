@@ -1,0 +1,36 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["prepare","export"].contains(mode) else {fail("prepare/export")}
+  let out="output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host="wlc004s@192.168.2.179"
+  let runner="run_actor_critic_features_a.mbtx"
+  if mode=="prepare" {
+    let code=@fs.read_file(out+"/run_actor_reward_reference_b.mbtx").text()
+      .replace_all(old="run_actor_reward_reference_b.mbtx",new=runner)
+      .replace_all(old="export_actor_reward_reference_b.py",new="export_actor_critic_features_a.py")
+      .replace_all(old="[\"reward\"]",new="[\"features\"]")
+      .replace_all(old="reference_fx_graph_a.py",new="reference_fx_graph_b.py")
+    for (name,content) in [(runner,code),("export_actor_critic_features_a.py",@fs.read_file("providers/motion_learning/export_actor_critic_features.py").text()),("reference_fx_graph_b.py",@fs.read_file("providers/motion_learning/reference_fx_graph.py").text())] {
+      @fs.write_file(out+"/"+name,content,create_mode=CreateNew)
+      if name==runner {assert_eq(@process.run("moon",["check","--target","native",out+"/"+name]),0)}
+      assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",out+"/"+name,host+":"+base+"/"+name]),0)
+    }
+    return
+  }
+  let folder=out+"/critic-features-a"
+  @fs.mkdir(folder)
+  let code=@process.run("ssh",["-S","/tmp/moonrobo-operator-179.sock",host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/"+runner+" -- actor compiled off actor-critic-features-a bf16"],stdout=@process.redirect_to_file(folder+"/controller.stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(folder+"/controller.stderr.log",create_mode=CreateNew))
+  for name in ["result.json","completion.json","protocol.json","training-guard.json","training-docker-final.json","training.stdout.log","training.stderr.log","exported-artifacts.json","decisions.json","original-decisions.json"] {
+    ignore(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",host+":/home/wlc004s/moonrobo/runs/hotspot-mlp-actor-critic-features-a/"+name,folder+"/"+name]))
+  }
+  assert_eq(code,0)
+}

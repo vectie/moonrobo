@@ -1,0 +1,266 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=err.text() + out.text())
+  out.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: collect_g1_balance_teacher.mbtx REPO SELECTED_STUDY OUTPUT SUMMARY_JSON",
+  )
+  let root = args[1]
+  let source = args[2]
+  let output = args[3]
+  assert_true(!@fs.exists(output), msg="choose a fresh collection directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for name in ["balance_teacher.py", "cpu_physics.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(source + "/provider-sources/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  for
+    name in [
+      "collection-experiment.json", "evaluation-experiment.json", "config.json",
+    ] {
+    @fs.write_file(
+      output + "/" + name,
+      @fs.read_file(source + "/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let fit_bytes = @fs.read_file(source + "/fit/report.json")
+  let teacher_sha = @crypto.bytes_to_hex_string(
+    @crypto.sha256(fit_bytes.binary()),
+  )
+  let selected = @json.parse(fit_bytes.text())
+  @fs.write_file(
+    output + "/teacher.json",
+    fit_bytes.binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-balance-collection-charter.v1",
+        "teacher_sha256": Json(teacher_sha),
+        "selected_source": Json(source),
+        "selection": "Training-only: fewest development falls, then longest mean survival, then lowest RMSE across fitted families. Waist-assisted family selected before opening seeds 8300-8302.",
+        "protocol_change": "Earlier fit scripts deferred evaluation and collection unless all twelve development trials survived. This separate data collection accepts partial teacher success, keeps every failed episode, and does not satisfy that earlier development gate or promote a learned controller.",
+        "development": field(selected, "development"),
+        "purpose": "Add sustained train-family physics states for later learner training; report canonical baseline evaluation separately.",
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let report_rows : Array[Json] = []
+  for phase in ["evaluate", "collect"] {
+    @fs.write_file(
+      output + "/" + phase + ".log",
+      run(
+        "moon",
+        native_args(root, [
+          output + "/provider-sources/balance_teacher.py",
+          phase,
+          "--scene",
+          root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+          "--experiment",
+          output +
+          (if phase == "evaluate" {
+            "/evaluation-experiment.json"
+          } else {
+            "/collection-experiment.json"
+          }),
+          "--config",
+          output + "/config.json",
+          "--teacher",
+          output + "/teacher.json",
+          "--output",
+          output + "/" + phase,
+        ]),
+      ),
+      create_mode=CreateOrTruncate,
+    )
+    let report = read(output + "/" + phase + "/report.json")
+    assert_eq(field(report, "teacher_sha256"), Json(teacher_sha))
+    let dataset = read(output + "/" + phase + "/dataset.json")
+    let episodes = array(field(dataset, "episodes"))
+    assert_eq(episodes.length(), if phase == "collect" { 24 } else { 9 })
+    let mut transitions = 0
+    let mut after_two = 0
+    let mut falls = 0
+    let mut limits = 0
+    for episode in episodes {
+      if phase == "collect" {
+        assert_eq(field(episode, "split"), "train")
+      }
+      let steps = array(field(episode, "steps"))
+      transitions += steps.length()
+      if field(steps[steps.length() - 1], "terminated") == (true : Json) {
+        falls += 1
+      }
+      if field(steps[steps.length() - 1], "truncated") == (true : Json) {
+        limits += 1
+      }
+      for step in steps {
+        guard field(step, "time_s") is Number(t, ..) else {
+          fail("missing time")
+        }
+        if t >= 2 {
+          after_two += 1
+        }
+      }
+    }
+    report_rows.push({
+      "phase": Json(phase),
+      "summary": field(report, "summary"),
+      "transitions": Json(transitions),
+      "after_two_seconds": Json(after_two),
+      "falls": Json(falls),
+      "time_limits": Json(limits),
+    })
+    println(report_rows[report_rows.length() - 1].stringify())
+  }
+  let baseline = read(output + "/evaluation-experiment.json")
+  guard baseline is Object(fields) else { fail("expected baseline config") }
+  fields.set("seeds", field(read(output + "/config.json"), "evaluation_seeds"))
+  fields.set("controllers", ["position"])
+  @fs.write_file(
+    output + "/baseline-experiment.json",
+    baseline.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  ignore(
+    run(
+      "moon",
+      native_args(root, [
+        output + "/provider-sources/cpu_physics.py",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--experiment",
+        output + "/baseline-experiment.json",
+        "--output",
+        output + "/baseline",
+      ]),
+    ),
+  )
+  let batches : Array[Json] = []
+  for split in ["train", "validation", "test"] {
+    let data = output +
+      (if split == "train" {
+        "/collect/dataset.json"
+      } else {
+        "/evaluate/dataset.json"
+      })
+    let batch_path = output + "/" + split + "-batch.json"
+    @fs.write_file(
+      batch_path,
+      run(
+        root +
+        "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+        [data, split, "1"],
+      ),
+      create_mode=CreateOrTruncate,
+    )
+    let batch = read(batch_path)
+    assert_eq(field(batch, "window_length"), 1)
+    let n = array(field(batch, "windows")).length()
+    assert_true(n > 0)
+    batches.push({
+      "split": Json(split),
+      "windows": Json(n),
+      "window_length": 1,
+      "sha256": Json(
+        @crypto.bytes_to_hex_string(
+          @crypto.sha256(@fs.read_file(batch_path).binary()),
+        ),
+      ),
+    })
+  }
+  let result : Json = {
+    "format": "moonrobo.g1-balance-teacher-data.v1",
+    "teacher": selected,
+    "teacher_sha256": Json(teacher_sha),
+    "reports": Json(report_rows),
+    "batches": Json(batches),
+    "baseline": field(read(output + "/baseline/report.json"), "summaries"),
+    "scope": "Handcrafted privileged simulator teacher; train-family collection and independently seeded canonical evaluation remain separate. One-step MoonBit tensors support behavior-cloning inputs, not an eight-step world-model fit. No learned-policy or hardware qualification.",
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    args[4],
+    result.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "All collected episodes retained; MoonBit parsed and materialized train/validation/test point batches.",
+  )
+}
+
+///|
+/// Historical .py names are inert routing descriptors. Each target parses
+/// original flags and calls real native APIs; unknown descriptors fail closed.
+fn native_args(root : String, command : Array[String]) -> Array[String] raise {
+  guard !command.is_empty() else { fail("missing native provider descriptor") }
+  let descriptor = command[0].split("/").last().unwrap_or("").to_owned()
+  let training = [
+    "policy.py", "dynamics.py", "cpu_physics.py", "teacher_step_verification.py",
+    "compare_dynamics.py",
+  ].contains(descriptor)
+  let package = if training {
+    "src/learning_training/launch/cmd"
+  } else {
+    "src/learning_balance/launch"
+  }
+  [
+    "run",
+    "--quiet",
+    "--warn-list",
+    "-a",
+    root + "/scripts/run_native_learning.mbtx",
+    root,
+    package,
+    ..command,
+    ..if training {
+      []
+    } else {
+      ["--repo", root]
+    },
+  ]
+}

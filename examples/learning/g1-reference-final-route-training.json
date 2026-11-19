@@ -1,0 +1,18 @@
+{
+  "format": "moonrobo.g1-reference-final-route-training-charter.v1",
+  "source_report_sha256": "a8308c60c8c1d9eb3e561eb667daac8736d7374989dd21e69182ebd0bd65ae25",
+  "diagnostic_report_sha256": "6d0f191b85bef8963ceaa88e64b156f47dbf876d6d70fcffa0617a83d8e856e4",
+  "methods": ["replay-prefix-extended", "replay-prefix-anchor"],
+  "seeds": [0, 1, 2],
+  "gradient_routes": ["full", "stop-policy-inputs"],
+  "intervention_cycle": 6,
+  "expected_physical_records": 324,
+  "expected_new_physical_records": 162,
+  "expected_reused_physical_records": 162,
+  "reconstruction": "Load the original incoming actor and repeat only actor optimization over all five archived cycles using each cycle's saved world model and exact collected batches. Check every saved actor tensor and original origin draws after every cycle. Original optimizer snapshots do not exist; reconstruct moments by repeating operations, without claiming independently verified exact restart of the entire learner. At cycle 5 fork actor, Adam state and actor sampler. Repeat the full-gradient cycle 6 and require all final actor tensors to equal the original. Then change only the copied branch's cycle-6 policy-input gradient route.",
+  "intervention": "Keep the original 12 Adam steps, learning rate, batch size 64, uniform current-cycle physical origins, 256-state calibration batch, local logit RMS cap 0.005, H32 no-tail objective, source model, reference, reward, normalization and actual forward controller. Detach only history/features at actor input edges for the stopped branch. Use identical sampler state/draws and reconstructed Adam moments before the fork. Model/value fitting and physical training collection are not repeated, and no source-control labels enter actor optimization.",
+  "evaluation": "Reuse every original full-gradient final evaluation. Evaluate every stopped final actor on all nine known references times all three origins, remaining 30/20/10 seconds, with the original unchanged 27-cell quality target. Keep all seeds, conditions, passes and failures. No intermediate physical selection, early stopping, checkpoint choice or default-policy adoption.",
+  "costs": "Report actor reconstruction separately from six new twelve-step intervention fits and their new physical evaluations. Original collection/model/value learning remains inherited evidence and is not counted as new data or a successful cost-to-target comparison. Save the stopped actor optimizer/sampler state as a bounded actor-update artifact tied to the imported model, not a complete simulator/world-model/replay-worker restart contract.",
+  "scope": "Controlled final-cycle learning ablation motivated by local parameter-direction evidence. Known-reference control only; no new motion collection, unseen-motion generalization, matched successful model/PPO efficiency, skill release, hardware or full phase acceptance claim.",
+  "physical_execution_allowed": false
+}

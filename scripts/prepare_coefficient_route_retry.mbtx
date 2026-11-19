@@ -1,0 +1,8 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="output/spark-runtime-20261024/coefficient-assembly-20261028"
+  let s=@fs.read_file(dir+"/routes.mbtx").text().replace_all(old="+\"-b\"",new="+\"-c\"")
+  @fs.write_file(dir+"/routes_retry.mbtx",s,create_mode=CreateNew)
+  let p=dir+"/finalize.mbtx";@fs.write_file(p,@fs.read_file(p).text().replace_all(old="+\"-b\";let to",new="+\"-c\";let to"))
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+"/routes_retry.mbtx","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/coefficient_routes_retry_a.mbtx"])==0else{fail("stage")}
+}

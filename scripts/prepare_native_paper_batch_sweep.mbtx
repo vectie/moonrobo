@@ -1,0 +1,776 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+// CPU-only candidate preparation. This tool never launches a trainer or GPU.
+let cases : Array[(String, Int32)] = [
+  ("micro256", 256),
+  ("micro512", 512),
+  ("micro1024", 1024),
+]
+
+///|
+fn field(value : Json, name : String) -> Json raise {
+  guard value is Object(fields) && fields.get(name) is Some(result) else {
+    fail("missing JSON field: " + name)
+  }
+  result
+}
+
+///|
+fn integer(value : Json) -> Int64 raise {
+  let result = match value {
+    String(text) => @string.parse_int64(text)
+    Number(n, ..) => {
+      guard n >= 0.0 && n <= 9007199254740991.0 && n.to_int64().to_double() == n else {
+        fail("expected exact integer")
+      }
+      n.to_int64()
+    }
+    _ => fail("expected integer")
+  }
+  guard result >= 0L else { fail("negative integer") }
+  result
+}
+
+///|
+fn boolean(value : Json) -> Bool raise {
+  match value {
+    True => true
+    False => false
+    _ => fail("expected boolean")
+  }
+}
+
+///|
+fn validate_base(
+  base : Json,
+  world_microbatch~ : Int32 = 256,
+  policy_microbatch~ : Int32 = 256,
+) -> Unit raise {
+  for
+    (key, expected) in [
+      ("capacity_profile", Json("paper-4096")),
+      ("memory_admission_percent", Json(80)),
+      ("backend", Json("isaac")),
+      ("device", Json("cuda:0")),
+      ("precision", Json("float32")),
+      ("amp", Json("none")),
+      ("allow_tf32", Json(true)),
+      ("observation_mode", Json("paper")),
+      ("self_collisions", Json(true)),
+      ("num_envs", Json(256)),
+      ("wm_batch", Json(2048)),
+      ("pi_batch", Json(4096)),
+      ("wm_microbatch", Json(world_microbatch)),
+      ("pi_microbatch", Json(policy_microbatch)),
+      ("buffer_steps", Json(1000)),
+      ("hist", Json(10)),
+      ("goal_frames", Json(10)),
+      ("horizon", Json(32)),
+      ("wm_window", Json(8)),
+      ("wm_batches", Json(10)),
+      ("wm_only_iters", Json(0)),
+      ("critic_epochs", Json(5)),
+      ("critic_minibatches", Json(4)),
+      ("iterations", Json(10)),
+      ("checkpoint_every", Json(10)),
+      ("seed", Json(179)),
+      ("reference_storage", Json("mmap")),
+      ("motion_cache_dir", Json("/motion-cache")),
+      ("wm_hidden", Json([2048, 2048, 2048])),
+      ("pi_hidden", Json([2048, 1024, 512, 256])),
+      ("critic_hidden", Json([256, 128])),
+      (
+        "physics_artifact_sha256",
+        Json("40e166ab973ba7ae11c2587a9e26d990f52b77d10ef230caee303e06203ae2e8"),
+      ),
+    ] {
+    guard field(base, key) == expected else {
+      fail("unexpected paper util80 base field: " + key)
+    }
+  }
+}
+
+///|
+fn config_for(base : Json, micro : Int32) -> Json raise {
+  validate_base(base)
+  guard [256, 512, 1024].contains(micro) && base is Object(original) else {
+    fail("unsupported candidate")
+  }
+  let values : Map[String, Json] = Map([])
+  for key, value in original {
+    values[key] = value
+  }
+  // Preserve every other base field, including profile, precision and iterations.
+  values["wm_microbatch"] = Json(micro)
+  values["pi_microbatch"] = Json(micro)
+  Json::object(values)
+}
+
+///|
+fn changes(base : Json, candidate : Json) -> Array[Json] raise {
+  guard base is Object(before) &&
+    candidate is Object(after) &&
+    before.length() == after.length() else {
+    fail("configuration field inventory changed")
+  }
+  let changed : Array[Json] = []
+  for key, value in after {
+    guard before.get(key) is Some(original) else {
+      fail("configuration field added")
+    }
+    if original != value {
+      guard key == "wm_microbatch" || key == "pi_microbatch" else {
+        fail("non-microbatch field changed")
+      }
+      changed.push({ "field": Json(key), "before": original, "after": value })
+    }
+  }
+  changed
+}
+
+///|
+async fn read_json(path : String, limit : Int64) -> Json {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected regular JSON: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= limit else {
+    fail("JSON size outside bound: " + path)
+  }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else { fail("JSON changed while reading: " + path) }
+  @json.parse(@utf8.decode(bytes))
+}
+
+///|
+async fn write_json(path : String, value : Json) -> Unit {
+  @fs.write_file(
+    path,
+    value.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+}
+
+///|
+async fn prepare(base_path : String, root : String) -> Unit {
+  let base = read_json(base_path, 1048576L)
+  validate_base(base)
+  @fs.mkdir(root)
+  @fs.mkdir(root + "/cases")
+  let candidates : Array[Json] = []
+  for (name, micro) in cases {
+    let path = root + "/cases/" + name
+    @fs.mkdir(path)
+    let candidate = config_for(base, micro)
+    write_json(path + "/config.json", candidate)
+    candidates.push({
+      "case": Json(name),
+      "config_relative_path": Json("cases/" + name + "/config.json"),
+      "runtime_config_path": Json("/gate/cases/" + name + "/config.json"),
+      "runtime_training_output": Json("/gate/cases/" + name + "/train"),
+      "world_logical_batch": 2048,
+      "policy_logical_batch": 4096,
+      "microbatch": Json(micro),
+      "world_chunks_per_update": Json(2048 / micro),
+      "actor_chunks_per_update": Json(4096 / micro),
+      "changed_fields": Json(changes(base, candidate)),
+      "executed": false,
+      "launch_status": if micro == 256 {
+        "candidate for first measured run; fresh admission required"
+      } else {
+        "prepared only; requires prior-run peaks and fresh successful preflight"
+      },
+    })
+  }
+  write_json(root + "/manifest.json", {
+    "format": "moonrobo.native-paper-batch-sweep.v1",
+    "base_path": Json(base_path),
+    "base_config": base,
+    "cases": Json(candidates),
+    "iterations": 10,
+    "measured_iterations": [2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "required_trainer_flag": "--cuda-memory-telemetry",
+    "memory_policy": "explicit util80 input preserved; actual-free admission, at least 16 GiB remaining, 24 GiB physical reserve and external no-swap/cgroup guards must be enforced by launcher/trainer",
+    "automatic_launch": false,
+    "automatic_retry": false,
+    "automatic_capacity_escalation": false,
+    "runtime_memory_policy_verified_by_preparation": false,
+    "numerical_equivalence_verified": false,
+    "scope": "Paper93 N256 WM2048 policy4096 TF32 ten-iteration throughput candidates; not N4096 or convergence",
+  })
+  println("Prepared three paper batch candidates without launching: " + root)
+}
+
+///|
+fn phase_key(phase : String, iteration : Int64) -> String {
+  phase + ":" + iteration.to_string()
+}
+
+///|
+fn timing_summary(diagnostic : Json) -> Json raise {
+  guard field(diagnostic, "format") ==
+    Json("moonrobo.cuda-training-memory-report.v1") &&
+    field(diagnostic, "status") == Json("complete") &&
+    field(diagnostic, "error") == Json::null() &&
+    integer(field(diagnostic, "starting_iteration")) == 0L &&
+    integer(field(diagnostic, "omitted_sample_count")) == 0L &&
+    field(field(diagnostic, "options"), "synchronize_each_sample") == Json(true) &&
+    field(diagnostic, "samples") is Array(samples) else {
+    fail(
+      "complete fresh-run synchronized telemetry without omitted samples required",
+    )
+  }
+  let times : Map[String, Int64] = Map([])
+  let mut previous = 0L
+  for i, sample in samples {
+    guard field(sample, "phase") is String(phase) &&
+      integer(field(sample, "sequence")) == i.to_int64() else {
+      fail("invalid telemetry sequence/phase")
+    }
+    let iteration = integer(field(sample, "iteration"))
+    let begin = integer(field(sample, "sample_begin_unix_ms"))
+    let end = integer(field(sample, "sample_end_unix_ms"))
+    let key = phase_key(phase, iteration)
+    guard begin >= previous && end >= begin && !times.contains(key) else {
+      fail("nonmonotonic or duplicate telemetry")
+    }
+    times[key] = end
+    previous = end
+  }
+  fn duration(from : String, to : String) -> Int64 raise {
+    guard times.get(from) is Some(start) &&
+      times.get(to) is Some(end) &&
+      end >= start else {
+      fail("missing/reversed phase boundary: " + from + " -> " + to)
+    }
+    end - start
+  }
+  let measured : Array[Json] = []
+  let mut world_total = 0L
+  let mut policy_total = 0L
+  let mut collect_total = 0L
+  for iteration in 2L..<=10L {
+    let collect = duration(
+      phase_key("actor_critic_complete", iteration - 1L),
+      phase_key("collection_complete", iteration),
+    )
+    let world = duration(
+      phase_key("collection_complete", iteration),
+      phase_key("world_updates_complete", iteration),
+    )
+    let policy = duration(
+      phase_key("world_updates_complete", iteration),
+      phase_key("actor_critic_complete", iteration),
+    )
+    collect_total += collect
+    world_total += world
+    policy_total += policy
+    measured.push({
+      "iteration": Json(iteration),
+      "collection_and_between_iteration_overhead_ms": Json(collect),
+      "world_ten_updates_ms": Json(world),
+      "actor_and_twenty_critic_updates_ms": Json(policy),
+    })
+  }
+  let allocated = integer(field(diagnostic, "allocated_window_peak_bytes"))
+  let reserved = integer(field(diagnostic, "reserved_window_peak_bytes"))
+  let cuda_free = integer(field(diagnostic, "minimum_observed_cuda_free_bytes"))
+  {
+    "phase_rows": Json(measured),
+    "measured_iteration_count": 9,
+    "world_mean_ms": Json(world_total.to_double() / 9.0),
+    "actor_critic_mean_ms": Json(policy_total.to_double() / 9.0),
+    "combined_update_mean_ms": Json(
+      (world_total + policy_total).to_double() / 9.0,
+    ),
+    "collection_and_overhead_mean_ms": Json(collect_total.to_double() / 9.0),
+    "world_fit_transition_slots_per_second": if world_total > 0L {
+      Json(9.0 * 10.0 * 2048.0 * 8.0 * 1000.0 / world_total.to_double())
+    } else {
+      Json::null()
+    },
+    "policy_imagined_transitions_per_second_including_critic": if policy_total >
+      0L {
+      Json(9.0 * 4096.0 * 32.0 * 1000.0 / policy_total.to_double())
+    } else {
+      Json::null()
+    },
+    "excluded_first_iteration": {
+      "world_ten_updates_ms": Json(
+        duration("collection_complete:1", "world_updates_complete:1"),
+      ),
+      "actor_and_twenty_critic_updates_ms": Json(
+        duration("world_updates_complete:1", "actor_critic_complete:1"),
+      ),
+    },
+    "warmup_ms": Json(duration("window_start:0", "warmup_complete:0")),
+    "checkpoint_ms": Json(
+      duration("checkpoint_begin:10", "checkpoint_complete:10"),
+    ),
+    "allocated_window_peak_bytes": Json(allocated),
+    "reserved_window_peak_bytes": Json(reserved),
+    "minimum_observed_cuda_free_bytes": Json(cuda_free),
+    "timing_scope": "synchronized wall-time differences, including ending-boundary synchronization and host telemetry; not pure CUDA kernel timings",
+    "memory_scope": "cumulative process allocator peaks for complete diagnostic window including first iteration/warmup/checkpoint; CUDA free minimum sampled only at phase boundaries; not total device or cgroup lifetime peaks",
+    "initialization_and_dataset_cache_ms": Json::null(),
+    "initialization_note": "before diagnostic window and excluded; not inferred from training phases",
+  }
+}
+
+///|
+fn training_summary(training : Json, expected : Json) -> Json raise {
+  guard field(training, "format") ==
+    Json("moonrobo.native-tensor-training-report.v1") &&
+    field(field(training, "identity"), "config") == expected &&
+    field(training, "distributed") == Json(false) else {
+    fail("training identity/config/format differs from prepared case")
+  }
+  let complete = boolean(
+    field(training, "training_complete_for_requested_iterations"),
+  )
+  let iterations = integer(field(training, "iteration"))
+  guard iterations <= 10L else {
+    fail("training exceeded candidate iteration count")
+  }
+  let summary : Map[String, Json] = {
+    "status": Json(
+      if complete && iterations == 10L {
+        "complete_report"
+      } else {
+        "incomplete_report"
+      },
+    ),
+    "training_iterations": Json(iterations),
+    "training_complete_for_requested_iterations": Json(complete),
+    "timing_verified": Json(false),
+  }
+  if training is Object(values) &&
+    values.get("cuda_fp32_policy") is Some(policy) {
+    summary["cuda_fp32_policy"] = policy
+  }
+  if complete && iterations == 10L {
+    try {
+      summary["timing"] = timing_summary(
+        field(training, "cuda_memory_telemetry"),
+      )
+      summary["timing_verified"] = Json(true)
+    } catch {
+      error => summary["telemetry_error"] = Json(error.to_string())
+    }
+  }
+  Json::object(summary)
+}
+
+///|
+fn docker_summary(value : Json) -> Json raise {
+  let container = match value {
+    Array([single]) => single
+    Object(_) => value
+    _ => fail("expected one docker inspect result")
+  }
+  let state = field(container, "State")
+  guard field(state, "Status") is String(status) &&
+    field(state, "StartedAt") is String(started) &&
+    field(state, "FinishedAt") is String(finished) else {
+    fail("invalid Docker final state")
+  }
+  let running = boolean(field(state, "Running"))
+  let oom = boolean(field(state, "OOMKilled"))
+  let exit_code = integer(field(state, "ExitCode"))
+  {
+    "evidence_status": "available",
+    "container_status": Json(status),
+    "running": Json(running),
+    "exit_code": Json(exit_code),
+    "oom_killed": Json(oom),
+    "started_at": Json(started),
+    "finished_at": Json(finished),
+    "finished_zero_without_oom": Json(
+      status == "exited" && !running && exit_code == 0L && !oom,
+    ),
+  }
+}
+
+///|
+async fn presence(path : String) -> Json {
+  try {
+    if !@fs.exists(path) {
+      return { "path": Json(path), "status": "missing", "exists": false }
+    }
+    guard @fs.kind(path, follow_symlink=false) == Regular else {
+      fail("not a regular file")
+    }
+    let file = @fs.open(path, mode=ReadOnly)
+    defer file.close()
+    {
+      "path": Json(path),
+      "status": "present",
+      "exists": true,
+      "bytes": Json(file.size()),
+    }
+  } catch {
+    error =>
+      {
+        "path": Json(path),
+        "status": "unavailable_or_invalid",
+        "exists": Json::null(),
+        "error": Json(error.to_string()),
+      }
+  }
+}
+
+///|
+async fn report(root : String, output : String) -> Unit {
+  let manifest = read_json(root + "/manifest.json", 1048576L)
+  guard field(manifest, "format") ==
+    Json("moonrobo.native-paper-batch-sweep.v1") else {
+    fail("unexpected sweep manifest")
+  }
+  let base = field(manifest, "base_config")
+  validate_base(base)
+  let rows : Array[Json] = []
+  let mut completed = 0
+  let mut complete_with_clean_exit = 0
+  for (name, micro) in cases {
+    let path = root + "/cases/" + name
+    let training_path = path + "/train/report.json"
+    let state_path = path + "/docker-final.json"
+    let training : Json = try {
+      let expected = config_for(base, micro)
+      guard read_json(path + "/config.json", 1048576L) == expected else {
+        fail("prepared case config was changed")
+      }
+      if @fs.exists(training_path) {
+        training_summary(read_json(training_path, 8388608L), expected)
+      } else {
+        {
+          "status": "no_training_report",
+          "training_iterations": Json::null(),
+          "timing_verified": false,
+          "note": "may be not run, preflight rejected, or failed; absence is not zero iterations or a successful run; inspect Docker and stderr evidence",
+        }
+      }
+    } catch {
+      error =>
+        {
+          "status": "unavailable_or_invalid",
+          "training_iterations": Json::null(),
+          "timing_verified": false,
+          "error": Json(error.to_string()),
+        }
+    }
+    let docker : Json = try {
+      if @fs.exists(state_path) {
+        docker_summary(read_json(state_path, 2097152L))
+      } else {
+        {
+          "evidence_status": "missing",
+          "exit_code": Json::null(),
+          "oom_killed": Json::null(),
+          "finished_zero_without_oom": false,
+        }
+      }
+    } catch {
+      error =>
+        {
+          "evidence_status": "unavailable_or_invalid",
+          "exit_code": Json::null(),
+          "oom_killed": Json::null(),
+          "finished_zero_without_oom": false,
+          "error": Json(error.to_string()),
+        }
+    }
+    let logs : Array[Json] = []
+    for filename in ["stderr.log", "trainer.stderr.log", "preflight.stderr.log"] {
+      logs.push(presence(path + "/" + filename))
+    }
+    if field(training, "timing_verified") == Json(true) {
+      completed += 1
+      if field(docker, "finished_zero_without_oom") == Json(true) {
+        complete_with_clean_exit += 1
+      }
+    }
+    rows.push({
+      "case": Json(name),
+      "microbatch": Json(micro),
+      "training_report_path": Json(training_path),
+      "training": training,
+      "docker_final_path": Json(state_path),
+      "docker": docker,
+      "stderr_files": Json(logs),
+    })
+  }
+  write_json(output, {
+    "format": "moonrobo.native-paper-batch-throughput-report.v1",
+    "sweep_root": Json(root),
+    "world_logical_batch": 2048,
+    "policy_logical_batch": 4096,
+    "requested_training_iterations": 10,
+    "completed_timing_case_count": Json(completed),
+    "completed_timing_and_clean_docker_exit_count": Json(
+      complete_with_clean_exit,
+    ),
+    "cases": Json(rows),
+    "gpu_utilization_measured": false,
+    "numerical_equivalence_verified": false,
+    "selection": "no larger candidate selected or launched by this tool; use observed peaks and a fresh actual-free preflight before 512/1024",
+    "memory_safety": "Docker exit/OOM evidence is specific to the recorded container; allocator/free telemetry alone does not certify memory safety or full lifetime peak",
+    "checkpoint_payloads_read": false,
+  })
+  println(
+    "Recorded " +
+    completed.to_string() +
+    "/3 completed paper batch timing cases: " +
+    output,
+  )
+}
+
+///|
+async fn report_single(root : String, output : String) -> Unit {
+  let config_path = root + "/config.json"
+  let config = read_json(config_path, 1048576L)
+  // Deliberate opt-in for this one measured configuration, not an arbitrary
+  // relaxation of the existing symmetric 256/512/1024 candidate validation.
+  validate_base(config, world_microbatch=2048, policy_microbatch=512)
+  let training_path = root + "/train/report.json"
+  let state_path = root + "/docker-final.json"
+  let training = training_summary(read_json(training_path, 8388608L), config)
+  let docker = docker_summary(read_json(state_path, 2097152L))
+  let logs : Array[Json] = []
+  for filename in ["stderr.log", "trainer.stderr.log", "preflight.stderr.log"] {
+    logs.push(presence(root + "/" + filename))
+  }
+  let timed = field(training, "timing_verified") == Json(true)
+  let clean = field(docker, "finished_zero_without_oom") == Json(true)
+  write_json(output, {
+    "format": "moonrobo.native-paper-batch-throughput-report.v1",
+    "mode": "single-paper-wm2048-pi512",
+    "sweep_root": Json(root),
+    "world_logical_batch": 2048,
+    "policy_logical_batch": 4096,
+    "requested_training_iterations": 10,
+    "completed_timing_case_count": Json(if timed { 1 } else { 0 }),
+    "completed_timing_and_clean_docker_exit_count": Json(
+      if timed && clean {
+        1
+      } else {
+        0
+      },
+    ),
+    "cases": [
+      {
+        "case": "wm2048_pi512",
+        "microbatch": Json::null(),
+        "world_microbatch": 2048,
+        "policy_microbatch": 512,
+        "world_chunks_per_update": 1,
+        "actor_chunks_per_update": 8,
+        "config_path": Json(config_path),
+        "config": config,
+        "training_report_path": Json(training_path),
+        "training": training,
+        "docker_final_path": Json(state_path),
+        "docker": docker,
+        "stderr_files": Json(logs),
+      },
+    ],
+    "gpu_utilization_measured": false,
+    "numerical_equivalence_verified": false,
+    "selection": "summarizes one completed evidence directory only; no training launched or configuration selected by this tool",
+    "comparison_scope": "same timing keys and measured iterations 2..10 as the paper sweep; compare actual config and frozen runtime hashes before attributing a timing difference to microbatch",
+    "memory_safety": "Docker exit/OOM evidence is specific to the recorded container; allocator/free telemetry alone does not certify memory safety or full lifetime peak",
+    "checkpoint_payloads_read": false,
+  })
+  println("Recorded single WM2048/policy512 evidence: " + output)
+}
+
+///|
+fn fixture_telemetry() -> Json {
+  let samples : Array[Json] = []
+  fn add(phase : String, iteration : Int32, timestamp : Int32) -> Unit {
+    samples.push({
+      "phase": Json(phase),
+      "iteration": Json(iteration),
+      "sequence": Json(samples.length()),
+      "sample_begin_unix_ms": Json(timestamp),
+      "sample_end_unix_ms": Json(timestamp),
+    })
+  }
+  add("window_start", 0, 100)
+  add("warmup_complete", 0, 110)
+  for iteration in 1..<=10 {
+    let base = 100 + iteration * 100
+    add("collection_complete", iteration, base + 10)
+    add(
+      "world_updates_complete",
+      iteration,
+      base + (if iteration == 1 { 40 } else { 20 }),
+    )
+    add(
+      "actor_critic_complete",
+      iteration,
+      base + (if iteration == 1 { 80 } else { 30 }),
+    )
+  }
+  add("checkpoint_begin", 10, 1140)
+  add("checkpoint_complete", 10, 1150)
+  {
+    "format": "moonrobo.cuda-training-memory-report.v1",
+    "status": "complete",
+    "error": Json::null(),
+    "starting_iteration": 0,
+    "omitted_sample_count": "0",
+    "options": { "synchronize_each_sample": true },
+    "samples": Json(samples),
+    "allocated_window_peak_bytes": "1024",
+    "reserved_window_peak_bytes": "2048",
+    "minimum_observed_cuda_free_bytes": "4096",
+  }
+}
+
+///|
+fn fixture_docker(exit_code : Int32, oom : Bool) -> Json {
+  {
+    "State": {
+      "Status": "exited",
+      "Running": false,
+      "ExitCode": Json(exit_code),
+      "OOMKilled": Json(oom),
+      "StartedAt": "2026-10-24T03:00:00Z",
+      "FinishedAt": "2026-10-24T03:00:01Z",
+    },
+  }
+}
+
+///|
+fn self_test(base : Json) -> Unit raise {
+  let original = base.stringify()
+  for (_, micro) in cases {
+    let candidate = config_for(base, micro)
+    assert_eq(
+      changes(base, candidate).length(),
+      if micro == 256 {
+        0
+      } else {
+        2
+      },
+    )
+    assert_eq(field(candidate, "wm_batch"), Json(2048))
+    assert_eq(field(candidate, "pi_batch"), Json(4096))
+    assert_eq(field(candidate, "precision"), Json("float32"))
+    assert_eq(field(candidate, "iterations"), Json(10))
+  }
+  assert_eq(base.stringify(), original)
+  try config_for(base, 16) catch {
+    _ => ()
+  } noraise {
+    _ => fail("unsupported microbatch accepted")
+  }
+  let timing = timing_summary(fixture_telemetry())
+  assert_eq(field(timing, "measured_iteration_count"), Json(9))
+  assert_eq(field(timing, "world_mean_ms"), Json(10))
+  assert_eq(field(timing, "actor_critic_mean_ms"), Json(10))
+  assert_eq(field(timing, "warmup_ms"), Json(10L))
+  assert_eq(field(timing, "checkpoint_ms"), Json(10L))
+  assert_eq(field(timing, "allocated_window_peak_bytes"), Json(1024L))
+  assert_eq(field(timing, "minimum_observed_cuda_free_bytes"), Json(4096L))
+  assert_eq(
+    field(
+      docker_summary(Json([fixture_docker(0, false)])),
+      "finished_zero_without_oom",
+    ),
+    Json(true),
+  )
+  assert_eq(
+    field(docker_summary(fixture_docker(1, false)), "finished_zero_without_oom"),
+    Json(false),
+  )
+  assert_eq(
+    field(docker_summary(fixture_docker(0, true)), "finished_zero_without_oom"),
+    Json(false),
+  )
+  let incomplete : Json = {
+    "format": "moonrobo.native-tensor-training-report.v1",
+    "identity": { "config": base },
+    "distributed": false,
+    "training_complete_for_requested_iterations": false,
+    "iteration": 3,
+  }
+  let partial = training_summary(incomplete, base)
+  assert_eq(field(partial, "training_iterations"), Json(3L))
+  assert_eq(field(partial, "timing_verified"), Json(false))
+  guard incomplete is Object(finished) else { fail("expected fixture object") }
+  finished["iteration"] = Json(10)
+  finished["training_complete_for_requested_iterations"] = Json(true)
+  finished["cuda_memory_telemetry"] = fixture_telemetry()
+  let complete = training_summary(Json::object(finished), base)
+  assert_eq(field(complete, "training_iterations"), Json(10L))
+  assert_eq(field(complete, "timing_verified"), Json(true))
+  let single = config_for(base, 512)
+  guard single is Object(single_fields) else { fail("expected config object") }
+  single_fields["wm_microbatch"] = Json(2048)
+  validate_base(single, world_microbatch=2048, policy_microbatch=512)
+  assert_eq(changes(base, single).length(), 2)
+  try validate_base(single) catch {
+    _ => ()
+  } noraise {
+    _ => fail("single configuration accepted as the original sweep base")
+  }
+  try training_summary(Json::object(finished), single) catch {
+    _ => ()
+  } noraise {
+    _ => fail("mismatching single configuration accepted")
+  }
+  finished["identity"] = { "config": single }
+  assert_eq(
+    field(training_summary(Json::object(finished), single), "timing_verified"),
+    Json(true),
+  )
+  single_fields["pi_microbatch"] = Json(1024)
+  try
+    validate_base(single, world_microbatch=2048, policy_microbatch=512)
+  catch {
+    _ => ()
+  } noraise {
+    _ => fail("unsupported single policy microbatch accepted")
+  }
+  try timing_summary(Json::null()) catch {
+    _ => ()
+  } noraise {
+    _ => fail("missing telemetry accepted")
+  }
+}
+
+///|
+async fn main {
+  match @env.args()[1:].to_owned() {
+    ["prepare", base, root] => prepare(base, root)
+    ["report", root, output] => report(root, output)
+    ["report-single", root, output] => report_single(root, output)
+    ["--self-test"] => {
+      self_test(
+        read_json(
+          "examples/learning/g1-native-tensor-paper-n256-b2048-b4096-util80.json",
+          1048576L,
+        ),
+      )
+      println("paper batch sweep self-test passed")
+    }
+    _ =>
+      fail(
+        "usage: prepare_native_paper_batch_sweep <prepare BASE_CONFIG FRESH_DIR | report EVIDENCE_ROOT FRESH_JSON | report-single EVIDENCE_ROOT FRESH_JSON | --self-test>",
+      )
+  }
+}

@@ -1,0 +1,59 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let source = @fs.read_file(
+    repo + "/scripts/advise_combo_closed_cuda_cache_b.mbtx",
+  ).text()
+  let prefix = source.split("async fn main {").to_array()[0].to_owned()
+  let body =
+    #|async fn main {
+    #|  idle("")
+    #|  let report = base + "/cache-followup-ended-parity-cuda-20261026-b.json"
+    #|  guard !@fs.exists(report) else { fail("fresh receipt") }
+    #|  let records : Array[Json] = []
+    #|  let owners : Array[Json] = []
+    #|  let before = command("cat", ["/proc/meminfo"])
+    #|  let mut reclaimed = 0L
+    #|  for short_id in ["dffbda56fb78", "e305d0063ccf", "f81f943a3994", "b3cd72281818", "f299a049bb76", "d4a34f1a0155", "da79185eca0c", "a3897c7e3e6c", "f77e67751dca", "6e5171b27093", "92a92c900e99", "d55b4a886252"] {
+    #|    idle("")
+    #|    let owner = inspect(short_id)
+    #|    let id = text(field(owner,"Id"))
+    #|    guard id.has_prefix(short_id) && field(owner,"Image") == Json(image) && text(field(owner,"Name")).has_prefix("/moonrobo-") else { fail("explicit own-task container identity") }
+    #|    stopped(owner)
+    #|    guard [Json("1000:1000"),Json("isaaclab")].contains(field(field(owner,"Config"),"User")) && field(owner,"Mounts") is Array(mounts) && mounts.any(m => text(field(m,"Source")).has_prefix("/home/wlc004s/moonrobo/") || field(m,"Source") == Json("/home/wlc004s/moonrobo")) else { fail("owned task bind and user required") }
+    #|    let diff = docker(["diff", id])
+    #|    if !diff.contains(" /home/isaaclab/.nv/ComputeCache") {
+    #|      owners.push({"container":owner,"cache_absent":true})
+    #|      continue
+    #|    }
+    #|    guard field(field(owner,"GraphDriver"),"Name") == Json("overlay2") else { fail("overlay2 required") }
+    #|    let upper = text(field(field(field(owner,"GraphDriver"),"Data"),"UpperDir"))
+    #|    guard upper.has_prefix("/var/lib/docker/overlay2/") && upper.has_suffix("/diff") && upper.split("/").all(s => s == "" || component(s.to_owned())) else { fail("private upper directory required") }
+    #|    owners.push(owner)
+    #|    cache(id, upper + "/home/isaaclab/.nv/ComputeCache", true, records)
+    #|    let latest = records.last().unwrap()
+    #|    guard field(latest,"before") is Array(bs) && field(latest,"after") is Array(as_) else { fail("residency receipt required") }
+    #|    for b in bs { reclaimed += num(field(b,"res")) }
+    #|    for a in as_ { reclaimed -= num(field(a,"res")) }
+    #|    if reclaimed >= 2147483648L { break }
+    #|  }
+    #|  @fs.write_file(report, ({"passed":true,"owners":Json(owners),"operations":Json(records),"observed_resident_reduction_bytes":Json(reclaimed),"host_before":Json(before),"host_after":Json(command("cat",["/proc/meminfo"])),"scope":"Exact listed ended MoonRobo parity and paper-batch task containers only. Private CUDA cache pages; no removal, source change, global cache drop or live service operation. Run results unchanged.","guards_changed":false,"files_deleted":0}:Json).stringify(indent=2),create_mode=CreateNew)
+    #|  println("Observed ended-task CUDA residency reduction bytes=" + reclaimed.to_string())
+    #|}
+  let path = repo +
+    "/output/spark-runtime-20261024/world-ln-fk-20261026/advise_followup_legacy_cuda_v2.mbtx"
+  @fs.write_file(path, prefix + body, create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o", "ControlPath=/tmp/moonrobo-operator-179.sock", path, "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_followup_legacy_cuda_v2.mbtx",
+    ]) ==
+    0 else {
+    fail("copy")
+  }
+}

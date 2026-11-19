@@ -1,0 +1,45 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a/generated-code-a"
+  @fs.mkdir(out)
+  let runs = "/home/wlc004s/moonrobo/runs/"
+  for
+    (source, name) in [
+      (
+        "hotspot-shared-actor-adjoints-e/ccn7leqciydugizlgoququxkm7di6362zfd6yjoq2x6x7bmpzr4u.py",
+        "smc-recurrent-backward.py",
+      ),
+      (
+        "hotspot-mlp-actor-step-export-b/recurrent/backward.fx.txt", "native-recurrent-backward.fx.txt",
+      ),
+      (
+        "hotspot-mlp-actor-step-export-b/recurrent/forward.fx.txt", "native-recurrent-forward.fx.txt",
+      ),
+      (
+        "hotspot-mlp-actor-step-export-b/recurrent/manifest.json", "native-recurrent-manifest.json",
+      ),
+      (
+        "hotspot-mlp-actor-step-export-b/recurrent/cne4df23phho2e7pcbisa4ob3wqplsjh52yq4ys53fo2zvn74k3e.wrapper.cpp",
+        "native-recurrent-backward.cpp",
+      ),
+    ] {
+    guard !@fs.exists(out + "/" + name) else { fail("frozen copy exists") }
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179:" + runs + source,
+        out + "/" + name,
+      ]),
+      0,
+    )
+  }
+}

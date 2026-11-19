@@ -1,0 +1,83 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (reader, redirect) = @process.read_from_process()
+  defer reader.close()
+  @async.with_task_group() <| group => {
+    let child = group.spawn(() => {
+      @process.run("sha256sum", [path], stdout=redirect)
+    })
+    let bytes = FixedArray::make(4096, b'\x00')
+    let n = reader.read(bytes)
+    guard n >= 64 && n < 4096 && child.wait() == 0 else { fail("sha failed") }
+    @utf8.decode(Bytes::from_array(bytes[:64]))
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_] else { fail("fixed retry preparation only") }
+  let base = "/home/wlc004s/moonrobo/private/hotspot-smc4096-20261026-a"
+  guard sha(base + "/spec.json") ==
+    "17d22fb5de11e95998122a47713512a01b2d62a165159cb8377da5c10dbe8cfd" else {
+    fail("original frozen comparison differs")
+  }
+  let original = @fs.read_file(base + "/run_hotspot_smc_comparison.mbtx").text()
+  let controller = original
+    .replace_all(old="base + \"/spec.json\"", new="base + \"/spec-b.json\"")
+    .replace_all(
+      old="tools + \"/advise_closed_smc_image_pages_f.mbtx\"",
+      new="base + \"/advise_closed_smc_small_image_pages.mbtx\"",
+    )
+  guard controller != original &&
+    controller.contains("/spec-b.json") &&
+    controller.contains("base + \"/advise_closed_smc_small_image_pages.mbtx\"") else {
+    fail("controller anchors differ")
+  }
+  @fs.write_file(
+    base + "/run_hotspot_smc_comparison_b.mbtx",
+    controller,
+    create_mode=CreateNew,
+  )
+  guard @json.parse(@fs.read_file(base + "/spec.json").text()) is Object(spec) &&
+    spec.get("pins") is Some(Array(pins)) else {
+    fail("spec structure")
+  }
+  for
+    path in [
+      base + "/run_hotspot_smc_comparison_b.mbtx",
+      base + "/advise_closed_smc_small_image_pages.mbtx",
+      base + "/prepare_hotspot_smc_retry.mbtx",
+      "/home/wlc004s/moonrobo/runs/native-hotspot-vs-smc512-20261026-a/run-3/result.json",
+    ] {
+    pins.push({
+      "path": Json(path),
+      "sha256": Json(sha(path)),
+      "role": "fresh-retry-controller-and-retained-failure",
+    })
+  }
+  spec["cache_retry"] = {
+    "prior_incomplete_root": "/home/wlc004s/moonrobo/runs/native-hotspot-vs-smc512-20261026-a",
+    "prior_rows_excluded": true,
+    "both_training_sides_byte_identical_to_parent": true,
+    "change": "Between every completed member, advise resident immutable UID1000 package files above1MiB in the exact closed SMC image, including previously unselected1..16MiB files. Same1024 file/4GiB individual/64GiB total bounds. No training guard, reserve, math, batch or source changes.",
+    "training_memory_thresholds_changed": false,
+    "no_file_content_deletion": true,
+  }
+  @fs.write_file(
+    base + "/spec-b.json",
+    Json(spec).stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+  )
+  println("New frozen comparison SHA256: " + sha(base + "/spec-b.json"))
+}

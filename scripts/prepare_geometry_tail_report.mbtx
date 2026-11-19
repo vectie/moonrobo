@@ -1,0 +1,9 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let old="output/spark-runtime-20261024/fused-rotation-20261028/";let out="output/spark-runtime-20261024/geometry-tail-20261028/"
+  let mut s=@fs.read_file(old+"report.mbtx").text()
+  for (a,b) in [("fused-rotation-20261028","geometry-tail-20261028"),("heading-body-fused-","geometry-tail-"),("fused-rotation-cpu","geometry-tail-cpu"),("\"axis\"","\"cross\""),("\"skew\"","\"tail\"")] {s=rep(s,a,b)}
+  s=rep(s,"(if p==\"actor\"&&v==\"baseline\"&&k==\"gate\"{\"-b\"}else{\"-a\"})","\"-a\"")
+  @fs.write_file(out+"report.mbtx",s,create_mode=CreateNew)
+}

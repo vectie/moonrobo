@@ -1,0 +1,48 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env" }
+///|
+async fn main {
+  guard @env.args() is [_,mode]&&["prepare","build","run"].contains(mode) else {fail("prepare/build/run")}
+  let out="output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host="wlc004s@192.168.2.179"
+  if mode=="prepare" {
+    let learning=@fs.read_file("src/learning_aligned_gpu/learning.mbt").text()
+      .replace_all(old="    states.push(state)",new=(
+        #|    states.push(state)
+        #|    actor_boundary("step-\{t}-action",action)
+        #|    for (name,value) in [("p",state.p),("r",state.rotation),("v",state.v),("w",state.w),("q",state.q),("qd",state.qd)] {actor_boundary("step-\{t}-\{name}",value)}
+      ))
+      .replace_all(old="// compiled observation boundary",new="actor_boundary(\"step-\\{t}-observation\",history.narrow(1,c.hist-1,1).reshape([n,self.mode.dim()]))")
+      .replace_all(old="    history = self.backend.concat(",new="    actor_boundary(\"step-\\{t}-observation\",obs)\n    history = self.backend.concat(")
+      .replace_all(old="  let return_range =",new="  actor_boundary(\"rewards\",rewards)\n  actor_boundary(\"failures\",failures)\n  let return_range =")
+      .replace_all(old="  let adam_range = @tensor.operator_range_begin(\"diag.actor.adam\")",new="  for i,p in self.policy.parameters() {actor_boundary(\"raw-policy-\\{i}\",p.gradient())}\n  let adam_range = @tensor.operator_range_begin(\"diag.actor.adam\")")
+    let probe="///|\nlet actor_boundary_records"+@fs.read_file(out+"/actor_learning_a.mbt").text().split("let actor_boundary_records").to_array()[1].to_owned()
+    @fs.write_file(out+"/actor_step_learning_a.mbt",learning+"\n"+probe,create_mode=CreateNew)
+    let fixture=@fs.read_file(out+"/actor_fixture_a.mbt").text().replace_all(old="  let rows : Array[Json] = []",new=(
+      #|  let package="/workspace/moonrobo/runs/hotspot-mlp-actor-step-export-a"
+      #|  learner.compiled_actor_steps=Some((backend.load_compiled_block(package+"/initial",cuda_device=0),backend.load_compiled_block(package+"/recurrent",cuda_device=0)))
+      #|  let rows : Array[Json] = []
+    ))
+    @fs.write_file(out+"/actor_step_fixture_a.mbt",fixture,create_mode=CreateNew)
+    assert_eq(@process.run("tar",["--disable-copyfile","-czf",out+"/actor-step-overlay-a.tar.gz","src/learning_aligned_gpu/networks.mbt","src/learning_aligned_gpu/actor_norm_snapshot.mbt","src/learning_aligned_gpu/microbatch_gate_wbtest.mbt","src/learning_aligned_gpu/actor_norm_snapshot_wbtest.mbt","src/learning_aligned_gpu/compiled_actor.mbt","src/learning_aligned_gpu/moon.pkg","src/learning_aligned_gpu/geometry/context.mbt"]),0)
+    let builder=@fs.read_file(out+"/build_actor_normalizer_a.mbtx").text()
+      .replace_all(old="actor-normalizer",new="actor-step")
+      .replace_all(old="actor_normalizer_fixture_a.mbt",new="actor_step_fixture_a.mbt")
+      .replace_all(old="  container(\"actor-step-build-a\"",new="  run(\"actor-step-source-a\",\"cp\",[base+\"/actor_step_learning_a.mbt\",ws+\"/src/learning_aligned_gpu/learning.mbt\"])\n  container(\"actor-step-build-a\"")
+    @fs.write_file(out+"/build_actor_step_a.mbtx",builder,create_mode=CreateNew)
+    let runner=@fs.read_file(out+"/run_actor_normalizer_gate_a.mbtx").text()
+      .replace_all(old="run_actor_normalizer_gate_a.mbtx",new="run_actor_step_gate_a.mbtx")
+      .replace_all(old="actor-normalizer",new="actor-step")
+      .replace_all(old="[\"goal\",\"observation\"]",new="[\"initial\",\"recurrent\"]")
+    @fs.write_file(out+"/run_actor_step_gate_a.mbtx",runner,create_mode=CreateNew)
+    for name in ["actor_step_learning_a.mbt","actor_step_fixture_a.mbt","actor-step-overlay-a.tar.gz","build_actor_step_a.mbtx","run_actor_step_gate_a.mbtx"] {
+      assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",out+"/"+name,host+":"+base+"/"+name]),0)
+    };return
+  }
+  let folder=out+"/step-"+mode+"-a";@fs.mkdir(folder)
+  let command=if mode=="build" {"build_actor_step_a.mbtx"} else {"run_actor_step_gate_a.mbtx -- actor native off 1 actor-step-native-a bf16-full"}
+  let code=@process.run("ssh",["-S","/tmp/moonrobo-operator-179.sock",host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/"+command],stdout=@process.redirect_to_file(folder+"/controller.stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(folder+"/controller.stderr.log",create_mode=CreateNew))
+  if mode=="run" {for name in ["result.json","boundaries.json","completion.json","training-guard.json","training-docker-final.json","training.stdout.log","training.stderr.log","protocol.json","compiled-packages.json"] {
+    ignore(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",host+":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-step-native-a/"+name,folder+"/"+name]))
+  }};assert_eq(code,0)
+}

@@ -1,0 +1,119 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn sha(bytes : Bytes) -> String {
+  let h = @crypto.SHA256::new()
+  h.update(bytes)
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+async fn read(path : String, limit : Int64) -> Bytes {
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  guard f.size() > 0L && f.size() <= limit else {
+    fail("file size out of bounds: " + path)
+  }
+  f.read_exactly_at(f.size().to_int(), position=0L)
+}
+
+///|
+async fn store(path : String, bytes : Bytes) -> Unit {
+  if @fs.exists(path) {
+    guard read(path, bytes.length().to_int64()) == bytes else {
+      fail("existing file differs: " + path)
+    }
+  } else {
+    @fs.write_file(path, bytes, create_mode=CreateNew)
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, root, cache, panel_file] else {
+    fail("BUNDLE_ROOT FILTER_REFERENCE_CACHE PAIRED_PANEL_JSON")
+  }
+  let src = root + "/source"
+  let catalog = read(src + "/catalog.json", 67108864L)
+  guard @json.parse(@utf8.decode(read(src + "/receipt.json", 1048576L)))
+    is { "files": { "catalog.json": pin, .. }, .. } &&
+    Json(sha(catalog)) == pin else {
+    fail("catalog digest mismatch")
+  }
+  guard @json.parse(@utf8.decode(catalog))
+    is {
+      "motion_names": Array(names),
+      "motion_sha256": Array(hashes),
+      "source_fps": Number(120, ..),
+      ..
+    } else {
+    fail("expected G1 120 Hz catalog")
+  }
+  guard @json.parse(@utf8.decode(read(panel_file, 1048576L)))
+    is { "per_clip": Array(rows), .. } &&
+    rows.length() == 40 else {
+    fail("expected fixed panel")
+  }
+  let map : Array[Json] = []
+  if !@fs.exists(src + "/clips") {
+    @fs.mkdir(src + "/clips", recursive=true)
+  }
+  for row in rows {
+    guard row is { "index": index, "clip": name, "expected_steps": steps, .. } else {
+      fail("invalid panel row")
+    }
+    let i : Int32 = @json.from_json(index)
+    let n : Int32 = @json.from_json(steps)
+    guard i >= 0 &&
+      i < names.length() &&
+      i < hashes.length() &&
+      names[i] == name &&
+      hashes[i] is String(hash) else {
+      fail("clip identity mismatch")
+    }
+    let key = sha(
+      @utf8.encode("moonrobo.motion-shard.f64le.v1:" + hash + ":120"),
+    )
+    let sub = key[:2].to_owned()
+    let rel = "/" + sub + "/" + key + ".f64"
+    let meta = read(cache + rel + ".json", 65536L)
+    let bytes = read(cache + rel, (n + 1).to_int64() * 608L)
+    guard @json.parse(@utf8.decode(meta))
+      is {
+        "state_sha256": state,
+        "source_sha256": source,
+        "frames": frames,
+        ..
+      } &&
+      source == Json(hash) &&
+      frames == Json(n + 1) &&
+      bytes.length() == (n + 1) * 608 &&
+      state == Json(sha(bytes)) else {
+      fail("motion digest or length mismatch")
+    }
+    if !@fs.exists(src + "/clips/" + sub) {
+      @fs.mkdir(src + "/clips/" + sub, recursive=true)
+    }
+    store(src + "/clips" + rel, bytes)
+    store(src + "/clips" + rel + ".json", meta)
+    map.push({ "i": i, "s": hash, "key": key })
+  }
+  // Object key ordering can differ between an earlier equivalent export and this script.
+  let path = src + "/panel-sources.json"
+  if @fs.exists(path) {
+    guard @json.parse(@utf8.decode(read(path, 1048576L))) == Json(map) else {
+      fail("existing panel differs")
+    }
+  } else {
+    @fs.write_file(path, Json(map).stringify(), create_mode=CreateNew)
+  }
+  println("Verified " + map.length().to_string() + " motion shards")
+}

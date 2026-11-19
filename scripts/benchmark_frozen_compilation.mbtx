@@ -1,0 +1,131 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/compiled-vjp-detail-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  guard @env.args() is [_, op] && ["prepare", "run"].contains(op) else {
+    fail("prepare/run")
+  }
+  if op == "prepare" {
+    let helper =
+      #|///|
+      #|async fn clone_compilation_tree(source : String, target : String, records : Array[Json]) -> Unit {
+      #|  guard @fs.realpath(source)==source && @fs.kind(source,follow_symlink=false)==Directory else {fail("cache directory")}
+      #|  @fs.mkdir(target)
+      #|  for name in @fs.readdir(source) {
+      #|    let src=source+"/"+name
+      #|    match @fs.kind(src,follow_symlink=false) {
+      #|      Directory => clone_compilation_tree(src,target+"/"+name,records)
+      #|      Regular => {
+      #|        guard @fs.realpath(src)==src else {fail("cache symlink")}
+      #|        let before=hash_file(src)
+      #|        @fs.write_file(target+"/"+name,@fs.read_file(src),create_mode=CreateNew)
+      #|        guard hash_file(src)==before && hash_file(target+"/"+name)==before else {fail("cache copy changed")}
+      #|        records.push({"source":Json(src),"target":Json(target+"/"+name),"sha256":Json(before)})
+      #|      }
+      #|      _ => fail("cache special file")
+      #|    }
+      #|  }
+      #|}
+      #|
+    let insertion =
+      #|  if route=="smc" {
+      #|    let source="/home/wlc004s/moonrobo/runs/hotspot-mlp-aoti-final2-smc-bf16-gate"
+      #|    guard field(read_json(source+"/completion.json"),"passed")==Json(true) && field(read_json(source+"/result.json"),"passed")==Json(true) else {fail("original SMC gate incomplete")}
+      #|    let records:Array[Json]=[]
+      #|    for name in ["inductor-cache","triton-cache"] {if @fs.exists(source+"/"+name){clone_compilation_tree(source+"/"+name,root+"/"+name,records)}}
+      #|    write_json(root+"/compilation-snapshot.json",{"source":Json(source),"original_smc_unchanged":true,"numeric_gate_cache":true,"files":Json(records)})
+      #|  }
+      #|  let passed=guarded(side,root,false)
+    let original = @fs.read_file(
+      "output/spark-runtime-20261024/compiled-mlp-20261028-a/run_compiled_contracts_final2.mbtx",
+    ).text()
+    // Disable the old partial seeding branch; the complete ORIGINAL SMC gate
+    // cache is copied below. No padding decision is manufactured or toggled.
+    let runner = original
+      .replace_all(old="async fn main {", new=helper + "\nasync fn main {")
+      .replace_all(
+        old="run_compiled_contracts_final2.mbtx",
+        new="run_frozen_compilation_b.mbtx",
+      )
+      .replace_all(old="if route==\"smc\" && amp==\"bf16\" {", new="if false {")
+      .replace_all(old="let passed=guarded(side,root,false)", new=insertion)
+    @fs.write_file(
+      out + "/run_frozen_compilation_b.mbtx",
+      runner,
+      create_mode=CreateNew,
+    )
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/run_frozen_compilation_b.mbtx",
+        host + ":" + base + "/run_frozen_compilation_b.mbtx",
+      ]),
+      0,
+    )
+    return
+  }
+  for
+    (side, suffix) in [("aoti", "a"), ("smc", "a"), ("smc", "b"), ("aoti", "b")] {
+    let label = "frozen2-" + side + "-bf16-" + suffix
+    let folder = out + "/" + label
+    @fs.mkdir(folder)
+    let code = @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/run_frozen_compilation_b.mbtx -- " +
+        side +
+        " bf16 0 " +
+        label,
+      ],
+      stdout=@process.redirect_to_file(
+        folder + "/controller.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        folder + "/controller.stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    for
+      file in [
+        "result.json", "protocol.json", "completion.json", "training-guard.json",
+        "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+        "compilation-snapshot.json",
+      ] {
+      if file == "compilation-snapshot.json" && side != "smc" {
+        continue
+      }
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-mlp-" +
+          label +
+          "/" +
+          file,
+          folder + "/" + file,
+        ]),
+      )
+    }
+    println(label + " exit=" + code.to_string())
+    assert_eq(code, 0)
+  }
+}

@@ -1,0 +1,9 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let repo="/Users/kq/Workspace/moonrobo";let out=repo+"/output/spark-runtime-20261024/smc-algebra-20261028"
+  let cache=@fs.read_file(out+"/advise_algebra_a.mbtx").text().split("\n").map(l=>if l.trim().has_prefix("let labels = ") {l.to_owned()+" + [\"algebra-actor-return-b\"]"} else {l.to_owned()}).collect().join("\n")
+  @fs.write_file(out+"/advise_algebra_b.mbtx",cache,create_mode=CreateNew)
+  for (path,name) in [(out+"/advise_algebra_b.mbtx","advise_algebra_b.mbtx"),(repo+"/scripts/confirm_smc_algebra_return.mbtx","confirm_smc_algebra_return.mbtx")] {
+    guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",path,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/"+name])==0 else {fail(name)}
+  }
+}

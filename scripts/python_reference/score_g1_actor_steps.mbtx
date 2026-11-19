@@ -1,0 +1,171 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=err.text() + out.text())
+  out.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    6,
+    msg="usage: score_g1_actor_steps.mbtx REPO STUDY INCOMING_POLICIES MOONDATA_ROOT SUMMARY_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let incoming : Array[Json] = []
+  for seed in 0..<3 {
+    let path = study + "/incoming-evaluation-seed-\{seed}"
+    ignore(
+      run(root + "/target/learning-venv/bin/python", [
+        study + "/provider-sources/policy.py",
+        "evaluate",
+        "--checkpoint",
+        args[3] + "/actor-seed-\{seed}.pt",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--config",
+        study + "/actor-lr-standard/config.json",
+        "--experiment",
+        root + "/examples/learning/g1-long-experiment.json",
+        "--output",
+        path,
+      ]),
+    )
+    incoming.push(read(path + "/physics.json"))
+  }
+  let cells : Array[Json] = []
+  for id in ["actor-lr-standard", "actor-lr-small"] {
+    let source = study + "/" + id
+    let policy = read(source + "/policy/report.json")
+    let imported = @json.parse(
+      run(
+        root +
+        "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe",
+        [
+          "import",
+          args[4],
+          source,
+          id,
+          @env.now().reinterpret_as_int64().to_string(),
+        ],
+      ),
+    )
+    assert_eq(field(imported, "physical_execution_allowed"), false.to_json())
+    let rows : Array[Json] = []
+    for result in array(field(policy, "runs")) {
+      guard field(result, "seed") is Number(seed_number, ..) else {
+        fail("missing seed")
+      }
+      let seed = seed_number.to_int()
+      let history = array(field(result, "history"))
+      let updates = history.map(h => field(h, "update"))
+      assert_eq(updates, ([0, 1, 5, 10, 20, 50, 100, 150, 200] : Array[Json]))
+      assert_eq(field(result, "dynamics_unchanged"), true.to_json())
+      assert_eq(field(result, "reload_matches"), true.to_json())
+      let physics = field(result, "critic_physics")
+      let name = "critic-physics-seed-\{seed}.jsonl.gz"
+      ignore(run("gzip", ["-t", source + "/policy/" + name]))
+      guard field(physics, "sha256") is String(sha) else {
+        fail("missing compressed digest")
+      }
+      let matching = array(field(imported, "payloads")).filter(p => {
+        field(p, "relative_path") == ("policy/" + name).to_json()
+      })
+      assert_eq(matching.length(), 1)
+      assert_eq(
+        field(field(matching[0], "data_ref"), "checksum"),
+        ("sha256:" + sha).to_json(),
+      )
+      let before = field(incoming[seed], "candidate")
+      let current = field(
+        read(source + "/policy/physics-seed-\{seed}.json"),
+        "candidate",
+      )
+      if field(result, "selected_update") == (0 : Json) {
+        let a = array(field(before, "trials"))
+        let b = array(field(current, "trials"))
+        assert_eq(a.length(), b.length())
+        for i in 0..<a.length() {
+          for
+            key in [
+              "case_id", "seed", "replay", "failed", "simulated_seconds", "joint_rmse_rad",
+            ] {
+            assert_eq(
+              field(a[i], key),
+              field(b[i], key),
+              msg="update-zero actor changed: " + key,
+            )
+          }
+        }
+      }
+      rows.push({
+        "seed": seed.to_json(),
+        "selected_update": field(result, "selected_update"),
+        "incoming": field(before, "summary"),
+        "candidate": field(result, "candidate"),
+        "qualifies": field(result, "qualifies"),
+        "training_seconds": field(result, "training_seconds"),
+        "validation_history": history,
+        "physics_payload": matching[0],
+      })
+    }
+    cells.push({
+      "id": id.to_json(),
+      "config": field(policy, "config"),
+      "runs": rows.to_json(),
+    })
+  }
+  let validation = @json.parse(
+    run(root + "/_build/native/debug/build/cmd/moondata/moondata.exe", [
+      "validate",
+      args[4],
+    ]),
+  )
+  assert_eq(field(validation, "status"), "passed".to_json())
+  assert_eq(field(validation, "finding_count"), (0 : Json))
+  let summary : Json = {
+    "format": "moonrobo.g1-actor-step-study.v1",
+    "cells": cells.to_json(),
+    "validation": validation,
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    args[5],
+    summary.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "Compared both step sizes with incoming actors; early checkpoints, compressed data and MoonData integrity verified.",
+  )
+}

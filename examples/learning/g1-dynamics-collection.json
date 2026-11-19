@@ -1,0 +1,17 @@
+{
+  "source_revision": "cda5236f98383f6fbaa4820c6b18dba892cd087f",
+  "control_dt_s": 0.02,
+  "duration_s": 2.0,
+  "action_noise_std_rad": 0.05,
+  "seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+  "controllers": ["position"],
+  "fall_height_m": 0.35,
+  "fall_upright_z": 0.5,
+  "cases": [
+    {"id": "stand", "family": "procedural-stand", "motion": "stand", "keyframe": "home", "split": "train", "friction": 1.0},
+    {"id": "stand-medium-friction", "family": "procedural-stand", "motion": "stand", "keyframe": "home", "split": "train", "friction": 0.8},
+    {"id": "stand-low-friction", "family": "procedural-stand", "motion": "stand", "keyframe": "home", "split": "train", "friction": 0.6},
+    {"id": "sway", "family": "procedural-waist-sway", "motion": "waist_sway", "keyframe": "home", "split": "validation", "friction": 0.8},
+    {"id": "wave", "family": "procedural-arm-wave", "motion": "arm_wave", "keyframe": "home", "split": "test", "friction": 0.6}
+  ]
+}

@@ -1,0 +1,48 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo"
+  let out = root + "/output/spark-runtime-20261024/world-ln-fk-20261026"
+  let remote = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+  let image = @fs.read_file(
+      root + "/scripts/advise_closed_smc_small_image_pages.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="sha256:e84e3c0d2b553e29ffa04fb6d738a3b635afa66e3d23824bfc6c6304e198ad46",
+      new="sha256:c76815627562a180052cef8e7e07edb37fe8547d83158eed6182ebd99bb8385d",
+    )
+    .replace_all(
+      old="b40b887a87540aea00fb5b7349e283b895ec4f95309f9781c2140fbc9b7244cf",
+      new="fa692c7c05dccdbe3b47449b4b00823da41fcc0e2d30a576f1f5a3e29d63da70",
+    )
+    .replace_all(old="closed SMC image", new="closed native numeric gate image")
+  let build = @fs.read_file(root + "/scripts/advise_hotspot_recent_cache.mbtx")
+    .text()
+    .replace_all(
+      old="trace_root + \"/run/native\",",
+      new="trace_root + \"/run/native\",\n        \"/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a/workspace/moonrobo/_build\",\n        \"/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a/workspace/moonrobo-fixtures/_build\",\n        \"/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a/_build\",",
+    )
+  for
+    (name, source) in [
+      ("advise_followup_native_image.mbtx", image),
+      ("advise_followup_build.mbtx", build),
+    ] {
+    @fs.write_file(out + "/" + name, source, create_mode=CreateNew)
+    guard @process.run("scp", [
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/" + name,
+        "wlc004s@192.168.2.179:" + remote + "/" + name,
+      ]) ==
+      0 else {
+      fail("copy failed")
+    }
+  }
+}

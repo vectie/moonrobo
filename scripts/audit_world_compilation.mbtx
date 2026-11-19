@@ -1,0 +1,110 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/world-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let prefix = @fs.read_file(
+    "output/spark-runtime-20261024/compiled-vjp-detail-20261029-a/run_frozen_compilation_b.mbtx",
+  )
+  .text()
+  .split("async fn main {")
+  .to_array()[0].to_owned()
+  let code = prefix +
+    (
+      #|async fn new_files(dir:String,known:Map[String,Json],rows:Array[Json])->Unit {
+      #|  for name in @fs.readdir(dir) {
+      #|    let path=dir+"/"+name
+      #|    guard @fs.realpath(path)==path else {fail("symlink")}
+      #|    if @fs.kind(path,follow_symlink=false)==Directory {new_files(path,known,rows)} else {
+      #|      guard @fs.kind(path,follow_symlink=false)==Regular else {fail("special file")}
+      #|      if known.get(path) is Some(hash) {guard Json(hash_file(path))==hash else {fail("original changed")}} else {
+      #|        rows.push({"path":Json(path),"sha256":Json(hash_file(path)),"configuration":if name.has_suffix(".best_config"){read_json(path)}else{Json(null)}})
+      #|      }
+      #|    }
+      #|  }
+      #|}
+      #|async fn main {
+      #|  let dir="/home/wlc004s/moonrobo/runs/hotspot-mlp-world-boundary-f"
+      #|  guard field(read_json(dir+"/compilation-snapshot.json"),"files") is Array(files) else {fail("manifest")}
+      #|  let known:Map[String,Json]={}
+      #|  for row in files {known[text(field(row,"target"))]=field(row,"sha256")}
+      #|  let added:Array[Json]=[]
+      #|  for name in ["inductor-cache","triton-cache"] {new_files(dir+"/"+name,known,added)}
+      #|  write_json("/home/wlc004s/moonrobo/private/shared-compute-20261026-a/world-compiler-cache-audit-a.json",{"copied_count":Json(files.length()),"copied_unchanged":true,"added_count":Json(added.length()),"added":Json(added)})
+      #|}
+    )
+  @fs.write_file(
+    out + "/audit_world_compilation_a.mbtx",
+    code,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/audit_world_compilation_a.mbtx",
+      host + ":" + base + "/audit_world_compilation_a.mbtx",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/audit_world_compilation_a.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/audit.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/audit.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      host + ":" + base + "/world-compiler-cache-audit-a.json",
+      out + "/world-compiler-cache-audit-a.json",
+    ]),
+    0,
+  )
+  @fs.mkdir(out + "/frozen-sources")
+  for
+    name in [
+      "compiled_world_boundaries_a.py", "compiled_world_boundaries_b.py", "compiled_world_boundaries_c.py",
+      "compiled_world_boundaries_d.py", "compiled_world_boundaries_e.py", "compiled_world_boundaries_f.py",
+      "compiled_boundary_capture_a.cpp", "compiled_boundary_capture_b.cpp", "compiler_reference_contract_b.py",
+      "compiler_reference_contract_c.py", "export_world_reference_cache_a.py", "export_world_reference_cache_b.py",
+      "export_world_reference_cache_c.py",
+    ] {
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host + ":" + base + "/" + name,
+        out + "/frozen-sources/" + name,
+      ]),
+      0,
+    )
+  }
+}

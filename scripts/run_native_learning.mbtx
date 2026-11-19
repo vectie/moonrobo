@@ -1,0 +1,69 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+/// Process arguments are passed literally; no shell or Python discovery.
+/// The pinned async 0.20.2 exposes this API as process.run (no shell package).
+async fn main {
+  let args = @env.args()
+  guard args.length() >= 3 else {
+    fail(
+      "usage: run_native_learning.mbtx REPO PACKAGE [ARGS...] [--print-plan]",
+    )
+  }
+  // The launcher may itself be run by moonrun/wasm; async 0.20.2 exposes
+  // realpath only on native. Its child workload is explicitly native below.
+  let root = if args[1].has_prefix("/") {
+    args[1]
+  } else {
+    @env.current_dir().unwrap() + "/" + args[1]
+  }
+  let package = args[2]
+  guard !package.is_empty() &&
+    !package.has_prefix("/") &&
+    !package.contains("\\") &&
+    !package.contains("\u{0}") &&
+    package.split("/").all(part => part != "" && part != "." && part != "..") &&
+    (
+      package.has_prefix("src/learning_") ||
+      package.has_prefix("cmd/reference_") ||
+      package == "cmd/motion_dataset"
+    ) else {
+    fail("expected a workspace native learning package path")
+  }
+  guard @fs.exists(root + "/moon.mod") &&
+    @fs.exists(root + "/" + package + "/moon.pkg") else {
+    fail("native learning package or module is absent from REPO")
+  }
+  let forwarded = args[3:].to_owned()
+  let print_plan = forwarded.last() == Some("--print-plan")
+  if print_plan {
+    ignore(forwarded.pop())
+  }
+  let command = [
+    "run", "--quiet", "--warn-list", "-a", "--target", "native", package, "--", ..forwarded,
+  ]
+  if print_plan {
+    println(
+      (
+        {
+          "program": "moon",
+          "arguments": command,
+          "cwd": root,
+          "executes_python": false,
+          "executes_workload": false,
+        } : Json).stringify(),
+    )
+    return
+  }
+  let code = @process.run("moon", command, cwd=root)
+  guard code == 0 else {
+    fail("native learning command exited with code " + code.to_string())
+  }
+}

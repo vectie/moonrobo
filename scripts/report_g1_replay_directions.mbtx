@@ -1,0 +1,176 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+fn mean(values : Array[Double]) -> Double {
+  values.fold(init=0.0, (sum, x) => sum + x) / values.length().to_double()
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    3,
+    msg="usage: report_g1_replay_directions.mbtx PROBE OUTPUT_JSON",
+  )
+  let cells : Array[Json] = []
+  let aggregate : Array[Json] = []
+  let combined : Array[Json] = []
+  let mut model : Json = ""
+  let mut teacher : Json = ""
+  let mut matches = 0
+  for variant in ["frame", "preview"] {
+    let path = args[1] + "/" + variant
+    let summary = read(path + "/summary.json")
+    assert_eq(field(summary, "frozen_models_unchanged"), true)
+    assert_true(num(field(summary, "maximum_restore_error")) <= 0.00000001)
+    if variant == "frame" {
+      model = field(summary, "dynamics_sha256")
+      teacher = field(summary, "teacher_points_sha256")
+    } else {
+      assert_eq(field(summary, "dynamics_sha256"), model)
+      assert_eq(field(summary, "teacher_points_sha256"), teacher)
+    }
+    let rows = array(field(summary, "summaries"))
+    assert_eq(rows.length(), 162)
+    for row in rows {
+      if field(row, "subset") == ("all" : Json) &&
+        field(row, "reconstructed_saved_update_matches") == (true : Json) {
+        matches += 1
+      }
+    }
+    for bootstrap in [false, true] {
+      for distribution in ["teacher", "current", "mixed"] {
+        for subset in ["all", "dynamic"] {
+          let selected = rows.filter(r => {
+            field(r, "tail") == Json(bootstrap) &&
+            field(r, "distribution") == Json(distribution) &&
+            field(r, "subset") == Json(subset)
+          })
+          assert_eq(selected.length(), 9)
+          let row : Json = {
+            "variant": Json(variant),
+            "tail": Json(bootstrap),
+            "distribution": Json(distribution),
+            "subset": Json(subset),
+            "direction_batches": Json(selected.length()),
+            "positive_local_batches": Json(
+              selected
+              .filter(r => num(field(r, "local_physical_change")) > 0)
+              .length(),
+            ),
+            "positive_full_batches": Json(
+              selected
+              .filter(r => num(field(r, "full_physical_change")) > 0)
+              .length(),
+            ),
+            "mean_local_change": Json(
+              mean(selected.map(r => num(field(r, "local_physical_change")))),
+            ),
+            "mean_full_change": Json(
+              mean(selected.map(r => num(field(r, "full_physical_change")))),
+            ),
+          }
+          aggregate.push(row)
+          println(row.stringify())
+        }
+      }
+    }
+    combined.append(rows)
+    cells.push({
+      "variant": Json(variant),
+      "summary": summary,
+      "report_sha256": Json(digest(path + "/report.json")),
+      "summary_sha256": Json(digest(path + "/summary.json")),
+    })
+  }
+  assert_eq(
+    matches,
+    1,
+    msg="original saved one-step actor was not reconstructed",
+  )
+  let totals : Array[Json] = []
+  for bootstrap in [false, true] {
+    for distribution in ["teacher", "current", "mixed"] {
+      let rows = combined.filter(r => {
+        field(r, "tail") == Json(bootstrap) &&
+        field(r, "distribution") == Json(distribution) &&
+        field(r, "subset") == ("all" : Json)
+      })
+      assert_eq(rows.length(), 18)
+      let row : Json = {
+        "tail": Json(bootstrap),
+        "distribution": Json(distribution),
+        "direction_batches": 18,
+        "positive_fit_predictions": Json(
+          rows.filter(r => num(field(r, "predicted_fit_change")) > 0).length(),
+        ),
+        "positive_local_batches": Json(
+          rows.filter(r => num(field(r, "local_physical_change")) > 0).length(),
+        ),
+        "positive_full_batches": Json(
+          rows.filter(r => num(field(r, "full_physical_change")) > 0).length(),
+        ),
+        "mean_local_change": Json(
+          mean(rows.map(r => num(field(r, "local_physical_change")))),
+        ),
+        "mean_full_change": Json(
+          mean(rows.map(r => num(field(r, "full_physical_change")))),
+        ),
+      }
+      totals.push(row)
+      println("total: " + row.stringify())
+    }
+  }
+  @fs.write_file(
+    args[2],
+    (
+      {
+        "format": "moonrobo.g1-replay-direction-study.v1",
+        "cells": Json(cells),
+        "by_variant": Json(aggregate),
+        "totals": Json(totals),
+        "reconstructed_original_first_update_matches": true,
+        "physical_execution_allowed": false,
+        "scope": "Three coupled minibatch draws on each of six fixed actor/value pairs, both tail flags, identical physical origins. Batch sign counts and unweighted batch means are diagnostics, not independent policy qualification or a full-training comparison.",
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

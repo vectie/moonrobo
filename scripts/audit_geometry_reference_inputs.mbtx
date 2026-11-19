@@ -1,0 +1,149 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-math-179.sock"
+  let put = async fn(name : String, content : String) {
+    @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        out + "/" + name,
+        host + ":" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  let insertion =
+    #|  let input_records : Array[SharedTensor] = []
+    #|  for i,t in constants {input_records.push(shared_write(output,"constant-\{i}",t))}
+    #|  let all_refs : @geometry.State = {p:backend.concat(references.map(s=>s.p)),rotation:backend.concat(references.map(s=>s.rotation)),v:backend.concat(references.map(s=>s.v)),w:backend.concat(references.map(s=>s.w)),q:backend.concat(references.map(s=>s.q)),qd:backend.concat(references.map(s=>s.qd))}
+    #|  let whole=context.with_native_cross(true).pack_reference_bodies(all_refs).reshape([33,4096,252])
+    #|  for t in 0..<33 {
+    #|    input_records.push(shared_write(output,"frame-\{t}",packed.narrow(0,t,1).reshape([4096,252])))
+    #|    input_records.push(shared_write(output,"whole-\{t}",whole.narrow(0,t,1).reshape([4096,252])))
+    #|  }
+    #|  hotspot_gate_memory(backend,"reference-inputs-after")
+    #|  shared_json(output+"/inputs.json",{"diagnostic_only":true,"records":Json(input_records)})
+    #|  shared_json(output+"/result.json",{"diagnostic_only":true,"scope":"IEEE reference FK; no optimizer update"})
+    #|  return
+    #|  let rows : Array[Json] = []
+  put(
+    "geometry_reference_inputs_fixture_a.mbt",
+    @fs.read_file(out + "/geometry_math_fixture_l.mbt")
+    .text()
+    .replace_all(old="  let rows : Array[Json] = []", new=insertion),
+  )
+  put(
+    "build_geometry_reference_inputs_a.mbtx",
+    @fs.read_file(out + "/build_geometry_math_l.mbtx")
+    .text()
+    .replace_all(old="geometry-math-l", new="geometry-reference-inputs-a")
+    .replace_all(
+      old="geometry_math_fixture_l.mbt",
+      new="geometry_reference_inputs_fixture_a.mbt",
+    ),
+  )
+  put(
+    "run_geometry_reference_inputs_a.mbtx",
+    @fs.read_file(out + "/run_geometry_math_training_l.mbtx")
+    .text()
+    .replace_all(old="geometry-math-l", new="geometry-reference-inputs-a")
+    .replace_all(
+      old="run_geometry_math_training_l.mbtx",
+      new="run_geometry_reference_inputs_a.mbtx",
+    ),
+  )
+  let code = @fs.read_file(
+      "providers/motion_learning/actor_reference_inputs_compare.py",
+    )
+    .text()
+    .replace_all(
+      old="hotspot-shared-actor-reference-inputs-a",
+      new="hotspot-shared-geometry-reference-inputs-a",
+    )
+    .replace_all(
+      old="compiled=False);probe.prepare_actor()",
+      new="compiled=False);torch.backends.cuda.matmul.allow_tf32=False;probe.prepare_actor()",
+    )
+  put("geometry_reference_inputs_compare_a.py", code)
+  let compare_runner = @fs.read_file(
+      out + "/run_geometry_world_boundary_audit.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="geometry_world_boundary_audit.py",
+      new="geometry_reference_inputs_compare_a.py",
+    )
+    .replace_all(
+      old="run_geometry_world_boundary_audit.mbtx",
+      new="run_geometry_reference_inputs_compare_a.mbtx",
+    )
+  put("run_geometry_reference_inputs_compare_a.mbtx", compare_runner)
+  for
+    (label, command, remote) in [
+      (
+        "geometry-reference-inputs-build-a", "build_geometry_reference_inputs_a.mbtx",
+        "",
+      ),
+      (
+        "geometry-reference-inputs-native-a", "run_geometry_reference_inputs_a.mbtx -- actor native off 1 geometry-reference-inputs-a bf16-full",
+        "hotspot-shared-geometry-reference-inputs-a",
+      ),
+      (
+        "geometry-reference-inputs-compare-a", "run_geometry_reference_inputs_compare_a.mbtx -- world geometry-reference-inputs-compare-a",
+        "hotspot-mlp-geometry-reference-inputs-compare-a",
+      ),
+    ] {
+    let folder = out + "/" + label
+    @fs.mkdir(folder)
+    let status = @process.run(
+      "ssh",
+      [
+        "-S",
+        socket,
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/" +
+        command,
+      ],
+      stdout=@process.redirect_to_file(
+        folder + "/controller.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        folder + "/controller.stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    if remote != "" {
+      for
+        name in [
+          "result.json", "inputs.json", "completion.json", "training-guard.json",
+          "training.stdout.log", "training.stderr.log",
+        ] {
+        ignore(
+          @process.run("scp", [
+            "-q",
+            "-o",
+            "ControlPath=" + socket,
+            host + ":/home/wlc004s/moonrobo/runs/" + remote + "/" + name,
+            folder + "/" + name,
+          ]),
+        )
+      }
+    }
+    assert_eq(status, 0)
+  }
+}

@@ -1,0 +1,178 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/http",
+  "moonbitlang/async@0.20.2/socket",
+  "moonbitlang/async@0.20.2/process",
+}
+
+// Real MoonRobo client/task service and LunaFlux HTTP/media/runtime plumbing.
+// LunaFlux's test executable supplies scripted sampled IDs, never GPU math.
+
+///|
+async fn main {
+  guard @env.args()[1:] is [moonrobo, lunaflux, assets, output] &&
+    !@fs.exists(output) else {
+    fail(
+      "usage: test_lunakine_visual_planner.mbtx MOONROBO LUNAFLUX ACTUAL_MINICPM_ASSETS NEW_OUTPUT",
+    )
+  }
+  @fs.mkdir(output, recursive=true)
+  guard @process.run("moon", [
+      "-C", moonrobo, "build", "--release", "--target", "native", "--deny-warn",
+      "cmd/actor_task",
+    ]) ==
+    0 else {
+    fail("MoonRobo task CLI build failed")
+  }
+  guard @process.run("moon", [
+      "-C", lunaflux, "build", "--release", "--target", "native", "--deny-warn",
+      "--warn-list", "-79-29-25-20", "tests/minicpm_v47_decoder_abi",
+    ]) ==
+    0 else {
+    fail("LunaFlux scripted native server build failed")
+  }
+  let task_cli = moonrobo +
+    "/_build/native/release/build/vectie/moonrobo/cmd/actor_task/actor_task.exe"
+  let model_cli = lunaflux +
+    "/_build/native/release/build/tests/minicpm_v47_decoder_abi/minicpm_v47_decoder_abi.exe"
+  let ready = output + "/model-ready.json"
+  let proposal = output + "/scripted-proposal.json"
+  @fs.write_file(
+    proposal,
+    @utf8.encode(
+      ({ "skill_id": "fixture", "parameters": {} } : Json).stringify(),
+    ),
+    create_mode=CreateNew,
+  )
+  let reservation = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
+  let task_address = "127.0.0.1:\{reservation.addr.port()}"
+  reservation.close()
+  @async.with_timeout(30000, () => {
+    @async.with_task_group() <| group => {
+      let tasks = @process.spawn(
+        group,
+        task_cli,
+        [
+          "serve",
+          moonrobo + "/deploy/lunakine/catalog.example.json",
+          task_address,
+        ],
+        cwd=moonrobo,
+        stdout=@process.redirect_to_file(
+          output + "/tasks.stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          output + "/tasks.stderr.log",
+          create_mode=CreateNew,
+        ),
+      )
+      defer tasks.cancel()
+      let model = @process.spawn(
+        group,
+        model_cli,
+        ["serve-planner-fixture", ready, proposal],
+        cwd=lunaflux,
+        extra_env={ "LUNA_MINICPM_V47_ASSET_DIR": assets },
+        stdout=@process.redirect_to_file(
+          output + "/model.stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          output + "/model.stderr.log",
+          create_mode=CreateNew,
+        ),
+      )
+      while !@fs.exists(ready) {
+        guard model.try_wait() is None else {
+          fail(
+            "model fixture stopped before readiness; inspect model.stderr.log",
+          )
+        }
+        @async.sleep(20)
+      }
+      guard @fs.read_file(ready).json() is { "endpoint": String(endpoint), .. } else {
+        fail("invalid model ready record")
+      }
+      let task_url = "http://" + task_address
+      let mut available = false
+      while !available {
+        guard tasks.try_wait() is None else {
+          fail("task service stopped before readiness")
+        }
+        available = try
+          @http.get(task_url + "/v1/catalog").0.code == 200
+        catch {
+          _ => false
+        }
+        if !available {
+          @async.sleep(20)
+        }
+      }
+      let result_path = output + "/accepted.json"
+      guard @process.run(
+          task_cli,
+          [
+            "plan-images",
+            task_url,
+            endpoint,
+            "MiniCPM-V-4.7-35B-A3B",
+            "Inspect the two fixture views and select the fixture skill.",
+            "visual-software-one",
+            "1000",
+            moonrobo + "/src/policy_planner/fixtures/rgb.png",
+            moonrobo + "/src/policy_planner/fixtures/baseline.jpg",
+          ],
+          cwd=moonrobo,
+          extra_env={ "LUNAFLUX_API_KEY": "software-fixture-key" },
+          stdout=@process.redirect_to_file(result_path, create_mode=CreateNew),
+          stderr=@process.redirect_to_file(
+            output + "/planner.stderr.log",
+            create_mode=CreateNew,
+          ),
+        ) ==
+        0 else {
+        fail("visual planner command failed; inspect planner.stderr.log")
+      }
+      guard @fs.read_file(result_path).json()
+        is {
+          "request_id": "visual-software-one",
+          "skill_id": "fixture",
+          "reference_id": "probe-frames",
+          ..
+        } else {
+        fail("planner did not submit expected fixture reference")
+      }
+      guard model.wait() == 0 else { fail("model fixture failed cleanup") }
+      @fs.write_file(
+        output + "/report.json",
+        @utf8.encode(
+          (
+            {
+              "format": "moonrobo.visual-planner-software.v1",
+              "model": "MiniCPM-V-4.7-35B-A3B",
+              "image_count": 2,
+              "planner_client": "real MoonRobo plan-images CLI",
+              "model_service": "real LunaFlux HTTP/media pipeline with scripted sampled tokens",
+              "task_service": "real standalone MoonRobo catalog/supervisor; no actor or robot writer",
+              "reference_id": "probe-frames",
+              "accepted": true,
+              "model_native_cleanup_passed": true,
+              "gpu_arithmetic": false,
+              "visual_quality_qualified": false,
+              "physical_robot_execution": false,
+            } : Json).stringify(indent=2),
+        ),
+        create_mode=CreateNew,
+      )
+    }
+  })
+  println(
+    "Visual planner software integration passed: inline PNG/JPEG -> LunaFlux media/native plumbing -> bounded proposal -> task supervisor; no GPU arithmetic or robot actuation",
+  )
+}

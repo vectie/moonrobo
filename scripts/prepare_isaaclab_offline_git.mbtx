@@ -1,0 +1,167 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=exe + ": " + err.text() + out.text())
+  out.text()
+}
+
+///|
+async fn sha256(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+/// Stage the two Git dependencies selected by the pinned upstream kitless
+/// Dockerfile. Everything is written into a NEW output directory. The source
+/// tree, pyproject.toml, uv.lock and upstream Dockerfile are never changed.
+/// This does not build an image or import a simulator.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 else {
+    fail(
+      "usage: prepare_isaaclab_offline_git.mbtx ISAACLAB_SOURCE NEW_OUTPUT_DIR",
+    )
+  }
+  let source = args[1]
+  let output = args[2]
+  guard source.has_prefix("/") && output.has_prefix("/") else {
+    fail("source and output must be absolute paths")
+  }
+  guard !@fs.exists(output) else {
+    fail("output already exists; retain it and choose a new directory")
+  }
+  let lock_sha = "44534d4d3c84575686e1f31f192a5ab3c21612c6f8db6da43fa1b56a2b79535e"
+  let project_sha = "f7720fce5d1dfcddee0e649416c0ab173e140243a9cba1b9be248fbe20c3fab7"
+  let docker_sha = "e17e559f7efb05d9f6c33025febd4114ca0c28b29bead05087f86636e5df1c29"
+  assert_eq(sha256(source + "/uv.lock"), lock_sha, msg="Isaac Lab lock changed")
+  assert_eq(
+    sha256(source + "/pyproject.toml"),
+    project_sha,
+    msg="Isaac Lab project changed",
+  )
+  assert_eq(
+    sha256(source + "/docker/Dockerfile.kitless"),
+    docker_sha,
+    msg="upstream Dockerfile changed",
+  )
+  @fs.mkdir(output)
+  @fs.mkdir(output + "/offline-git")
+  let entries : Array[Json] = []
+  let git_setup = StringBuilder()
+  git_setup.write_string(
+    "# Git transport mirrors only; dependency identities remain in uv.lock.\nCOPY offline-git/ /opt/isaaclab-offline-git/\nRUN git config --global protocol.file.allow always",
+  )
+  let git_dependencies = [
+    (
+      "newton", "https://github.com/newton-physics/newton.git", "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+    ),
+    (
+      "rl_games", "https://github.com/isaac-sim/rl_games.git", "5cf4f9ff07e9a01bbefd167cf19b6804b294b51c",
+    ),
+  ]
+  for (name, url, revision) in git_dependencies {
+    println("fetching pinned Git dependency: " + name + " " + revision)
+    let mirror = output + "/offline-git/" + name + ".git"
+    ignore(run("git", ["init", "--quiet", "--bare", "--template=", mirror]))
+    // uv fetches without --update-shallow; keep full reachable commit history.
+    ignore(
+      run("git", [
+        "-C",
+        mirror,
+        "-c",
+        "http.lowSpeedLimit=1024",
+        "-c",
+        "http.lowSpeedTime=60",
+        "fetch",
+        "--quiet",
+        "--no-tags",
+        url,
+        revision + ":refs/heads/pinned",
+      ]),
+    )
+    ignore(
+      run("git", ["-C", mirror, "symbolic-ref", "HEAD", "refs/heads/pinned"]),
+    )
+    let actual = run("git", [
+        "-C", mirror, "rev-parse", "refs/heads/pinned^{commit}",
+      ])
+      .trim()
+      .to_owned()
+    assert_eq(actual, revision, msg="Git dependency commit mismatch")
+    ignore(run("git", ["-C", mirror, "fsck", "--full", "--no-dangling"]))
+    let tree = run("git", ["-C", mirror, "rev-parse", revision + "^{tree}"])
+      .trim()
+      .to_owned()
+    let files = run("git", ["-C", mirror, "ls-tree", "-r", revision])
+    guard !files.split("\n").any(line => line.has_prefix("160000 ")) else {
+      fail("unmirrored Git submodule in " + name)
+    }
+    entries.push({
+      "name": Json(name),
+      "url": Json(url),
+      "commit": Json(revision),
+      "tree": Json(tree),
+      "full_reachable_history": true,
+    })
+    git_setup.write_string(
+      " \\\n && git config --global url.file:///opt/isaaclab-offline-git/" +
+      name +
+      ".git.insteadOf " +
+      url,
+    )
+  }
+  git_setup.write_string("\n\n")
+  let upstream = @fs.read_file(source + "/docker/Dockerfile.kitless").text()
+  let marker = "RUN uv venv --seed"
+  let pieces = upstream.split(marker).to_array()
+  assert_eq(pieces.length(), 2, msg="upstream installation anchor not unique")
+  let overlay = pieces[0].to_owned() +
+    git_setup.to_string() +
+    marker +
+    pieces[1].to_owned()
+  @fs.write_file(
+    output + "/Dockerfile.kitless.offline-git",
+    overlay,
+    create_mode=CreateNew,
+  )
+  // Transfer this small overlay to the original, SHA-verified source context.
+  let archive = output + "/isaaclab-offline-git.tar.gz"
+  ignore(
+    run("tar", [
+      "-czf", archive, "-C", output, "offline-git", "Dockerfile.kitless.offline-git",
+    ]),
+  )
+  // shasum streams the archive, avoiding an allocation proportional to Git history.
+  let archive_sha = run("shasum", ["-a", "256", archive]).split(" ").to_array()[0].to_owned()
+  let report : Json = {
+    "format": "moonrobo.isaaclab-offline-git.v1",
+    "isaaclab_commit": "46d6cc3d7b115906fad12efd372fbf69f4e3d3ed",
+    "uv_lock_sha256": Json(lock_sha),
+    "pyproject_sha256": Json(project_sha),
+    "upstream_dockerfile_sha256": Json(docker_sha),
+    "overlay_dockerfile_sha256": Json(
+      sha256(output + "/Dockerfile.kitless.offline-git"),
+    ),
+    "archive_sha256": Json(archive_sha),
+    "git_dependencies": Json(entries),
+    "uv_frozen_retained": true,
+    "image_built": false,
+    "notes": "Only GitHub Git transports are mirrored. OCI bases, apt and locked wheels still need network access. Unselected robomimic dependency is not fetched.",
+  }
+  @fs.write_file(
+    output + "/provenance.json",
+    report.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+  )
+  println(report.stringify(indent=2))
+}

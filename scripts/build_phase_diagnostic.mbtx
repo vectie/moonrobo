@@ -1,0 +1,214 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+let base = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+
+///|
+async fn run(name : String, program : String, argv : Array[String]) -> Unit {
+  println("Starting " + name)
+  let code = @process.run(
+    program,
+    argv,
+    stdout=@process.redirect_to_file(
+      base + "/phase-b-" + name + ".stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      base + "/phase-b-" + name + ".stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  @fs.write_file(
+    base + "/phase-b-" + name + ".exit.json",
+    (
+      {
+        "exit_code": code,
+        "program": program,
+        "argv": Json(argv),
+        "gpu_access": false,
+        "memory_bytes": "8589934592",
+        "swap_bytes": "0",
+        "cpus": 2,
+      } : Json).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  guard code == 0 else { fail(name + " failed; original logs retained") }
+  println("Completed " + name)
+}
+
+///|
+async fn container(name : String, entry : String, argv : Array[String]) -> Unit {
+  run(
+    name,
+    "docker",
+    [
+      "--host",
+      "unix:///var/run/docker.sock",
+      "run",
+      "--rm",
+      "--network",
+      "none",
+      "--memory",
+      "8g",
+      "--memory-swap",
+      "8g",
+      "--cpus",
+      "2",
+      "--pids-limit",
+      "256",
+      "--cap-drop",
+      "ALL",
+      "--security-opt",
+      "no-new-privileges",
+      "--user",
+      "1000:1000",
+      "--mount",
+      "type=bind,src=" + base + ",dst=/build",
+      "--mount",
+      "type=bind,src=" + base + "/workspace-phase-b,dst=/workspace",
+      "--mount",
+      "type=bind,src=/home/wlc004s/moonrobo/toolchain,dst=/toolchain,readonly",
+      "--mount",
+      "type=bind,src=" + base + "/script-cache,dst=/toolchain/cache",
+      "--mount",
+      "type=bind,src=/home/wlc004s/moonrobo/private/mujoco315-headers,dst=/mujoco-headers,readonly",
+      "--env",
+      "PATH=/toolchain/bin:/usr/bin:/bin",
+      "--env",
+      "MOON_HOME=/toolchain",
+      "--env",
+      "CPATH=/mujoco-headers:/build/compiler-context/cuda-include",
+      "--env",
+      "MOONROBO_OPERATOR_DIAGNOSTIC_LIBRARY=/build/libmoonrobo_learning_tensor_phase_b.so",
+      "--env",
+      "MOONROBO_TENSOR_LIBRARY=/build/libmoonrobo_learning_tensor_phase_b.so",
+      "--env",
+      "MOONROBO_OPERATOR_DIAGNOSTIC_TEST=1",
+      "--env",
+      "OMP_NUM_THREADS=1",
+      "--workdir",
+      "/workspace/moonrobo",
+      "--entrypoint",
+      entry,
+      "sha256:5b1332bafb8e0bd31065cfd4a7ea2d57b81dd68f96c4cb6b4ebac477bf921b23",
+      ..argv,
+    ],
+  )
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] else { fail("expected --stage or --build") }
+  let workspace = base + "/workspace-phase-b"
+  if mode == "--stage" {
+    guard !@fs.exists(workspace) else { fail("fresh workspace required") }
+    @fs.mkdir(workspace + "/moonrobo", recursive=true)
+    run("source", "tar", [
+      "-xzf",
+      base + "/source-clean.tar.gz",
+      "-C",
+      workspace + "/moonrobo",
+    ])
+    run("deps", "tar", [
+      "-xzf", "/home/wlc004s/moonrobo/private/optimization-adjacent-deps-20261024-a.tar.gz",
+      "-C", workspace,
+    ])
+    run("packages", "cp", [
+      "-a",
+      "/home/wlc004s/moonrobo/.mooncakes",
+      workspace + "/moonrobo/.mooncakes",
+    ])
+    run("overlay", "tar", [
+      "-xzf",
+      base + "/phase-b-overlay.tar.gz",
+      "-C",
+      workspace + "/moonrobo",
+    ])
+    @fs.write_file(
+      workspace + "/moonrobo/moon.work",
+      "members = [\".\", \"../moonnum\", \"../moonphys\"]\n",
+      create_mode=CreateNew,
+    )
+    return
+  }
+  if mode == "--tools" {
+    container("probe-modes", "/toolchain/bin/moon", [
+      "build", "--release", "--target", "native", "-j", "2", "--frozen", "src/learning_tensor/operator_probe",
+    ])
+    container("phase-runner-test", "/toolchain/bin/moon", [
+      "run", "--target", "native", "scripts/run_phase_timeline.mbtx", "--", "--self-test",
+    ])
+    container("phase-runner", "/toolchain/bin/moon", [
+      "build", "--release", "--target", "native", "scripts/run_phase_timeline.mbtx",
+    ])
+    run("copy-probe-modes", "cp", [
+      workspace +
+      "/moonrobo/_build/native/release/build/vectie/moonrobo/src/learning_tensor/operator_probe/operator_probe.exe",
+      base + "/operator-probe-phase-c",
+    ])
+    run("copy-phase-runner", "cp", [
+      workspace +
+      "/moonrobo/scripts/_build/run_phase_timeline.mbtx/native/release/build/single/single.exe",
+      base + "/run-phase-timeline",
+    ])
+    return
+  }
+  if mode == "--keyfix" {
+    container("trainer-keyfix", "/toolchain/bin/moon", [
+      "build", "--release", "--target", "native", "-j", "2", "--frozen", "src/learning_aligned_gpu/cmd",
+    ])
+    run("copy-trainer-keyfix", "cp", [
+      workspace +
+      "/moonrobo/_build/native/release/build/vectie/moonrobo/src/learning_aligned_gpu/cmd/cmd.exe",
+      base + "/trainer-phase-c",
+    ])
+    return
+  }
+  guard ["--build", "--tests"].contains(mode) else { fail("invalid mode") }
+  if mode == "--build" {
+    container("plugin", "/usr/bin/g++", [
+      "-std=c++17", "-O1", "-shared", "-fPIC", "-D_GLIBCXX_USE_CXX11_ABI=1", "-DMR_ENABLE_CUDA_GRAPH=1",
+      "-DMR_ENABLE_NVTX3=1", "-DMR_ENABLE_OPERATOR_DIAGNOSTICS=1", "-I/build/compiler-context/cuda-include",
+      "-I/opt/isaaclab-venv/lib/python3.12/site-packages/torch/include", "-I/opt/isaaclab-venv/lib/python3.12/site-packages/torch/include/torch/csrc/api/include",
+      "/workspace/moonrobo/src/learning_tensor/adapter.cpp", "-o", "/build/libmoonrobo_learning_tensor_phase_b.so",
+      "-L/opt/isaaclab-venv/lib/python3.12/site-packages/torch/lib", "-L/opt/isaaclab-venv/lib/python3.12/site-packages/nvidia/cu13/lib",
+      "-Wl,-rpath,/opt/isaaclab-venv/lib/python3.12/site-packages/torch/lib", "-Wl,-rpath,/opt/isaaclab-venv/lib/python3.12/site-packages/nvidia/cu13/lib",
+      "-Wl,--no-as-needed", "-ltorch", "-ltorch_cpu", "-lc10", "-ltorch_cuda", "-lc10_cuda",
+      "-l:libcudart.so.13", "-ldl",
+    ])
+    container("trainer", "/toolchain/bin/moon", [
+      "build", "--release", "--target", "native", "-j", "2", "--frozen", "src/learning_aligned_gpu/cmd",
+      "src/learning_tensor/operator_probe",
+    ])
+  }
+  for
+    (name, file) in [
+      ("tensor-test", "src/learning_tensor/operator_diagnostics_test.mbt"),
+      (
+        "learner-test", "src/learning_aligned_gpu/operator_diagnostics_wbtest.mbt",
+      ),
+      (
+        "runtime-test", "src/learning_aligned_gpu/runtime/operator_window_wbtest.mbt",
+      ),
+    ] {
+    container(name + "-c", "/toolchain/bin/moon", [
+      "test", "--target", "native", "-j", "2", "--frozen", file,
+    ])
+  }
+  run("copy-trainer", "cp", [
+    workspace +
+    "/moonrobo/_build/native/release/build/vectie/moonrobo/src/learning_aligned_gpu/cmd/cmd.exe",
+    base + "/trainer-phase-b",
+  ])
+  run("copy-probe", "cp", [
+    workspace +
+    "/moonrobo/_build/native/release/build/vectie/moonrobo/src/learning_tensor/operator_probe/operator_probe.exe",
+    base + "/operator-probe-phase-b",
+  ])
+}

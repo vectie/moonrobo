@@ -1,0 +1,27 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+async fn main {
+  let (code, stdout, stderr) = @process.collect_output(
+    "target/learning-venv/bin/python",
+    ["-m", "providers.motion_learning.test_recent_math_audit", "-v"],
+  )
+  let out = "output/research/recent-training-math-audit-20261029.stdout.json"
+  let log = "output/research/recent-training-math-audit-20261029.stderr.txt"
+  if !@fs.exists(out) {
+    @fs.write_file(out, "", create_mode=CreateNew)
+  }
+  if !@fs.exists(log) {
+    @fs.write_file(log, "", create_mode=CreateNew)
+  }
+  @fs.write_file(out, stdout)
+  @fs.write_file(log, stderr)
+  println(stdout.text())
+  println(stderr.text())
+  assert_eq(code, 0)
+}

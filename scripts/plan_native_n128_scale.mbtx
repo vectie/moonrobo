@@ -1,0 +1,239 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+// Read-only arithmetic for the N128 engineering profile. No process, tensor,
+// simulator, network, GPU or checkpoint payload is opened. This does not replace
+// the native CLI's actual-memory, asset-identity and artifact admission checks.
+async fn read_config(path : String) -> Json {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 65536L else {
+    fail("planning config must be 1..65536 bytes")
+  }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else {
+    fail("planning config changed while reading")
+  }
+  @json.parse(@utf8.decode(bytes))
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(result) else {
+    fail("missing planning field: " + key)
+  }
+  result
+}
+
+///|
+fn integer(value : Json, key : String) -> Int64 raise {
+  let result : Int32 = @json.from_json(field(value, key))
+  result.to_int64()
+}
+
+///|
+fn parameters(
+  input : Int64,
+  hidden : Array[Int32],
+  output : Int64,
+  norm : Bool,
+) -> Int64 {
+  let mut previous = input
+  let mut count = 0L
+  for width in hidden {
+    count += (previous + 1L) * width.to_int64()
+    if norm {
+      count += 2L * width.to_int64()
+    }
+    previous = width.to_int64()
+  }
+  count + (previous + 1L) * output
+}
+
+///|
+fn plan(config : Json, export_config : Json) -> Json raise {
+  let expected : Map[String, Json] = {
+    "backend": "isaac",
+    "device": "cuda:0",
+    "physics_device_id": 0,
+    "precision": "float32",
+    "amp": "none",
+    "reference_storage": "mmap",
+    "motion_cache_advice": true,
+    "observation_mode": "smc",
+    "num_envs": 128,
+    "wm_batch": 128,
+    "pi_batch": 128,
+    "wm_microbatch": 16,
+    "pi_microbatch": 16,
+    "buffer_steps": 256,
+    "hist": 10,
+    "goal_frames": 10,
+    "horizon": 32,
+    "wm_window": 8,
+    "warmup_steps": 64,
+    "wm_batches": 10,
+    "wm_only_iters": 0,
+    "critic_epochs": 5,
+    "critic_minibatches": 4,
+    "iterations": 1,
+    "checkpoint_every": 1,
+    "utd": 0.4,
+    "lr": 0.0002,
+    "gamma": 0.99,
+    "lam": 0.95,
+    "lr_decay_iters": 250000,
+    "action_noise": 0.1,
+    "observation_noise": true,
+    "physics_dt": 0.005,
+    "self_collisions": false,
+    "randomization": true,
+    "reset_noise": true,
+    "context_resampling": "environment",
+    "max_episode_steps": 500,
+    "seed": 179,
+    "wm_hidden": [2048, 2048, 2048],
+    "pi_hidden": [2048, 1024, 512, 256],
+    "critic_hidden": [256, 128],
+  }
+  for key, wanted in expected {
+    guard field(config, key) == wanted else {
+      fail("not the reviewed N128 scale-gate profile: " + key)
+    }
+  }
+  guard config is Object(fields) && !fields.contains("physics_artifact_sha256") else {
+    fail("unproduced N128 artifact must not have a fabricated fixed SHA")
+  }
+  guard field(export_config, "num_envs") == 128 &&
+    field(export_config, "output") == "/gate/g1-128env-apic" &&
+    field(export_config, "device_id") == 0 &&
+    field(export_config, "self_collisions") == false else {
+    fail("N128 export/training world count or collision mode differs")
+  }
+  let n = integer(config, "num_envs")
+  let b = integer(config, "pi_batch")
+  let wm = integer(config, "wm_batch")
+  let rows = integer(config, "buffer_steps")
+  let h = integer(config, "horizon")
+  let k = integer(config, "wm_window")
+  let hist = integer(config, "hist")
+  let goal = integer(config, "goal_frames")
+  let epochs = integer(config, "critic_epochs")
+  let dim = 99L
+  let gib = 1073741824L
+  let world_hidden : Array[Int32] = @json.from_json(field(config, "wm_hidden"))
+  let policy_hidden : Array[Int32] = @json.from_json(field(config, "pi_hidden"))
+  let critic_hidden : Array[Int32] = @json.from_json(
+    field(config, "critic_hidden"),
+  )
+  let params = parameters(133L, world_hidden, 70L, true) +
+    parameters(goal * 73L, policy_hidden, 32L, false) +
+    parameters(32L + dim * hist, policy_hidden, 29L, false) +
+    parameters(184L + goal * 73L, critic_hidden, 1L, false)
+  let components : Map[String, Int64] = {
+    "bounded_reference_catalog_and_construction": 4L * gib,
+    "host_replay_and_json_checkpoint_envelope": n * rows * 131072L,
+    "parameters_gradients_adam_allocator": params * 16L + gib / 2L,
+    "history_and_live_environment": n * hist * dim * 8L + n * 1048576L,
+    "actor_bptt_envelope": h * b * 262144L,
+    "world_bptt_envelope": k * wm * 131072L,
+    "physics_scene_reserve": 24L * gib,
+  }
+  let mut peak = 0L
+  for _, value in components {
+    peak += value
+  }
+  let references = (h + 1L) * b
+  let staging = b *
+    (133L + hist * dim + (h + 1L) * (71L + 73L * goal) + h * dim + epochs * h)
+  let world_staging = wm * k * 205L
+  let replay_values = n * rows * 234L
+  guard references <= 131072L &&
+    staging <= 16777216L &&
+    world_staging <= 16777216L &&
+    replay_values <= 16777216L else {
+    fail("N128 profile exceeds an unchanged native bound")
+  }
+  let replay_bytes = n * rows * 1882L
+  let checkpoint_fixed = replay_bytes +
+    n * 4L +
+    n * hist * dim * 8L +
+    n * 33L * 8L
+  {
+    "format": "moonrobo.native-n128-static-plan.v1",
+    "scope": "arithmetic only; no runtime admission or artifact execution",
+    "artifact_sha_bound": false,
+    "checkpoint_format_cli_required": "stream-v2",
+    "parameter_count": params,
+    "conservative_components_bytes": Json(components),
+    "single_rank_peak_bytes": peak,
+    "single_rank_minimum_actual_free_bytes": (peak * 100L + 64L) / 65L,
+    "ddp_per_rank_peak_bytes": peak + gib,
+    "ddp_per_rank_minimum_actual_free_bytes": ((peak + gib) * 100L + 64L) / 65L,
+    "suggested_training_cgroup_bytes": 64L * gib,
+    "actual_remaining_host_and_cuda_still_required": true,
+    "microbatch_budget_discount_applied": false,
+    "export_hard_cgroup_bytes": 16L * gib,
+    "export_peak_known": false,
+    "policy_reference_frames": references,
+    "policy_staging_values": staging,
+    "world_staging_values": world_staging,
+    "replay_raw_double_values": replay_values,
+    "replay_max_records": n * rows,
+    "replay_primitive_payload_bytes": replay_bytes,
+    "candidate_index_bytes": n * rows * 4L,
+    "reference_cache_max_unique_frames": b * (hist + h + goal + 1L),
+    "reference_cache_numeric_bytes_excluding_objects": b *
+    (hist + h + goal + 1L) *
+    76L *
+    8L,
+    "sampled_history_numeric_bytes_excluding_objects": b *
+    (hist + 1L) *
+    234L *
+    8L,
+    "stream_checkpoint_fixed_payload_bytes_at_full_replay": checkpoint_fixed,
+    "stream_checkpoint_sampler_bytes_per_bin": 20,
+    "stream_checkpoint_catalog_max_bytes": 67108864,
+    "stream_checkpoint_state_max_bytes": 4194304,
+    "stream_checkpoint_total_payload_max_bytes": 536870912,
+    "stream_checkpoint_bins_at_max_catalog_and_state": (
+      536870912L - checkpoint_fixed - 67108864L - 4194304L
+    ) /
+    20L,
+    "stream_sidecar_count": 10,
+    "checkpoint_required_host_remaining_strictly_greater_bytes": components["host_replay_and_json_checkpoint_envelope"] +
+    gib,
+    "nominal_first_iteration_local_physical_transitions": 66L * n,
+    "local_physical_additional_steps": "e = 0,8,...,256 when actor readiness requires collection; add N*e",
+    "local_imagined_transitions": b * h,
+    "local_model_updates": integer(config, "wm_batches"),
+    "local_actor_updates": 1,
+    "local_critic_updates": epochs * integer(config, "critic_minibatches"),
+    "local_model_fit_transition_slots": integer(config, "wm_batches") * wm * k,
+    "paper_scale_or_convergence_claim": false,
+  }
+}
+
+///|
+async fn main {
+  match @env.args() {
+    [_, config, export_config] =>
+      println(
+        plan(read_config(config), read_config(export_config)).stringify(
+          indent=2,
+        ),
+      )
+    _ =>
+      fail(
+        "usage: plan_native_n128_scale.mbtx TRAIN_CONFIG.json EXPORT_CONFIG.json; read-only, no GPU",
+      )
+  }
+}

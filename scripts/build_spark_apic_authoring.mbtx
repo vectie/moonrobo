@@ -1,0 +1,174 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+async fn sha256(path : String) -> String {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let hash = @crypto.SHA256::new()
+  let size = file.size()
+  for offset = 0L; offset < size; {
+    let count = (size - offset).min(65536L).to_int()
+    hash.update(file.read_exactly_at(count, position=offset))
+    continue offset + count.to_int64()
+  }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 5 else {
+    fail(
+      "usage: build_spark_apic_authoring.mbtx REPO PREPARED_SDK_DIRECTORY FRESH_BUILD_CONTEXT NEW_TAG_SUFFIX",
+    )
+  }
+  let repo = args[1]
+  let prepared = args[2]
+  let context = args[3]
+  let suffix = args[4]
+  for path in [repo, prepared, context] {
+    guard path.has_prefix("/") else { fail("all paths must be absolute") }
+  }
+  guard suffix.length() > 0 &&
+    suffix.length() <= 48 &&
+    suffix
+    .iter()
+    .all(c => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') else {
+    fail("tag suffix must be 1..48 lowercase ASCII letters, digits or hyphens")
+  }
+  guard !@fs.exists(context) else {
+    fail("build context exists; retain it and choose a fresh one")
+  }
+  let metadata = @fs.read_file(prepared + "/provenance.json").text()
+  guard @json.parse(metadata)
+    is {
+      "format": String("moonrobo.apic-sdk-checkouts.v1"),
+      "archive_sha256": String(expected),
+      ..
+    } else {
+    fail("SDK source provenance is missing or has the wrong format")
+  }
+  let archive = prepared + "/sdk-checkouts.tar.gz"
+  guard sha256(archive) == expected else { fail("SDK archive hash mismatch") }
+  let base = "sha256:989985f4b65447e4452fcfeeec70cfa3f48eb52637f8f96e41a736f11ab308cd"
+  let base_tag = "moonrobo-isaaclab:46d6cc3-kitless-rdma"
+  let inspected = @shell.Cmd("docker", [
+    "image", "inspect", base_tag, "--format", "{{.Id}} {{.Architecture}}",
+  ]).output(timeout_ms=10000, max_output_bytes=4096)
+  inspected.check()
+  guard inspected.stdout().trim() == (base + " arm64")[:] else {
+    fail("load the exact pinned aarch64 RDMA base image before building")
+  }
+  let tag = "moonrobo-isaaclab:46d6cc3-kitless-apic-" + suffix
+  let existing = @shell.Cmd("docker", ["image", "inspect", tag]).output(
+    timeout_ms=10000,
+    max_output_bytes=16384,
+  )
+  guard existing.exit_code() != 0 else {
+    fail("image tag exists; choose a new suffix")
+  }
+  let listing = @shell.Cmd("tar", ["-tzf", archive]).output(
+    timeout_ms=10000,
+    max_output_bytes=2097152,
+  )
+  listing.check()
+  guard listing
+    .stdout()
+    .split("\n")
+    .all(path => {
+      path == "" ||
+      (path.has_prefix("sdk/") && !path.split("/").any(piece => piece == ".."))
+    }) else {
+    fail("archive has a path outside sdk/")
+  }
+  @fs.mkdir(context)
+  @shell.Cmd("tar", ["-xzf", archive, "-C", context]).run(timeout_ms=60000)
+  for
+    (from, to) in [
+      (repo + "/docker/Dockerfile.spark-apic-authoring", "Dockerfile"),
+      (
+        repo + "/src/learning_aligned/producer/native/CMakeLists.txt",
+        "CMakeLists.txt",
+      ),
+      (
+        repo + "/src/learning_aligned/producer/native/python_objects.cpp",
+        "python_objects.cpp",
+      ),
+    ] {
+    @fs.write_file(
+      context + "/" + to,
+      @fs.read_file(from).binary(),
+      create_mode=CreateNew,
+    )
+  }
+  @fs.write_file(context + "/provenance.json", metadata, create_mode=CreateNew)
+  @fs.write_file(
+    context + "/.dockerignore",
+    "stdout.log\nstderr.log\nbuild-result.json\n",
+    create_mode=CreateNew,
+  )
+  let code = @shell.Cmd(
+    "docker",
+    [
+      "buildx",
+      "build",
+      "--resource",
+      "memory=8g",
+      "--resource",
+      "memory-swap=8g",
+      "--resource",
+      "cpu-quota=200000",
+      "--platform",
+      "linux/arm64",
+      "--load",
+      "--pull=false",
+      "--build-arg",
+      "BASE_IMAGE=" + base_tag,
+      "--tag",
+      tag,
+      context,
+    ],
+    stdout=ToFile(context + "/stdout.log"),
+    stderr=ToFile(context + "/stderr.log"),
+  ).status(timeout_ms=1200000)
+  guard code == 0 else {
+    fail("bounded authoring-plugin build failed; inspect " + context)
+  }
+  let checked_base = @shell.Cmd("docker", [
+    "image", "inspect", base_tag, "--format", "{{.Id}} {{.Architecture}}",
+  ]).output(timeout_ms=10000, max_output_bytes=4096)
+  checked_base.check()
+  guard checked_base.stdout().trim() == (base + " arm64")[:] else {
+    fail("base tag identity changed during build; retain output for review")
+  }
+  let image = @shell.Cmd("docker", [
+    "image", "inspect", tag, "--format", "{{.Id}} {{.Architecture}}",
+  ]).output(timeout_ms=10000, max_output_bytes=4096)
+  image.check()
+  let record : Json = {
+    "format": "moonrobo.apic-authoring-image.v1",
+    "tag": Json(tag),
+    "base_image": Json(base),
+    "base_tag": Json(base_tag),
+    "image": Json(image.stdout().trim().to_owned()),
+    "sdk_archive_sha256": Json(expected),
+    "dockerfile_sha256": Json(sha256(context + "/Dockerfile")),
+    "bridge_source_sha256": Json(sha256(context + "/python_objects.cpp")),
+    "gpu_exported": false,
+    "runtime_validated": false,
+  }
+  @fs.write_file(
+    context + "/build-result.json",
+    record.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(record.stringify(indent=2))
+}

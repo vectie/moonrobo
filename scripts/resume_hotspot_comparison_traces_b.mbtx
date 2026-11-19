@@ -1,0 +1,119 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_] else {
+    fail("fixed remaining diagnostic windows only")
+  }
+  let base = "/home/wlc004s/moonrobo/private/hotspot-smc4096-20261026-a"
+  let old = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+  let roots = "/home/wlc004s/moonrobo/runs/operator-trace41-20261025-phase-"
+  for
+    label in [
+      "combo26-n-actor-off", "combo26-n-actor-trace", "combo26-n-world-off",
+    ] {
+    guard @json.parse(
+        @fs.read_file(roots + label + "-native/outer-result.json").text(),
+      )
+      is { "passed": True, .. } else {
+      fail("three completed windows must be retained")
+    }
+  }
+  guard @json.parse(
+      @fs.read_file(
+        roots + "combo26-n-world-trace-native-preflight/outer-result.json",
+      ).text(),
+    )
+    is { "passed": False, .. } else {
+    fail("retained failed preflight required")
+  }
+  guard @json.parse(
+      @fs.read_file(old + "/cache-combo-cuda-advice-20261026-a.json").text(),
+    )
+    is {
+      "passed": True,
+      "files_deleted": Number(0, ..),
+      "guards_changed": False,
+      ..
+    } else {
+    fail("completed non-destructive private CUDA file-page recovery required")
+  }
+  guard @json.parse(
+      @fs.read_file(roots + "combo26-n-world-traceb-native/outer-result.json").text(),
+    )
+    is { "passed": False, .. } else {
+    fail("second retained admission failure required")
+  }
+  async fn run(name : String, script : String, args : Array[String]) -> Unit {
+    println("Starting " + name)
+    let status = @process.run(
+      "/home/wlc004s/moonrobo/toolchain/bin/moon",
+      ["run", "--target", "native", script, "--", ..args],
+      stdout=@process.redirect_to_file(
+        base + "/" + name + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        base + "/" + name + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    guard status == 0 else {
+      fail(name + " failed; no automatic retry or guard change")
+    }
+    println("Completed " + name)
+  }
+  let jobs = [
+    ("native", "world", "aten", "nsys", "combo26-n-world-tracec"),
+    ("native", "collection", "off", "off", "combo26-n-collect-off"),
+    ("native", "collection", "aten", "nsys", "combo26-n-collect-trace"),
+    ("smc-compiled", "actor_critic", "off", "off", "combo26-s-actor-off"),
+    ("smc-compiled", "actor_critic", "aten", "nsys", "combo26-s-actor-trace"),
+    ("smc-compiled", "world", "off", "off", "combo26-s-world-off"),
+    ("smc-compiled", "world", "aten", "nsys", "combo26-s-world-trace"),
+    ("smc-compiled", "collection", "off", "off", "combo26-s-collect-off"),
+    ("smc-compiled", "collection", "aten", "nsys", "combo26-s-collect-trace"),
+  ]
+  for (kind, phase, observer, collector, label) in jobs {
+    run(label + "-prepare", base + "/prepare_hotspot_comparison_traces.mbtx", [
+      label, phase, observer, collector,
+    ])
+    let runner = old + "/run_phase_" + label + ".mbtx"
+    if kind == "native" {
+      run(
+        label + "-closed-build-pages",
+        old + "/advise_operator_closed_cache_m.mbtx",
+        ["--host-build", "cache-" + label + "-build.json"],
+      )
+      run(
+        label + "-image-pages",
+        base + "/advise_closed_smc_small_image_pages.mbtx",
+        ["--advise", "cache-" + label + ".json"],
+      )
+      run(label + "-preflight", runner, ["--preflight", kind])
+    }
+    run(label + "-run", runner, ["--run", kind])
+    if kind == "native" {
+      run(
+        label + "-closed-cuda-pages",
+        base + "/advise_combo_closed_cuda_cache_b.mbtx",
+        [
+          "--advise",
+          "cache-" + label + "-cuda.json",
+          "cuda",
+          "phase-" + label + "-native",
+        ],
+      )
+    }
+  }
+  println(
+    "Nine remaining windows completed; original three windows and failed preflight retained",
+  )
+}

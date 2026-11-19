@@ -1,0 +1,11 @@
+{
+  "seeds": [0, 1, 2],
+  "updates": 400,
+  "batch_size": 64,
+  "hidden_width": 128,
+  "learning_rate": 0.001,
+  "normalization_floor": 0.1,
+  "evaluate_every": 50,
+  "cpu_threads": 2,
+  "acceptance": "Each seed must beat persistence on held-out eight-step normalized state MSE; this is a dynamics diagnostic, not a control qualification."
+}

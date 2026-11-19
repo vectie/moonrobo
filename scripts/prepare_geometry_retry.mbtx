@@ -1,0 +1,55 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let runner = @fs.read_file(out + "/run_geometry_math_gate_g.mbtx")
+    .text()
+    .replace_all(
+      old="run_geometry_math_gate_g.mbtx",
+      new="run_geometry_math_gate_h.mbtx",
+    )
+    .replace_all(
+      old="hotspot-shared-geometry-math-native-gate-f",
+      new="hotspot-shared-geometry-math-native-gate-h",
+    )
+  @fs.write_file(
+    out + "/run_geometry_math_gate_h.mbtx",
+    runner,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-math-179.sock",
+      out + "/run_geometry_math_gate_h.mbtx",
+      "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/run_geometry_math_gate_h.mbtx",
+    ]),
+    0,
+  )
+  let launcher = @fs.read_file(out + "/run_geometry_full_gate.mbtx")
+    .text()
+    .replace_all(
+      old="run_geometry_math_gate_g.mbtx",
+      new="run_geometry_math_gate_h.mbtx",
+    )
+    .replace_all(
+      old="geometry-math-native-gate-f",
+      new="geometry-math-native-gate-h",
+    )
+    .replace_all(
+      old="geometry-math-reference-gate-g",
+      new="geometry-math-reference-gate-h",
+    )
+  @fs.write_file(
+    out + "/run_geometry_retry.mbtx",
+    launcher,
+    create_mode=CreateNew,
+  )
+}

@@ -1,0 +1,35 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/world-ln-fk-20261026"
+  let source = @fs.read_file(root + "/run_followup_measured_c.mbtx")
+    .text()
+    .replace_all(
+      old="run_followup_measured_c.mbtx",
+      new="run_followup_measured_d.mbtx",
+    )
+    .replace_all(old="/measured-c-", new="/measured-d-")
+    .replace_all(old="spec-measured-c.json", new="spec-measured-d.json")
+    .replace_all(
+      old="candidate + \"-20261026-c\"",
+      new="candidate + \"-20261026-d\"",
+    )
+    .replace_all(
+      old="  let final_spec =",
+      new="  // Correct stale prose inherited from the rejected fusion; executable pins remain unchanged.\n  if candidate == \"ln\" && spec.get(\"known_differences\") is Some(Array(notes)) {\n    spec[\"known_differences\"] = Json(notes.map(note => match note {\n      String(value) => Json(value.replace_all(old=\"only LN pointwise tail and SiLU are fused\", new=\"only LN pointwise normalization and affine are fused; ATen SiLU forward and backward are retained\"))\n      other => other\n    }))\n  }\n  let final_spec =",
+    )
+  let path = root + "/run_followup_measured_d.mbtx"
+  @fs.write_file(path, source, create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o", "ControlPath=/tmp/moonrobo-operator-179.sock", path, "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a/run_followup_measured_d.mbtx",
+    ]) ==
+    0 else {
+    fail("copy")
+  }
+}

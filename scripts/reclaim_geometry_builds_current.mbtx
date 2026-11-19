@@ -1,0 +1,76 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-math-179.sock"
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=" + socket,
+      "scripts/inspect_task_file_residency.mbtx",
+      host + ":" + base + "/inspect_geometry_current_residency.mbtx",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        socket,
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/inspect_geometry_current_residency.mbtx -- --scan " +
+        base +
+        "/geometry-residency-c.json " +
+        base +
+        "/workspace",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/residency-c.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/residency-c.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+  let script = @fs.read_file("scripts/reclaim_geometry_builds.mbtx")
+    .text()
+    .replace_all(
+      old="geometry-residency-a.json",
+      new="geometry-residency-c.json",
+    )
+    .replace_all(
+      old="geometry-build-advice-a.json",
+      new="geometry-build-advice-c.json",
+    )
+    .replace_all(
+      old="advise_geometry_builds_b.mbtx",
+      new="advise_geometry_builds_c.mbtx",
+    )
+    .replace_all(old="build-advice-b.", new="build-advice-c.")
+    .replace_all(old="/build-advice.json", new="/build-advice-c.json")
+  @fs.write_file(out + "/reclaim_builds_c.mbtx", script, create_mode=CreateNew)
+  assert_eq(
+    @process.run("moon", [
+      "run",
+      "--target",
+      "native",
+      out + "/reclaim_builds_c.mbtx",
+    ]),
+    0,
+  )
+}

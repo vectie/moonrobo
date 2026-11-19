@@ -1,0 +1,19 @@
+{
+  "seeds": [0, 1, 2],
+  "windows": [10, null],
+  "source_modes": ["student", "teacher"],
+  "source_scope": "train",
+  "source_split": "train",
+  "fit_method": "uncensored_ols",
+  "uncensored_margin_rad": 0.000002,
+  "residual_bound_rad": 0.3,
+  "transport": "gravity_gyro",
+  "duration_s": 10,
+  "fall_height_m": 0.35,
+  "fall_upright_z": 0.5,
+  "canonical_reset_seeds": [9900, 9901, 9902],
+  "train_audit_seed_base": 6600,
+  "max_mean_joint_rmse_rad": 0.15,
+  "cpu_threads": 2,
+  "scope": "Fit two shared deterministic 16-coefficient ankle heads from identical train-scope/train-split intervention episodes only. Use full-memory privileged teacher commands as training labels, never inference inputs. H10 versus full causal observation-only features, no fitted hyperparameter or checkpoint selection. Embed each head with three distinct frozen disturbance-trained parents. Evaluate parent/H10/full on new canonical resets and independent train-family resets; these are development comparisons, not untouched release tests. No world-model/PPO efficiency or hardware qualification claim."
+}

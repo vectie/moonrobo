@@ -1,0 +1,21 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  assert_eq(
+    @process.run("python3", [
+      "providers/motion_learning/test_compiler_reference_contract.py",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run("python3", [
+      "providers/motion_learning/test_frozen_training_kernels.py",
+    ]),
+    0,
+  )
+}

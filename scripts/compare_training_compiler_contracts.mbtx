@@ -1,0 +1,84 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let name = "training_compiler_compare_d"
+  let prefix = @fs.read_file(out + "/build_actor_boundary_a.mbtx")
+    .text()
+    .split("async fn main {")
+    .to_array()[0]
+    .to_owned()
+    .replace_all(
+      old="      \"--workdir\",",
+      new="      \"--mount\",\"type=bind,src=/home/wlc004s/moonrobo/runs,dst=/data,readonly\",\n      \"--workdir\",",
+    )
+  let code = prefix +
+    "async fn main {container(\"" +
+    name +
+    "\",\"/opt/isaaclab-venv/bin/python\",[\"/build/" +
+    name +
+    ".py\",\"/data\",\"/build\",\"/build/" +
+    name +
+    ".json\"])}\n"
+  for
+    (file, content) in [
+      (name + ".mbtx", code),
+      (
+        name + ".py",
+        @fs.read_file(
+          "providers/motion_learning/compare_training_compiler_contracts.py",
+        ).text(),
+      ),
+    ] {
+    @fs.write_file(out + "/" + file, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/" + file,
+        host + ":" + base + "/" + file,
+      ]),
+      0,
+    )
+  }
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      name +
+      ".mbtx",
+    ],
+    stdout=@process.redirect_to_file(
+      out + "/" + name + ".stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      out + "/" + name + ".stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  ignore(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      host + ":" + base + "/" + name + ".json",
+      out + "/" + name + ".json",
+    ]),
+  )
+  assert_eq(status, 0)
+}

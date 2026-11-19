@@ -1,0 +1,86 @@
+{
+  "format": "moonrobo.g1-reference-state-origin-charter.v1",
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "methods": [
+    "prefix-only",
+    "replay-prefix"
+  ],
+  "incoming_actor_sha256": "799850fb2ee31bdd3a3267ac42742e17e6137c5f20bbabb5881543f26124f94e",
+  "reference_manifest_sha256": "8b310f2a6ab44e8a997aaba92f62a23ec13ceb0fa79ddeb0e0eaf5299bf569b5",
+  "cycles": 3,
+  "collection_origins_s": [
+    0,
+    10,
+    20
+  ],
+  "raw_action_std": 0.03,
+  "noise_seed_base": 810000,
+  "gamma": 0.99,
+  "gae_lambda": 0.95,
+  "actor_learning_rate": 0.0003,
+  "maximum_actor_steps_per_cycle": 12,
+  "actor_batch_size": 64,
+  "ppo_minibatch_size": 256,
+  "ppo_epochs": 3,
+  "ppo_clip": 0.2,
+  "ppo_target_kl": 0.02,
+  "critic_updates_per_cycle": 128,
+  "critic_batch_size": 256,
+  "critic_learning_rate": 0.001,
+  "model_updates_per_cycle": 900,
+  "model_batch_size": 64,
+  "model_window": 8,
+  "model_width": 128,
+  "model_learning_rate": 0.001,
+  "model_replay_windows": 20000,
+  "model_normalization_floor": 0.05,
+  "imagination_horizon": 32,
+  "model_diagnostic_clip_indices": [
+    0,
+    3,
+    6
+  ],
+  "cpu_threads": 2,
+  "maximum_feature_alignment_error": 0.00002,
+  "maximum_action_alignment_error_rad": 0.00008,
+  "reward": "dt * [exp(-mean_body_squared_distance/0.05^2) + 0.5*exp(-root_squared_distance/0.05^2) + 0.5*exp(-4*(1-quaternion_dot^2)/0.1^2) + exp(-mean_joint_squared_error/0.03^2) - 0.01*mean(((action-previous)/0.1)^2)]",
+  "termination": "Actual and imagined fall at root height <0.35m or upright Z<0.5. Reference end is finite-task terminal with zero tail; score terminal-step reward once. Model fall mask is hard and not differentiated.",
+  "common_prior": "One identical pre-supervision zero-output checkpoint for all methods and training seeds. It includes previously fitted balance slopes, static kinematics and normalization from reference-source observations; no claim of training from scratch or a prior-free mocap method. Independently seeded collection/optimization defines the three new training runs.",
+  "data_access": "Reuse the preceding validated study's zero actor, initial physics, common first collections, diagnostics and complete prefix-only baseline. Reconstruct common learning tensors exactly from float32 archives. New replay-prefix models/critics are initialized and fitted afresh; their first common fits must match the source baseline. Only later own-policy collection/final evaluation is new physics. Source controls remain commands/reset setup, never fitting labels.",
+  "critic": "Physical-return critics are fitted/stored with the unchanged 128 updates per cycle in both arms, but neither actor objective calls its critic. This retains the original baseline budget; no new critic recipe is tested.",
+  "actor_objective": "Both arms optimize H32 discounted reference reward with no critic tail and the same Adam/step-cap budget. Prefix-only samples episode reset starts. Replay-prefix samples uniformly with replacement from every pre-action state in the current cycle's physical collection, preserving its H10 history, actual/reference causal EMA, original reset origin and current phase. Longer episodes therefore receive more weight; this is a changed training-state distribution, not an isolated effect of elapsed time. No terminal post-state or another episode's frames seed an imagined rollout. All sampled replay indices and episode-relative ages are recorded.",
+  "budget_and_selection": "Three seeds and cycles; 27 collection episodes at 0/10/20s origins, 900 model/128 value fitting updates and 12 actor steps per cycle. Same raw noise and 0.005 local logit RMS cap. Reuse all three frozen reset-only baseline runs; train only three new trajectory-state runs. Evaluate every final actor against the original 27-cell quality gate. No seed/checkpoint selection or intermediate qualification.",
+  "costs": "360 of 603 paired physical records are reused; only 243 episodes are new. Report new provider CPU time separately from inherited reset-arm fitting/evaluation and common collection costs. Retain standalone learner accounting, but do not count reused bytes/episodes as newly collected. No successful speedup or cost-to-target follows unless the unchanged quality gate is passed.",
+  "scope": "Paired actor-origin training from shared prior/data, reusing the verified reset baseline. Known training-family coverage only; not unseen motion, full SuperMimic reproduction, hardware qualification or a new default algorithm.",
+  "physical_execution_allowed": false,
+  "protocol_revision_reason": "Actual controlled test of reset-only versus trajectory-state actor imagination after the failed tail-training comparison. Preserve all sampling, architecture, fitting, update and quality budgets. The intended intervention is uniform physical-transition rather than uniform reset-state sampling, including its episode-length weighting.",
+  "collection_origins_per_cycle_s": [
+    [
+      0,
+      10,
+      20
+    ],
+    [
+      0,
+      10,
+      20
+    ],
+    [
+      0,
+      10,
+      20
+    ]
+  ],
+  "noise_seed_origin_stride": 17,
+  "actor_logit_rms_cap": 0.005,
+  "actor_calibration_batch_size": 256,
+  "expected_physical_records": 603,
+  "reused_source_report_sha256": "d8ee1744319036e904f6add749cb3e8aed78b8b7cd9426c1d83169bb373d3664",
+  "expected_reused_physical_records": 360,
+  "expected_new_physical_records": 243,
+  "gradient_probe_offset_steps": 50
+}

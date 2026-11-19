@@ -1,0 +1,14 @@
+{
+  "seed": 0,
+  "seeds": [730, 731, 732],
+  "snapshot_steps": [50, 75, 90, 100, 110],
+  "horizons": [1, 8, 32],
+  "directions": 8,
+  "epsilons_rad": [0.001, 0.01, 0.1],
+  "gamma": 0.99,
+  "target_height_m": 0.783675,
+  "cpu_threads": 2,
+  "stratify_time": true,
+  "model_ascent_probe": true,
+  "scope": "Development-only recorded open-loop actions before actual falls. No padding past an episode; absent late 32-step windows remain missing. No critic bootstrap or hardware authority."
+}

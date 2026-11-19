@@ -1,0 +1,187 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    6,
+    msg="usage: report_g1_teacher_initialization.mbtx REPO DATA_SUMMARY BC_STUDY AGGREGATION_STUDY OUTPUT_JSON",
+  )
+  let root = args[1]
+  let fitted : Array[Json] = []
+  let mut candidates = 0
+  for
+    name in [
+      "g1-balance-teacher", "g1-balance-com-teacher", "g1-balance-damped-teacher",
+      "g1-balance-hip-teacher", "g1-balance-waist-teacher", "g1-balance-dynamic-waist-teacher",
+      "g1-balance-support-teacher",
+    ] {
+    let bytes = @fs.read_file(
+      root + "/target/learning/" + name + "/fit/report.json",
+    )
+    let report = @json.parse(bytes.text())
+    candidates += array(field(report, "candidates")).length()
+    fitted.push({
+      "id": Json(name),
+      "report": report,
+      "sha256": Json(
+        @crypto.bytes_to_hex_string(@crypto.sha256(bytes.binary())),
+      ),
+    })
+  }
+  assert_eq(candidates, 225)
+  let bc = read(args[3] + "/policy/report.json")
+  let aggregation = read(args[4] + "/policy/report.json")
+  let bindings : Array[Json] = []
+  for run in array(field(aggregation, "runs")) {
+    assert_eq(field(run, "reload_matches"), true)
+    guard field(run, "seed") is Number(n, ..) else { fail("missing seed") }
+    let seed = n.to_int()
+    let incoming_path = args[4] + "/incoming-evaluation-seed-\{seed}"
+    let (eval_code, _, eval_err) = @process.collect_output(
+      root + "/target/learning-venv/bin/python",
+      [
+        args[4] + "/provider-sources/policy.py",
+        "evaluate",
+        "--checkpoint",
+        args[3] + "/policy/actor-seed-\{seed}.pt",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--config",
+        args[4] + "/config.json",
+        "--experiment",
+        args[4] + "/experiment.json",
+        "--output",
+        incoming_path,
+      ],
+    )
+    assert_eq(eval_code, 0, msg=eval_err.text())
+    let incoming = field(read(incoming_path + "/physics.json"), "candidate")
+    let physical = field(
+      read(args[4] + "/policy/physics-seed-\{seed}.json"),
+      "candidate",
+    )
+    let per_case : Array[Json] = []
+    for case_id in ["stand", "sway", "wave"] {
+      let trials = array(field(physical, "trials")).filter(t => {
+        field(t, "case_id") == Json(case_id)
+      })
+      per_case.push({
+        "case": Json(case_id),
+        "trials": Json(trials.length()),
+        "falls": Json(
+          trials.filter(t => field(t, "failed") == (true : Json)).length(),
+        ),
+      })
+    }
+    let physics = field(run, "student_physics")
+    guard field(physics, "file") is String(name) else {
+      fail("missing student data")
+    }
+    let path = args[4] + "/policy/" + name
+    let (code, _, err) = @process.collect_output("gzip", ["-t", path])
+    assert_eq(code, 0, msg=err.text())
+    assert_eq(
+      field(physics, "sha256"),
+      Json(
+        @crypto.bytes_to_hex_string(
+          @crypto.sha256(@fs.read_file(path).binary()),
+        ),
+      ),
+    )
+    let weights = "actor-seed-\{seed}.pt"
+    let history = array(field(run, "history"))
+    assert_eq(history.length(), 11)
+    let mut episodes = 0
+    let mut transitions = 0
+    let mut falls = 0
+    for row in history[1:] {
+      for
+        (key, target) in [
+          ("collected_episodes", 0),
+          ("collected_transitions", 1),
+          ("collection_falls", 2),
+        ] {
+        guard field(row, key) is Number(value, ..) else {
+          fail("missing count")
+        }
+        if target == 0 {
+          episodes += value.to_int()
+        } else if target == 1 {
+          transitions += value.to_int()
+        } else {
+          falls += value.to_int()
+        }
+      }
+    }
+    assert_eq(episodes, 120)
+    bindings.push({
+      "seed": Json(seed),
+      "episodes": Json(episodes),
+      "transitions": Json(transitions),
+      "falls": Json(falls),
+      "incoming_on_final_seeds": field(incoming, "summary"),
+      "final_case_counts": Json(per_case),
+      "student_physics": physics,
+      "checkpoint_sha256": Json(
+        @crypto.bytes_to_hex_string(
+          @crypto.sha256(@fs.read_file(args[4] + "/policy/" + weights).binary()),
+        ),
+      ),
+    })
+    println(
+      (
+        {
+          "seed": Json(seed),
+          "selected_round": field(run, "selected_round"),
+          "candidate": field(run, "candidate"),
+          "qualifies": field(run, "qualifies"),
+          "collection": bindings[bindings.length() - 1],
+        } : Json).stringify(),
+    )
+  }
+  let result : Json = {
+    "format": "moonrobo.g1-teacher-initialization-study.v1",
+    "teacher_fit_candidates": Json(candidates),
+    "teacher_fits": Json(fitted),
+    "teacher_data": read(args[2]),
+    "behavior_cloning": bc,
+    "dataset_aggregation": aggregation,
+    "aggregation_bindings": Json(bindings),
+    "scope": "Handcrafted privileged teacher and supervised learner initialization. All failed data retained; no learned world-model improvement or matched PPO efficiency claim. Research artifacts remain outside hardware authority and the current world-model experiment registry slice.",
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    args[5],
+    result.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

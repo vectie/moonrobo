@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: moonrobo-compare}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: moonrobo-compare}}
+  template:
+    metadata: {labels: {app: moonrobo-compare}}
+    spec:
+      nodeSelector: {kubernetes.io/hostname: ubuntu}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: web
+          image: lunanexa-registry.lunanexa-registry.svc.cluster.local:5000/moon/lunanexa-web@sha256:51b2b0f9a1d62cc7e6d1f54231428839b33a92e3feeef1601cdd717e89a3cb55
+          command: [nginx, -c, /config/nginx.conf, -g, "daemon off;"]
+          ports: [{name: http, containerPort: 8080}]
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 250m, memory: 64Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          readinessProbe: {httpGet: {path: /robo/heldout/tracks/manifest.json, port: http}, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /health, port: http}, periodSeconds: 20}
+          volumeMounts:
+            - {name: site, mountPath: /site/robo, readOnly: true}
+            - {name: config, mountPath: /config, readOnly: true}
+            - {name: temp, mountPath: /tmp}
+      volumes:
+        - name: site
+          hostPath:
+            path: /home/HwHiAiUser/moon-public/releases/robo-compare-00faad8eeeac067d/site
+            type: Directory
+        - name: config
+          configMap: {name: moonrobo-compare-nginx}
+        - name: temp
+          emptyDir: {sizeLimit: 16Mi}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: moonrobo-compare}
+spec:
+  selector: {app: moonrobo-compare}
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: moonrobo-compare}
+spec:
+  podSelector: {matchLabels: {app: moonrobo-compare}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
+      ports: [{protocol: TCP, port: 8080}]
+  egress: []

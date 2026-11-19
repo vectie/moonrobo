@@ -1,0 +1,79 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/geometry-cost-20261030-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-cost-179.sock"
+  let extra =
+    #|  // A copied workspace also owns its copied build files. Require the exact
+    #|  // successful task-local cp receipt, canonical destination and idle jobs.
+    #|  if j is {"exit_code":Number(0.0,..),"program":String("cp"),"gpu_access":False,"argv":[String("-a"),String("--reflink=auto"),String(src),String(dst)],..} {
+    #|   let prefix=base+"/workspace/"
+    #|   if src.has_prefix(prefix)&&dst.has_prefix(prefix) {
+    #|    let leaf=dst[prefix.length():].to_owned()
+    #|    if !leaf.contains("/")&&!leaf.contains("..")&&@fs.exists(dst) {
+    #|     assert_eq(@fs.realpath(dst),dst)
+    #|     completed["/workspace/"+leaf]=base+"/"+name
+    #|    }
+    #|   }
+    #|  }
+  let source = @fs.read_file(root + "/advise_geometry_cost_builds_a.mbtx").text()
+  let marker = "  let j=read_json(base+\"/\"+name)"
+  assert_eq(source.split(marker).count(), 2)
+  let updated = source
+    .replace_all(old=marker, new=marker + "\n" + extra)
+    .replace_all(
+      old="geometry-cost-build-advice-a.json",
+      new="geometry-cost-copy-advice-b.json",
+    )
+  let name = "advise_geometry_cost_copies_b.mbtx"
+  @fs.write_file(root + "/" + name, updated, create_mode=CreateNew)
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=" + socket,
+      root + "/" + name,
+      host + ":" + base + "/" + name,
+    ]),
+    0,
+  )
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      socket,
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      name,
+    ],
+    stdout=@process.redirect_to_file(
+      root + "/copy-cache.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      root + "/copy-cache.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=" + socket,
+      host + ":" + base + "/geometry-cost-copy-advice-b.json",
+      root + "/copy-cache-advice.json",
+    ]),
+    0,
+  )
+  assert_eq(status, 0)
+}

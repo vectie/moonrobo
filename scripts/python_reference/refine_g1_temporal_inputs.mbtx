@@ -1,0 +1,162 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: refine_g1_temporal_inputs.mbtx REPO TEMPORAL_STUDY WORLD_FIT OUTPUT",
+  )
+  let root = args[1]
+  let source = args[2]
+  let output = args[4]
+  assert_true(!@fs.exists(output), msg="choose a fresh study directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "temporal_actor.py", "temporal_training.py", "policy.py", "dynamics.py", "cpu_physics.py",
+      "teacher_feedback.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(source + "/provider-sources/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/provider-sources/temporal_refinement.py",
+    @fs.read_file(root + "/providers/motion_learning/temporal_refinement.py").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let config = read(root + "/examples/learning/g1-temporal-refinement.json")
+  @fs.write_file(
+    output + "/config.json",
+    config.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-temporal-refinement-charter.v1",
+        "config": config,
+        "source": Json(source),
+        "world_fit": Json(args[3]),
+        "selection": "Validation physics seeds 30-32, including incoming actor; fresh final 8800-8802 never select weights. Same teacher starting points and random index seeds across variants; no future physical observations.",
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(
+    @process.run(
+      "gzip",
+      ["-c", source + "/teacher-data/dataset.json"],
+      stdout=@process.redirect_to_file(
+        output + "/dataset.json.gz",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  @async.with_task_group() <| group => {
+    let running : Array[(@process.Process, String)] = []
+    for id in ["frame", "history", "preview"] {
+      let cell = output + "/" + id
+      @fs.mkdir(cell + "/collection", recursive=true)
+      @fs.mkdir(cell + "/fit", recursive=true)
+      assert_eq(
+        @process.run("/bin/cp", [
+          output + "/dataset.json.gz",
+          cell + "/collection/dataset.json.gz",
+        ]),
+        0,
+      )
+      for
+        name in [
+          "report.json", "dynamics-seed-0.pt", "dynamics-seed-1.pt", "dynamics-seed-2.pt",
+        ] {
+        assert_eq(
+          @process.run("/bin/cp", [args[3] + "/" + name, cell + "/fit/" + name]),
+          0,
+        )
+      }
+      @fs.write_file(
+        cell + "/config.json",
+        config.stringify(indent=2),
+        create_mode=CreateOrTruncate,
+      )
+      let process = @process.spawn(
+        group,
+        root + "/target/learning-venv/bin/python",
+        [
+          output + "/provider-sources/temporal_refinement.py",
+          "--config",
+          cell + "/config.json",
+          "--experiment",
+          source + "/experiment.json",
+          "--collection",
+          source + "/collection.json",
+          "--data",
+          source + "/teacher-data/dataset.json",
+          "--policies",
+          source + "/" + id + "/policy",
+          "--dynamics",
+          args[3] + "/dynamics-seed-0.pt",
+          "--scene",
+          root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+          "--output",
+          cell + "/policy",
+        ],
+        stdout=@process.redirect_to_file(
+          cell + "/train.log",
+          create_mode=CreateOrTruncate,
+        ),
+        stderr=@process.redirect_to_file(
+          cell + "/stderr.log",
+          create_mode=CreateOrTruncate,
+        ),
+      )
+      running.push((process, id))
+    }
+    for (process, id) in running {
+      assert_eq(process.wait(), 0, msg=id + " failed")
+      let report = read(output + "/" + id + "/policy/report.json")
+      guard field(report, "runs") is Array(runs) else { fail("missing runs") }
+      for row in runs {
+        println(
+          id +
+          ": " +
+          (
+            {
+              "seed": field(row, "seed"),
+              "selected_update": field(row, "selected_update"),
+              "baseline": field(row, "baseline"),
+              "candidate": field(row, "candidate"),
+              "qualifies": field(row, "qualifies"),
+            } : Json).stringify(),
+        )
+      }
+    }
+  }
+}

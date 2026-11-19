@@ -1,0 +1,31 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let prefix = @fs.read_file(
+    repo + "/scripts/advise_combo_closed_cuda_cache_b.mbtx",
+  )
+  .text()
+  .split("///|\nasync fn main {")
+  .to_array()[0].to_owned()
+  let source = (prefix +
+  @fs.read_file(repo + "/scripts/mlp_cache_main.txt").text()).replace_all(
+    old="/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a",
+    new="/home/wlc004s/moonrobo/private/shared-compute-20261026-a",
+  )
+  let out = repo +
+    "/output/spark-runtime-20261024/layernorm-mlp-20261026/advise_mlp_cuda_b.mbtx"
+  @fs.write_file(out, source, create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o", "ControlPath=/tmp/moonrobo-operator-179.sock", out, "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/advise_mlp_cuda_b.mbtx",
+    ]) ==
+    0 else {
+    fail("publish")
+  }
+}

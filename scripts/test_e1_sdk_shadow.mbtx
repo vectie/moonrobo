@@ -1,0 +1,132 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/http",
+  "moonbitlang/async@0.20.2/socket",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [repo, bundle, fake_sdk, output] && !@fs.exists(output) else {
+    fail("usage: test_e1_sdk_shadow.mbtx REPO ACTUAL_BUNDLE ACTUAL_HEADER_FAKE_SDK NEW_OUTPUT")
+  }
+  @fs.mkdir(output, recursive=true)
+  guard @fs.read_file(bundle + "/actor.json").json() is { "encoder": [Number(goals, ..), ..], .. } &&
+    @fs.read_file(bundle + "/robot.json").json() is {
+      "identity": { "robot": { "id": String(profile), "joints": Array(joints), .. }, .. }, ..
+    } && (joints.length() == 23 || joints.length() == 24) else { fail("E1 actor metadata missing") }
+  let reference_path = output + "/synthetic-reference.json"
+  let frame : Json = { "goals": Json(Array::make(goals.to_int(), 0.0)),
+    "body_to_world": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0] }
+  let reference : Json = { "format": "moonrobo.e1-actor-reference.v1", "profile_id": profile,
+    "joints": Json(joints), "reference_id": "synthetic-reference", "control_dt_ms": 20,
+    "goal_layout": "aligned.preview73.v1", "frames": Json([frame, frame, frame]) }
+  @fs.write_file(reference_path, reference.stringify(), create_mode=CreateNew)
+  let session : Json = {
+    "format": "moonrobo.e1-sdk-shadow.v1", "catalog_id": "standalone-sdk-shadow",
+    "skills": [{ "id": "one", "description": "synthetic software fixture, not a physical skill",
+      "reference_id": "synthetic-reference", "maximum_duration_ms": 1000, "parameters": [] }],
+    "joint_calibration": { "format": "moonrobo.e1-sdk-calibration.v1", "profile_id": profile,
+      "axes": Json(Array::makei(joints.length(), i => {
+        let axis : Json = { "actor_joint": joints[i],
+          // The fake SDK's first lookup injects one synthetic coherent status.
+          "sdk_joint": if i == 0 { "fixture_policy_clean" } else { "fixture_slot_\{i}" },
+          "motor_id": 100 + i, "direction": 1.0, "zero": 0.0, "kp": 1.0, "kd": 0.1 }
+        axis
+      })),
+      "fixed": Json(Array::makei(24 - joints.length(), offset => {
+        let i = joints.length() + offset
+        let fixed : Json = { "sdk_joint": "fixture_slot_\{i}", "motor_id": 100 + i,
+          "position": 0.0, "velocity": 0.0, "torque": 0.0, "kp": 1.0, "kd": 0.1 }
+        fixed
+      })),
+    },
+    "imu_calibration": { "quaternion_order": "wxyz", "orientation_direction": "sensor_to_world",
+      "gyro_frame": "sensor", "gyro_to_radians": 1.0,
+      "sensor_to_body": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+      "world_to_actor_world": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0] },
+    "references": [reference_path], "maximum_sensor_age_ms": "2000",
+  }
+  let session_path = output + "/synthetic-session.json"
+  @fs.write_file(session_path, session.stringify(indent=2), create_mode=CreateNew)
+  guard @process.run("moon", ["-C", repo, "build", "--release", "--target", "native", "--deny-warn", "cmd/e1_sdk_shadow"]) == 0 else {
+    fail("SDK shadow deployment CLI build failed")
+  }
+  let reservation = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
+  let address = "127.0.0.1:\{reservation.addr.port()}"
+  reservation.close()
+  let endpoint = "http://" + address
+  let executable = repo + "/_build/native/release/build/vectie/moonrobo/cmd/e1_sdk_shadow/e1_sdk_shadow.exe"
+  let stdout = output + "/service.stdout.log"
+  let execution = @async.with_timeout(30000, () => {
+    @async.with_task_group(group => {
+      let child = @process.spawn(group, executable,
+        ["reference", bundle, fake_sdk, session_path, address], cwd=repo,
+        stdout=@process.redirect_to_file(stdout, create_mode=CreateNew),
+        stderr=@process.redirect_to_file(output + "/service.stderr.log", create_mode=CreateNew))
+      defer child.cancel()
+      let advertisement = for ;; {
+        guard child.try_wait() is None else { fail("SDK shadow exited before readiness; inspect service.stderr.log") }
+        let response = Some(@http.get(endpoint + "/v1/catalog")) catch { error => {
+          if @async.is_cancellation_error(error) { raise error }; None
+        } }
+        if response is Some((response, body)) && response.code == 200 { break body.json() }
+        @async.sleep(10)
+      }
+      guard advertisement is { "now_ms": String(now), "catalog": { "context_version": version, .. }, .. } else {
+        fail("SDK shadow catalog missing local time")
+      }
+      let request : Json = { "request_id": "standalone-sdk-shadow", "sequence": "0",
+        "catalog_id": "standalone-sdk-shadow", "context_version": version,
+        "expires_at_ms": Json((@string.parse_int64(now) + 5000L).to_string()),
+        "proposal": { "skill_id": "one", "parameters": {} } }
+      let (accepted, body) = @http.post(endpoint + "/v1/skills", request)
+      guard accepted.code == 200 else { fail("SDK shadow task rejected: " + body.text()) }
+      for ;; {
+        guard child.try_wait() is None else { fail("SDK shadow exited during task; inspect service.stderr.log") }
+        let (response, body) = @http.get(endpoint + "/v1/state")
+        guard response.code == 200 && body.json() is { "execution": execution, .. } else { fail("SDK shadow execution missing") }
+        if execution is { "state": String(state), .. } {
+          guard state != "Interrupted" && state != "Failed" else { fail("SDK shadow did not complete") }
+          if state == "Completed" { break execution }
+        }
+        @async.sleep(10)
+      }
+    })
+  })
+  let mut ticks = 0
+  let mut stopped = 0
+  for line in @fs.read_file(stdout).text().split("\n") {
+    let line = line.trim()
+    if !line.has_prefix("{") { continue }
+    let value = @json.parse(line)
+    guard value is { "published": False, .. } else { fail("SDK shadow output enabled publication") }
+    if value is { "format": "moonrobo.e1-sdk-shadow-tick.v1", "hardware_qualified": False,
+      "commands": Array(commands), .. } {
+      guard commands.length() == 24 else { fail("SDK shadow command width differs") }
+      for slot, command in commands {
+        guard command is { "slot": Number(index, ..), "position": Number(position, ..),
+          "velocity": Number(velocity, ..), "torque": Number(torque, ..),
+          "kp": Number(kp, ..), "kd": Number(kd, ..), .. } && index.to_int() == slot &&
+          [position, velocity, torque, kp, kd].all(value => value == value && value - value == 0.0) else {
+          fail("invalid SDK shadow command record")
+        }
+      }
+      ticks += 1
+    }
+    if value is { "software_stopped": True, .. } { stopped += 1 }
+  }
+  guard ticks == 2 && stopped == 1 else { fail("SDK shadow tick or stop notification count differs") }
+  let report : Json = { "passed": true, "execution": execution,
+    "actor": "actual trained portable actor", "sdk": "actual-header fake SDK",
+    "calibration_and_reference": "synthetic only", "command_frames_recorded": ticks,
+    "software_stop_notifications": stopped, "published": false, "hardware_access": false,
+    "hardware_qualified": false }
+  @fs.write_file(output + "/report.json", report.stringify(indent=2), create_mode=CreateNew)
+  println(report.stringify(indent=2))
+}

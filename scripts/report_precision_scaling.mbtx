@@ -1,0 +1,134 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+}
+
+///|
+let dir = "output/spark-runtime-20261024/precision-scaling-20261028-a"
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(m) && m.get(k) is Some(v) else { fail(k) }
+  v
+}
+
+///|
+fn num(j : Json) -> Double raise {
+  guard j is Number(n, ..) else { fail("number") }
+  n
+}
+
+///|
+fn median(a : Array[Double]) -> Double raise {
+  guard a.length() > 0 else { fail("empty") }
+  a.sort()
+  let n = a.length()
+  if n % 2 == 0 {
+    (a[n / 2 - 1] + a[n / 2]) / 2.0
+  } else {
+    a[n / 2]
+  }
+}
+
+///|
+fn span(row : Json, label : String) -> Double raise {
+  let p = field(row, "profile")
+  let ss = match p {
+    Array(a) => a
+    {
+      "spans": Array(a),
+      "dropped_spans": Number(0, ..),
+      "open_spans": Number(0, ..),
+      ..
+    } => a
+    _ => fail("profile")
+  }
+  let mut sum = 0.0
+  for s in ss {
+    if field(s, "label") == Json(label) {
+      sum += match s {
+        { "gpu_elapsed_ms": Number(n, ..), "gpu_status": "complete", .. } => n
+        { "stream_elapsed_ms": Number(n, ..), .. } => n
+        _ => fail("event")
+      }
+    }
+  }
+  sum
+}
+
+///|
+async fn main {
+  let records = []
+  for folder in @fs.readdir(dir) {
+    if !folder.has_prefix("pscale-") ||
+      !@fs.exists(dir + "/" + folder + "/result.json") {
+      continue
+    }
+    let r = @json.parse(
+      @fs.read_file(dir + "/" + folder + "/result.json").text(),
+    )
+    let mlp = folder.has_prefix("pscale-mlp-")
+    let payload = if mlp {
+      guard field(r, "cases") is [c] else { fail("one mlp") }
+      c
+    } else {
+      r
+    }
+    guard field(payload, "rows") is Array(all) else { fail("rows") }
+    let rows = all.filter(x => field(x, "steady") == Json(true))
+    let event = folder.contains("-events-")
+    let native = folder.contains("-native-")
+    let stages = if event {
+      let m : Map[String, Json] = Map([])
+      for
+        stage in (if mlp {
+          ["forward", "backward"]
+        } else {
+          ["forward", "backward", "adam"]
+        }) {
+        m[stage] = Json(
+          median(
+            rows.map(x => {
+              if mlp && !native {
+                num(field(x, stage + "_ms"))
+              } else {
+                span(x, (if mlp { "mlp." } else { "world." }) + stage)
+              }
+            }),
+          ),
+        )
+      }
+      Json::object(m)
+    } else {
+      Json::null()
+    }
+    records.push(
+      (
+        {
+          "name": Json(folder),
+          "amp": field(r, "amp"),
+          "mlp": Json(mlp),
+          "native": Json(native),
+          "events": Json(event),
+          "median_ms": Json(median(rows.map(x => num(field(x, "wall_ms"))))),
+          "stages_ms": stages,
+          "steady_samples": Json(rows.length()),
+        } : Json),
+    )
+  }
+  records.sort_by((a, b) => {
+    match (a, b) {
+      ({ "name": String(x), .. }, { "name": String(y), .. }) => x.compare(y)
+      _ => 0
+    }
+  })
+  let report = Json(records).stringify(indent=2)
+  if @fs.exists(dir + "/measurements.json") {
+    @fs.write_file(dir + "/measurements.json", report)
+  } else {
+    @fs.write_file(dir + "/measurements.json", report, create_mode=CreateNew)
+  }
+  println(report)
+}

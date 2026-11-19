@@ -1,0 +1,10 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let repo="/Users/kq/Workspace/moonrobo"
+  let text=@fs.read_file(repo+"/output/spark-runtime-20261024/top3-frequency-20261026/advise_top3_b.mbtx").text()
+  let labels=["fix-aligned-actor-gate-a","fix-aligned-world-gate-a","fix-smc-eager-actor-gate-a","fix-actor-base-0","fix-actor-base-1","fix-actor-rotation-0","fix-actor-linear-0","fix-actor-aligned-0","fix-actor-aligned-1","fix-actor-smc-0","fix-world-base-0","fix-world-aligned-0","fix-world-smc-0"]
+  let lines=text.split("\n").map(line => if line.has_prefix("  let labels = ") { "  let labels = "+Json(labels).stringify() } else { line.to_owned() }).collect()
+  let path=repo+"/output/spark-runtime-20261024/smc-source-fixes-20261027/advise_smc_fix_a.mbtx"
+  @fs.write_file(path,lines.join("\n"),create_mode=CreateNew)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",path,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/advise_smc_fix_a.mbtx"])==0 else {fail("scp")}
+}

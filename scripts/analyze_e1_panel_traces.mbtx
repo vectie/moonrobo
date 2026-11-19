@@ -1,0 +1,318 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/math",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+struct Frame {
+  frame : Int32
+  state_before : Array[Double]
+  state_after : Array[Double]
+  reference_z : Double
+  reference_zz : Double
+  robot_zz : Double
+  setpoint_rad : Array[Double]
+  alternate_setpoint_rad : Array[Double]
+  reward : Double
+  cumulative_reward : Double
+  height_error_m : Double
+  tilt_error : Double
+  floor_contact_bodies : Array[String]
+  terminated : Bool
+} derive(FromJson)
+
+///|
+struct Trace {
+  index : Int32
+  clip_id : String
+  reference_sha256 : String
+  primary_actor : String
+  comparison_actor : String
+  expected_steps : Int32
+  joints : Array[String]
+  primary : Array[Frame]
+  comparison : Array[Frame]
+  interventions : Array[Json]
+} derive(FromJson)
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@utf8.decode(@fs.read_file(path).binary()))
+}
+
+///|
+fn[T : FromJson] field(v : Json, k : String) -> T raise {
+  guard v is Object(m) && m.get(k) is Some(x) else { fail(k) }
+  @json.from_json(x)
+}
+
+///|
+fn dist(
+  a : Array[Double],
+  b : Array[Double],
+  offset : Int32,
+  n : Int32,
+) -> Double {
+  let mut sum = 0.0
+  for i in offset..<(offset + n) {
+    let x = a[i] - b[i]
+    sum += x * x
+  }
+  sum.sqrt()
+}
+
+///|
+fn first_sustained(
+  a : Array[Frame],
+  b : Array[Frame],
+  predicate : (Frame, Frame) -> Bool,
+) -> Int32? {
+  let mut streak = 0
+  for i in 0..<a.length().min(b.length()) {
+    streak = if predicate(a[i], b[i]) { streak + 1 } else { 0 }
+    if streak == 5 {
+      return Some(i - 3)
+    } // first of five, 1-based
+  }
+  None
+}
+
+///|
+fn gate_point(r : Frame) -> Json {
+  {
+    "frame": r.frame,
+    "height_error_m": r.height_error_m,
+    "tilt_error": r.tilt_error,
+    "robot_z": r.state_after[2],
+    "reference_z": r.reference_z,
+    "robot_zz": r.robot_zz,
+    "reference_zz": r.reference_zz,
+    "floor_contacts": r.floor_contact_bodies,
+  }
+}
+
+///|
+fn optional_frame(f : Int32?) -> Json {
+  match f {
+    Some(i) => Json(i)
+    None => Json(())
+  }
+}
+
+///|
+fn largest_gap(a : Array[Double], b : Array[Double]) -> Int32 {
+  let mut largest = 0
+  for i in 1..<a.length() {
+    if (b[i] - a[i]).abs() > (b[largest] - a[largest]).abs() {
+      largest = i
+    }
+  }
+  largest
+}
+
+///|
+fn check_rollout(
+  trace : Trace,
+  rows : Array[Frame],
+  panel : Json,
+  rerun : Json,
+  hash : String,
+) -> Unit raise {
+  let per : Array[Json] = field(panel, "per_clip")
+  let replay : Array[Json] = field(rerun, "per_clip")
+  let original = per[trace.index]
+  let same = replay.filter(v => {
+    v is { "clip_id": String(id), .. } && id == trace.clip_id
+  })
+  guard same.length() == 1 &&
+    (field(panel, "actor_archive_sha256") : String) == hash &&
+    (field(rerun, "actor_archive_sha256") : String) == hash &&
+    (field(original, "clip_id") : String) == trace.clip_id &&
+    (field(original, "expected_steps") : Int32) == trace.expected_steps else {
+    fail("clip or actor mismatch")
+  }
+  for
+    key in [
+      "expected_steps", "executed_steps", "termination_frame", "normalized_return",
+      "undiscounted_return", "completed_full_duration", "strict_tracking",
+    ] {
+    guard (field(same[0], key) : Json) == (field(original, key) : Json) else {
+      fail("ordinary replay mismatch: " + key)
+    }
+  }
+  let mut sum = 0.0
+  for i, row in rows {
+    guard row.frame == i + 1 &&
+      (i == 0 || row.state_before == rows[i - 1].state_after) &&
+      row.terminated == (row.height_error_m > 0.25 || row.tilt_error > 0.8) &&
+      (!row.terminated || i == rows.length() - 1) else {
+      fail("frame continuity/termination mismatch")
+    }
+    sum += row.reward
+    guard sum == row.cumulative_reward else {
+      fail("inconsistent cumulative reward")
+    }
+  }
+  guard (field(original, "executed_steps") : Int32) == rows.length() &&
+    (field(original, "failed") : Bool) == rows[rows.length() - 1].terminated &&
+    (sum - (field(original, "undiscounted_return") : Double)).abs() < 1.0e-9 else {
+    fail("traced rollout did not reproduce original")
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, root] else {
+    fail("expected fixed-panel result directory")
+  }
+  let dir = root + "/divergence"
+  let p = read(root + "/results/final.json")
+  let c = read(root + "/results/comparison.json")
+  let preplay = read(dir + "/final.json")
+  let creplay = read(dir + "/comparison.json")
+  let refs : Array[Json] = field(
+    read(root + "/results/references.json"),
+    "clips",
+  )
+  let csv = [
+    "index,checkpoint,frame,seconds,root_x,root_y,root_z,reference_z,root_zz,reference_zz,height_error_m,tilt_error,reward,cumulative_normalized_return,terminated,ground_contacts,same_history_command_gap_rms_rad,paired_joint_gap_rms_deg,paired_root_z_gap_m,paired_root_xy_gap_m,largest_paired_command_gap_joint,largest_paired_command_14k_minus_7k_rad",
+  ]
+  let audit : Array[Json] = []
+  for index in [10, 28, 38] {
+    let t : Trace = @json.from_json(
+      read(dir + "/trace-" + index.to_string() + ".json"),
+    )
+    let a = t.comparison
+    let b = t.primary
+    check_rollout(t, a, c, creplay, t.comparison_actor)
+    check_rollout(t, b, p, preplay, t.primary_actor)
+    guard t.index == index &&
+      a.length() == t.expected_steps &&
+      b.length() < a.length() &&
+      a[0].state_before == b[0].state_before &&
+      b[0].setpoint_rad == a[0].alternate_setpoint_rad &&
+      a[0].setpoint_rad == b[0].alternate_setpoint_rad &&
+      (field(refs[index], "reference_sha256") : String) == t.reference_sha256 else {
+      fail("pair mismatch")
+    }
+    for i, r in b {
+      guard r.reference_z == a[i].reference_z &&
+        r.reference_zz == a[i].reference_zz else {
+        fail("reference mismatch")
+      }
+    }
+    let den = t.expected_steps.to_double() * 0.1
+    let j = t.joints.length()
+    let scale = j.to_double().sqrt()
+    for (checkpoint, rows) in [(7000, a), (14000, b)] {
+      for i, row in rows {
+        let paired = if b.get(i) is Some(late) {
+          let early = a[i]
+          let k = largest_gap(early.setpoint_rad, late.setpoint_rad)
+          [
+            (dist(early.state_after, late.state_after, 13, j) *
+            180.0 /
+            @math.PI /
+            scale).to_string(),
+            (late.state_after[2] - early.state_after[2]).abs().to_string(),
+            dist(early.state_after, late.state_after, 0, 2).to_string(),
+            t.joints[k],
+            (late.setpoint_rad[k] - early.setpoint_rad[k]).to_string(),
+          ].join(",")
+        } else {
+          ",,,,"
+        }
+        csv.push(
+          [
+            index.to_string(),
+            checkpoint.to_string(),
+            row.frame.to_string(),
+            (row.frame.to_double() * 0.02).to_string(),
+            row.state_after[0].to_string(),
+            row.state_after[1].to_string(),
+            row.state_after[2].to_string(),
+            row.reference_z.to_string(),
+            row.robot_zz.to_string(),
+            row.reference_zz.to_string(),
+            row.height_error_m.to_string(),
+            row.tilt_error.to_string(),
+            row.reward.to_string(),
+            (row.cumulative_reward / den).to_string(),
+            row.terminated.to_string(),
+            row.floor_contact_bodies.join("|"),
+            (dist(row.setpoint_rad, row.alternate_setpoint_rad, 0, j) / scale).to_string(),
+            paired,
+          ].join(","),
+        )
+      }
+    }
+    let first_joint = first_sustained(a, b, (x, y) => {
+      dist(x.state_after, y.state_after, 13, j) / j.to_double().sqrt() >=
+      5.0 * @math.PI / 180.0
+    })
+    let first_z = first_sustained(a, b, (x, y) => {
+      (x.state_after[2] - y.state_after[2]).abs() >= 0.05
+    })
+    let first_xy = first_sustained(a, b, (x, y) => {
+      dist(x.state_after, y.state_after, 0, 2) >= 0.05
+    })
+    let first_tilt = first_sustained(a, b, (x, y) => {
+      (x.robot_zz - y.robot_zz).abs() >= 0.1
+    })
+    let max_i = largest_gap(a[0].setpoint_rad, b[0].setpoint_rad)
+    let end = b.length() - 1
+    let mut last_within_10cm = 0
+    for row in b {
+      if row.reference_z - row.state_after[2] < 0.10 {
+        last_within_10cm = row.frame
+      }
+    }
+    let shared = (b[end].cumulative_reward - a[end].cumulative_reward) / den
+    let tail = (a[a.length() - 1].cumulative_reward - a[end].cumulative_reward) /
+      den
+    audit.push({
+      "clip_id": t.clip_id,
+      "index": index,
+      "frames": a.length(),
+      "failure_frame": end + 1,
+      "first_action_largest_joint": t.joints[max_i],
+      "first_action_joint_delta_rad": b[0].setpoint_rad[max_i] -
+      a[0].setpoint_rad[max_i],
+      "first_action_rms_rad": dist(a[0].setpoint_rad, b[0].setpoint_rad, 0, j) /
+      j.to_double().sqrt(),
+      "first_sustained_joint_rms_5deg": optional_frame(first_joint),
+      "first_sustained_root_z_separation_5cm": optional_frame(first_z),
+      "first_frame_continuously_10cm_below_ref_until_end": optional_frame(
+        if last_within_10cm < b.length() {
+          Some(last_within_10cm + 1)
+        } else {
+          None
+        },
+      ),
+      "first_sustained_root_xy_separation_5cm": optional_frame(first_xy),
+      "first_sustained_root_zz_separation_0_1": optional_frame(first_tilt),
+      "primary_previous": gate_point(b[end - 1]),
+      "primary_terminal": gate_point(b[end]),
+      "comparison_at_primary_terminal": gate_point(a[end]),
+      "normalized_shared_prefix_delta": shared,
+      "normalized_lost_comparison_tail": tail,
+      "normalized_full_return_delta": shared - tail,
+      "interventions": t.interventions,
+    })
+  }
+  @fs.write_file(
+    dir + "/frames.csv",
+    @utf8.encode(csv.join("\n") + "\n"),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    dir + "/analysis.json",
+    @utf8.encode(Json(audit).stringify(indent=2)),
+    create_mode=CreateOrTruncate,
+  )
+}

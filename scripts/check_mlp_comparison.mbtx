@@ -1,0 +1,131 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/layernorm-mlp-20261026/checks-final"
+  @fs.mkdir(root)
+  let commands : Array[(String, Array[String])] = []
+  for
+    script in [
+      "prepare_mlp_comparison", "revise_mlp_comparison", "prepare_mlp_final", "run_mlp_comparison",
+      "report_mlp_comparison", "advise_mlp_closed_cache", "prepare_mlp_cache", "finish_mlp_comparison",
+      "check_mlp_comparison",
+    ] {
+    commands.push(
+      (
+        "check-" + script,
+        [
+          "check",
+          "--target",
+          "native",
+          "--warn-list",
+          "-a",
+          "scripts/" + script + ".mbtx",
+        ],
+      ),
+    )
+  }
+  commands.push(
+    (
+      "check-core",
+      [
+        "check", "--target", "native", "--warn-list", "-a", "src/learning_tensor",
+        "src/learning_aligned_gpu", "src/learning_aligned_gpu/cmd", "src/learning_aligned_gpu/inference",
+      ],
+    ),
+  )
+  commands.push(
+    (
+      "test-settings",
+      [
+        "test", "--target", "native", "--warn-list", "-a", "-j", "2", "src/learning_aligned_gpu/cmd",
+        "--filter", "execution candidates*",
+      ],
+    ),
+  )
+  commands.push(
+    (
+      "test-checkpoint-modes",
+      [
+        "test", "--target", "native", "--warn-list", "-a", "-j", "2", "src/learning_aligned_gpu/cmd",
+        "--filter", "SMC world arithmetic*",
+      ],
+    ),
+  )
+  let before : Map[String, String] = Map([])
+  for
+    path in [
+      "src/learning_tensor/pkg.generated.mbti", "src/learning_aligned_gpu/pkg.generated.mbti",
+      "src/learning_aligned_gpu/cmd/pkg.generated.mbti",
+    ] {
+    before[path] = @fs.read_file(path).text()
+  }
+  commands.push(
+    (
+      "info",
+      [
+        "info", "--target", "native", "src/learning_tensor", "src/learning_aligned_gpu",
+        "src/learning_aligned_gpu/cmd", "src/learning_aligned_gpu/inference",
+      ],
+    ),
+  )
+  commands.push(
+    (
+      "fmt",
+      [
+        "fmt", "src/learning_tensor", "src/learning_aligned_gpu", "scripts/prepare_mlp_comparison.mbtx",
+        "scripts/revise_mlp_comparison.mbtx", "scripts/prepare_mlp_final.mbtx", "scripts/run_mlp_comparison.mbtx",
+        "scripts/report_mlp_comparison.mbtx", "scripts/advise_mlp_closed_cache.mbtx",
+        "scripts/prepare_mlp_cache.mbtx", "scripts/finish_mlp_comparison.mbtx", "scripts/check_mlp_comparison.mbtx",
+      ],
+    ),
+  )
+  let records : Array[Json] = []
+  for (name, args) in commands {
+    let code = @process.run(
+      "moon",
+      args,
+      stdout=@process.redirect_to_file(
+        root + "/" + name + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        root + "/" + name + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    records.push({
+      "name": Json(name),
+      "args": Json(args),
+      "exit_code": Json(code),
+    })
+    guard code == 0 else { fail(name + " failed") }
+  }
+  let interfaces : Array[Json] = []
+  for path, contents in before {
+    @fs.write_file(
+      root + "/" + path.replace_all(old="/", new="__") + ".before.mbti",
+      contents,
+      create_mode=CreateNew,
+    )
+    interfaces.push({
+      "path": Json(path),
+      "changed": Json(contents != @fs.read_file(path).text()),
+    })
+  }
+  @fs.write_file(
+    root + "/result.json",
+    Json({
+      "checks": Json(records),
+      "interfaces": Json(interfaces),
+      "passed": true,
+    }).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+}

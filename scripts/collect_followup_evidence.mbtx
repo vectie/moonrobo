@@ -1,0 +1,83 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  let destination = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/world-ln-fk-20261026"
+  let remote = "/home/wlc004s/moonrobo/runs"
+  guard @env.args() is [_, mode] &&
+    ["gates", "world", "ln", "fk"].contains(mode) else {
+    fail("gates|world|ln|fk")
+  }
+  async fn copy(source : String, target : String) -> Unit {
+    guard @process.run("scp", [
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179:" + source,
+        target,
+      ]) ==
+      0 else {
+      fail("evidence copy failed")
+    }
+  }
+  if mode == "gates" {
+    for
+      suffix in [
+        "world-fields-20261026-a", "world_packed-20261026-a", "fused-tail-unit-20261026-a",
+        "fused_tail-20261026-a", "fused-tail-unit-20261026-b", "fused_tail-20261026-b",
+        "fk_axis-20261026-a",
+      ] {
+      let target = destination + "/gates/" + suffix
+      if !@fs.exists(target) {
+        @fs.mkdir(target, recursive=true)
+      }
+      for
+        file in [
+          "result.json", "training.stdout.log", "training.stderr.log", "training-guard.json",
+          "training-docker-final.json",
+        ] {
+        copy(
+          remote + "/hotspot-followup-" + suffix + "/" + file,
+          target + "/" + file,
+        )
+      }
+    }
+    return
+  }
+  let revision = if mode == "world" { "c" } else { "e" }
+  let source = remote +
+    "/hotspot-followup-measured-" +
+    mode +
+    "-20261026-" +
+    revision
+  let target = destination + "/benchmark-" + mode
+  guard !@fs.exists(target) else {
+    fail("fresh local benchmark evidence required")
+  }
+  @fs.mkdir(target)
+  for file in ["spec.json", "plan.json", "summary.json"] {
+    copy(source + "/" + file, target + "/" + file)
+  }
+  for i in 0..<4 {
+    let name = "/run-" + i.to_string()
+    @fs.mkdir(target + name)
+    for
+      file in [
+        "result.json", "native-config.json", "training.stdout.log", "training.stderr.log",
+        "training-guard.json", "training-docker-final.json", "preflight.stdout.log",
+        "preflight-guard.json", "preflight-docker-final.json", "training-launch.json",
+      ] {
+      copy(source + name + "/" + file, target + name + "/" + file)
+    }
+    // Metrics and report are bounded text artifacts; never fetch checkpoints,
+    // replay payloads, compiler caches or profiler traces to the laptop.
+    for file in ["report.json", "current.json"] {
+      copy(source + name + "/train/" + file, target + name + "/" + file)
+    }
+  }
+}

@@ -1,0 +1,57 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let code = @fs.read_file(out + "/advise_closed_cuda_d.mbtx")
+    .text()
+    .replace_all(old="hotspot-mlp-", new="hotspot-shared-")
+    .replace_all(old="resident-aoti-cuda-d-", new="resident-aoti-cuda-e-")
+    .replace_all(
+      old="compiled-resident-cuda-advice-d.json",
+      new="compiled-resident-cuda-advice-e.json",
+    )
+  @fs.write_file(
+    out + "/advise_closed_cuda_e.mbtx",
+    code,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/advise_closed_cuda_e.mbtx",
+      "wlc004s@192.168.2.179:" + base + "/advise_closed_cuda_e.mbtx",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179",
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/advise_closed_cuda_e.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/advise-closed-cuda-e.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/advise-closed-cuda-e.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+}

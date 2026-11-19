@@ -1,0 +1,27 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn edit(path : String,pairs : Array[(String,String)]) -> Unit {
+  let mut s=@fs.read_file(path).text();for (a,b) in pairs{s=rep(s,a,b)};@fs.write_file(path,s)
+}
+async fn main {
+  let t="src/learning_tensor/";let g="src/learning_aligned_gpu/"
+  edit(t+"adapter.cpp",[("#include \"compact_rotation.inc\"","#include \"compact_rotation.inc\"\n#include \"fused_rotation.inc\"")])
+  edit(t+"loader.c",[("#include \"compact_rotation_loader.inc\"","#include \"compact_rotation_loader.inc\"\n#include \"fused_rotation_loader.inc\"")])
+  for (source,target) in [("compact_rotation.mbt","fused_rotation.mbt"),("compact_rotation_loader.inc","fused_rotation_loader.inc")] {
+    let s=@fs.read_file(t+source).text().replace_all(old="compact",new="fused")
+    @fs.write_file(t+target,s,create_mode=CreateNew)
+  }
+  edit(t+"moon.pkg",[("\"compact_rotation.mbt\": [ \"native\" ],","\"compact_rotation.mbt\": [ \"native\" ],\n    \"fused_rotation.mbt\": [ \"native\" ],")])
+  edit(t+"CMakeLists.txt",[("bounded projected-heading CUDA kernels","bounded geometry CUDA kernels"),("PRIVATE compact_heading.cu)","PRIVATE compact_heading.cu fused_rotation.cu)")])
+  edit(g+"execution_optimizations.mbt",[("  compact_heading : Bool","  compact_heading : Bool\n  fused_axis_rotation : Bool\n  fused_skew : Bool"),("    compact_heading: false,","    compact_heading: false,\n    fused_axis_rotation: false,\n    fused_skew: false,")])
+  edit(g+"cmd/optimizations.mbt",[("    compact_skew: setting(config, \"compact_skew\", false),","    compact_skew: setting(config, \"compact_skew\", false),\n    fused_axis_rotation: setting(config, \"fused_axis_rotation\", false),\n    fused_skew: setting(config, \"fused_skew\", false),"),("  if s.optimizations.split_world_delta {","  if s.optimizations.fused_axis_rotation || s.optimizations.fused_skew {\n    values[\"execution_fused_rotations\"] = 33554432L.max(8L * 29L * c.horizon.to_int64() * actor_rows.to_int64() + 1048576L)\n  }\n  if s.optimizations.split_world_delta {")])
+  edit(g+"geometry/context.mbt",[("  compact_axis_rotation : Bool","  compact_axis_rotation : Bool\n  fused_axis_rotation : Bool"),("    compact_axis_rotation: false,","    compact_axis_rotation: false,\n    fused_axis_rotation: false,"),("        if self.compact_axis_rotation &&","        if self.fused_axis_rotation && coordinate_axis(spec.axis) is Some((axis, sign)) {\n          angle.fused_axis_rotation(axis, sign)\n        } else if self.compact_axis_rotation &&")])
+  @fs.write_file(g+"geometry/fused_rotation.mbt",
+    "///|\npub fn Context::with_fused_axis_rotation(self : Context, enabled : Bool) -> Context raise {\n  guard !enabled || self.backend.has_fused_rotation() else { fail(\"fused rotation plugin required\") }\n  { ..self, fused_axis_rotation: enabled, }\n}\n",create_mode=CreateNew)
+  edit(g+"geometry/rotations.mbt",[("  compact_skew~ : Bool = false,","  compact_skew~ : Bool = false,\n  fused_skew~ : Bool = false,"),("  let k = if compact_skew {","  let k = if fused_skew {\n    v.fused_skew()\n  } else if compact_skew {")])
+  edit(g+"geometry/state.mbt",[("  compact_skew~ : Bool = false,","  compact_skew~ : Bool = false,\n  fused_skew~ : Bool = false,"),("detached_constants~, compact_skew~)","detached_constants~, compact_skew~, fused_skew~)")])
+  for f in ["learning.mbt","microbatch.mbt","actor_microbatch.mbt"] {
+    edit(g+f,[("compact_skew=self.optimizations.compact_skew,","compact_skew=self.optimizations.compact_skew,\n        fused_skew=self.optimizations.fused_skew,")])
+  }
+  edit(g+"learning.mbt",[("  if optimizations.compact_skew {","  if optimizations.fused_axis_rotation || optimizations.fused_skew {\n    guard backend.has_fused_rotation() else { fail(\"fused rotation plugin required\") }\n  }\n  if optimizations.compact_skew {"),("    .with_compact_heading(optimizations.compact_heading)","    .with_compact_heading(optimizations.compact_heading)\n    .with_fused_axis_rotation(optimizations.fused_axis_rotation)")])
+}

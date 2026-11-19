@@ -1,0 +1,156 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+async fn sha256(path : String) -> String {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let hash = @crypto.SHA256::new()
+  let size = file.size()
+  for offset = 0L; offset < size; {
+    let count = (size - offset).min(65536L).to_int()
+    hash.update(file.read_exactly_at(count, position=offset))
+    continue offset + count.to_int64()
+  }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn verify_base(tag : String, identity : String) -> Unit {
+  let result = @shell.Cmd("docker", [
+    "image", "inspect", tag, "--format", "{{.Id}} {{.Architecture}}",
+  ]).output(timeout_ms=10000, max_output_bytes=4096)
+  result.check()
+  guard result.stdout().trim() == (identity + " arm64")[:] else {
+    fail("the local RDMA base tag must resolve to the pinned arm64 image ID")
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 4 else {
+    fail(
+      "usage: build_spark_apic_runtime.mbtx REPO FRESH_BUILD_CONTEXT NEW_TAG_SUFFIX",
+    )
+  }
+  let repo = args[1]
+  let context = args[2]
+  let suffix = args[3]
+  for path in [repo, context] {
+    guard path.has_prefix("/") &&
+      !path.contains("\u{0000}") &&
+      !path.contains("\n") else {
+      fail("paths must be absolute without NUL/newline")
+    }
+  }
+  guard suffix.length() > 0 &&
+    suffix.length() <= 48 &&
+    suffix
+    .iter()
+    .all(c => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') else {
+    fail("tag suffix must be 1..48 lowercase ASCII letters, digits or hyphens")
+  }
+  guard !@fs.exists(context) else {
+    fail("build context exists; choose a fresh path and retain its evidence")
+  }
+  let base = "sha256:989985f4b65447e4452fcfeeec70cfa3f48eb52637f8f96e41a736f11ab308cd"
+  let base_tag = "moonrobo-isaaclab:46d6cc3-kitless-rdma"
+  verify_base(base_tag, base)
+  let tag = "moonrobo-isaaclab:46d6cc3-kitless-apic-runtime-" + suffix
+  let existing = @shell.Cmd("docker", ["image", "inspect", tag]).output(
+    timeout_ms=10000,
+    max_output_bytes=16384,
+  )
+  guard existing.exit_code() != 0 else {
+    fail("output tag exists; choose a fresh suffix")
+  }
+  @fs.mkdir(context)
+  @fs.mkdir(context + "/native")
+  @fs.mkdir(context + "/native/apic_runtime")
+  let sources : Array[Json] = []
+  for
+    (from, to) in [
+      ("docker/Dockerfile.spark-apic-runtime", "Dockerfile"),
+      ("src/learning_aligned/native/aot_solver.cpp", "native/aot_solver.cpp"),
+      (
+        "src/learning_aligned/native/apic_runtime/CMakeLists.txt", "native/apic_runtime/CMakeLists.txt",
+      ),
+      (
+        "src/learning_aligned/native/apic_runtime/cuda_driver_dynamic.h", "native/apic_runtime/cuda_driver_dynamic.h",
+      ),
+    ] {
+    @fs.write_file(
+      context + "/" + to,
+      @fs.read_file(repo + "/" + from).binary(),
+      create_mode=CreateNew,
+    )
+    sources.push({
+      "path": Json(from),
+      "sha256": Json(sha256(context + "/" + to)),
+    })
+  }
+  @fs.write_file(
+    context + "/.dockerignore",
+    "stdout.log\nstderr.log\nbuild-result.json\n",
+    create_mode=CreateNew,
+  )
+  let code = @shell.Cmd(
+    "docker",
+    [
+      "buildx",
+      "build",
+      "--resource",
+      "memory=8g",
+      "--resource",
+      "memory-swap=8g",
+      "--resource",
+      "cpu-quota=200000",
+      "--platform",
+      "linux/arm64",
+      "--load",
+      "--pull=false",
+      "--build-arg",
+      "BASE_IMAGE=" + base_tag,
+      "--tag",
+      tag,
+      context,
+    ],
+    stdout=ToFile(context + "/stdout.log"),
+    stderr=ToFile(context + "/stderr.log"),
+  ).status(timeout_ms=1200000)
+  guard code == 0 else {
+    fail("APIC runtime build failed; retain logs in " + context)
+  }
+  verify_base(base_tag, base)
+  let image = @shell.Cmd("docker", [
+    "image", "inspect", tag, "--format", "{{.Id}} {{.Architecture}}",
+  ]).output(timeout_ms=10000, max_output_bytes=4096)
+  image.check()
+  let record : Json = {
+    "format": "moonrobo.apic-runtime-image.v1",
+    "base_image": Json(base),
+    "base_tag": Json(base_tag),
+    "tag": Json(tag),
+    "image": Json(image.stdout().trim().to_owned()),
+    "sources": Json(sources),
+    "cuda_driver": "libcuda.so.1 dynamically loaded at runtime; real CUDA 13.0 header types",
+    "warp": "1.17.0 / APIC format 15",
+    "gpu_used": false,
+    "graph_replayed": false,
+    "runtime_validated": false,
+  }
+  @fs.write_file(
+    context + "/build-result.json",
+    record.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(record.stringify(indent=2))
+}

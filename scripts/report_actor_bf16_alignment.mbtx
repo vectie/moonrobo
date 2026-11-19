@@ -1,0 +1,317 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(object) && object.get(key) is Some(result) else {
+    fail("missing field: " + key)
+  }
+  result
+}
+
+///|
+fn number(value : Json) -> Double raise {
+  match value {
+    String(value) => @string.parse_double(value)
+    _ => @json.from_json(value)
+  }
+}
+
+///|
+fn median(xs : Array[Double]) -> Double raise {
+  guard !xs.is_empty() else { fail("empty timing sample") }
+  xs.sort()
+  let n = xs.length()
+  (xs[(n - 1) / 2] + xs[n / 2]) / 2.0
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let read = path => @json.parse(@fs.read_file(out + "/" + path).text())
+  let actor = read("actor-step-comparison-geometry-g.json")
+  let complete = read("actor-full-snapshot-j.json")
+  assert_eq(field(actor, "numerical_pass"), Json(true))
+  assert_eq(field(complete, "numerical_pass"), Json(true))
+  let joined = read("actor-joined-cotangents-g.json")
+  guard field(joined, "rows") is Array(cotangents) else { fail("cotangents") }
+  assert_eq(cotangents.length(), 256)
+  for row in cotangents {
+    assert_eq(field(row, "unequal"), Json(0))
+  }
+  guard field(complete, "comparisons") is Array(comparisons) else {
+    fail("complete records")
+  }
+  let exact = comparisons.filter(r => field(r, "unequal") == Json(0))
+  let result : Map[String, Json] = {
+    "schema": "moonrobo.actor-bf16-alignment.v2",
+    "single_agent": true,
+    "original_smc_source_unchanged": true,
+    "precision": "original BF16 MLP autocast; FP32 parameters, optimizer, geometry, reward and integration",
+    "actor_joined_cotangents_bitwise_equal": Json(cotangents.length()),
+    "actor_raw_policy_gradient_relative_l2": field(
+      actor, "raw_policy_gradient_relative_l2",
+    ),
+    "fixed_world_actor_critic_gate_passed": true,
+    "fixed_world_actor_critic_record_count": Json(comparisons.length()),
+    "fixed_world_actor_critic_bitwise_records": Json(exact.length()),
+    "remaining_tolerated_fp32_records": Json(
+      comparisons.filter(r => field(r, "unequal") != Json(0)),
+    ),
+    "controls": {
+      "reference_fk": "native cross fixes reference linear velocities; 33 frames become bitwise equal",
+      "heading_shared_transpose": "single-factor F versus E has no measured effect",
+      "heading_duplicate_products": "G differs from F only in original x*x/y*y edges; all 256 joined cotangents and 20 raw policy gradients become bitwise equal",
+      "running_norm": "original var reduction and FP32 update order jointly remove 113 BF16 input differences in the fixed-input control",
+      "critic_inputs": "original compiled inference graph passes bitwise input check; actor tail keeps its differentiable original eager graph",
+      "gae": field(read("gae-ablation-a/result.json"), "comparisons"),
+      "optimizer": "same-input explicit C++ Adam reproduces all I residual violation counts/maxima after 20 steps; original foreach route J makes every policy/critic parameter, gradient and Adam moment bitwise equal",
+    },
+    "memory_guards_lowered": false,
+    "original_implementations_retained": true,
+    "routes_default_enabled": false,
+    "actor_critic_gate_scope": "fixed world parameters; one full4096 actor update and 20 critic updates",
+    "actor_gate_memory": field(read("geometry-run-j/result.json"), "memory"),
+  }
+  guard field(read("training-world-live-q/result.json"), "points")
+    is Array(points) else {
+    fail("world points")
+  }
+  assert_eq(points.length(), 10)
+  for point in points {
+    for group in ["forward", "error_same_input", "backward_same_cotangent"] {
+      guard field(point, group) is Array(rows) else { fail("world boundary") }
+      for row in rows {
+        assert_eq(field(row, "unequal"), Json(0))
+      }
+    }
+  }
+  guard field(read("training-world-live-r/result.json"), "points")
+    is Array(clip_points) else {
+    fail("clipping points")
+  }
+  let last = clip_points[clip_points.length() - 1]
+  guard field(last, "clipping") is Array(clip_rows) else { fail("clip rows") }
+  let unequal = clip_rows.fold(init=0.0, (sum, row) => {
+    sum + number(field(row, "unequal"))
+  })
+  result["world_live_weight_control"] = {
+    "consecutive_weight_points": 10,
+    "all_forward_error_vjp_raw_gradients_bitwise_equal": true,
+  }
+  result["world_clipping_cause"] = {
+    "first_divergent_update": field(last, "step"),
+    "norms": field(last, "norms"),
+    "clipped_gradient_unequal_elements": Json(unequal),
+    "fix": "original CUDA foreach_norm; old per-tensor reduction backend retained; forward/error/VJP unchanged",
+  }
+  result["previous_coupled_gate"] = field(
+    read("training-smc-gate-t/result.json"),
+    "numerical_comparison",
+  )
+  result["reward_actual_saved_tensor_control"] = read(
+    "actor-reward-saved-ad/saved-controls.json",
+  )
+  result["reward_reduction_single_factor_controls"] = read(
+    "actor-reward-reduction-ak/result.json",
+  )
+  result["reward_native_export_gate"] = read("reward-reference-d/result.json")
+  result["reward_reduction_fix"] = {
+    "position": "retain original runtime boundary mask and 8-row/2-warp launch; replaces only an exact-body matched native reduction",
+    "orientation": "retain static source and replay original 8-row/2-warp configuration instead of 32-row/4-warp",
+    "original_source": "hotspot-shared-training-smc-gate-t/inductor-cache/mq/cmq64x7qx66gqo33g572gbd2unisrz6w4xwoosllqro36z3nfs5h.py",
+    "rejected_explanations": "eager critic tail, FK constants, dynamic reward kernels 8/16; all failed to remove the actual discrepancy",
+    "scope": "FP32 reward VJP rounding before BF16 recurrent MLP propagation; no precision reduction or tolerance relaxation",
+  }
+  let gate = out + "/training-smc-gate-aq/result.json"
+  if @fs.exists(gate) {
+    let training = read("training-smc-gate-aq/result.json")
+    result["coupled_training_numerical_gate"] = field(
+      training, "numerical_comparison",
+    )
+    result["original_reference_update_bitwise_unchanged"] = field(
+      training, "original_reference_update_bitwise_unchanged",
+    )
+  }
+  if @fs.exists(out + "/compare_training_snapshot_ar.json") {
+    let snapshot = read("compare_training_snapshot_ar.json")
+    result["coupled_full_snapshot"] = snapshot
+    guard field(snapshot, "comparisons") is Array(records) else {
+      fail("coupled records")
+    }
+    result["coupled_record_count"] = Json(records.length())
+    result["coupled_bitwise_records"] = Json(
+      records.filter(r => field(r, "unequal") == Json(0)).length(),
+    )
+    result["coupled_remaining_tolerated_records"] = Json(
+      records.filter(r => field(r, "unequal") != Json(0)),
+    )
+  }
+  let labels = [
+    "training-bench-native-ap-a", "training-bench-smc-ap-a", "training-bench-smc-ap-b",
+    "training-bench-native-ap-b",
+  ]
+  let timings : Array[Json] = []
+  let native : Array[Double] = []
+  let smc : Array[Double] = []
+  let mut cuda_reserved_peak = 0.0
+  let mut cuda_allocated_peak = 0.0
+  let mut cgroup_peak = 0.0
+  let mut host_free_min = 1.0e100
+  for label in labels {
+    guard @fs.exists(out + "/" + label + "/result.json") else { continue }
+    let data = read(label + "/result.json")
+    assert_eq(field(read(label + "/training-guard.json"), "passed"), Json(true))
+    guard field(read(label + "/training-guard.json"), "samples")
+      is Array(samples) else {
+      fail("guard samples")
+    }
+    for sample in samples {
+      assert_eq(field(sample, "cgroup_swap_bytes"), Json(0))
+      guard field(sample, "memory_events") is String(events) &&
+        events.contains("\noom 0\n") &&
+        events.contains("\noom_kill 0\n") else {
+        fail("OOM counter")
+      }
+      let peak = number(field(sample, "cgroup_peak_bytes"))
+      if peak > cgroup_peak {
+        cgroup_peak = peak
+      }
+      let free = number(field(sample, "host_free_kib")) * 1024.0
+      if free < host_free_min {
+        host_free_min = free
+      }
+    }
+    guard read(label + "/training-docker-final.json")
+      is [
+        {
+          "State": { "OOMKilled": False, "Running": False, "ExitCode": 0, .. },
+          ..
+        },
+      ] else {
+      fail("clean completed benchmark container")
+    }
+    let memory = field(data, "memory")
+    let (allocated, reserved) = if label.contains("native") {
+      (
+        number(field(memory, "allocated_peak_bytes")),
+        number(field(memory, "reserved_peak_bytes")),
+      )
+    } else {
+      (
+        number(field(memory, "torch_allocated_peak_bytes")),
+        number(field(memory, "torch_reserved_peak_bytes")),
+      )
+    }
+    if reserved > cuda_reserved_peak {
+      cuda_reserved_peak = reserved
+    }
+    if allocated > cuda_allocated_peak {
+      cuda_allocated_peak = allocated
+    }
+    guard field(data, "rows") is Array(rows) else { fail("timing rows") }
+    let ms = rows
+      .filter(r => field(r, "steady") == Json(true))
+      .map(r => number(field(r, "wall_ms")))
+    assert_eq(ms.length(), 10)
+    let mid = median(ms)
+    if label.contains("native") {
+      let snapshot = read(label + "/final.json")
+      let gate = read("training-native-gate-ap/final.json")
+      guard field(snapshot, "records") is Array(actual) &&
+        field(gate, "records") is Array(expected) else {
+        fail("native final snapshots")
+      }
+      let digests : Map[String, Json] = Map([])
+      for row in expected {
+        guard field(row, "name") is String(name) else { fail("tensor name") }
+        digests[name] = field(field(row, "blob"), "sha256")
+      }
+      assert_eq(actual.length(), 146)
+      for row in actual {
+        guard field(row, "name") is String(name) else { fail("tensor name") }
+        assert_eq(Some(field(field(row, "blob"), "sha256")), digests.get(name))
+      }
+      assert_eq(field(snapshot, "metadata"), field(gate, "metadata"))
+      assert_eq(
+        field(snapshot, "optimizer_metadata"),
+        field(gate, "optimizer_metadata"),
+      )
+      native.push(mid)
+    } else {
+      assert_eq(
+        field(field(data, "numerical_comparison"), "passed"),
+        Json(true),
+      )
+      assert_eq(field(data, "artifacts_fixed_during_steady"), Json(true))
+      smc.push(mid)
+    }
+    timings.push({
+      "label": Json(label),
+      "median_ms": Json(mid),
+      "min_ms": Json(ms[0]),
+      "max_ms": Json(ms[9]),
+      "steady_samples": 10,
+      "memory": field(data, "memory"),
+    })
+  }
+  result["timing_blocks"] = Json(timings)
+  result["timing_scope"] = "10 world updates at batch2048/unroll8; actor full4096/horizon32; 20 critic updates. Physics, replay sampling, upload, restore, diagnostic capture and first three warmups excluded. Same checkpoint and exogenous inputs each repeat."
+  if native.length() == 2 && smc.length() == 2 {
+    // Both timing blocks must use the same generated source and launch
+    // configuration, in addition to the per-process steady-artifact check.
+    let launch_ids = (data : Json) => {
+      guard field(data, "launched") is Array(rows) else {
+        fail("compiled launch inventory")
+      }
+      let ids = rows.map(r => r.stringify())
+      ids.sort()
+      ids
+    }
+    assert_eq(
+      launch_ids(read("training-bench-smc-ap-a/result.json")),
+      launch_ids(read("training-bench-smc-ap-b/result.json")),
+    )
+    assert_eq(
+      field(read("training-bench-native-ap-a/protocol.json"), "pins"),
+      field(read("training-bench-native-ap-b/protocol.json"), "pins"),
+    )
+    result["compiled_identity_equal_between_timing_blocks"] = true
+    result["memory_guard_audit"] = {
+      "all_four_completed": true,
+      "oom": false,
+      "job_swap_bytes": 0,
+      "thresholds_lowered": false,
+      "cuda_allocated_peak_gib": Json(cuda_allocated_peak / 1073741824.0),
+      "cuda_reserved_peak_gib": Json(cuda_reserved_peak / 1073741824.0),
+      "cgroup_peak_gib": Json(cgroup_peak / 1073741824.0),
+      "minimum_sampled_host_free_gib": Json(host_free_min / 1073741824.0),
+      "accounting": "UMA counters overlap; do not add GPU reservation and host/cgroup observations",
+    }
+    let a = (native[0] + native[1]) / 2.0
+    let b = (smc[0] + smc[1]) / 2.0
+    result["paired_training_compute"] = {
+      "native_ms": Json(a),
+      "smc_ms": Json(b),
+      "native_excess_ms": Json(a - b),
+      "native_over_smc": Json(a / b),
+      "native_excess_percent": Json((a / b - 1.0) * 100.0),
+      "order": "ABBA; each process 3 warmups and 10 steady complete updates",
+    }
+  }
+  let target = out + "/alignment-findings.json"
+  if @fs.exists(target) {
+    @fs.write_file(target, Json(result).stringify(indent=2) + "\n")
+  } else {
+    @fs.write_file(
+      target,
+      Json(result).stringify(indent=2) + "\n",
+      create_mode=CreateNew,
+    )
+  }
+}

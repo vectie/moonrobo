@@ -1,0 +1,214 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+async fn read_small(path : String) -> String {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let bytes = FixedArray::make(65537, b'\x00')
+  let count = file.read_at(bytes, position=0L)
+  guard count > 0 && count < bytes.length() else {
+    fail("oversized or missing metadata")
+  }
+  @utf8.decode(Bytes::from_array(bytes[:count]))
+}
+
+///|
+async fn read_pipe(reader : &@io.Reader) -> String {
+  let bytes = FixedArray::make(65537, b'\x00')
+  let mut total = 0
+  for ;; {
+    let count = reader.read(bytes, offset=total, max_len=65537 - total)
+    if count == 0 {
+      break
+    }
+    total += count
+    guard total < 65537 else { fail("oversized docker output") }
+  }
+  @utf8.decode(Bytes::from_array(bytes[:total]))
+}
+
+///|
+async fn docker(args : Array[String]) -> String {
+  @async.with_timeout(10000, () => {
+    let (out, output) = @process.read_from_process()
+    let (err, errors) = @process.read_from_process()
+    @async.with_task_group() <| group => {
+      let child = group.spawn(() => {
+        @process.run("docker", args, stdout=output, stderr=errors)
+      })
+      let stdout = group.spawn(() => {
+        defer out.close()
+        read_pipe(out)
+      })
+      let stderr = group.spawn(() => {
+        defer err.close()
+        read_pipe(err)
+      })
+      let code = child.wait()
+      let result = stdout.wait()
+      let error = stderr.wait()
+      guard code == 0 else { fail("docker failed: " + error) }
+      result.trim().to_owned()
+    }
+  })
+}
+
+///|
+fn mem_kib(text : String, key : String) -> Int64 raise {
+  for line in text.split("\n") {
+    if line.has_prefix(key + ":") {
+      let fields = line.split(" ").filter(s => s != "").to_array()
+      guard fields.length() == 3 && fields[2] == "kB" else {
+        fail("invalid meminfo")
+      }
+      return @string.parse_int64(fields[1])
+    }
+  }
+  fail("missing memory counter")
+}
+
+///|
+async fn stop(id : String) -> Unit {
+  ignore(docker(["stop", "--time", "2", id]))
+}
+
+///|
+/// Runs only a precreated, resource-bounded SMC container. Sampling failures
+/// fail closed; the original Python training source is not changed or wrapped.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 else {
+    fail("usage: CONTAINER_ID FRESH_LOG_DIRECTORY")
+  }
+  let id = args[1]
+  let folder = args[2]
+  guard id.length() == 64 &&
+    id.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) else {
+    fail("full container ID required")
+  }
+  guard folder.has_prefix("/home/wlc004s/moonrobo/runs/smc-original-benchmark-") else {
+    fail("unexpected output scope")
+  }
+  let spec = docker([
+    "inspect", "--format", "{{.State.Status}} {{.HostConfig.Memory}} {{.HostConfig.MemorySwap}} {{.Name}}",
+    id,
+  ])
+  guard spec.has_prefix(
+    "created 107374182400 107374182400 /smc-original-benchmark-",
+  ) else {
+    fail("resource limits or container scope do not match")
+  }
+  guard docker(["ps", "-q"]) == "" else {
+    fail("another Docker workload is running")
+  }
+  let before = read_small("/proc/meminfo")
+  guard mem_kib(before, "MemAvailable") >= 67108864L &&
+    mem_kib(before, "MemFree") >= 41943040L else {
+    fail("insufficient starting memory")
+  }
+  @fs.write_file(
+    folder + "/docker-before.json",
+    docker(["inspect", id]),
+    create_mode=CreateNew,
+  )
+  errdefer (stop(id) catch { _ => () })
+  let begin = @async.now()
+  let samples : Array[Json] = []
+  let mut reason = "completed"
+  let exit_code = @async.with_task_group() <| group => {
+    let training = group.spawn(() => {
+      @process.run(
+        "docker",
+        ["start", "--attach", id],
+        stdout=@process.redirect_to_file(
+          folder + "/stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          folder + "/stderr.log",
+          create_mode=CreateNew,
+        ),
+      )
+    })
+    for ;; {
+      @async.sleep(1000)
+      let state = docker([
+        "inspect", "--format", "{{.State.Running}} {{.State.Pid}}", id,
+      ])
+      if state.has_prefix("false ") {
+        break
+      }
+      let fields = state.split(" ").to_array()
+      guard fields.length() == 2 && fields[0] == "true" else {
+        fail("unexpected state")
+      }
+      let pid = @string.parse_int(fields[1])
+      guard pid > 0 else { fail("invalid process") }
+      let membership = read_small("/proc/\{pid}/cgroup")
+      let mut path = ""
+      for line in membership.split("\n") {
+        if line.has_prefix("0::/") && line.contains(id) && !line.contains("..") {
+          path = "/sys/fs/cgroup" + line.to_owned()[3:].to_owned()
+        }
+      }
+      guard path != "" else { fail("cannot attribute memory cgroup") }
+      let current = @string.parse_int64(
+        read_small(path + "/memory.current").trim(),
+      )
+      let peak = @string.parse_int64(read_small(path + "/memory.peak").trim())
+      let memory = read_small("/proc/meminfo")
+      let available = mem_kib(memory, "MemAvailable")
+      let free = mem_kib(memory, "MemFree")
+      let elapsed = @async.now() - begin
+      let sample : Json = {
+        "elapsed_ms": Json(elapsed),
+        "host_available_kib": Json(available),
+        "host_free_kib": Json(free),
+        "cgroup_current_bytes": Json(current),
+        "cgroup_peak_bytes": Json(peak),
+        "memory_events": Json(read_small(path + "/memory.events")),
+      }
+      samples.push(sample)
+      println(sample.stringify())
+      if available < 25165824L || free < 12582912L || current > 90194313216L {
+        reason = "memory_guard"
+        stop(id)
+        break
+      }
+      if elapsed > 3600000 {
+        reason = "deadline"
+        stop(id)
+        break
+      }
+    }
+    training.wait()
+  }
+  @fs.write_file(
+    folder + "/memory-summary.json",
+    (
+      {
+        "reason": Json(reason),
+        "exit_code": Json(exit_code),
+        "samples": Json(samples),
+      } : Json).stringify(),
+    create_mode=CreateNew,
+  )
+  @fs.write_file(
+    folder + "/docker-final.json",
+    docker(["inspect", id]),
+    create_mode=CreateNew,
+  )
+  guard reason == "completed" && exit_code == 0 else {
+    fail("benchmark did not complete: " + reason)
+  }
+}

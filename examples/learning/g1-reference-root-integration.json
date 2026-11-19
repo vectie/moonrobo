@@ -1,0 +1,16 @@
+{
+  "format": "moonrobo.g1-reference-root-integration-charter.v1",
+  "source_report_sha256": "8f95fdad0f0d0b0b7f20bee654f0ceaae13093230ee32ae5e5bccbe3ab973ada",
+  "seeds": [0, 1, 2],
+  "variants": ["free", "root-integrated"],
+  "model_updates": 900,
+  "model_seed_base": 27000,
+  "probe_clip_indices": [0, 3, 6],
+  "logit_rms_steps": [0.001, 0.005],
+  "probe_signs": [-1, 1],
+  "training": "Each seed uses only its nine common-first-collection episodes at origin zero from the frozen full-phase study. Both variants receive the same initial weights, normalization, optimizer, 900 sampled updates and batches. No later method-specific collection or diagnostic transition is fitted.",
+  "intervention": "Replace only predicted root translation by old position plus dt/2 times old and predicted world linear velocity. Other state channels retain free residual predictions. Same parameter count; three direct position output channels are unused in the integrated arm. This approximates substep physics, not an exact simulator identity.",
+  "direction": "Incoming zero-output actor and each seed's existing cycle-one common-data physical-return critic are frozen. Compute one full-parameter H32 model gradient on all nine training episode starts; normalize by RMS raw-logit response over that seed's entire common training collection. Check both signs at both fixed small amplitudes on three predeclared known reference families. No actor/seed/model selection or training claim.",
+  "evaluation": "Score held-out noisy diagnostic episodes for H8/H32 state and root prediction. Evaluate deterministic physical prefix H32 and remaining full-reference discounted reward from origin zero for all parameter probes. Baseline evaluated once per selected clip and shared across seeds/variants. These are local direction diagnostics, not the unchanged 27-cell quality gate or unseen-reference tests.",
+  "physical_execution_allowed": false
+}

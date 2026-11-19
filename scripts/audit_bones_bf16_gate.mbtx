@@ -1,0 +1,210 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(m) && m.get(k) is Some(v) else { fail("missing " + k) }
+  v
+}
+
+///|
+async fn read(path : String) -> Json {
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  guard f.size() > 0L && f.size() <= 8388608L else {
+    fail("bounded receipt required")
+  }
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+fn integer(v : Json) -> Int64 raise {
+  match v {
+    String(t) => @string.parse_int64(t)
+    Number(n, ..) if n >= 0.0 && n < 2147483648.0 && n == n.to_int().to_double() =>
+      n.to_int().to_int64()
+    _ => fail("invalid nonnegative counter")
+  }
+}
+
+///|
+// The original evaluation embeds the identity of every catalog entry inside
+// native_actor.source. Stream past that inventory, retaining the panel and
+// its checkpoint identity without allocating a second copy of the catalog.
+async fn read_evaluation(path : String) -> Json {
+  let filter =
+    #|reduce inputs as $e ({}; if ($e|length)==2 and
+    #|  ($e[0][0] != "native_actor" or
+    #|    $e[0] == ["native_actor","source","iteration"] or
+    #|    $e[0] == ["native_actor","source","identity","manifest_sha256"])
+    #|  then setpath($e[0];$e[1]) else . end)
+  let (code, out, err) = @process.collect_output("jq", [
+    "-enc", "--stream", filter, path,
+  ])
+  guard code == 0 else { fail(err.text()) }
+  guard out.binary().length() <= 8388608 else {
+    fail("panel receipt exceeds limit")
+  }
+  @json.parse(out.text())
+}
+
+///|
+fn audit_train(j : Json, iteration : Int32, kind : String) -> Array[Json] raise {
+  let identity = field(j, "identity")
+  guard field(j, "amp") == Json("bf16") &&
+    field(j, "training_complete_for_requested_iterations") == Json(true) &&
+    field(j, "resume_kind") == Json(kind) &&
+    field(j, "iteration") == Json(iteration) &&
+    field(identity, "manifest_sha256") ==
+    Json("64c21768fd7f2fad74d06153b1ada1faa958520abb8b234baa29d455572eb383") &&
+    field(identity, "compiled_bf16_package_sha256") is Object(pins) &&
+    pins.length() == 6 &&
+    field(field(identity, "config"), "pi_batch") == Json(4096) else {
+    fail("training provenance or phase mismatch")
+  }
+  let tele = field(j, "cuda_memory_telemetry")
+  guard field(tele, "error") == Json::null() &&
+    integer(field(tele, "minimum_observed_cuda_free_bytes")) >= 17179869184L &&
+    integer(field(tele, "reserved_window_peak_bytes")) <= 21474836480L else {
+    fail("allocator/telemetry guard")
+  }
+  let counters = field(j, "counters")
+  for
+    (k, multiplier) in [
+      ("actor_updates", 1),
+      ("model_updates", 10),
+      ("critic_updates", 20),
+      ("imagined_transitions", 131072),
+    ] {
+    guard integer(field(counters, k)) == (iteration * multiplier).to_int64() else {
+      fail("update schedule: " + k)
+    }
+  }
+  guard field(j, "shared_state_digest") is Array([digest]) else {
+    fail("exactly one shared-state digest required")
+  }
+  guard field(j, "checkpoint") is Array([receipt]) &&
+    field(receipt, "shared_state_digest") == digest &&
+    field(receipt, "iteration") == Json(iteration) else {
+    fail("checkpoint and live learner attestation differ")
+  }
+  guard field(digest, "optimizers") is Array(opts) && opts.length() == 3 else {
+    fail("three optimizer receipts required")
+  }
+  for i, name in ["world", "policy", "critic"] {
+    let steps = [10, 1, 20][i] * iteration
+    guard field(opts[i], "name") == Json(name) &&
+      field(field(opts[i], "metadata"), "states") is Array(states) &&
+      !states.is_empty() &&
+      states.all(s => {
+        field(s, "present") == Json(true) &&
+        integer(field(s, "step")) == steps.to_int64()
+      }) else {
+      fail("wrong live Adam step for " + name)
+    }
+  }
+  opts
+}
+
+///|
+fn panel() -> Array[Int32] {
+  Array::makei(40, i => i * (137289 - 1) / 39)
+}
+
+///|
+async fn main {
+  match @env.args() {
+    [_, "panel"] => println(Json(panel()).stringify())
+    [_, "fresh", path] => {
+      ignore(audit_train(read(path), 2, "fresh"))
+      println("fresh optimizer receipts verified")
+    }
+    [_, "resume", before, after] => {
+      let a = read(before)
+      let b = read(after)
+      let x = audit_train(a, 2, "fresh")
+      let y = audit_train(b, 4, "warm-reset-refill")
+      guard field(a, "identity") == field(b, "identity") &&
+        integer(field(field(a, "counters"), "physical_transitions")) <
+        integer(field(field(b, "counters"), "physical_transitions")) else {
+        fail("identity drift or no further physics collection")
+      }
+      for i in 0..<3 {
+        for k in ["parameters_sha256", "moments_sha256"] {
+          guard field(x[i], k) != field(y[i], k) else {
+            fail("parameters or Adam moments did not change")
+          }
+        }
+      }
+      println(
+        (
+          {
+            "checkpoint_continuation_verified": true,
+            "world_steps": 40,
+            "policy_steps": 4,
+            "critic_steps": 80,
+            "physics_resume": "warm-reset-refill",
+          } : Json).stringify(),
+      )
+    }
+    [_, "evaluation", path] => {
+      let e = read_evaluation(path)
+      let source = field(field(e, "native_actor"), "source")
+      guard field(e, "format") ==
+        Json("moonrobo.supermimic-full-clip-evaluation.v1") &&
+        field(e, "benchmark_complete") == Json(true) &&
+        field(e, "catalog_clip_count") == Json(137289) &&
+        field(source, "iteration") == Json(4) &&
+        field(field(source, "identity"), "manifest_sha256") ==
+        Json("64c21768fd7f2fad74d06153b1ada1faa958520abb8b234baa29d455572eb383") &&
+        field(e, "n_clips") == Json(40) &&
+        field(e, "per_clip") is Array(rows) &&
+        rows.length() == 40 else {
+        fail("incomplete evaluation")
+      }
+      for i, row in rows {
+        let expected = integer(field(row, "expected_steps"))
+        let executed = integer(field(row, "executed_steps"))
+        guard field(field(row, "metadata"), "clip_index") == Json(panel()[i]) &&
+          executed > 0L &&
+          executed <= expected &&
+          (field(row, "failed") == Json(true) || executed == expected) else {
+          fail("clip truncated or panel changed")
+        }
+      }
+      guard rows
+        .filter(r => field(r, "failed") == Json(true))
+        .length()
+        .to_int64() ==
+        integer(field(e, "n_failed")) else {
+        fail("failure count disagrees with panel")
+      }
+      println(
+        (
+          {
+            "full_duration_protocol_verified": true,
+            "clips": 40,
+            "norm_return": field(e, "norm_return"),
+            "failed": field(e, "n_failed"),
+            "completed": field(e, "n_completed"),
+          } : Json).stringify(),
+      )
+      guard integer(field(e, "n_failed")) < 40L else {
+        fail(
+          "every evaluation motion terminated; do not promote to long training",
+        )
+      }
+    }
+    _ =>
+      fail(
+        "panel | fresh REPORT.json | resume BEFORE.json AFTER.json | evaluation REPORT.json",
+      )
+  }
+}

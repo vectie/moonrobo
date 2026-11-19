@@ -1,0 +1,217 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, rev] &&
+    ["prepare", "build", "run"].contains(mode) &&
+    ["a", "b", "c", "d"].contains(rev) else {
+    fail("prepare/build/run revision")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  if mode == "prepare" {
+    let original = @fs.read_file(out + "/actor_step_fixture_e.mbt").text()
+    let block =
+      #|  shared_json(
+      #|    output + "/final.json",
+      #|    shared_snapshot(
+      #|      output,
+      #|      learner,
+      #|      if mode == "world" {
+      #|        "world"
+      #|      } else {
+      #|        "actor"
+      #|      },
+      #|    ),
+      #|  )
+    assert_eq(original.split(block).count(), 2)
+    let modified = original
+      .replace_all(
+        old=block,
+        new="  shared_json(output+\"/final.json\",{\"diagnostic_only\":true,\"updated\":false})",
+      )
+      .replace_all(
+        old="try learner.update_policy(policy)",
+        new="try actor_head_probe(learner,policy,fixture)",
+      )
+    let fixture = modified +
+      "\n" +
+      @fs.read_file("providers/motion_learning/actor_head_probe.mbt.fragment").text()
+    let fixture = if rev == "d" {
+      fixture.replace_all(
+        old="context.with_smc_fk_layout(true)",
+        new="context.with_smc_fk_layout(true).with_smc_soft_limits()",
+      )
+    } else {
+      fixture
+    }
+    let mut build = @fs.read_file(out + "/build_actor_step_e.mbtx").text()
+    for
+      stem in [
+        "moonrobo-actor-step-", "actor-step-copy-", "actor-step-overlay-", "actor-step-fixture-",
+        "actor-step-source-", "actor-step-helper-", "actor-step-fk-", "actor-step-build-",
+        "actor-step-cpu-tests-", "actor-step-binary-", "actor-step-gate-",
+      ] {
+      build = build.replace_all(old=stem + "e", new=stem + "head-" + rev)
+    }
+    build = build.replace_all(
+      old="actor_step_fixture_e.mbt",
+      new="actor_head_fixture_" + rev + ".mbt",
+    )
+    if rev == "d" {
+      for
+        (name, path) in [
+          (
+            "actor_context_soft_limits_d.mbt", "src/learning_aligned_gpu/geometry/context.mbt",
+          ),
+          (
+            "actor_soft_limits_test_d.mbt", "src/learning_aligned_gpu/geometry/smc_soft_limits_wbtest.mbt",
+          ),
+          (
+            "actor_soft_limits_package_d.txt", "src/learning_aligned_gpu/geometry/moon.pkg",
+          ),
+        ] {
+        @fs.write_file(
+          out + "/" + name,
+          @fs.read_file(path),
+          create_mode=CreateNew,
+        )
+        assert_eq(
+          @process.run("scp", [
+            "-q",
+            "-o",
+            "ControlPath=/tmp/moonrobo-operator-179.sock",
+            out + "/" + name,
+            host + ":" + base + "/" + name,
+          ]),
+          0,
+        )
+      }
+      build = build.replace_all(
+        old="  container(\"actor-step-build-head-d\"",
+        new=(
+          #|  run("actor-soft-context-d","cp",[base+"/actor_context_soft_limits_d.mbt",ws+"/src/learning_aligned_gpu/geometry/context.mbt"])
+          #|  run("actor-soft-test-d","cp",[base+"/actor_soft_limits_test_d.mbt",ws+"/src/learning_aligned_gpu/geometry/smc_soft_limits_wbtest.mbt"])
+          #|  run("actor-soft-package-d","cp",[base+"/actor_soft_limits_package_d.txt",ws+"/src/learning_aligned_gpu/geometry/moon.pkg"])
+          #|  container("actor-step-build-head-d"
+        ),
+      )
+      build = build.replace_all(
+        old="\"src/learning_aligned_gpu/cmd\",\"src/learning_aligned_gpu\"]",
+        new="\"src/learning_aligned_gpu/cmd\",\"src/learning_aligned_gpu\",\"src/learning_aligned_gpu/geometry\"]",
+      )
+      build = build.replace_all(
+        old="  run(\"actor-step-binary-head-d\"",
+        new=(
+          #|  container("actor-soft-cpu-test-d",ws.replace_all(old=base+"/workspace",new="/workspace")+"/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/geometry/geometry.whitebox_test.exe",["smc_soft_limits_wbtest.mbt:0-1"])
+          #|  let result=@fs.read_file(base+"/actor-soft-cpu-test-d.stdout.log").text()
+          #|  guard result.contains("\"message\":\"\"") && !result.contains("SKIP") else {fail("soft limit regression did not pass")}
+          #|  run("actor-step-binary-head-d"
+        ),
+      )
+    }
+    let runner = @fs.read_file(out + "/run_actor_step_gate_e.mbtx")
+      .text()
+      .replace_all(
+        old="run_actor_step_gate_e.mbtx",
+        new="run_actor_head_" + rev + ".mbtx",
+      )
+      .replace_all(old="actor-step-gate-e", new="actor-step-gate-head-" + rev)
+      .replace_all(
+        old="actor_step_fixture_e.mbt",
+        new="actor_head_fixture_" + rev + ".mbt",
+      )
+    for
+      (name, code) in [
+        ("actor_head_fixture_" + rev + ".mbt", fixture),
+        ("build_actor_head_" + rev + ".mbtx", build),
+        ("run_actor_head_" + rev + ".mbtx", runner),
+      ] {
+      @fs.write_file(out + "/" + name, code, create_mode=CreateNew)
+      if name.has_suffix(".mbtx") {
+        assert_eq(
+          @process.run("moon", ["check", "--target", "native", out + "/" + name]),
+          0,
+        )
+      }
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/head-" + mode + "-" + rev
+  @fs.mkdir(folder)
+  let command = if mode == "build" {
+    "build_actor_head_" + rev + ".mbtx"
+  } else {
+    "run_actor_head_" +
+    rev +
+    ".mbtx -- actor native off 1 actor-head-native-" +
+    rev +
+    " bf16-full"
+  }
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      command,
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  if mode == "run" {
+    for
+      name in [
+        "head.json", "result.json", "final.json", "completion.json", "training-guard.json",
+        "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+        "protocol.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-head-native-" +
+          rev +
+          "/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+  }
+  assert_eq(code, 0)
+  if mode == "run" {
+    guard @fs.exists(folder + "/head.json") &&
+      @fs.exists(folder + "/result.json") else {
+      fail("native diagnostic did not produce complete records")
+    }
+  }
+}

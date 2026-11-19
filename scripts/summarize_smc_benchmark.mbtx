@@ -1,0 +1,205 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(result) else {
+    fail("missing " + key)
+  }
+  result
+}
+
+///|
+fn number(value : Json) -> Double raise {
+  match value {
+    Number(value, ..) => value
+    String(value) => @string.parse_double(value)
+    _ => fail("number required")
+  }
+}
+
+///|
+async fn read(path : String) -> String {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 4194304L else {
+    fail("file missing or exceeds 4 MiB")
+  }
+  let bytes = FixedArray::make(size.to_int(), b'\x00')
+  let count = file.read_at(bytes, position=0L)
+  guard count == bytes.length() else { fail("short read") }
+  @utf8.decode(Bytes::from_array(bytes[:]))
+}
+
+///|
+fn window(
+  rows : Array[Array[String]],
+  first : Int32,
+  last : Int32,
+) -> Json raise {
+  let seconds : Array[Double] = []
+  for row in rows {
+    let iteration = @string.parse_int(row[0])
+    if iteration >= first && iteration <= last {
+      let rate = @string.parse_double(row[14])
+      guard rate > 0.0 else { fail("invalid iteration rate") }
+      seconds.push(1.0 / rate)
+    }
+  }
+  guard seconds.length() == (last - first) / 10 + 1 else {
+    fail("incomplete measurement window")
+  }
+  let mean = seconds.fold(init=0.0, (sum, x) => sum + x) /
+    seconds.length().to_double()
+  seconds.sort()
+  {
+    "first_iteration": Json(first - 9),
+    "last_iteration": Json(last),
+    "iterations": Json(seconds.length() * 10),
+    "seconds_per_iteration": Json(mean),
+    "iterations_per_second": Json(1.0 / mean),
+    "ten_iteration_block_min_s": Json(seconds[0]),
+    "ten_iteration_block_max_s": Json(seconds[seconds.length() - 1]),
+    "ten_iteration_block_median_s": Json(
+      (seconds[(seconds.length() - 1) / 2] + seconds[seconds.length() / 2]) /
+      2.0,
+    ),
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 2 || args.length() == 4 else {
+    fail(
+      "usage: DOWNLOADED_EVIDENCE_DIRECTORY [GPU_START_TIMESTAMP GPU_END_TIMESTAMP]",
+    )
+  }
+  let root = args[1]
+  let lines = read(root + "/train_log.csv").trim().split("\n").to_array()
+  guard lines[0].has_prefix("iteration,wall_h,") else {
+    fail("not SMC train_log.csv")
+  }
+  let rows = lines[1:].map(s => s.split(",").map(v => v.to_owned()).to_array())
+  for i, row in rows {
+    guard row.length() == 16 && @string.parse_int(row[0]) == (i + 1) * 10 else {
+      fail("noncontiguous log")
+    }
+  }
+  guard rows.length() == 60 else { fail("600 iterations not complete") }
+  let resources = @json.parse(read(root + "/memory-summary.json"))
+  guard field(resources, "reason") == Json("completed") &&
+    field(resources, "exit_code") == Json(0) else {
+    fail("guarded run failed")
+  }
+  guard field(resources, "samples") is Array(samples) && samples.length() > 0 else {
+    fail("no memory evidence")
+  }
+  let mut peak = 0.0
+  let mut min_available = 1.0e30
+  let mut min_free = 1.0e30
+  let mut last_ms = 0.0
+  for sample in samples {
+    peak = peak.max(number(field(sample, "cgroup_peak_bytes")))
+    min_available = min_available.min(
+      number(field(sample, "host_available_kib")) * 1024.0,
+    )
+    min_free = min_free.min(number(field(sample, "host_free_kib")) * 1024.0)
+    last_ms = number(field(sample, "elapsed_ms"))
+    guard field(sample, "memory_events") is String(events) else {
+      fail("missing events")
+    }
+    for line in events.trim().split("\n") {
+      let pair = line.split(" ").to_array()
+      guard pair.length() == 2 else { fail("invalid cgroup events") }
+      if ["max", "oom", "oom_kill", "oom_group_kill"].contains(
+          pair[0].to_owned(),
+        ) {
+        guard @string.parse_int64(pair[1]) == 0L else {
+          fail("memory pressure observed")
+        }
+      }
+    }
+  }
+  guard @json.parse(read(root + "/docker-final.json")) is Array([container]) else {
+    fail("missing container evidence")
+  }
+  let state = field(container, "State")
+  guard field(state, "ExitCode") == Json(0) &&
+    field(state, "OOMKilled") == Json(false) else {
+    fail("container failed")
+  }
+  let report : Json = {
+    "format": "moonrobo.smc-original-benchmark.v1",
+    "completed": true,
+    "world_only_steady": window(rows, 20, 500),
+    "full_training_steady": window(rows, 530, 600),
+    "first_world_compile_block_seconds": Json(
+      @string.parse_double(rows[0][1]) * 3600.0,
+    ),
+    "first_actor_compile_block_seconds": Json(
+      10.0 / @string.parse_double(rows[50][14]),
+    ),
+    "training_loop_seconds_before_final_checkpoint": Json(
+      @string.parse_double(rows[59][1]) * 3600.0,
+    ),
+    "resource_samples": Json(samples.length()),
+    "last_observed_elapsed_seconds": Json(last_ms / 1000.0),
+    "cgroup_peak_bytes": Json(peak),
+    "host_available_min_bytes": Json(min_available),
+    "host_free_min_bytes": Json(min_free),
+    "observed_oom_events": 0,
+    "note": "Rates come from original 10-iteration CSV intervals. These are not per-iteration latency quantiles or isolated compilation durations. UMA memory counters must not be added.",
+  }
+  if args.length() == 4 {
+    let gpu_lines = read(root + "/gpu-samples.csv")
+      .trim()
+      .split("\n")
+      .to_array()
+    let values : Array[Double] = []
+    let power : Array[Double] = []
+    for line in gpu_lines[1:] {
+      let cells = line.split(",").map(s => s.trim().to_owned()).to_array()
+      guard cells.length() == 4 else { fail("invalid GPU CSV") }
+      // String ordering is shortlex; ISO timestamps require lexical ordering.
+      if cells[0].lexical_compare(args[2]) >= 0 &&
+        cells[0].lexical_compare(args[3]) < 0 {
+        values.push(@string.parse_double(cells[1].replace(old=" %", new="")))
+        power.push(@string.parse_double(cells[3].replace(old=" W", new="")))
+      }
+    }
+    guard !values.is_empty() && report is Object(fields) else {
+      fail("GPU window empty")
+    }
+    let mean = values.fold(init=0.0, (a, b) => a + b) /
+      values.length().to_double()
+    values.sort()
+    fields["gpu_window"] = {
+      "start_inclusive": Json(args[2]),
+      "end_exclusive": Json(args[3]),
+      "samples": Json(values.length()),
+      "mean_utilization_percent": Json(mean),
+      "min_utilization_percent": Json(values[0]),
+      "max_utilization_percent": Json(values[values.length() - 1]),
+      "mean_power_watts": Json(
+        power.fold(init=0.0, (a, b) => a + b) / power.length().to_double(),
+      ),
+      "note": "nvidia-smi utilization reports GPU activity, not achieved FLOPS or SM occupancy. Caller selects a timestamp interval inside the steady training window.",
+    }
+  }
+  @fs.write_file(
+    root +
+    (if args.length() == 4 { "/summary-gpu.json" } else { "/summary.json" }),
+    report.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+  )
+  println(report.stringify(indent=2))
+}

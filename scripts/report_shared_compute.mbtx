@@ -1,0 +1,170 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn number(j : Json) -> Double raise {
+  guard j is Number(n, ..) else { fail("number required") }
+  n
+}
+
+///|
+fn median(values : Array[Double]) -> Double raise {
+  guard !values.is_empty() else { fail("empty statistics") }
+  let v = values.copy()
+  v.sort()
+  (v[(v.length() - 1) / 2] + v[v.length() / 2]) / 2.0
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, phase, group] &&
+    ["world", "actor"].contains(phase) &&
+    ["off", "events", "controls", "observers", "captures", "ln-control"].contains(
+      group,
+    ) else {
+    fail("world|actor off|events|observers|captures")
+  }
+  let local_root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/shared-compute-20261026/" +
+    phase +
+    "-" +
+    group
+  guard !@fs.exists(local_root) else { fail("fresh local report required") }
+  @fs.mkdir(local_root)
+  let count = if group == "observers" { 8 } else { 4 }
+  let summary = []
+  for i in 0..<count {
+    let label = "diag-" +
+      phase +
+      "-" +
+      group +
+      "-" +
+      (if phase == "world" && group == "captures" && i == 1 {
+        "1b"
+      } else if phase == "actor" && group == "events" && i == 2 {
+        "2b"
+      } else if phase == "actor" && group == "captures" && i == 2 {
+        "2b"
+      } else {
+        i.to_string()
+      })
+    let remote = "/home/wlc004s/moonrobo/runs/hotspot-shared-" + label
+    let directory = local_root + "/" + i.to_string()
+    @fs.mkdir(directory)
+    for
+      name in [
+        "result.json", "protocol.json", "completion.json", "training-guard.json",
+        "training-docker-final.json", "training.stderr.log",
+      ] {
+      guard @process.run("scp", [
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          "wlc004s@192.168.2.179:" + remote + "/" + name,
+          directory + "/" + name,
+        ]) ==
+        0 else {
+        fail("fetch " + label + " " + name)
+      }
+    }
+    let result = @json.parse(@fs.read_file(directory + "/result.json").text())
+    let protocol = @json.parse(
+      @fs.read_file(directory + "/protocol.json").text(),
+    )
+    guard field(result, "rows") is Array(all_rows) else { fail("rows") }
+    let rows = all_rows.filter(row => field(row, "steady") == Json(true))
+    guard rows.length() == 10 else {
+      fail("ten post-warmup repetitions required")
+    }
+    let labels : Map[String, Array[Double]] = Map([])
+    for row in rows {
+      let profile = field(row, "profile")
+      let spans = match profile {
+        {
+          "spans": Array(spans),
+          "dropped_spans": Number(0, ..),
+          "open_spans": Number(0, ..),
+          ..
+        } => spans
+        Array(spans) => spans
+        Null => []
+        _ => fail("bad/dropped/open stage profile")
+      }
+      let totals : Map[String, Double] = Map([])
+      for span in spans {
+        guard field(span, "label") is String(label) else { fail("label") }
+        if label == "shared.compute.capture" {
+          continue
+        }
+        let (cpu, gpu) = match span {
+          { "cpu_submit_us": Number(cpu, ..), "gpu_elapsed_ms": gpu, .. } =>
+            (cpu / 1000.0, gpu)
+          { "cpu_ms": Number(cpu, ..), "stream_elapsed_ms": gpu, .. } =>
+            (cpu, gpu)
+          _ => fail("stage timings")
+        }
+        let key = label + ".host_ms"
+        totals[key] = totals.get(key).unwrap_or(0.0) + cpu
+        if gpu != Json::null() {
+          let key = label + ".stream_elapsed_ms"
+          totals[key] = totals.get(key).unwrap_or(0.0) + number(gpu)
+        }
+      }
+      for key, value in totals {
+        if labels.get(key) is Some(values) {
+          values.push(value)
+        } else {
+          labels[key] = [value]
+        }
+      }
+    }
+    let stages : Map[String, Json] = Map([])
+    for name, values in labels {
+      stages[name] = Json(median(values))
+    }
+    let qualified = match result {
+      { "numerical_comparison": { "passed": passed, .. }, .. } => passed
+      _ => Json::null()
+    }
+    summary.push({
+      "remote": Json(remote),
+      "implementation": field(protocol, "implementation"),
+      "observation": field(protocol, "observation"),
+      "wall_median_ms": Json(
+        median(rows.map(row => number(field(row, "wall_ms")))),
+      ),
+      "host_call_median_ms": Json(
+        median(rows.map(row => number(field(row, "host_call_ms")))),
+      ),
+      "drain_median_ms": Json(
+        median(rows.map(row => number(field(row, "drain_ms")))),
+      ),
+      "capture_iteration_3_wall_ms": field(all_rows[3], "wall_ms"),
+      "stages_median_ms": Json(stages),
+      "cross_language_numerical_passed": qualified,
+    })
+  }
+  @fs.write_file(
+    local_root + "/summary.json",
+    Json({
+      "phase": Json(phase),
+      "group": Json(group),
+      "runs": Json(summary),
+      "diagnostic_only": true,
+      "optimization_accepted": false,
+      "notes": "Each update starts from identical iteration-60 weights, optimizer state, normalization and prepared tensors. Upload/reset excluded. CPU host-call includes implicit synchronization; stream elapsed includes gaps, is not active kernel time, and overlaps CPU. Stage names may nest; do not sum all labels. Strict cross-language parameter checks are retained as failures; these timings are not optimization acceptance or full-training throughput.",
+    }).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(local_root + "/summary.json")
+}

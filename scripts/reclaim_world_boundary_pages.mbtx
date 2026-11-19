@@ -1,0 +1,91 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/world-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let prefix = @fs.read_file(
+    "output/spark-runtime-20261024/compiled-mlp-20261028-a/advise_closed_cuda_e.mbtx",
+  )
+  .text()
+  .split("async fn main {")
+  .to_array()[0].to_owned()
+  let main_code =
+    #|async fn main {
+    #|  idle();let before=@fs.read_file("/proc/meminfo").text();let records:Array[Json]=[]
+    #|  let dirs=@fs.readdir(root).filter(s=>s.has_prefix("hotspot-shared-"));let mut advised=0L
+    #|  for name in dirs {
+    #|    if free_kib(@fs.read_file("/proc/meminfo").text())>=31457280.0 || advised>=17179869184L {break}
+    #|    let dir=root+"/"+name
+    #|    if !@fs.exists(dir+"/completion.json")||!@fs.exists(dir+"/training-guard.json")||!@fs.exists(dir+"/training-docker-final.json"){continue}
+    #|    guard field(read(dir+"/completion.json"),"passed")==Json(true)&&field(read(dir+"/training-guard.json"),"reason")==Json("completed") else {continue}
+    #|    guard read(dir+"/training-docker-final.json") is [{"Id":String(id),"State":state,..}] && state is {"OOMKilled":False,"Running":False,"Pid":0,..} else {fail("closed container required")}
+    #|    assert_eq(@json.parse(output("docker",["inspect","--format","{{json .State}}",id])),state)
+    #|    idle();let files:Array[String]=[]
+    #|    if @fs.exists(dir+"/cuda-cache"){collect(dir+"/cuda-cache",files,0)}
+    #|    let mut size=0L
+    #|    for path in files {
+    #|      guard @fs.realpath(path)==path&&@fs.kind(path,follow_symlink=false)==Regular else {fail("canonical regular output")}
+    #|      let f=@fs.open(path,mode=ReadOnly);size+=f.size();f.close()
+    #|    }
+    #|    guard size<=4294967296L else {fail("bounded completed output")};if size+advised>17179869184L{continue};advised+=size
+    #|    for path in files {assert_eq(@process.run("sync",["-d",path]),0);assert_eq(@process.run("dd",["if="+path,"iflag=nocache,nofollow","count=0","status=none"]),0)}
+    #|    records.push({"owner":Json(dir),"files":Json(files),"advised_file_bytes":Json(size.to_double())})
+    #|  }
+    #|  idle()
+    #|  @fs.write_file("/home/wlc004s/moonrobo/private/shared-compute-20261026-a/world-boundary-cache-advice-f.json",({"before":Json(before),"after":Json(@fs.read_file("/proc/meminfo").text()),"records":Json(records),"contents_changed":false,"files_deleted":0,"guards_changed":false}:Json).stringify(indent=2),create_mode=CreateNew)
+    #|}
+  @fs.write_file(
+    out + "/reclaim_world_boundary_f.mbtx",
+    prefix + main_code,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/reclaim_world_boundary_f.mbtx",
+      host + ":" + base + "/reclaim_world_boundary_f.mbtx",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/reclaim_world_boundary_f.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/reclaim-f.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/reclaim-f.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      host + ":" + base + "/world-boundary-cache-advice-f.json",
+      out + "/world-boundary-cache-advice-f.json",
+    ]),
+    0,
+  )
+}

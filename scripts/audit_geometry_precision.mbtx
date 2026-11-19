@@ -1,0 +1,37 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let text = @fs.read_file("scripts/audit_geometry_features.mbtx")
+    .text()
+    .replace_all(
+      old="geometry_features_audit.py",
+      new="geometry_features_precision.py",
+    )
+    .replace_all(
+      old="run_geometry_features_audit.mbtx",
+      new="run_geometry_features_precision.mbtx",
+    )
+    .replace_all(old="features-audit-a", new="features-precision-a")
+  // The numerical adapter source remains Python; orchestration stays MoonBit.
+  let fixed = text.replace_all(
+    old="providers/motion_learning/geometry_features_precision.py",
+    new="providers/motion_learning/geometry_features_audit.py",
+  )
+  @fs.write_file(root + "/audit_precision.mbtx", fixed, create_mode=CreateNew)
+  assert_eq(
+    @process.run("moon", [
+      "run",
+      "--target",
+      "native",
+      root + "/audit_precision.mbtx",
+    ]),
+    0,
+  )
+}

@@ -1,0 +1,208 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/float",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn[T : FromJson] field(value : Json, key : String) -> T raise {
+  guard value is Object(fields) && fields.get(key) is Some(v) else {
+    fail("missing " + key)
+  }
+  @json.from_json(v)
+}
+
+///|
+fn attr(tag : StringView, name : String) -> String? {
+  let parts = (" " + tag.to_owned()).split(" " + name + "=\"").collect()
+  if parts.length() != 2 {
+    None
+  } else {
+    Some(parts[1].split("\"").next().unwrap().to_owned())
+  }
+}
+
+///|
+fn sha(bytes : Bytes) -> String {
+  let h = @crypto.SHA256::new()
+  h.update(bytes)
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+fn float_at(bytes : Bytes, offset : Int32) -> Double {
+  let bits = bytes[offset].to_uint() |
+    (bytes[offset + 1].to_uint() << 8) |
+    (bytes[offset + 2].to_uint() << 16) |
+    (bytes[offset + 3].to_uint() << 24)
+  Float::reinterpret_from_uint(bits).to_double()
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, root, output] else {
+    fail("audit_e1_reference_quality.mbtx JOB_ROOT NEW_OUTPUT")
+  }
+  guard root == "/home/wlc003s/moonrobo/private/e1-native-20261110" &&
+    !@fs.exists(output) else {
+    fail("requires Spark 178 and a fresh output")
+  }
+  let dataset = root + "/data-23"
+  let bytes = @fs.read_file(dataset + "/dataset.json").binary()
+  assert_eq(
+    sha(bytes),
+    "ff44590fa091138c70e4f85d90e913568a422f52426766ff7b513a9c0b6397b6",
+  )
+  let catalog = @json.parse(@utf8.decode(bytes))
+  let robot : Json = field(catalog, "robot")
+  let names : Array[String] = field(robot, "joints")
+  let velocity : Array[Double] = field(robot, "velocity")
+  let entries : Array[Json] = field(catalog, "entries")
+  let xml = @utf8.decode(@fs.read_file(dataset + "/scene.xml").binary())
+  let expected_scene : String = field(catalog, "scene_sha256")
+  assert_eq(sha(@utf8.encode(xml)), expected_scene)
+  let limits : Map[String, Array[Double]] = Map([])
+  for part in xml.split("<joint ") {
+    let tag = part.split(">").next().unwrap()
+    if attr(tag, "name") is Some(name) && attr(tag, "range") is Some(range) {
+      let values = []
+      for token in range.split(" ") {
+        if !token.is_empty() {
+          values.push(@string.parse_double(token))
+        }
+      }
+      limits[name] = values
+    }
+  }
+  for name in names {
+    guard limits.contains(name) else { fail("missing limit: " + name) }
+  }
+  @fs.mkdir(output, recursive=true)
+  let results : Array[Json] = []
+  for entry in entries {
+    let id : String = field(entry, "id")
+    let file : String = field(entry, "file")
+    let source_digest : String = field(entry, "source_sha256")
+    let digest : String = field(entry, "sha256")
+    let motion = @fs.read_file(dataset + "/" + file).binary()
+    assert_eq(sha(motion), digest)
+    let rows : Array[Array[Double]] = @json.from_json(
+      @json.parse(@utf8.decode(motion)),
+    )
+    let mut bad_positions = 0
+    let mut bad_velocities = 0
+    let mut position_frames = 0
+    let mut velocity_frames = 0
+    let max_position_excess = Array::make(names.length(), 0.0)
+    let max_velocity = Array::make(names.length(), 0.0)
+    for i, row in rows {
+      let mut bad_p = false
+      let mut bad_v = false
+      for j, name in names {
+        let q = row[7 + j]
+        let range = limits[name]
+        let excess = (range[0] - q).max(q - range[1]).max(0.0)
+        max_position_excess[j] = max_position_excess[j].max(excess)
+        if excess > 0.0001 {
+          bad_positions += 1
+          bad_p = true
+        }
+        if i > 0 {
+          let speed = (q - rows[i - 1][7 + j]).abs() * 50.0
+          max_velocity[j] = max_velocity[j].max(speed)
+          if speed > velocity[j] + 0.01 {
+            bad_velocities += 1
+            bad_v = true
+          }
+        }
+      }
+      if bad_p {
+        position_frames += 1
+      }
+      if bad_v {
+        velocity_frames += 1
+      }
+    }
+    let npz_path = root +
+      "/vendor/lab/source/NoetixE1/NoetixE1/assets/datasets/mimic/" +
+      id +
+      ".npz"
+    assert_eq(sha(@fs.read_file(npz_path).binary()), source_digest)
+    let npy_file = output + "/" + id + "-joint_pos.npy"
+    let code = @process.run(
+      "unzip",
+      ["-p", npz_path, "joint_pos.npy"],
+      stdout=@process.redirect_to_file(npy_file, create_mode=CreateNew),
+    )
+    assert_eq(code, 0)
+    let npy = @fs.read_file(npy_file).binary()
+    assert_eq(@utf8.decode(npy[1:6].to_owned()), "NUMPY")
+    assert_eq(npy[6].to_int(), 1)
+    let start = 10 + npy[8].to_int() + 256 * npy[9].to_int()
+    let header = @utf8.decode(npy[10:start].to_owned())
+    guard header.contains("'<f4'") &&
+      header.contains("False") &&
+      header.contains(", 24)") else {
+      fail("unsupported source NumPy layout")
+    }
+    assert_eq((npy.length() - start) % 96, 0)
+    let source_frames = (npy.length() - start) / 96
+    let mut waist_max = 0.0
+    let mut waist_frames = 0
+    for i in 0..<source_frames {
+      // Official Isaac breadth-first joint_pos order: waist_roll is column 5.
+      let roll = float_at(npy, start + (i * 24 + 5) * 4).abs()
+      waist_max = waist_max.max(roll)
+      if roll > 0.017453292519943295 {
+        waist_frames += 1
+      }
+    }
+    let problems : Array[Json] = []
+    for j, name in names {
+      if max_position_excess[j] > 0.0001 || max_velocity[j] > velocity[j] + 0.01 {
+        problems.push({
+          "joint": name,
+          "maximum_position_excess_rad": max_position_excess[j],
+          "maximum_reference_speed_rad_s": max_velocity[j],
+          "profile_speed_limit_rad_s": velocity[j],
+        })
+      }
+    }
+    results.push({
+      "clip": id,
+      "split": (field(entry, "split") : String),
+      "frames": rows.length(),
+      "position_limit_violating_samples": bad_positions,
+      "position_limit_violating_frames": position_frames,
+      "velocity_limit_violating_samples": bad_velocities,
+      "velocity_limit_violating_frames": velocity_frames,
+      "joint_details": problems,
+      "source_frames": source_frames,
+      "discarded_waist_roll_max_rad": waist_max,
+      "discarded_waist_roll_max_deg": waist_max * 57.29577951308232,
+      "source_frames_waist_roll_above_1_degree": waist_frames,
+    })
+  }
+  let result : Json = {
+    "format": "moonrobo.e1-reference-quality-audit.v1",
+    "dataset_sha256": sha(bytes),
+    "clips": results,
+    "collision_checked": false,
+    "dynamic_tracking_checked": false,
+    "velocity_measure": "adjacent 50 Hz reference frames; not measured motor velocity",
+    "scope": "reference joint-range and finite-difference speed audit plus discarded source waist-roll amplitude; not full retarget qualification",
+  }
+  @fs.write_file(
+    output + "/report.json",
+    @utf8.encode(result.stringify(indent=2)),
+    create_mode=CreateNew,
+  )
+  println(result.stringify())
+}

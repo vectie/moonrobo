@@ -1,0 +1,420 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+async fn run(
+  program : String,
+  args : Array[String],
+  log : String,
+  cwd? : StringView,
+  extra_env~ : Map[String, String] = {},
+) -> Unit {
+  let output = @process.redirect_to_file(log, create_mode=CreateOrTruncate)
+  let code = @process.run(
+    program,
+    args,
+    cwd?,
+    extra_env~,
+    stdout=output,
+    stderr=output,
+  )
+  println("\{program} exit=\{code}; log=\{log}")
+  guard code == 0 else { fail("E1 remote operation failed; inspect " + log) }
+}
+
+///|
+async fn sha(path : String) -> String {
+  let bytes = @fs.read_file(path).binary()
+  let hash = @crypto.SHA256::new()
+  hash.update(bytes)
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() >= 4 else {
+    fail(
+      "usage: e1_spark_workflow.mbtx <stage|prepare|pack-data|train-smoke|resume-smoke|export-smoke|evaluate-smoke|test> <178|179> <job-root>",
+    )
+  }
+  let mode = args[1]
+  let host = args[2]
+  guard host == "178" || host == "179" else {
+    fail("only the two designated Spark hosts are supported")
+  }
+  let user = if host == "178" { "wlc003s" } else { "wlc004s" }
+  let base = "/home/" + user + "/moonrobo"
+  let root = args[3]
+  guard root == base + "/private/e1-native-20261110" else {
+    fail("unexpected E1 job root")
+  }
+  let image = if host == "178" {
+    "moonrobo-native-optimization:stage2-20261024-b"
+  } else {
+    "moonrobo-operator-compiler:20261025-b"
+  }
+  let source = root + "/srcroot/moonrobo"
+  let binary = "/job/srcroot/moonrobo/_build/native/release/build/vectie/moonrobo/cmd/e1_train/e1_train.exe"
+  let moon = base + "/toolchain/bin/moon"
+  let environment = {
+    "MOON_HOME": base + "/toolchain",
+    "PATH": base + "/toolchain/bin:/usr/local/bin:/usr/bin:/bin",
+    "CPATH": root + "/mujoco-include",
+  }
+  let common = [
+    "run",
+    "--rm",
+    "--network",
+    "none",
+    "--memory",
+    "100g",
+    "--memory-swap",
+    "100g",
+    "--pids-limit",
+    "512",
+    "--cpus",
+    "8",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--user",
+    "1000:1000",
+    "-e",
+    "OMP_NUM_THREADS=1",
+    "-v",
+    root + ":/job",
+  ]
+  let mujoco = "/opt/isaaclab-venv/lib/python3.12/site-packages/mujoco/libmujoco.so.3.15.0"
+  if mode == "build" {
+    run(
+      moon,
+      [
+        "build", "cmd/e1_train", "--target", "native", "--release", "--frozen", "-j",
+        "2",
+      ],
+      root + "/build.log",
+      cwd=source,
+      extra_env=environment,
+    )
+    return
+  }
+  if mode == "finalize" {
+    run(
+      moon,
+      [
+        "info", "--frozen", "src/learning_e1_training", "src/learning_aligned/physics",
+        "src/learning_aligned/assets", "src/learning_aligned_gpu", "src/learning_aligned_gpu/geometry",
+        "src/learning_aligned_gpu/runtime", "src/learning_aligned_gpu/inference",
+      ],
+      root + "/info.log",
+      cwd=source,
+      extra_env=environment,
+    )
+    run(
+      moon,
+      [
+        "fmt", "src/learning_e1_training", "cmd/e1_train", "src/learning_aligned/physics/adapter.mbt",
+        "src/learning_aligned/assets/embedded_scene.mbt", "src/learning_aligned_gpu/geometry/context.mbt",
+        "src/learning_aligned_gpu/networks.mbt", "src/learning_aligned_gpu/actor_norm_snapshot.mbt",
+        "src/learning_aligned_gpu/learning.mbt", "src/learning_aligned_gpu/microbatch.mbt",
+        "src/learning_aligned_gpu/actor_microbatch.mbt", "src/learning_aligned_gpu/runtime/train.mbt",
+        "src/learning_aligned_gpu/inference/evaluation.mbt",
+      ],
+      root + "/fmt.log",
+      cwd=source,
+      extra_env=environment,
+    )
+    run(
+      moon,
+      [
+        "build", "cmd/e1_train", "--target", "native", "--release", "--frozen", "-j",
+        "2",
+      ],
+      root + "/build.log",
+      cwd=source,
+      extra_env=environment,
+    )
+    return
+  }
+  if mode == "stage" {
+    let archive = root + "/incoming/e1-source-final-20261110.tar.gz"
+    guard sha(archive) ==
+      "5636c4084a770067016be570f2b22bbd5f8eb9e9fa23c5de481c2d422457bab1" else {
+      fail("source archive SHA256 mismatch")
+    }
+    run(
+      "tar",
+      ["--warning=no-unknown-keyword", "-xzf", archive, "-C", root + "/srcroot"],
+      root + "/extract-source.log",
+    )
+    @fs.walk(root + "/srcroot", (path, names) => {
+      for name in names {
+        if name.has_prefix("._") {
+          @fs.remove(path + "/" + name)
+        }
+      }
+    })
+    @fs.symlink(target=base + "/.mooncakes", source + "/.mooncakes")
+    let command = common.copy()
+    command.append([
+      "--entrypoint", "/bin/cp", image, "-a", "/opt/isaaclab-venv/lib/python3.12/site-packages/mujoco/include",
+      "/job/mujoco-include",
+    ])
+    run("docker", command, root + "/stage-headers.log")
+    run(
+      moon,
+      [
+        "build", "cmd/e1_train", "--target", "native", "--release", "--frozen", "-j",
+        "2",
+      ],
+      root + "/build.log",
+      cwd=source,
+      extra_env=environment,
+    )
+    println("source and native executable staged on Spark " + host)
+    return
+  }
+  if mode == "prepare" {
+    guard host == "178" else { fail("dataset preparation belongs on 178") }
+    let archive = root + "/incoming/e1-vendor-inputs-20261110.tar.gz"
+    guard sha(archive) ==
+      "75f302056db435ccc91bb3ca07fec767cf1a529721e4bea5dfc3f58c2459eeff" else {
+      fail("vendor archive SHA256 mismatch")
+    }
+    @fs.mkdir(root + "/vendor", recursive=true)
+    run(
+      "tar",
+      ["--warning=no-unknown-keyword", "-xzf", archive, "-C", root + "/vendor"],
+      root + "/extract-vendor.log",
+    )
+    let command = common.copy()
+    command.append([
+      "--entrypoint", binary, image, "prepare", "--lab-assets", "/job/vendor/lab/source/NoetixE1/NoetixE1/assets",
+      "--output", "/job/data-23", "--joints", "23",
+    ])
+    run("docker", command, root + "/prepare-23.log")
+    @fs.write_file(
+      root + "/data-23/NOETIX-LICENSE",
+      @fs.read_file(root + "/vendor/lab/LICENSE"),
+      create_mode=CreateNew,
+    )
+    println("E1 data prepared on Spark 178")
+    return
+  }
+  if mode == "pack-data" {
+    guard host == "178" else { fail("dataset publication belongs on 178") }
+    run(
+      "tar",
+      ["-czf", root + "/incoming/e1-data-23.tar.gz", "-C", root, "data-23"],
+      root + "/pack-data.log",
+    )
+    let digest = sha(root + "/incoming/e1-data-23.tar.gz")
+    @fs.write_file(
+      root + "/incoming/e1-data-23.sha256",
+      @utf8.encode(digest + "\n"),
+      create_mode=CreateNew,
+    )
+    println("dataset archive SHA256=" + digest)
+    return
+  }
+  if mode == "retarget-gate" {
+    guard host == "178" else { fail("motion retargeting belongs on 178") }
+    let pose = "0,0,0.75,0,0,0,1,-0.312,0,0,0.669,-0.363,0,-0.312,0,0,0.669,-0.363,0,0,0,0,0.2,0.2,0,0.6,0,0,0,0.2,-0.2,0,0.6,0,0,0\n"
+    @fs.write_file(
+      root + "/g1-static-fixture.csv",
+      @utf8.encode(Array::make(8, pose).join("")),
+      create_mode=CreateNew,
+    )
+    let command = common.copy()
+    command.append([
+      "-v",
+      base +
+      "/private/prod-bf16-20261109/run-data/data/g1_description-paper-self-collision:/g1:ro",
+      "--entrypoint",
+      binary,
+      image,
+      "retarget",
+      "--dataset",
+      "/job/data-23",
+      "--library",
+      mujoco,
+      "--g1-scene",
+      "/g1/scene.xml",
+      "--g1-csv",
+      "/job/g1-static-fixture.csv",
+      "--fps",
+      "50",
+      "--output",
+      "/job/retarget-gate",
+    ])
+    run("docker", command, root + "/retarget-gate.log")
+    return
+  }
+  guard host == "179" else { fail("model execution belongs on Spark 179") }
+  if mode == "receive-data" {
+    let expected = @utf8.decode(
+        @fs.read_file(root + "/incoming/e1-data-23.sha256").binary(),
+      )
+      .trim()
+      .to_owned()
+    guard sha(root + "/incoming/e1-data-23.tar.gz") == expected else {
+      fail("178-to-179 dataset SHA256 mismatch")
+    }
+    guard !@fs.exists(root + "/data-23") else {
+      fail("received dataset directory already exists")
+    }
+    run(
+      "tar",
+      ["-xzf", root + "/incoming/e1-data-23.tar.gz", "-C", root],
+      root + "/receive-data.log",
+    )
+    println("verified 178 data on 179: " + expected)
+    return
+  }
+  if mode == "test" || mode == "g1-regression" {
+    if !@fs.exists(source + "/target") {
+      @fs.mkdir(source + "/target", recursive=true)
+    }
+    if !@fs.exists(root + "/g1-checkpoints") {
+      @fs.mkdir(root + "/g1-checkpoints", recursive=true)
+    }
+    let command = common.copy()
+    command.append([
+      "--gpus",
+      "all",
+      "-v",
+      base + "/toolchain:/toolchain:ro",
+      "-v",
+      base + "/.mooncakes:" + base + "/.mooncakes",
+      "-e",
+      "MOON_HOME=/toolchain",
+      "-e",
+      "PATH=/toolchain/bin:/usr/local/bin:/usr/bin:/bin",
+      "-e",
+      "CPATH=/job/mujoco-include",
+      "-e",
+      "MOONROBO_TENSOR_LIBRARY=/job/libmoonrobo_learning_tensor.so",
+      "-e",
+      "MOONROBO_E1_ACTOR=/job/out/actor-23",
+      "-e",
+      "MOONROBO_E1_CHECKPOINT=/job/out/smoke-23/current.json",
+      "-e",
+      "MOONROBO_GPU_CHECKPOINT_DIR=/job/g1-checkpoints",
+      "--workdir",
+      "/job/srcroot/moonrobo",
+      "--entrypoint",
+      "/toolchain/bin/moon",
+      image,
+      "test",
+    ])
+    if mode == "test" {
+      command.append(["src/learning_e1_training"])
+    } else {
+      command.append([
+        "src/learning_aligned_gpu/learner_test.mbt", "src/learning_aligned_gpu/microbatch_wbtest.mbt",
+        "src/learning_aligned_gpu/actor_norm_snapshot_wbtest.mbt", "src/learning_aligned_gpu/inference/actor_wbtest.mbt",
+        "src/learning_aligned_gpu/runtime/runtime_wbtest.mbt", "src/learning_aligned_gpu/geometry/geometry_vjp_wbtest.mbt",
+      ])
+    }
+    command.append(["--target", "native", "--release", "--frozen", "-j", "2"])
+    run("docker", command, root + "/" + mode + ".log")
+    return
+  }
+  let command = common.copy()
+  command.append(["--gpus", "all", "--entrypoint", binary, image])
+  let tensor = "/job/libmoonrobo_learning_tensor.so"
+  if mode == "start-training" {
+    fail(
+      "legacy unqualified launch is disabled; use e1_qualified_training.mbtx after model/data admission and full-motion gate",
+    )
+  }
+  match mode {
+    "train-smoke" => {
+      let config = common.copy()
+      config.append([
+        "--entrypoint", binary, image, "config", "--profile", "smoke", "--output",
+        "/job/smoke.json",
+      ])
+      run("docker", config, root + "/config-smoke.log")
+      command.append([
+        "train", "--dataset", "/job/data-23", "--tensor-library", tensor, "--library",
+        mujoco, "--config", "/job/smoke.json", "--output", "/job/out/smoke-23", "--device",
+        "0", "--iterations", "2",
+      ])
+    }
+    "resume-smoke" =>
+      command.append([
+        "train", "--dataset", "/job/data-23", "--tensor-library", tensor, "--library",
+        mujoco, "--config", "/job/smoke.json", "--output", "/job/out/smoke-23", "--device",
+        "0", "--resume", "/job/out/smoke-23/current.json", "--iterations", "4",
+      ])
+    "train-method-gate" => {
+      let config = common.copy()
+      config.append([
+        "--entrypoint", binary, image, "config", "--profile", "method-gate", "--output",
+        "/job/method-gate.json",
+      ])
+      run("docker", config, root + "/config-method-gate.log")
+      command.append([
+        "train", "--dataset", "/job/data-23", "--tensor-library", tensor, "--library",
+        mujoco, "--config", "/job/method-gate.json", "--output", "/job/out/method-gate-23",
+        "--device", "0", "--iterations", "2",
+      ])
+    }
+    "resume-method-gate" =>
+      command.append([
+        "train", "--dataset", "/job/data-23", "--tensor-library", tensor, "--library",
+        mujoco, "--config", "/job/method-gate.json", "--output", "/job/out/method-gate-23",
+        "--device", "0", "--resume", "/job/out/method-gate-23/current.json", "--iterations",
+        "3",
+      ])
+    "train-final" =>
+      command.append([
+        "train", "--dataset", "/job/data-23", "--tensor-library", tensor, "--library",
+        mujoco, "--config", "/job/method-gate.json", "--output", "/job/out/final-method-23",
+        "--device", "0", "--iterations", "2",
+      ])
+    "resume-final" =>
+      command.append([
+        "train", "--dataset", "/job/data-23", "--tensor-library", tensor, "--library",
+        mujoco, "--config", "/job/method-gate.json", "--output", "/job/out/final-method-23",
+        "--device", "0", "--resume", "/job/out/final-method-23/current.json", "--iterations",
+        "3",
+      ])
+    "export-final" =>
+      command.append([
+        "export", "--checkpoint", "/job/out/final-method-23/current.json", "--tensor-library",
+        tensor, "--output", "/job/out/final-actor-23",
+      ])
+    "evaluate-final" =>
+      command.append([
+        "evaluate", "--actor", "/job/out/final-actor-23", "--dataset", "/job/data-23",
+        "--tensor-library", tensor, "--library", mujoco, "--output", "/job/out/final-evaluation-23.json",
+      ])
+    "export-smoke" =>
+      command.append([
+        "export", "--checkpoint", "/job/out/smoke-23/current.json", "--tensor-library",
+        tensor, "--output", "/job/out/actor-23",
+      ])
+    "evaluate-smoke" =>
+      command.append([
+        "evaluate", "--actor", "/job/out/actor-23", "--dataset", "/job/data-23",
+        "--tensor-library", tensor, "--library", mujoco, "--output", "/job/out/evaluation-23.json",
+      ])
+    _ => fail("unknown Spark E1 operation: " + mode)
+  }
+  if mode.has_prefix("train-") || mode.has_prefix("resume-") {
+    command.append(["--diagnostic", "true"])
+  }
+  run("docker", command, root + "/" + mode + ".log")
+}

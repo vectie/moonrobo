@@ -1,0 +1,87 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(m) && m.get(k) is Some(v) else { fail(k) }
+  v
+}
+
+///|
+fn number(j : Json) -> Int64 raise {
+  match j {
+    String(s) => @string.parse_int64(s)
+    Number(n, ..) if n >= 0.0 && n.floor() == n && n <= 9007199254740991.0 =>
+      n.to_int64()
+    _ => fail("integer")
+  }
+}
+
+///|
+async fn main {
+  let a = @env.args()
+  guard a.length() >= 4 else { fail("FRESH_OUTPUT REPORT...") }
+  let summaries : Array[Json] = []
+  let mut before_total = 0L
+  let mut after_total = 0L
+  for p in a[2:] {
+    let f = @fs.open(p, mode=ReadOnly)
+    defer f.close()
+    guard f.size() <= 16777216L else { fail("report bound") }
+    let j = @json.parse(
+      @utf8.decode(f.read_exactly_at(f.size().to_int(), position=0L)),
+    )
+    guard field(j, "operations") is Array(ops) else { fail("operations") }
+    let mut before = 0L
+    let mut after = 0L
+    let mut measured = 0
+    let mut omitted = 0
+    for op in ops {
+      match op {
+        { "passed": True, "before": Array(bs), "after": Array(ats), .. } => {
+          guard bs.length() == ats.length() else { fail("file count changed") }
+          for i, b in bs {
+            guard field(b, "file") == field(ats[i], "file") &&
+              field(b, "size") == field(ats[i], "size") else {
+              fail("file identity")
+            }
+            before += number(field(b, "res"))
+            after += number(field(ats[i], "res"))
+            measured += 1
+          }
+        }
+        _ => omitted += 1
+      }
+    }
+    before_total += before
+    after_total += after
+    summaries.push({
+      "report": p,
+      "report_passed": field(j, "passed"),
+      "measured_files": measured,
+      "omitted_unclosed_operations": omitted,
+      "resident_before_bytes": Json(before.to_double()),
+      "resident_after_bytes": Json(after.to_double()),
+      "observed_reduction_bytes": Json((before - after).to_double()),
+    })
+  }
+  let out : Json = {
+    "format": "moonrobo.operator-cache-measured-summary.v1",
+    "reports": summaries,
+    "observed_reduction_bytes": Json((before_total - after_total).to_double()),
+    "observed_reduction_gib": (before_total - after_total).to_double() /
+    1073741824.0,
+    "scope": "Sum of completed per-file mincore before/after observations only. Excludes interrupted operations without after measurements; not a claim about whole-host free-memory delta or GPU allocator peak.",
+    "files_deleted": 0,
+    "training_guards_changed": false,
+  }
+  @fs.write_file(a[1], out.stringify(indent=2), create_mode=CreateNew)
+  println(out.stringify(indent=2))
+}

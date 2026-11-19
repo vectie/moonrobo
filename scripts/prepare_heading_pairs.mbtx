@@ -1,0 +1,12 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let repo="/Users/kq/Workspace/moonrobo"
+  let out=repo+"/output/spark-runtime-20261024/smc-heading-20261027"
+  let source=@fs.read_file(repo+"/output/spark-runtime-20261024/smc-source-fixes-20261027/advise_smc_fix_a.mbtx").text()
+  let labels=["fix-aligned-actor-gate-a","fix-aligned-actor-gate-b","fix-aligned-world-gate-a","fix-smc-eager-actor-gate-a","fix-smc-eager-actor-gate-b","fix-actor-base-0","fix-actor-base-1","fix-actor-rotation-0","fix-actor-linear-0","fix-actor-aligned-0","fix-actor-aligned-1","fix-actor-smc-0","fix-world-base-0","fix-world-aligned-1","fix-world-smc-0","heading-actor-gate-a","heading-smc-eager-gate-a","pivot-actor-gate-b","pivot-pair-0","pivot-pair-1","pivot-pair-2","pivot-pair-3","heading-smc-actor-off-a","heading-world-gate-a","heading-smc-world-off-a"]
+  let text=source.split("\n").map(line => if line.has_prefix("  let labels = ") { "  let labels = "+Json(labels).stringify() } else {line.to_owned()}).collect().join("\n")
+  @fs.write_file(out+"/advise_heading_a.mbtx",text,create_mode=CreateNew)
+  for path in [out+"/advise_heading_a.mbtx",repo+"/scripts/run_smc_pivot_pairs.mbtx"] {
+    guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",path,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/"])==0 else {fail("scp")}
+  }
+}

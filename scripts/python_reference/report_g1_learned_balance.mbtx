@@ -1,0 +1,283 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+fn string(value : Json) -> String raise {
+  guard value is String(s) else { fail("expected string") }
+  s
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+fn verify_summary(summary : Json, trials : Array[Json]) -> Unit raise {
+  assert_eq(num(field(summary, "trials")).to_int(), trials.length())
+  assert_eq(
+    num(field(summary, "falls")).to_int(),
+    trials.filter(t => field(t, "failed") == (true : Json)).length(),
+  )
+  let mut survival = 0.0
+  let mut rmse = 0.0
+  for trial in trials {
+    survival += num(field(trial, "simulated_seconds"))
+    rmse += num(field(trial, "joint_rmse_rad"))
+  }
+  assert_true(
+    (num(field(summary, "mean_survival_s")) -
+    survival / trials.length().to_double()).abs() <
+    1.0e-12,
+  )
+  assert_true(
+    (num(field(summary, "mean_joint_rmse_rad")) -
+    rmse / trials.length().to_double()).abs() <
+    1.0e-12,
+  )
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: report_g1_learned_balance.mbtx REPO STUDY OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let report = read(study + "/report.json")
+  let charter = read(study + "/charter.json")
+  assert_eq(field(report, "format"), "moonrobo.g1-learned-balance-study.v1")
+  assert_eq(field(report, "config"), field(charter, "config"))
+  assert_eq(field(report, "release_qualified"), false)
+  assert_eq(field(report, "physical_execution_allowed"), false)
+  assert_eq(field(report, "independently_fitted_heads"), 2)
+  assert_eq(field(report, "independent_parent_actors"), 3)
+  for
+    (key, name) in [
+      ("provider_sha256", "learned_balance_study.py"),
+      ("feature_provider_sha256", "balance_features.py"),
+      ("head_provider_sha256", "learned_balance.py"),
+    ] {
+    assert_eq(
+      field(report, key),
+      Json(digest(study + "/provider-sources/" + name)),
+    )
+  }
+  let source = string(field(charter, "source_intervention"))
+  assert_eq(
+    field(report, "source_sha256"),
+    Json(digest(source + "/intervention-physics.jsonl.gz")),
+  )
+  assert_eq(
+    field(report, "source_sha256"),
+    field(read(source + "/report.json"), "physics_log_sha256"),
+  )
+  assert_eq(
+    field(report, "training_sources_sha256"),
+    Json(digest(study + "/training-sources.json")),
+  )
+  let training = array(read(study + "/training-sources.json"))
+  assert_eq(training.length(), 54)
+  assert_eq(field(report, "training_episodes"), 54)
+  let training_ids : Map[String, Bool] = Map([])
+  let mut training_points = 0
+  let collection = read(study + "/collection.json")
+  let cases = array(field(collection, "cases"))
+  assert_eq(cases.length(), 9)
+  for row in training {
+    assert_eq(field(row, "scope"), "train")
+    assert_eq(field(row, "split"), "train")
+    assert_true(
+      ["student", "teacher"].contains(string(field(row, "source_mode"))),
+    )
+    let matching = cases.filter(c => field(c, "id") == field(row, "case_id"))
+    assert_eq(matching.length(), 1)
+    assert_eq(field(matching[0], "split"), "train")
+    assert_eq(field(matching[0], "family"), field(row, "family"))
+    let id = string(field(row, "episode_id"))
+    assert_false(training_ids.contains(id))
+    training_ids.set(id, true)
+    training_points += num(field(row, "points")).to_int()
+  }
+  assert_eq(num(field(report, "training_points")).to_int(), training_points)
+  for seed in [0, 1, 2] {
+    for mode in ["student", "teacher"] {
+      assert_eq(
+        training
+        .filter(r => {
+          field(r, "parent_seed") == Json(seed) &&
+          field(r, "source_mode") == Json(mode)
+        })
+        .length(),
+        9,
+      )
+    }
+  }
+  let rows = array(field(report, "evaluation"))
+  assert_eq(rows.length(), 9)
+  let chunks : Array[Json] = []
+  let ids : Map[String, Bool] = Map([])
+  let log = study + "/evaluation-physics.jsonl.gz"
+  assert_eq(field(report, "evaluation_log_sha256"), Json(digest(log)))
+  @async.with_task_group() <| group => {
+    let (reader, child_output) = @process.read_from_process()
+    let process = @process.spawn(
+      group,
+      "gzip",
+      ["-cd", log],
+      stdout=child_output,
+    )
+    while reader.read_until("\n") is Some(line) {
+      if line.trim().is_empty() {
+        continue
+      }
+      let record = @json.parse(line)
+      let row = rows[chunks.length()]
+      let seed = num(field(row, "seed")).to_int()
+      assert_eq(field(row, "mode"), field(record, "mode"))
+      assert_eq(field(row, "seed"), field(record, "seed"))
+      let policies = string(field(charter, "incoming_policies"))
+      assert_eq(
+        field(row, "parent_sha256"),
+        Json(digest(policies + "/actor-seed-\{seed}.pt")),
+      )
+      if field(row, "mode") != ("student" : Json) {
+        assert_eq(
+          field(row, "checkpoint_sha256"),
+          Json(digest(string(field(row, "checkpoint")))),
+        )
+        assert_true(
+          num(field(row, "maximum_online_offline_feature_error")) < 2.0e-5,
+        )
+        assert_true(
+          num(field(row, "maximum_online_offline_action_error")) < 2.0e-5,
+        )
+        assert_eq(field(row, "maximum_other_channel_error"), Json(0.0))
+      }
+      let dataset = field(record, "dataset")
+      let episodes = array(field(dataset, "episodes"))
+      let trials = array(field(record, "trials"))
+      assert_eq(episodes.length(), 18)
+      assert_eq(trials, array(field(row, "trials")))
+      let mut transitions = 0
+      for index, episode in episodes {
+        let id = string(field(episode, "id"))
+        assert_false(ids.contains(id))
+        ids.set(id, true)
+        assert_eq(field(trials[index], "episode_id"), Json(id))
+        assert_eq(field(episode, "case_id"), field(trials[index], "case_id"))
+        assert_eq(field(episode, "split"), field(trials[index], "split"))
+        let steps = array(field(episode, "steps"))
+        assert_eq(num(field(trials[index], "steps")).to_int(), steps.length())
+        assert_eq(
+          field(trials[index], "failed"),
+          field(steps.last().unwrap(), "terminated"),
+        )
+        transitions += steps.length()
+      }
+      assert_eq(num(field(row, "transitions")).to_int(), transitions)
+      for scope in ["canonical-development", "train-family-audit"] {
+        let selected = trials.filter(t => field(t, "scope") == Json(scope))
+        assert_eq(selected.length(), 9)
+        verify_summary(field(field(row, "summaries"), scope), selected)
+      }
+      let temporary = study + "/native-chunk.json"
+      @fs.write_file(
+        temporary,
+        dataset.stringify(),
+        create_mode=CreateOrTruncate,
+      )
+      let (code, out, err) = @process.collect_output(
+        root +
+        "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+        [temporary, "train", "1", "1000000"],
+      )
+      assert_eq(code, 0, msg=err.text())
+      assert_eq(field(@json.parse(out.text()), "window_length"), 1)
+      @fs.remove(temporary)
+      chunks.push({
+        "seed": Json(seed),
+        "mode": field(row, "mode"),
+        "episodes": 18,
+        "transitions": Json(transitions),
+        "native_checked_all_splits": true,
+      })
+      println("Native checked learned-balance cell \{chunks.length()}/9")
+    }
+    reader.close()
+    assert_eq(process.wait(), 0)
+  }
+  assert_eq(chunks.length(), 9)
+  assert_eq(ids.length(), 162)
+  let pooled = array(field(report, "pooled"))
+  assert_eq(pooled.length(), 6)
+  for cell in pooled {
+    let trials : Array[Json] = []
+    for row in rows.filter(r => field(r, "mode") == field(cell, "mode")) {
+      trials.append(
+        array(field(row, "trials")).filter(t => {
+          field(t, "scope") == field(cell, "scope")
+        }),
+      )
+    }
+    verify_summary(cell, trials)
+    for case in array(field(cell, "cases")) {
+      verify_summary(
+        case,
+        trials.filter(t => field(t, "case_id") == field(case, "case_id")),
+      )
+    }
+  }
+  guard report is Object(fields) else { fail("expected report object") }
+  fields.set("native_chunks", Json(chunks))
+  fields.set("source_report_sha256", Json(digest(study + "/report.json")))
+  @fs.write_file(
+    args[3],
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    (
+      {
+        "pooled": Json(pooled),
+        "training_points": Json(training_points),
+        "native_episodes": 162,
+      } : Json).stringify(),
+  )
+}

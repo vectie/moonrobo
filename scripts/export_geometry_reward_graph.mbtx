@@ -1,0 +1,40 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let launcher = @fs.read_file("scripts/audit_geometry_world.mbtx")
+    .text()
+    .replace_all(
+      old="geometry_world_boundary_audit.py",
+      new="export_geometry_reward_graph_b.py",
+    )
+    .replace_all(
+      old="providers/motion_learning/export_geometry_reward_graph_b.py",
+      new="providers/motion_learning/export_geometry_reward_graph.py",
+    )
+    .replace_all(
+      old="run_geometry_world_boundary_audit.mbtx",
+      new="run_geometry_reward_graph_b.mbtx",
+    )
+    .replace_all(old="boundary-audit-a", new="reward-graph-export-b")
+  @fs.write_file(
+    out + "/export_reward_graph_b.mbtx",
+    launcher,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("moon", [
+      "run",
+      "--target",
+      "native",
+      out + "/export_reward_graph_b.mbtx",
+    ]),
+    0,
+  )
+}

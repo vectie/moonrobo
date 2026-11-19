@@ -1,0 +1,414 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = native_collect_output(exe, args)
+  assert_eq(code, 0, msg=stderr.text() + stdout.text())
+  stdout.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    6,
+    msg="usage: fit_g1_counterfactual.mbtx REPO BASE_DATA INVARIANT_RUN OUTPUT MOONDATA_ROOT",
+  )
+  let root = args[1]
+  let base = args[2]
+  let prior = args[3]
+  let output = args[4]
+  let launcher = root + "/scripts/run_native_learning.mbtx"
+  let fresh = output + "/augmented"
+  @fs.mkdir(output, recursive=true)
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "policy.py", "dynamics.py", "cpu_physics.py", "counterfactual.py", "critic_probe.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let collection = read(root + "/examples/learning/g1-goal-collection.json")
+  guard collection is Object(collection_fields) else {
+    fail("expected collection experiment")
+  }
+  collection_fields.set("duration_s", 10)
+  collection_fields.set("action_noise_std_rad", 0)
+  @fs.write_file(
+    output + "/collection-experiment.json",
+    collection.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/branch-config.json",
+    @fs.read_file(root + "/examples/learning/g1-counterfactual-collection.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let cells : Array[Json] = []
+  // Freeze the complete factorial protocol before collection or fitting.
+  for replay in ["old", "new"] {
+    for invariant in [false, true] {
+      let label = "branch-" +
+        replay +
+        "-" +
+        (if invariant { "invariant" } else { "xy" })
+      let cell = output + "/" + label
+      @fs.mkdir(cell, recursive=true)
+      let config = read(root + "/examples/learning/g1-policy-long-fit.json")
+      guard config is Object(fields) else { fail("expected policy config") }
+      fields.set("test_seeds", [770, 771, 772])
+      fields.set("actor_critic_bootstrap", true)
+      fields.set("critic_horizontal_translation_invariant", invariant.to_json())
+      fields.set(
+        "study", "2x2 replay/world-model feedback versus critic XY encoding; same incoming selected actors, 32-step imagination, update/batch budget and ten-second qualification gate.",
+      )
+      @fs.write_file(
+        cell + "/config.json",
+        config.stringify(indent=2),
+        create_mode=CreateOrTruncate,
+      )
+      cells.push({
+        "id": label.to_json(),
+        "replay": replay.to_json(),
+        "config": config,
+      })
+    }
+  }
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-counterfactual-charter.v1",
+        "cells": cells.to_json(),
+        "branch_config": read(output + "/branch-config.json"),
+        "selection": "Within-cell physics validation seeds 30-32, including update zero; final seeds 770-772 do not select weights.",
+        "budget": "Three seeds per cell, 200 updates, batch 64, H32; model refit 400 updates on unchanged architecture/encoding. No matched end-to-end learning-speed claim.",
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/collection.log",
+    run(launcher, [
+      root + "/providers/motion_learning/counterfactual.py",
+      "--policies",
+      prior + "/policy",
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--config",
+      output + "/branch-config.json",
+      "--experiment",
+      output + "/collection-experiment.json",
+      "--output",
+      output + "/branches",
+    ]),
+    create_mode=CreateOrTruncate,
+  )
+  let original = read(base + "/collection/dataset.json")
+  let branches = read(output + "/branches/dataset.json")
+  for
+    key in [
+      "state_axes", "observation_axes", "action_axes", "goal_axes", "context_axes",
+      "model_ref", "dt_s", "frame_convention",
+    ] {
+    assert_eq(field(original, key), field(branches, key))
+  }
+  let episodes = array(field(original, "episodes")).copy()
+  for episode in array(field(branches, "episodes")) {
+    assert_eq(field(episode, "split"), "train".to_json())
+    episodes.push(episode)
+  }
+  guard original is Object(dataset_fields) else {
+    fail("expected original dataset")
+  }
+  dataset_fields.set("dataset_id", "g1-counterfactual-augmented")
+  dataset_fields.set("episodes", episodes.to_json())
+  dataset_fields.set(
+    "provenance", "Previous 156 episodes plus restored physical training-only antithetic action branches. Parent elapsed time and source-family ownership retained; no padding, held-out additions, or hardware data.",
+  )
+  @fs.mkdir(fresh + "/collection", recursive=true)
+  @fs.write_file(
+    fresh + "/collection/dataset.json",
+    original.stringify(),
+    create_mode=CreateOrTruncate,
+  )
+  let windows : Array[Json] = []
+  for split in ["train", "validation", "test"] {
+    let text = run(
+      root + "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+      [fresh + "/collection/dataset.json", split, "8"],
+    )
+    @fs.write_file(
+      fresh + "/" + split + "-batch.json",
+      text,
+      create_mode=CreateOrTruncate,
+    )
+    let batch = @json.parse(text)
+    let count = array(field(batch, "windows")).length()
+    let times = array(field(batch, "time_s"))
+    let mut late = 0
+    for i in 0..<count {
+      guard times[i * 8] is Number(t, ..) else { fail("expected time") }
+      if t >= 2.0 {
+        late += 1
+      }
+    }
+    windows.push({
+      "split": split.to_json(),
+      "windows": count.to_json(),
+      "after_two_seconds": late.to_json(),
+    })
+    if split != "train" {
+      let previous = read(base + "/" + split + "-batch.json")
+      for
+        key in [
+          "state", "next_state", "applied_action", "observation", "goal", "context",
+          "terminated", "truncated", "time_s", "windows",
+        ] {
+        assert_eq(
+          field(batch, key),
+          field(previous, key),
+          msg="held-out arrays changed: " + key,
+        )
+      }
+    }
+  }
+  @fs.write_file(
+    fresh + "/fit.log",
+    run(launcher, [
+      root + "/providers/motion_learning/dynamics.py",
+      "--train",
+      fresh + "/train-batch.json",
+      "--validation",
+      fresh + "/validation-batch.json",
+      "--test",
+      fresh + "/test-batch.json",
+      "--config",
+      root + "/examples/learning/g1-dynamics-invariant-fit.json",
+      "--output",
+      fresh + "/fit",
+    ]),
+    create_mode=CreateOrTruncate,
+  )
+  let results : Array[Json] = []
+  for entry in cells {
+    guard field(entry, "id") is String(id) &&
+      field(entry, "replay") is String(replay) else {
+      fail("missing cell")
+    }
+    let cell = output + "/" + id
+    let data_run = if replay == "old" { base } else { fresh }
+    let model_run = if replay == "old" { prior } else { fresh }
+    @fs.mkdir(cell + "/collection", recursive=true)
+    @fs.mkdir(cell + "/fit", recursive=true)
+    ignore(
+      run("/bin/cp", [
+        data_run + "/collection/dataset.json",
+        cell + "/collection/dataset.json",
+      ]),
+    )
+    for
+      name in [
+        "report.json", "dynamics-seed-0.moon.json", "dynamics-seed-1.moon.json",
+        "dynamics-seed-2.moon.json",
+      ] {
+      ignore(
+        run("/bin/cp", [model_run + "/fit/" + name, cell + "/fit/" + name]),
+      )
+    }
+    @fs.write_file(
+      cell + "/policy.log",
+      run(launcher, [
+        root + "/providers/motion_learning/policy.py",
+        "fit",
+        "--train",
+        data_run + "/train-batch.json",
+        "--dynamics",
+        cell + "/fit/dynamics-seed-0.moon.json",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--config",
+        cell + "/config.json",
+        "--experiment",
+        root + "/examples/learning/g1-long-experiment.json",
+        "--warm-start-policy",
+        prior + "/policy",
+        "--output",
+        cell + "/policy",
+      ]),
+      create_mode=CreateOrTruncate,
+    )
+    let policy = read(cell + "/policy/report.json")
+    let runs : Array[Json] = []
+    for result in array(field(policy, "runs")) {
+      assert_eq(field(result, "dynamics_unchanged"), true.to_json())
+      assert_eq(field(result, "reload_matches"), true.to_json())
+      runs.push({
+        "seed": field(result, "seed"),
+        "selected_update": field(result, "selected_update"),
+        "training_seconds": field(result, "training_seconds"),
+        "candidate": field(result, "candidate"),
+        "qualifies": field(result, "qualifies"),
+        "history": field(result, "history"),
+      })
+    }
+    let imported = @json.parse(
+      run(
+        root +
+        "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe",
+        [
+          "import",
+          args[5],
+          cell,
+          id,
+          @env.now().reinterpret_as_int64().to_string(),
+        ],
+      ),
+    )
+    assert_eq(field(imported, "physical_execution_allowed"), false.to_json())
+    results.push({ "id": id.to_json(), "runs": runs.to_json() })
+    println(id + ": " + runs.to_json().stringify())
+  }
+  let validation = @json.parse(
+    run(root + "/_build/native/debug/build/cmd/moondata/moondata.exe", [
+      "validate",
+      args[5],
+    ]),
+  )
+  assert_eq(field(validation, "status"), "passed".to_json())
+  assert_eq(field(validation, "finding_count"), (0 : Json))
+  let summary : Json = {
+    "format": "moonrobo.g1-counterfactual-study.v1",
+    "collection": read(output + "/branches/summary.json"),
+    "episodes": episodes.length().to_json(),
+    "windows": windows.to_json(),
+    "held_out_arrays_unchanged": true,
+    "cells": results.to_json(),
+    "dynamics_all_passed": field(read(fresh + "/fit/report.json"), "all_passed"),
+    "dynamics_late_all_passed": field(
+      read(fresh + "/fit/report.json"),
+      "late_all_passed",
+    ),
+    "validation": validation,
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    output + "/summary.json",
+    summary.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}
+
+///|
+/// Checkpoint copies are validated or converted by the reviewed native loader.
+fn native_checkpoint_copy_command(
+  exe : String,
+  args : Array[String],
+) -> (String, Array[String])? raise {
+  if exe != "/bin/cp" || args.length() < 2 {
+    return None
+  }
+  if !args[0].has_suffix(".moon.json") &&
+    !args[0].has_suffix(".pt") &&
+    !args[1].has_suffix(".moon.json") {
+    return None
+  }
+  guard args.length() == 2 && args[1].has_suffix(".moon.json") else {
+    fail("checkpoint copies require SOURCE and native .moon.json DESTINATION")
+  }
+  let name = args[0].split("/").last().unwrap_or("").to_owned()
+  let kind = if name.contains("dynamics-seed-") {
+    "residual-dynamics"
+  } else if name.contains("actor-seed-") {
+    "g1-actor"
+  } else {
+    fail("unreviewed checkpoint copy kind: " + name)
+  }
+  let root = @env.args()[1]
+  Some(
+    (
+      root,
+      [
+        "run",
+        root + "/scripts/run_native_learning.mbtx",
+        root,
+        "src/learning_training/launch/cmd",
+        "checkpoint-copy",
+        args[0],
+        args[1],
+        kind,
+      ],
+    ),
+  )
+}
+
+///|
+/// Structured native dispatch. A .py argument is a reviewed provider descriptor, never an executable or an interpreter fallback.
+async fn native_collect_output(
+  exe : String,
+  args : Array[String],
+) -> (Int32, &@io.Data, &@io.Data) {
+  let suffix = "/scripts/run_native_learning.mbtx"
+  if exe.has_suffix(suffix) {
+    let root = exe[:exe.length() - suffix.length()].to_owned()
+    let command = ["run", exe, root, "src/learning_training/launch/cmd"]
+    command.append(args)
+    return @process.collect_output("moon", command, cwd=root)
+  }
+  if native_checkpoint_copy_command(exe, args) is Some((root, command)) {
+    return @process.collect_output("moon", command, cwd=root)
+  }
+  @process.collect_output(exe, args)
+}
+
+///|
+async fn native_process_run(
+  exe : String,
+  args : Array[String],
+  stdout? : &@process.ProcessOutput,
+  stderr? : &@process.ProcessOutput,
+) -> Int32 {
+  let suffix = "/scripts/run_native_learning.mbtx"
+  if exe.has_suffix(suffix) {
+    let root = exe[:exe.length() - suffix.length()].to_owned()
+    let command = ["run", exe, root, "src/learning_training/launch/cmd"]
+    command.append(args)
+    return @process.run("moon", command, cwd=root, stdout?, stderr?)
+  }
+  if native_checkpoint_copy_command(exe, args) is Some((root, command)) {
+    return @process.run("moon", command, cwd=root, stdout?, stderr?)
+  }
+  @process.run(exe, args, stdout?, stderr?)
+}

@@ -1,0 +1,314 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+/// Explicitly scoped file-cache advice, never deletion or global drop_caches.
+let base = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+
+///|
+let image = "sha256:e84e3c0d2b553e29ffa04fb6d738a3b635afa66e3d23824bfc6c6304e198ad46"
+
+///|
+let owner = "b40b887a87540aea00fb5b7349e283b895ec4f95309f9781c2140fbc9b7244cf"
+
+///|
+let fincore = "/home/wlc004s/moonrobo/private/fincore-official-20261024-a/root/usr/bin/fincore"
+
+///|
+let package_root = "/opt/isaaclab-venv/lib/python3.12/site-packages"
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(o) && o.get(k) is Some(v) else { fail("missing " + k) }
+  v
+}
+
+///|
+fn num(j : Json) -> Int64 raise {
+  guard j is Number(v, ..) &&
+    v >= 0.0 &&
+    v.floor() == v &&
+    v <= 9007199254740991.0 else {
+    fail("integer")
+  }
+  v.to_int64()
+}
+
+///|
+fn text(j : Json) -> String raise {
+  guard j is String(v) else { fail("string") }
+  v
+}
+
+///|
+async fn bounded(r : &@io.Reader) -> String {
+  let b = FixedArray::make(4194305, b'\x00')
+  let mut n = 0
+  for ;; {
+    let k = r.read(b, offset=n, max_len=b.length() - n)
+    if k == 0 {
+      break
+    }
+    n += k
+    guard n <= 4194304 else { fail("4MiB output bound") }
+  }
+  @utf8.decode(Bytes::from_array(b[:n]))
+}
+
+///|
+async fn command(p : String, args : Array[String]) -> String {
+  @async.with_timeout(60000, () => {
+    let (r, out) = @process.read_from_process()
+    let (e, err) = @process.read_from_process()
+    @async.with_task_group() <| g => {
+      let child = g.spawn(() => @process.run(p, args, stdout=out, stderr=err))
+      let stdout = g.spawn(() => {
+        defer r.close()
+        bounded(r)
+      })
+      let stderr = g.spawn(() => {
+        defer e.close()
+        bounded(e)
+      })
+      let code = child.wait()
+      let result = stdout.wait()
+      let error = stderr.wait()
+      guard code == 0 else { fail(p + ": " + error) }
+      result
+    }
+  })
+}
+
+///|
+async fn docker(a : Array[String]) -> String {
+  command("docker", ["--host", "unix:///var/run/docker.sock"] + a)
+}
+
+///|
+async fn inspect(id : String) -> Json {
+  guard @json.parse(docker(["inspect", id])) is Array([j]) else {
+    fail("one container")
+  }
+  j
+}
+
+///|
+async fn idle(worker : String) -> Unit {
+  guard docker(["ps", "--no-trunc", "--quiet"]).trim() == worker else {
+    fail("active container")
+  }
+  guard command("nvidia-smi", [
+      "--query-compute-apps=pid", "--format=csv,noheader,nounits",
+    ]).trim() ==
+    "" else {
+    fail("active GPU process")
+  }
+  let o = inspect(owner)
+  let s = field(o, "State")
+  guard field(o, "Image") == Json(image) &&
+    field(s, "Running") == Json(false) &&
+    field(s, "Status") == Json("exited") &&
+    field(s, "Pid") == Json(0) &&
+    field(s, "ExitCode") == Json(0) &&
+    field(s, "OOMKilled") == Json(false) else {
+    fail("exact successful closed task required")
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, name] &&
+    ["--plan", "--advise"].contains(mode) &&
+    name.length() < 80 &&
+    name.all(c => c is ('a'..<='z' | '0'..<='9' | '-' | '.')) &&
+    !@fs.exists(base + "/" + name) else {
+    fail("--plan|--advise FRESH_REPORT_NAME")
+  }
+  idle("")
+  guard command("sha256sum", [fincore]).has_prefix(
+    "274ba306fe0b05add3a1b8a5fbdc3adba33a985b76686a2b9384860814b63ffb ",
+  ) else {
+    fail("fincore pin")
+  }
+  let argv = [
+    "create",
+    "--runtime",
+    "runc",
+    "--network",
+    "none",
+    "--read-only",
+    "--user",
+    "0:0",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--memory",
+    "268435456",
+    "--memory-swap",
+    "268435456",
+    "--cpus",
+    "1",
+    "--pids-limit",
+    "32",
+    "--env",
+    "NVIDIA_VISIBLE_DEVICES=void",
+    "--env",
+    "NVIDIA_DRIVER_CAPABILITIES=",
+    "--mount",
+    "type=bind,src=" + fincore + ",dst=/fincore,readonly",
+    "--entrypoint",
+    "/usr/bin/sleep",
+    image,
+    "600",
+  ]
+  let worker = docker(argv).trim().to_owned()
+  let record : Map[String, Json] = {
+    "format": Json("moonrobo.closed-smc-image-pages.v1"),
+    "owner": Json(owner),
+    "image": Json(image),
+    "worker": Json(worker),
+    "argv": Json(argv),
+    "mode": Json(mode),
+    "scope": Json(package_root),
+    "passed": Json(false),
+    "operation": Json(
+      "POSIX_FADV_DONTNEED via dd count=0 on resident immutable package files of the exact closed SMC image only; no file content read/write/delete; physical page ownership is not attributed to a process",
+    ),
+  }
+  record["host_before"] = Json(command("cat", ["/proc/meminfo"]))
+  let results : Array[Json] = []
+  let passed = try {
+    let initial = inspect(worker)
+    record["worker_initial"] = initial
+    let host = field(initial, "HostConfig")
+    guard field(initial, "Image") == Json(image) &&
+      field(host, "ReadonlyRootfs") == Json(true) &&
+      field(host, "Runtime") == Json("runc") &&
+      field(host, "Memory") == Json(268435456) &&
+      field(host, "MemorySwap") == Json(268435456) &&
+      field(host, "NetworkMode") == Json("none") else {
+      fail("worker confinement")
+    }
+    ignore(docker(["start", worker]))
+    idle(worker)
+    guard docker(["exec", worker, "readlink", "-f", package_root]).trim() ==
+      package_root else {
+      fail("canonical package root")
+    }
+    let rows = docker([
+      "exec", worker, "find", "-P", package_root, "-xdev", "-maxdepth", "16", "-type",
+      "f", "-size", "+1M", "-uid", "1000", "-links", "1", "-printf", "%s\t%U\t%D\t%i\t%T@\t%C@\t%p\\0",
+    ])
+    guard rows.has_suffix("\u0000") else { fail("bounded inventory complete") }
+    let inventory = rows.split("\u0000").filter(s => s != "").to_array()
+    guard inventory.length() > 0 && inventory.length() <= 1024 else {
+      fail("file count bound")
+    }
+    let mut total = 0L
+    let mut resident_before = 0L
+    let mut resident_after = 0L
+    for line in inventory {
+      let c = line.split("\t").to_array()
+      guard c.length() == 7 && (mode == "--plan" || c[1] == "1000") else {
+        fail("immutable package file must match audited image UID1000")
+      }
+      let path = c[6].to_owned()
+      guard path.has_prefix(package_root + "/") &&
+        !path.contains("..") &&
+        path.all(c => c >= ' ' && c != '\u007f') else {
+        fail("safe package path")
+      }
+      let size = @string.parse_int64(c[0])
+      total += size
+      guard size <= 4294967296L && total <= 68719476736L else {
+        fail("file-size bounds")
+      }
+      let before = @json.parse(
+        docker([
+          "exec", worker, "/fincore", "--json", "--bytes", "--output", "FILE,SIZE,RES,PAGES",
+          path,
+        ]),
+      )
+      guard field(before, "fincore") is Array([row]) &&
+        field(row, "file") == Json(path) &&
+        num(field(row, "size")) == size else {
+        fail("file identity")
+      }
+      let res = num(field(row, "res"))
+      resident_before += res
+      if mode == "--advise" && res > 0L {
+        idle(worker)
+        guard docker(["exec", worker, "readlink", "-f", path]).trim() == path else {
+          fail("canonical file")
+        }
+        guard docker([
+            "exec", worker, "find", "-P", path, "-maxdepth", "0", "-type", "f", "-links",
+            "1", "-printf", "%s\t%U\t%D\t%i\t%T@\t%C@\t%p",
+          ]) ==
+          line.to_owned() else {
+          fail("file changed before advice")
+        }
+        ignore(
+          docker([
+            "exec",
+            worker,
+            "dd",
+            "if=" + path,
+            "iflag=nocache,nofollow",
+            "count=0",
+            "status=none",
+          ]),
+        )
+      }
+      let after = @json.parse(
+        docker([
+          "exec", worker, "/fincore", "--json", "--bytes", "--output", "FILE,SIZE,RES,PAGES",
+          path,
+        ]),
+      )
+      guard field(after, "fincore") is Array([last]) &&
+        num(field(last, "size")) == size else {
+        fail("after identity")
+      }
+      resident_after += num(field(last, "res"))
+      results.push({
+        "path": path,
+        "stamp": line.to_owned(),
+        "before": row,
+        "after": last,
+        "advised": Json(mode == "--advise" && res > 0L),
+      })
+    }
+    record["resident_before"] = Json(resident_before)
+    record["resident_after"] = Json(resident_after)
+    true
+  } catch {
+    e => {
+      record["error"] = Json(e.to_string())
+      false
+    }
+  }
+  ignore(docker(["stop", "--time", "1", worker]))
+  record["worker_final"] = inspect(worker)
+  record["files"] = Json(results)
+  record["host_after"] = Json(command("cat", ["/proc/meminfo"]))
+  record["passed"] = Json(passed)
+  @fs.write_file(
+    base + "/" + name,
+    Json(record).stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+  )
+  idle("")
+  guard passed else { fail("cache operation failed; receipt retained") }
+  println("Completed " + mode + ": " + name)
+}

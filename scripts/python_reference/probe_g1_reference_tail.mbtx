@@ -1,0 +1,102 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: probe_g1_reference_tail.mbtx REPO MODEL_STUDY OUTPUT",
+  )
+  let root = args[1]
+  let output = args[3]
+  assert_false(@fs.exists(output))
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  @fs.mkdir(output + "/initial", recursive=true)
+  for
+    name in [
+      "reference_tail_directions.py", "reference_root_integration.py", "root_integrated_dynamics.py",
+      "reference_actor.py", "reference_task.py", "reference_learning.py", "balance_features.py",
+      "cpu_physics.py", "full_body_reference.py", "policy.py", "dynamics.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  for
+    (source, name) in [
+      (
+        root + "/examples/learning/g1-reference-tail-directions.json",
+        "config.json",
+      ),
+      (
+        args[2] + "/initial/actor-zero-output.pt",
+        "initial/actor-zero-output.pt",
+      ),
+    ] {
+    @fs.write_file(
+      output + "/" + name,
+      @fs.read_file(source).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "config": @json.parse(@fs.read_file(output + "/config.json").text()),
+        "model_source_study": Json(args[2]),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(
+    @process.run(
+      root + "/target/learning-venv/bin/python",
+      [
+        output + "/provider-sources/reference_tail_directions.py",
+        "--models",
+        args[2],
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--output",
+        output,
+      ],
+      stdout=@process.redirect_to_file(
+        output + "/train.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  guard @json.parse(@fs.read_file(output + "/report.json").text())
+    is {
+      "format": "moonrobo.g1-reference-tail-directions.v1",
+      "runs": Array(runs),
+      "physical_records": Array(records),
+      "new_physical_records": Number(72, ..),
+      "reused_physical_records": Number(75, ..),
+      "physical_execution_allowed": False,
+      ..
+    } else {
+    fail("tail direction study did not complete")
+  }
+  assert_eq(runs.length(), 12)
+  assert_eq(records.length(), 147)
+  println(
+    "Completed 72 new prefix-only physical probes, paired with 75 frozen records.",
+  )
+}

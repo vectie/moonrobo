@@ -1,0 +1,246 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/math",
+  "moonbitlang/core/float",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn sha(bytes : Bytes) -> String {
+  let h = @crypto.SHA256::new()
+  h.update(bytes)
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+fn[T : FromJson] field(value : Json, key : String) -> T raise {
+  guard value is Object(fields) && fields.get(key) is Some(v) else {
+    fail("missing " + key)
+  }
+  @json.from_json(v)
+}
+
+///|
+fn uint(bytes : Bytes, offset : Int32) -> UInt32 {
+  bytes[offset].to_uint() |
+  (bytes[offset + 1].to_uint() << 8) |
+  (bytes[offset + 2].to_uint() << 16) |
+  (bytes[offset + 3].to_uint() << 24)
+}
+
+///|
+fn packed(words : Array[UInt32]) -> Bytes {
+  Bytes::makei(words.length() * 4, i => (words[i / 4] >> (i % 4 * 8)).to_byte())
+}
+
+///|
+async fn write(path : String, bytes : Bytes) -> Unit {
+  @fs.write_file(path, bytes, create_mode=CreateNew)
+}
+
+///|
+async fn export_meshes(
+  source : String,
+  output : String,
+  sources : Map[String, String],
+  grid : Double,
+) -> Map[String, Json] {
+  let meshes : Map[String, Json] = {}
+
+  for name, digest in sources {
+    let input = @fs.read_file(source + "/meshes/" + name).binary()
+    assert_eq(sha(input), digest)
+    let triangles = uint(input, 80).to_int()
+    assert_eq(input.length(), 84 + 50 * triangles)
+    let vertices : Array[Double] = []
+    let indices : Array[Int32] = []
+    let lookup : Map[String, Int32] = {}
+    let unique_faces : Map[String, Bool] = {}
+    for face in 0..<triangles {
+      let ids = []
+      for vertex in 0..<3 {
+        let keys : Array[Int32] = []
+        for axis in 0..<3 {
+          let v = Float::reinterpret_from_uint(
+            uint(input, 84 + 50 * face + 12 + 12 * vertex + 4 * axis),
+          ).to_double()
+          guard v == v && v.abs() < 10.0 else {
+            fail("non-finite or oversized mesh")
+          }
+          keys.push(@math.floor(v / grid + 0.5).to_int())
+        }
+        let key = "\{keys[0]},\{keys[1]},\{keys[2]}"
+        let id = match lookup.get(key) {
+          Some(id) => id
+          None => {
+            let id = vertices.length() / 3
+            lookup[key] = id
+            for axis in 0..<3 {
+              vertices.push(keys[axis].to_double() * grid)
+            }
+            id
+          }
+        }
+        ids.push(id)
+      }
+      if ids[0] != ids[1] && ids[1] != ids[2] && ids[0] != ids[2] {
+        let sorted = ids.copy()
+        sorted.sort()
+        let key = "\{sorted[0]},\{sorted[1]},\{sorted[2]}"
+        if !unique_faces.contains(key) {
+          unique_faces[key] = true
+          indices.append(ids)
+        }
+      }
+    }
+    let words = [
+      (vertices.length() / 3).reinterpret_as_uint(),
+      indices.length().reinterpret_as_uint(),
+    ]
+    for v in vertices {
+      words.push(Float::from_double(v).reinterpret_as_uint())
+    }
+    for v in indices {
+      words.push(v.reinterpret_as_uint())
+    }
+    let packed = packed(words)
+    let file = "meshes/" + name + ".mesh"
+    write(output + "/" + file, packed)
+    meshes[name] = {
+      "file": file,
+      "sha256": sha(packed),
+      "source_sha256": digest,
+      "vertices": vertices.length() / 3,
+      "triangles": indices.length() / 3,
+      "source_triangles": triangles,
+    }
+    println(
+      "\{name}: \{triangles} -> \{indices.length()/3} triangles, \{packed.length()} bytes",
+    )
+  }
+  meshes
+}
+
+///|
+async fn main {
+  if @env.args() is [_, "g1", dataset, scene_dir, output] {
+    guard !@fs.exists(output) else { fail("expected fresh G1 mesh directory") }
+    let catalog = @json.parse(
+      @utf8.decode(@fs.read_file(dataset + "/manifest.json").binary()),
+    )
+    let entries : Array[Json] = field(
+      field(catalog, "robot_description"),
+      "meshes",
+    )
+    let sources : Map[String, String] = {}
+    for entry in entries {
+      let path : String = field(entry, "path")
+      let name = path.split("/").last().unwrap().to_string()
+      sources[name] = field(entry, "sha256")
+    }
+    let scene = @fs.read_file(scene_dir + "/scene.xml").binary()
+    assert_eq(
+      sha(scene),
+      "b9f8b0e0cbfa4a82c125ac330b38e1a8bf4c825252caf2c3d0dffe678ca5f7af",
+    )
+    @fs.mkdir(output + "/meshes", recursive=true)
+    let meshes = export_meshes(scene_dir, output, sources, 0.002)
+    let manifest : Json = {
+      "format": "moonrobo.g1-replay-meshes.v1",
+      "scene_sha256": Json(sha(scene)),
+      "meshes": Json(meshes),
+    }
+    write(output + "/manifest.json", @utf8.encode(manifest.stringify()))
+    write(output + "/scene.xml", scene)
+    write(
+      output + "/UNITREE-LICENSE.txt",
+      @fs.read_file(dataset + "/LICENSE.dataset").binary(),
+    )
+    return
+  }
+  guard @env.args() is [_, dataset, output] else {
+    fail("prepare_e1_showcase.mbtx DATASET NEW_OUTPUT")
+  }
+  guard !@fs.exists(output) else { fail("showcase output must be fresh") }
+  let dataset_bytes = @fs.read_file(dataset + "/dataset.json").binary()
+  // Pin the data actually prepared on Spark 178 and used by the running trainer.
+  assert_eq(
+    sha(dataset_bytes),
+    "ff44590fa091138c70e4f85d90e913568a422f52426766ff7b513a9c0b6397b6",
+  )
+  let catalog = @json.parse(@utf8.decode(dataset_bytes))
+  let robot : Json = field(catalog, "robot")
+  let joints : Array[String] = field(robot, "joints")
+  assert_eq(joints.length(), 23)
+  let scene = @fs.read_file(dataset + "/scene.xml").binary()
+  let scene_hash : String = field(catalog, "scene_sha256")
+  assert_eq(sha(scene), scene_hash)
+  let receipt = @json.parse(
+    @utf8.decode(@fs.read_file(dataset + "/scene.json").binary()),
+  )
+  let sources : Map[String, String] = field(receipt, "meshes")
+  @fs.mkdir(output, recursive=true)
+  @fs.mkdir(output + "/meshes")
+  @fs.mkdir(output + "/motions")
+  write(output + "/scene.xml", scene)
+  write(
+    output + "/NOETIX-LICENSE.txt",
+    @fs.read_file(dataset + "/NOETIX-LICENSE").binary(),
+  )
+  let grid = 0.002
+  let meshes = export_meshes(dataset, output, sources, grid)
+  let entries : Array[Json] = field(catalog, "entries")
+  let clips : Array[Json] = []
+  for entry in entries {
+    let id : String = field(entry, "id")
+    let file : String = field(entry, "file")
+    let digest : String = field(entry, "sha256")
+    let input = @fs.read_file(dataset + "/" + file).binary()
+    assert_eq(sha(input), digest)
+    let rows : Array[Array[Double]] = @json.from_json(
+      @json.parse(@utf8.decode(input)),
+    )
+    let width = 7 + joints.length()
+    let words : Array[UInt32] = []
+    for i, row in rows {
+      assert_eq(row.length(), 36)
+      for j in 0..<width {
+        words.push(Float::from_double(row[j]).reinterpret_as_uint())
+      }
+    }
+    let packed = packed(words)
+    let dest = "motions/" + id + ".f32"
+    write(output + "/" + dest, packed)
+    clips.push({
+      "id": id,
+      "file": dest,
+      "sha256": sha(packed),
+      "frames": rows.length(),
+      "fps": 50,
+      "width": width,
+      "split": (field(entry, "split") : String),
+      "source_sha256": digest,
+      "kind": "reference",
+    })
+  }
+  let manifest : Json = {
+    "format": "moonrobo.e1-showcase.v1",
+    "robot": robot,
+    "dataset_sha256": sha(dataset_bytes),
+    "scene_sha256": scene_hash,
+    "meshes": meshes,
+    "mesh_grid_m": grid,
+    "clips": clips,
+    "rotation": "xyzw",
+    "pose": "root xyz, root xyzw, named joint radians",
+    "scope": "E1 reference motion playback; kinematics only, not a policy rollout or hardware test",
+  }
+  write(output + "/manifest.json", @utf8.encode(manifest.stringify(indent=2)))
+  println("Exported verified E1 showcase on Spark 178")
+}

@@ -1,0 +1,6 @@
+{
+  "actor_replay_distribution": "teacher",
+  "actor_critic_bootstrap": true,
+  "test_seeds": [9200, 9201, 9202],
+  "scope": "Teacher-only actor-start comparison following frozen replay-direction diagnostics. Same original supervised actors, mixed dynamic model seed zero, initial critic calibration and original 100-update/5-refresh budgets. Actor batch 64 has original first 32 teacher draws plus 32 teacher draws from a dedicated generator; unused current-index draws preserve the original main generator cadence. The first update exactly matches the diagnostic teacher draw zero. Current actor trajectories still calibrate finite-task value at updates 0/20/40/60/80. Sway validation 30-32 selects weights; fresh canonical final 9200-9202 never selects. Re-score the prior selected mixed-tail actors on the same final conditions. No isolated repeated-update or efficiency claim; no physical authority."
+}

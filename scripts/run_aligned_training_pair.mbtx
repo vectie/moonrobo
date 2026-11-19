@@ -1,0 +1,160 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, stage] &&
+    ["prepare", "native-gate", "smc-gate", "benchmark"].contains(stage) else {
+    fail("prepare/native-gate/smc-gate/benchmark")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let runner = if stage == "benchmark" {
+    "run_aligned_training_bench_s.mbtx"
+  } else {
+    "run_aligned_training_s.mbtx"
+  }
+  if stage == "prepare" {
+    let adapter = "aligned_training_reference_s.py"
+    @fs.write_file(
+      out + "/" + adapter,
+      @fs.read_file("providers/motion_learning/aligned_training_reference.py"),
+      create_mode=CreateNew,
+    )
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/" + adapter,
+        host + ":" + base + "/" + adapter,
+      ]),
+      0,
+    )
+    let code = @fs.read_file(out + "/run_aligned_training_n.mbtx")
+      .text()
+      .replace_all(old="run_aligned_training_n.mbtx", new=runner)
+      .replace_all(old="aligned_training_reference_n.py", new=adapter)
+      .replace_all(
+        old="libmoonrobo_actor_numeric_c.so",
+        new="libmoonrobo_actor_numeric_d.so",
+      )
+      .replace_all(
+        old="hotspot-shared-training-native-gate-k",
+        new="hotspot-shared-training-native-gate-s",
+      )
+      .replace_all(
+        old="hotspot-shared-world-reference-smc-gate-f",
+        new="hotspot-shared-training-smc-gate-n",
+      )
+    @fs.write_file(out + "/" + runner, code, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/" + runner,
+        host + ":" + base + "/" + runner,
+      ]),
+      0,
+    )
+    return
+  }
+  if stage == "benchmark" {
+    guard @json.parse(
+        @fs.read_file(out + "/training-smc-gate-t/result.json").text(),
+      )
+      is { "numerical_comparison": { "passed": True, .. }, .. } else {
+      fail("coupled training numerical gate required before timing")
+    }
+    let code = @fs.read_file(out + "/run_aligned_training_s.mbtx")
+      .text()
+      .replace_all(old="run_aligned_training_s.mbtx", new=runner)
+      .replace_all(
+        old="hotspot-shared-training-smc-gate-n",
+        new="hotspot-shared-training-smc-gate-t",
+      )
+    @fs.write_file(out + "/" + runner, code, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/" + runner,
+        host + ":" + base + "/" + runner,
+      ]),
+      0,
+    )
+  }
+  let runs = match stage {
+    "native-gate" => [("native", "training-native-gate-s", "1")]
+    "smc-gate" => [("smc", "training-smc-gate-t", "1")]
+    _ =>
+      [
+        ("native", "training-bench-native-a", "13"),
+        ("smc", "training-bench-smc-a", "13"),
+        ("smc", "training-bench-smc-b", "13"),
+        ("native", "training-bench-native-b", "13"),
+      ]
+  }
+  for (side, label, repetitions) in runs {
+    let folder = out + "/" + label
+    @fs.mkdir(folder)
+    let status = @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/" +
+        runner +
+        " -- train " +
+        side +
+        " off " +
+        repetitions +
+        " " +
+        label +
+        " bf16-full",
+      ],
+      stdout=@process.redirect_to_file(
+        folder + "/controller.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        folder + "/controller.stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    for
+      name in [
+        "result.json", "final.json", "completion.json", "training-guard.json", "training-docker-final.json",
+        "training.stdout.log", "training.stderr.log", "protocol.json", "compiled-packages.json",
+        "compilation-audit.json", "frozen-decisions.json", "first-world-comparison.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-" +
+          label +
+          "/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+    assert_eq(status, 0)
+    println("Completed " + label)
+  }
+}

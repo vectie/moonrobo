@@ -1,0 +1,139 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() >= 5 && args.length() <= 7,
+    msg="usage: fit_g1_reference_learning.mbtx REPO REFERENCES ZERO_ACTOR OUTPUT [CONFIG_JSON [REUSE_STUDY]]",
+  )
+  let root = args[1]
+  let output = args[4]
+  assert_false(@fs.exists(output))
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  @fs.mkdir(output + "/initial", recursive=true)
+  for
+    name in [
+      "reference_actor.py", "reference_task.py", "reference_learning.py", "reference_learning_study.py",
+      "balance_features.py", "cpu_physics.py", "full_body_reference.py", "policy.py",
+      "dynamics.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  for
+    (source, target) in [
+      (
+        if args.length() >= 6 {
+          args[5]
+        } else {
+          root + "/examples/learning/g1-reference-learning-comparison.json"
+        },
+        "config.json",
+      ),
+      (
+        root + "/examples/learning/g1-full-body-reference-quality.json",
+        "quality.json",
+      ),
+      (args[3], "initial/actor-zero-output.pt"),
+    ] {
+    @fs.write_file(
+      output + "/" + target,
+      @fs.read_file(source).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-reference-learning-charter.v1",
+        "config": @json.parse(@fs.read_file(output + "/config.json").text()),
+        "quality": @json.parse(@fs.read_file(output + "/quality.json").text()),
+        "references": Json(args[2]),
+        "original_incoming_actor": Json(args[3]),
+        "reused_study": if args.length() == 7 {
+          Json(args[6])
+        } else {
+          Json::null()
+        },
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let worker_args = [
+    output + "/provider-sources/reference_learning_study.py",
+    "--config",
+    output + "/config.json",
+    "--quality",
+    output + "/quality.json",
+    "--actor",
+    output + "/initial/actor-zero-output.pt",
+    "--references",
+    args[2],
+    "--scene",
+    root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+    "--output",
+    output,
+  ]
+  if args.length() == 7 {
+    worker_args.append(["--reuse-study", args[6]])
+  }
+  assert_eq(
+    @process.run(
+      root + "/target/learning-venv/bin/python",
+      worker_args,
+      stdout=@process.redirect_to_file(
+        output + "/train.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  guard @json.parse(@fs.read_file(output + "/report.json").text())
+    is {
+      "format": "moonrobo.g1-reference-learning-comparison.v1",
+      "runs": Array(runs),
+      "physical_records": Array(records),
+      "physical_execution_allowed": False,
+      ..
+    } else {
+    fail("reference learning comparison did not finish")
+  }
+  assert_eq(runs.length(), 6)
+  let config = @json.parse(@fs.read_file(output + "/config.json").text())
+  let expected = if config
+    is {
+      "format": "moonrobo.g1-reference-extended-training-charter.v1"
+      | "moonrobo.g1-reference-replay-anchor-charter.v1",
+      "expected_physical_records": Number(count, ..),
+      ..
+    } {
+    count.to_int()
+  } else if config
+    is {
+      "format": "moonrobo.g1-reference-tail-training-charter.v1"
+      | "moonrobo.g1-reference-state-origin-charter.v1",
+      ..
+    } {
+    603
+  } else {
+    333
+  }
+  assert_eq(records.length(), expected)
+  println("Completed the frozen three-seed reference-learning comparison.")
+}

@@ -1,0 +1,10 @@
+
+///| Native checkpoint copies validate or explicitly convert restricted Torch
+/// state dictionaries. JSON names never contain renamed pickle bytes.
+async fn copy_model_file(root:String,source:String,destination:String) {
+ if destination.has_suffix(".moon.json") {
+  assert_eq(@process.run("moon",["run","--quiet","--warn-list","-a",root+"/scripts/run_native_learning.mbtx",root,"src/learning_training/launch/cmd","checkpoint-copy",source,destination,"residual-dynamics"]),0)
+ } else {
+  @fs.write_file(destination,@fs.read_file(source).binary(),create_mode=CreateOrTruncate)
+ }
+}

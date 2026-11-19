@@ -1,0 +1,82 @@
+{
+  "format": "moonrobo.g1-reference-tail-training-charter.v1",
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "methods": [
+    "model-based",
+    "prefix-only"
+  ],
+  "incoming_actor_sha256": "799850fb2ee31bdd3a3267ac42742e17e6137c5f20bbabb5881543f26124f94e",
+  "reference_manifest_sha256": "8b310f2a6ab44e8a997aaba92f62a23ec13ceb0fa79ddeb0e0eaf5299bf569b5",
+  "cycles": 3,
+  "collection_origins_s": [
+    0,
+    10,
+    20
+  ],
+  "raw_action_std": 0.03,
+  "noise_seed_base": 810000,
+  "gamma": 0.99,
+  "gae_lambda": 0.95,
+  "actor_learning_rate": 0.0003,
+  "maximum_actor_steps_per_cycle": 12,
+  "actor_batch_size": 64,
+  "ppo_minibatch_size": 256,
+  "ppo_epochs": 3,
+  "ppo_clip": 0.2,
+  "ppo_target_kl": 0.02,
+  "critic_updates_per_cycle": 128,
+  "critic_batch_size": 256,
+  "critic_learning_rate": 0.001,
+  "model_updates_per_cycle": 900,
+  "model_batch_size": 64,
+  "model_window": 8,
+  "model_width": 128,
+  "model_learning_rate": 0.001,
+  "model_replay_windows": 20000,
+  "model_normalization_floor": 0.05,
+  "imagination_horizon": 32,
+  "model_diagnostic_clip_indices": [
+    0,
+    3,
+    6
+  ],
+  "cpu_threads": 2,
+  "maximum_feature_alignment_error": 0.00002,
+  "maximum_action_alignment_error_rad": 0.00008,
+  "reward": "dt * [exp(-mean_body_squared_distance/0.05^2) + 0.5*exp(-root_squared_distance/0.05^2) + 0.5*exp(-4*(1-quaternion_dot^2)/0.1^2) + exp(-mean_joint_squared_error/0.03^2) - 0.01*mean(((action-previous)/0.1)^2)]",
+  "termination": "Actual and imagined fall at root height <0.35m or upright Z<0.5. Reference end is finite-task terminal with zero tail; score terminal-step reward once. Model fall mask is hard and not differentiated.",
+  "common_prior": "One identical pre-supervision zero-output checkpoint for all methods and training seeds. It includes previously fitted balance slopes, static kinematics and normalization from reference-source observations; no claim of training from scratch or a prior-free mocap method. Independently seeded collection/optimization defines the three new training runs.",
+  "data_access": "Fresh own-policy physics only. Reference motion/reset snapshots are commands/setup; source controls are not labels. Each seed's first 27 noisy episodes are shared by the two methods and charged to each standalone learner. Three origin-zero diagnostic episodes per seed never train models, values or actors. All later episodes use each arm's own policy. No previous model/value/direction checkpoint is inherited.",
+  "critic": "Same zero-initialized physical-return critic and 128 fitting updates per cycle in both arms, including full causal controller memory. With-tail uses its input derivative after H32; prefix-only never calls the critic inside actor imagination. The unused prefix-arm critic is still fitted/stored and its cost reported for the controlled budget. This is not the paper's imagined-GAE recipe.",
+  "actor_objective": "Each cycle samples all 27 episode starts spanning nine clips and 0/10/20s resets. With-tail maximizes H32 discounted reward plus physical-return value; prefix-only maximizes the same H32 reward without a tail. Both perform 12 Adam steps per cycle. Each proposed parameter update is rescaled to keep raw action-logit RMS change <=0.005 on 256 fixed current-cycle history samples; shrink further if needed. Adam moments remain from the original gradients. The cap is not a guarantee on future closed-loop actions or returns.",
+  "budget_and_selection": "Three cycles, 27 episodes per cycle, 900 world-model/128 critic fitting updates and 12 actor steps per cycle in each arm/seed. Each cycle contains all three reset origins to avoid the old sequential-origin curriculum. All six final-cycle actors receive the unchanged 27-cell quality suite. No checkpoint/seed selection, intermediate quality checks or threshold changes.",
+  "costs": "Keep common reference/teacher/feedback/supervised-baseline development separate; report fresh collection, model diagnostic collection, model/critic/actor optimization, final evaluation and serialization. Sequential local CPU measurements, not GPU-hour equivalence. A quality-failing method has no successful cost-to-target.",
+  "scope": "Actual paired full-reference with-tail/prefix-only training from a shared inherited actor prior. Known training-family resets; not successful learning efficiency, unseen-motion coverage, full phase acceptance, hardware qualification or restart infrastructure.",
+  "physical_execution_allowed": false,
+  "protocol_revision_reason": "New controlled tail-training experiment after physical prefix-direction probes. Compared with earlier studies, both arms share interleaved reset coverage, larger world-model fitting budget and an explicit small logit-step cap. Only critic-tail use differs within this pair; no isolated comparison to historical unconstrained/PPO training is claimed.",
+  "collection_origins_per_cycle_s": [
+    [
+      0,
+      10,
+      20
+    ],
+    [
+      0,
+      10,
+      20
+    ],
+    [
+      0,
+      10,
+      20
+    ]
+  ],
+  "noise_seed_origin_stride": 17,
+  "actor_logit_rms_cap": 0.005,
+  "actor_calibration_batch_size": 256,
+  "expected_physical_records": 603
+}

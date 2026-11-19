@@ -1,0 +1,45 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/x/crypto",
+}
+
+///|
+fn digest(bytes : Bytes) -> String {
+  let hash = @crypto.SHA256::new()
+  hash.update(bytes)
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn main {
+  let base = "/home/wlc004s/moonrobo/private/hotspot-optimization-20261025-b"
+  let relative = "/src/learning_aligned_gpu/cmd/hotspot_numeric_wbtest.mbt"
+  let source = base + "/workspace/moonrobo" + relative
+  let fixture = base + "/workspace/moonrobo-fixtures" + relative
+  let updated = base + "/hotspot_numeric_wbtest_v2.mbt"
+  let old = @fs.read_file(source).binary()
+  let replacement = @fs.read_file(updated).binary()
+  guard old == @fs.read_file(fixture).binary() && old != replacement &&
+    old.length() < 65536 && replacement.length() < 65536 else {
+    fail("exact bounded test-only correction required")
+  }
+  @fs.write_file(base + "/hotspot_numeric_wbtest_v1.mbt", old, create_mode=CreateNew)
+  for path in [source, fixture] {
+    guard @process.run("cp", [updated, path]) == 0 &&
+      @fs.read_file(path).binary() == replacement else { fail("test copy mismatch") }
+  }
+  @fs.write_file(base + "/fixture-nontrivial-target.receipt.json", ({
+    "format": "moonrobo.hotspot-fixture-correction.v1",
+    "paths": [source, fixture],
+    "previous_sha256": digest(old),
+    "corrected_sha256": digest(replacement),
+    "previous_retained": base + "/hotspot_numeric_wbtest_v1.mbt",
+    "production_source_modified": false,
+    "reason": "Nonzero next-state target for zero-initialized world head, positive world loss and nonzero gradients in every optimizer group; unchanged equality tolerances and memory guard",
+    "numeric_gate_previously_executed": false,
+  } : Json).stringify(indent=2), create_mode=CreateNew)
+  println("Updated only unexecuted numeric fixture; original preserved")
+}

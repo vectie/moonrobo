@@ -1,0 +1,337 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/x/crypto",
+}
+
+///|
+let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/phase-comparison4096-20261025"
+
+///|
+fn get(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(value) else {
+    fail("missing " + key)
+  }
+  value
+}
+
+///|
+fn number(j : Json) -> Double raise {
+  match j {
+    Number(n, ..) => n
+    String(s) => @string.parse_double(s)
+    _ => fail("numeric value required")
+  }
+}
+
+///|
+fn rows(j : Json) -> Array[Json] raise {
+  guard j is Array(a) else { fail("array required") }
+  a
+}
+
+///|
+async fn read(relative : String, provenance : Array[Json]) -> Json {
+  let f = @fs.open(root + "/" + relative, mode=ReadOnly)
+  defer f.close()
+  let size = f.size()
+  guard size <= 16777216L else { fail("review JSON exceeds16MiB") }
+  let bytes = f.read_exactly_at(size.to_int(), position=0L)
+  let h = @crypto.SHA256::new()
+  h.update(bytes)
+  provenance.push({
+    "path": relative,
+    "sha256": @crypto.bytes_to_hex_string(h.finalize()),
+  })
+  @json.parse(@utf8.decode(bytes))
+}
+
+///|
+fn stats(j : Json) -> Json raise {
+  {
+    "count": get(j, "count"),
+    "sum_ms": number(get(j, "sum_ns")) / 1000000.0,
+    "union_ms": number(get(j, "union_ns")) / 1000000.0,
+    "span_gap_ms": number(get(j, "span_gap_ns")) / 1000000.0,
+  }
+}
+
+///|
+fn stat_map(j : Json) -> Json raise {
+  guard j is Object(m) else { fail("statistics map required") }
+  let out : Map[String, Json] = {}
+  for key, value in m {
+    out[key] = stats(value)
+  }
+  Json(out)
+}
+
+///|
+async fn boundary(
+  directory : String,
+  native : Bool,
+  provenance : Array[Json],
+) -> Json {
+  let source = directory +
+    (if native { "/operator-diagnostics.json" } else { "/capture.json" })
+  let j = read(source, provenance)
+  let b = get(j, "boundary_timing_ms")
+  let body = number(get(b, "submit")) + number(get(b, "drain"))
+  let outer = read(directory + "/outer-result.json", provenance)
+  let guard_receipt = get(outer, "cuda_guard_receipt")
+  let resource_rows = rows(get(outer, "samples"))
+  let mut peak = 0.0
+  let mut swap = 0.0
+  let mut minimum_available = 1.0e100
+  for row in resource_rows {
+    let r = get(row, "resources")
+    peak = peak.max(number(get(r, "peak")))
+    swap = swap.max(number(get(r, "swap")))
+    minimum_available = minimum_available.min(number(get(r, "host_available")))
+    guard get(r, "events") is String(events) &&
+      events.contains("oom 0\n") &&
+      events.contains("oom_kill 0\n") else {
+      fail("unexpected OOM receipt")
+    }
+  }
+  guard swap == 0.0 else { fail("nonzero swap receipt") }
+  {
+    "directory": directory,
+    "observer": get(j, "observer"),
+    "setup_ms": get(b, "setup"),
+    "submit_ms": get(b, "submit"),
+    "drain_ms": get(b, "drain"),
+    "body_ms": body,
+    "teardown_ms": get(b, "teardown"),
+    "outer_passed": get(outer, "passed"),
+    "outer_reason": get(outer, "reason"),
+    "resources": {
+      "maximum_sampled_cgroup_peak_bytes": peak,
+      "minimum_sampled_host_available_bytes": minimum_available,
+      "maximum_sampled_swap_bytes": swap,
+      "observed_cuda_free_minimum_bytes": get(
+        guard_receipt, "observed_minimum_cuda_free_bytes",
+      ),
+      "cuda_minimum_scope": get(guard_receipt, "minimum_scope"),
+    },
+    "single_window_not_steady_throughput": true,
+  }
+}
+
+///|
+fn delta(a : Json, b : Json) -> Json raise {
+  let x = number(get(a, "body_ms"))
+  let y = number(get(b, "body_ms"))
+  {
+    "body_delta_ms": y - x,
+    "body_percent_change": 100.0 * (y / x - 1.0),
+    "scope": "matched configuration, fresh iteration41 observations; one window per condition, not a repeated causal estimate",
+  }
+}
+
+///|
+fn verify_copies(j : Json, expected_total : Double) -> Json raise {
+  let sizes = rows(get(j, "copy_size_direction"))
+  guard sizes.length() < 128 else { fail("copy-size query may be truncated") }
+  let mut total = 0.0
+  let mut dtoh4 = 0.0
+  let mut htod4 = 0.0
+  for row in sizes {
+    let count = number(get(row, "count"))
+    total += count
+    if number(get(row, "bytes")) == 4.0 {
+      if get(row, "direction") == Json("Device-to-Host") {
+        dtoh4 += count
+      }
+      if get(row, "direction") == Json("Host-to-Device") {
+        htod4 += count
+      }
+    }
+  }
+  guard total == expected_total else {
+    fail("copy histogram does not conserve observed events")
+  }
+  for row in rows(get(j, "api_by_collection_stage")) {
+    guard number(get(row, "non_unique_copy_matches")) == 0.0 else {
+      fail("ambiguous collection copy association")
+    }
+  }
+  {
+    "total_records": total,
+    "four_byte_host_to_device": htod4,
+    "four_byte_device_to_host": dtoh4,
+    "all_reported_copy_api_matches_unique": true,
+  }
+}
+
+///|
+async fn trace(directory : String, provenance : Array[Json]) -> Json {
+  let report = read(directory + "/phase-attribution.json", provenance)
+  let a = get(report, "attribution")
+  let coverage = get(a, "coverage")
+  guard get(coverage, "partial_label_checks_passed") == Json(true) else {
+    fail("required phase labels failed")
+  }
+  let associations = get(a, "association")
+  let seq = get(a, "sequence_source_attribution")
+  {
+    "directory": directory,
+    "counts": get(a, "record_counts"),
+    "complete_capture_verified": get(a, "complete_capture_verified"),
+    "coverage": coverage,
+    "kernel_missing_api": get(associations, "kernel_missing_api"),
+    "kernel_ambiguous_api": get(associations, "kernel_ambiguous_api"),
+    "graph_node_nonzero_count": get(associations, "graph_node_nonzero_count"),
+    "cpu_structural_inclusive_ms": stat_map(get(a, "cpu_structural_inclusive")),
+    "cpu_cuda_api_categories_ms": stat_map(get(a, "cuda_api_category")),
+    "gpu_kernels_ms": stat_map(get(a, "kernel_union_by_device")),
+    "gpu_all_events_ms": stat_map(
+      get(a, "kernel_memcpy_memset_union_by_device"),
+    ),
+    "gpu_operators_exclusive_ms": stat_map(
+      get(a, "kernel_by_innermost_operator_exclusive"),
+    ),
+    "gpu_source_direct_ms": stat_map(get(seq, "direct_exclusive")),
+    "gpu_source_backward_ms": stat_map(
+      get(seq, "backward_source_consensus_exclusive"),
+    ),
+    "gpu_source_unknown_ms": stat_map(get(seq, "unknown_exclusive")),
+    "exclusive_kernel_conservation": get(seq, "exclusive_conservation_passed"),
+    "interpretation": "CPU inclusive ranges overlap their children and GPU execution; do not sum CPU with GPU or nested ranges. Device gaps are observed in profiler timeline, not automatically FFI or launch overhead.",
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["phases", "all"].contains(mode) else {
+    fail("phases|all")
+  }
+  let output = root +
+    (if mode == "phases" {
+      "/phase-summary.json"
+    } else {
+      "/comparison-summary.json"
+    })
+  guard !@fs.exists(output) else { fail("fresh summary only") }
+  let provenance : Array[Json] = []
+  let boundaries : Map[String, Json] = {}
+  let traces : Map[String, Json] = {}
+  let overhead : Map[String, Json] = {}
+  for phase in ["world", "collection"] {
+    let native_off = boundary(
+      "controls/" + phase + "-native-off",
+      true,
+      provenance,
+    )
+    let smc_off = boundary("controls/" + phase + "-smc-off", false, provenance)
+    let native_trace = boundary("native-" + phase + "-trace", true, provenance)
+    let smc_trace = boundary("smc-" + phase + "-trace", false, provenance)
+    boundaries[phase] = {
+      "native_off": native_off,
+      "smc_off": smc_off,
+      "native_aten_nsys": native_trace,
+      "smc_aten_nsys": smc_trace,
+      "off_native_over_smc": number(get(native_off, "body_ms")) /
+      number(get(smc_off, "body_ms")),
+    }
+    overhead[phase] = {
+      "native_combined": delta(native_off, native_trace),
+      "smc_combined": delta(smc_off, smc_trace),
+    }
+    traces[phase] = {
+      "native": trace("native-" + phase + "-trace", provenance),
+      "smc": trace("smc-" + phase + "-trace", provenance),
+    }
+  }
+  if mode == "all" {
+    let noff = boundary("controls/actor-native-off", true, provenance)
+    let soff = boundary("controls/actor-smc-chunk-off", false, provenance)
+    let naten = boundary("controls/actor-native-aten", true, provenance)
+    let saten = boundary("controls/actor-smc-chunk-aten", false, provenance)
+    let ntrace = boundary("native-actor-trace", true, provenance)
+    let strace = boundary("smc-chunk-actor-trace", false, provenance)
+    boundaries["actor_critic_matched8x512"] = {
+      "native_off": noff,
+      "smc_off": soff,
+      "native_aten": naten,
+      "smc_aten": saten,
+      "native_aten_nsys": ntrace,
+      "smc_aten_nsys": strace,
+      "off_native_over_smc": number(get(noff, "body_ms")) /
+      number(get(soff, "body_ms")),
+    }
+    overhead["actor_critic_matched8x512"] = {
+      "native_observer": delta(noff, naten),
+      "native_collector_increment": delta(naten, ntrace),
+      "native_combined": delta(noff, ntrace),
+      "smc_observer": delta(soff, saten),
+      "smc_collector_increment": delta(saten, strace),
+      "smc_combined": delta(soff, strace),
+    }
+    traces["actor_critic_matched8x512"] = {
+      "native": trace("native-actor-trace", provenance),
+      "smc": trace("smc-chunk-actor-trace", provenance),
+    }
+  }
+  let pair = read("smc-microbatch-abba/summary.json", provenance)
+  guard get(pair, "accepted") == Json(true) else {
+    fail("incomplete chunk ABBA")
+  }
+  let original = get(pair, "a")
+  let chunked = get(pair, "b")
+  let paired : Json = {
+    "original": original,
+    "eight512": chunked,
+    "delta_ms": number(get(chunked, "mean_ms")) -
+    number(get(original, "mean_ms")),
+    "percent_slower": 100.0 *
+    (number(get(chunked, "mean_ms")) / number(get(original, "mean_ms")) - 1.0),
+    "adjacent_ab_ba_ratios": get(
+      pair, "adjacent_ab_ba_a_over_b_mean_time_ratios",
+    ),
+    "protocol": get(pair, "protocol"),
+    "frozen_spec_sha256": get(pair, "spec_sha256"),
+    "fp32_numerical_replacement_approved": false,
+    "float64_formula_gate_passed": true,
+  }
+  let copies : Json = {
+    "native": read("native-collection-trace/copy-attribution.json", provenance),
+    "smc": read("smc-collection-trace/copy-attribution.json", provenance),
+  }
+  let verified_copies : Json = {
+    "native": verify_copies(get(copies, "native"), 168946.0),
+    "smc": verify_copies(get(copies, "smc"), 94.0),
+  }
+  guard number(get(get(verified_copies, "native"), "four_byte_device_to_host")) ==
+    115200.0 &&
+    number(get(get(verified_copies, "native"), "four_byte_host_to_device")) ==
+    51200.0 else {
+    fail("APIC count identity changed")
+  }
+  let result : Json = {
+    "format": "moonrobo.phase-comparison-summary.v1",
+    "scope": mode,
+    "single_agent": true,
+    "phase_boundaries": Json(boundaries),
+    "observer_overhead": Json(overhead),
+    "traces": Json(traces),
+    "collection_copies": copies,
+    "verified_collection_copy_counts": verified_copies,
+    "smc_microbatch_abba": paired,
+    "source_files": Json(provenance),
+    "no_estimated_speedup": true,
+    "cross_runtime_limitation": "APIC and IsaacLab physics, RNG and model weights differ; shapes/counters/configurations matched, not same sampled tensors or identical trajectories.",
+    "throughput_boundary": "Only independent ABBA is steady throughput. Never combine old baseline rows or separately captured phase windows into a new paired overall ratio.",
+  }
+  @fs.write_file(
+    output,
+    result.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+  )
+  println(output)
+}

@@ -1,0 +1,135 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, stage] && ["prepare", "build"].contains(stage) else {
+    fail("prepare/build")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  if stage == "prepare" {
+    let prefix = @fs.read_file(out + "/build_aligned_training_k.mbtx")
+      .text()
+      .split("async fn main {")
+      .to_array()[0]
+      .to_owned()
+      .replace_all(
+        old="libmoonrobo_actor_numeric_c.so",
+        new="libmoonrobo_actor_numeric_d.so",
+      )
+    let build = prefix +
+      (
+        #|async fn main {
+        #|  require_idle()
+        #|  let ws=base+"/workspace/moonrobo-actor-step-training-native-am"
+        #|  guard !@fs.exists(ws) else {fail("fresh training candidate")}
+        #|  run("copy-training-am","cp",["-a","--reflink=auto",base+"/workspace/moonrobo-actor-step-training-native-k",ws])
+        #|  run("fixture-training-am","cp",[base+"/training_fixture_am.mbt",ws+"/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"])
+        #|  container("build-training-am","/toolchain/bin/moon",["test","--build-only","--release","--target","native","-j","2","--frozen","src/learning_aligned_gpu/cmd"],workdir="/workspace/moonrobo-actor-step-training-native-am")
+        #|  run("binary-training-am","cp",[ws+"/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/cmd/cmd.whitebox_test.exe",base+"/actor-step-gate-training-native-am"])
+        #|}
+      )
+    let fixture = @fs.read_file(out + "/training_fixture_k.mbt")
+      .text()
+      .replace_all(
+        old="hotspot-mlp-actor-reward-reference-b",
+        new="hotspot-mlp-actor-reward-reference-d",
+      )
+    guard fixture != @fs.read_file(out + "/training_fixture_k.mbt").text() else {
+      fail("candidate package change required")
+    }
+    let runner = @fs.read_file(out + "/run_aligned_training_s.mbtx")
+      .text()
+      .replace_all(
+        old="run_aligned_training_s.mbtx",
+        new="run_aligned_training_am.mbtx",
+      )
+      .replace_all(
+        old="actor-step-gate-training-native-k",
+        new="actor-step-gate-training-native-am",
+      )
+      .replace_all(
+        old="hotspot-mlp-actor-reward-reference-b",
+        new="hotspot-mlp-actor-reward-reference-d",
+      )
+      .replace_all(
+        old="aligned_training_reference_s.py",
+        new="aligned_training_reference_am.py",
+      )
+      .replace_all(
+        old="hotspot-shared-training-native-gate-s",
+        new="hotspot-shared-training-native-gate-am",
+      )
+      .replace_all(
+        old="hotspot-shared-training-smc-gate-n",
+        new="hotspot-shared-training-smc-gate-t",
+      )
+      .replace_all(
+        old="  write_json(root + \"/protocol.json\"",
+        new="  pins[base+\"/frozen_training_kernels_am.py\"]=Json(hash_file(base+\"/frozen_training_kernels_am.py\"))\n  write_json(root + \"/protocol.json\"",
+      )
+    for
+      (name, text) in [
+        ("build_aligned_training_am.mbtx", build),
+        ("training_fixture_am.mbt", fixture),
+        ("run_aligned_training_am.mbtx", runner),
+        (
+          "aligned_training_reference_am.py",
+          @fs.read_file(
+            "providers/motion_learning/aligned_training_reference.py",
+          )
+          .text()
+          .replace_all(
+            old="from frozen_training_kernels import",
+            new="from frozen_training_kernels_am import",
+          ),
+        ),
+        (
+          "frozen_training_kernels_am.py",
+          @fs.read_file("providers/motion_learning/frozen_training_kernels.py").text(),
+        ),
+      ] {
+      @fs.write_file(out + "/" + name, text, create_mode=CreateNew)
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/build_aligned_training_am.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/training-build-am.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/training-build-am.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+}

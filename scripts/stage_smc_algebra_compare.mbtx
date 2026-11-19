@@ -1,0 +1,23 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let repo="/Users/kq/Workspace/moonrobo"; let out=repo+"/output/spark-runtime-20261024/smc-algebra-20261028"
+  let mut s=@fs.read_file(repo+"/scripts/compare_top3_snapshots.mbtx").text()
+  let old="  let metadata_bad = differences(field(a, \"metadata\"), field(b, \"metadata\"))"
+  guard s.contains(old) else {fail("comparison anchor")}
+  s=s.replace_all(old=old,new=
+    #|  let ma = @json.parse(field(a,"metadata").stringify())
+    #|  let mb = @json.parse(field(b,"metadata").stringify())
+    #|  guard ma is Object(am) && mb is Object(bm) else {fail("metadata objects")}
+    #|  let modes : Array[Json] = []
+    #|  for key in ["smc_world_rotation","smc_xi_normalization","smc_actor_return"] {
+    #|    let av=field(ma,key); let bv=field(mb,key)
+    #|    guard (av==Json(true) || av==Json(false)) && (bv==Json(true) || bv==Json(false)) else {fail("mode field")}
+    #|    modes.push({"key":Json(key),"baseline":av,"candidate":bv})
+    #|    am[key]=Json(false); bm[key]=Json(false)
+    #|  }
+    #|  let metadata_bad = differences(ma, mb)
+  )
+  s=s.replace_all(old="      \"metadata_mismatches\": Json(metadata_bad),",new="      \"metadata_mismatches\": Json(metadata_bad),\n      \"explicit_protocol_mode_differences\": Json(modes),")
+  @fs.write_file(out+"/compare_algebra_snapshots.mbtx",s,create_mode=CreateNew)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",out+"/compare_algebra_snapshots.mbtx","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/compare_algebra_snapshots.mbtx"])==0 else {fail("upload")}
+}

@@ -1,0 +1,257 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn num(j : Json) -> Double raise {
+  guard j is Number(n, ..) else { fail("number required") }
+  n
+}
+
+///|
+fn median(v : Array[Double]) -> Double raise {
+  guard !v.is_empty() else { fail("empty") }
+  let a = v.copy()
+  a.sort()
+  (a[(a.length() - 1) / 2] + a[a.length() / 2]) / 2.0
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+fn runs(summary : Json) -> Array[Json] raise {
+  guard field(summary, "runs") is Array(v) && v.length() == 4 else {
+    fail("ABBA")
+  }
+  v
+}
+
+///|
+fn pair(v : Array[Json]) -> Json raise {
+  let a = (
+      num(field(v[0], "wall_median_ms")) + num(field(v[3], "wall_median_ms"))
+    ) /
+    2.0
+  let b = (
+      num(field(v[1], "wall_median_ms")) + num(field(v[2], "wall_median_ms"))
+    ) /
+    2.0
+  {
+    "a_ms": Json(a),
+    "b_ms": Json(b),
+    "a_minus_b_ms": Json(a - b),
+    "a_over_b": Json(a / b),
+  }
+}
+
+///|
+fn selected_stage_ms(result : Json, names : Array[String]) -> Double raise {
+  guard field(result, "rows") is Array(rows) else { fail("rows") }
+  let times = []
+  for row in rows {
+    if field(row, "steady") != Json(true) {
+      continue
+    }
+    let spans = match field(row, "profile") {
+      {
+        "spans": Array(s),
+        "open_spans": Number(0, ..),
+        "dropped_spans": Number(0, ..),
+        ..
+      } => s
+      Array(s) => s
+      _ => fail("event spans required")
+    }
+    let seen : Map[String, Bool] = Map([])
+    let mut total = 0.0
+    for span in spans {
+      guard field(span, "label") is String(name) else { fail("span label") }
+      if names.contains(name) {
+        seen[name] = true
+        total += num(
+          match span {
+            { "gpu_elapsed_ms": t, .. } => t
+            { "stream_elapsed_ms": t, .. } => t
+            _ => fail("stream interval required")
+          },
+        )
+      }
+    }
+    guard names.all(n => seen.contains(n)) else { fail("missing mapped stage") }
+    times.push(total)
+  }
+  guard times.length() == 10 else { fail("ten warm measurements required") }
+  median(times)
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/shared-compute-20261026"
+  let phases = []
+  for phase in ["world", "actor"] {
+    let off = runs(read(root + "/" + phase + "-off/summary.json"))
+    let events = runs(read(root + "/" + phase + "-events/summary.json"))
+    let sources = []
+    for i in 0..<4 {
+      sources.push(
+        read(root + "/" + phase + "-events/" + i.to_string() + "/result.json"),
+      )
+    }
+    let mapping = if phase == "world" {
+      [
+        (
+          "world_forward",
+          ["world.forward"],
+          ["world.forward"],
+          "matched rollout and error; stream intervals",
+        ),
+        (
+          "world_backward",
+          ["world.backward"],
+          ["world.backward"],
+          "matched scalar loss backward; stream intervals",
+        ),
+        (
+          "world_clip_adam",
+          ["world.adam"],
+          ["world.adam"],
+          "clip and Adam; native finite-gradient guard retained",
+        ),
+      ]
+    } else {
+      [
+        (
+          "actor_backward",
+          ["actor.backward"],
+          ["diag.actor.backward"],
+          "eight backwards; clipping excluded",
+        ),
+        (
+          "critic_backward",
+          ["critic.backward"],
+          ["diag.critic.fit.backward"],
+          "twenty critic backwards",
+        ),
+        (
+          "actor_clip_adam",
+          ["actor.adam"],
+          ["diag.actor.clip_adam"],
+          "one update, clipping included",
+        ),
+        (
+          "critic_clip_adam",
+          ["critic.adam"],
+          ["diag.critic.fit.clip_norm", "diag.critic.fit.adam"],
+          "twenty updates; native finite-gradient guard retained",
+        ),
+        (
+          "critic_gather_forward",
+          ["critic.forward"],
+          ["diag.critic.fit.gather_forward"],
+          "boundary mismatch: SMC also includes target gather and loss; native excludes them",
+        ),
+        (
+          "actor_forward_geometry_reward_tail",
+          ["actor.forward", "actor.geometry", "actor.reward", "actor.tail"],
+          [
+            "diag.actor.imagined_step", "diag.actor.reward_termination", "diag.actor.tail_value",
+          ],
+          "boundary mismatch: native soft failure and return assembly outside these markers; SMC termination inside reward marker",
+        ),
+        (
+          "critic_features_and_targets",
+          ["actor.critic_features", "critic.prepare"],
+          ["diag.critic.feature_pack", "diag.critic.logical_batch_gae"],
+          "boundary mismatch: native logical batch concatenation outside markers; includes feature construction, normalizer, bootstrap, GAE",
+        ),
+      ]
+    }
+    let stages = []
+    for (name, native_labels, smc_labels, boundary) in mapping {
+      let a0 = selected_stage_ms(sources[0], native_labels)
+      let a1 = selected_stage_ms(sources[3], native_labels)
+      let b0 = selected_stage_ms(sources[1], smc_labels)
+      let b1 = selected_stage_ms(sources[2], smc_labels)
+      stages.push({
+        "name": Json(name),
+        "native_ms": Json((a0 + a1) / 2.0),
+        "smc_ms": Json((b0 + b1) / 2.0),
+        "difference_ms": Json((a0 + a1 - b0 - b1) / 2.0),
+        "native_labels": Json(native_labels),
+        "smc_labels": Json(smc_labels),
+        "scope": Json(boundary),
+      })
+    }
+    phases.push({
+      "phase": Json(phase),
+      "off": pair(off),
+      "events": pair(events),
+      "stream_interval_comparison": Json(stages),
+    })
+  }
+  let ln = runs(read(root + "/world-ln-control/summary.json"))
+  let rotations = []
+  for i in 0..<2 {
+    let result = read(
+      root + "/numerics/diag-actor-rotation-control-" + i.to_string() + ".json",
+    )
+    guard field(field(result, "numerical_comparison"), "tensors")
+      is Array(tensors) else {
+      fail("numeric tensors")
+    }
+    rotations.push({
+      "formula": field(result, "rotation_control"),
+      "passed": field(field(result, "numerical_comparison"), "passed"),
+      "selected": Json(
+        tensors.filter(t => {
+          [
+            Json("policy-18-gradient"),
+            Json("policy-19-gradient"),
+            Json("critic-0-parameter"),
+          ].contains(field(t, "name"))
+        }),
+      ),
+    })
+  }
+  let report : Json = {
+    "schema": "moonrobo.shared-compute-reconciliation.v1",
+    "checkpoint": "iteration 60; world=600, actor=40, critic=800 Adam steps",
+    "shapes": "world 2048x8 one update; actor 4096=8x512, horizon32, history10, preview10; critic5x4",
+    "statistics": "each run median of 10 steady repeats after 3 warmups; reported A/B is mean of two run medians in ABBA order",
+    "phases": Json(phases),
+    "layernorm_inverse_ablation": {
+      "a": "SMC eager native LayerNorm",
+      "b": "same SMC eager with expanded LayerNorm only",
+      "times": pair(ln),
+      "acceptance": "diagnostic only; cross-language parameter gate still fails. Do not add this independent delta to other optimizations or treat it as exact compiled-baseline gap attribution.",
+    },
+    "rotation_formula_control": Json(rotations),
+    "optimization_accepted": false,
+    "numerical_tolerance": "unchanged: elementwise atol 2e-6 + rtol 2e-4 * abs(native)",
+    "limitations": [
+      "Not full training iterations: prepared tensors and all resets/uploads outside timing; each repetition starts at identical checkpoint state.",
+      "CPU host-call, CUDA-stream elapsed and summed GPU kernel times overlap and must not be added.",
+      "Stream intervals include gaps. Actor stage boundary mismatches are explicit; omitted assembly and synchronization are not allocated by inference.",
+      "Event runs and off runs are separate ABBA series, not an exact paired measurement of observer cost; clock/load drift remains possible.",
+      "Cross-language parameter/gradient checks fail. Current timings locate costs of existing programs, not certified equivalent training or enabled optimizations.",
+    ],
+  }
+  @fs.write_file(
+    root + "/reconciliation.json",
+    report.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(root + "/reconciliation.json")
+}

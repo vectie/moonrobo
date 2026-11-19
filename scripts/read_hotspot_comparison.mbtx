@@ -1,0 +1,244 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+fn get(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(value) else {
+    fail("missing " + key)
+  }
+  value
+}
+
+///|
+fn number(j : Json) -> Double raise {
+  match j {
+    Number(n, ..) => n
+    String(s) => @string.parse_double(s)
+    _ => fail("numeric field required")
+  }
+}
+
+///|
+fn selected(j : Json, keys : Array[String]) -> Json raise {
+  guard j is Object(m) else { fail("statistics object required") }
+  let result : Map[String, Json] = Map([])
+  for key in keys {
+    if m.get(key) is Some(v) {
+      result[key] = v
+    }
+  }
+  Json(result)
+}
+
+///|
+fn copy_stages(j : Json) -> Json raise {
+  guard get(j, "api_by_collection_stage") is Array(rows) else {
+    fail("copy stage rows required")
+  }
+  let groups : Map[String, Map[String, Double]] = Map([])
+  for row in rows {
+    guard get(row, "label") is String(label) else { fail("label required") }
+    let key = label.split(",").to_array()[0].to_owned()
+    let values = groups.get_or_default(key, Map([]))
+    for
+      field in [
+        "api_calls", "api_wall_ns", "bytes", "non_unique_copy_matches", "four_byte_calls",
+      ] {
+      values[field] = values.get_or_default(field, 0.0) +
+        number(get(row, field))
+    }
+    groups[key] = values
+  }
+  let result : Map[String, Json] = Map([])
+  for label, values in groups {
+    let converted : Map[String, Json] = Map([])
+    for field, value in values {
+      if field == "api_wall_ns" {
+        converted["api_wall_ms"] = Json(value / 1000000.0)
+      } else {
+        converted[field] = Json(value)
+      }
+    }
+    result[label] = Json(converted)
+  }
+  Json(result)
+}
+
+///|
+fn top(j : Json, limit : Int32) -> Json raise {
+  guard j is Object(m) else { fail("statistics map required") }
+  let values : Array[(String, Json, Double)] = []
+  for key, value in m {
+    guard get(value, "sum_ms") is Number(time, ..) else {
+      fail("sum_ms required")
+    }
+    values.push((key, value, time))
+  }
+  values.sort_by((a, b) => b.2.compare(a.2))
+  Json(
+    values[:values.length().min(limit)].map(v => {
+      (
+        {
+          "label": Json(v.0),
+          "count": get(v.1, "count"),
+          "sum_ms": get(v.1, "sum_ms"),
+          "union_ms": get(v.1, "union_ms"),
+        } : Json)
+    }),
+  )
+}
+
+///|
+fn top_wall(j : Json, limit : Int32) -> Json raise {
+  guard j is Object(m) else { fail("wall-time map required") }
+  let values : Array[(String, Double)] = []
+  for key, value in m {
+    guard value is Number(time, ..) else { fail("wall milliseconds required") }
+    values.push((key, time))
+  }
+  values.sort_by((a, b) => b.1.compare(a.1))
+  Json(
+    values[:values.length().min(limit)].map(v => {
+      ({ "label": Json(v.0), "exclusive_wall_sum_ms": Json(v.1) } : Json)
+    }),
+  )
+}
+
+///|
+async fn main {
+  let (phase, selection) = match @env.args() {
+    [_, phase] => (phase, "summary")
+    [_, phase, selection] => (phase, selection)
+    _ =>
+      fail(
+        "pair|actor|world|collect [summary|cpu|gpu|source|details|focus|copies]",
+      )
+  }
+  guard ["pair", "actor", "world", "collect"].contains(phase) &&
+    ["summary", "cpu", "gpu", "source", "details", "focus", "copies"].contains(
+      selection,
+    ) else {
+    fail("invalid readout selection")
+  }
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/hotspot-smc4096-20261026"
+  let file = @fs.open(
+    root +
+    (if phase == "pair" {
+      "/pair-result.json"
+    } else {
+      "/comparison-result.json"
+    }),
+    mode=ReadOnly,
+  )
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 16777216L else {
+    fail("bounded comparison metadata required")
+  }
+  let report = @json.parse(
+    @utf8.decode(file.read_exactly_at(size.to_int(), position=0L)),
+  )
+  if phase == "pair" {
+    println(get(report, "benchmark").stringify(indent=2))
+    println(get(report, "native_steady_phase_means_ms").stringify(indent=2))
+    println(get(report, "per_run").stringify(indent=2))
+    return
+  }
+  let phases = get(get(report, "phase_diagnostics"), phase)
+  for side in ["n", "s"] {
+    let data = get(phases, side)
+    let trace = get(data, "trace")
+    let output : Map[String, Json] = Map([])
+    output["side"] = Json(side)
+    output["cpu_range_exclusive_wall_sum_ms"] = top_wall(
+      get(trace, "cpu_range_exclusive_wall_sum_ms"),
+      18,
+    )
+    output["gpu_kernel_symbols_ms"] = top(
+      get(trace, "gpu_kernel_symbols_ms"),
+      10,
+    )
+    for key in ["off", "aten_nsys", "observed_body_delta_ms"] {
+      output[key] = get(data, key)
+    }
+    for
+      key in [
+        "counts", "gpu_kernels_ms", "gpu_all_events_ms", "cpu_cuda_api_categories_ms",
+        "gpu_source_unknown_ms", "runtime_structure_check", "nsight_diagnostics",
+      ] {
+      output[key] = get(trace, key)
+    }
+    for
+      key in [
+        "gpu_source_direct_ms", "gpu_source_backward_ms", "cpu_structural_inclusive_ms",
+        "cpu_cuda_api_by_name_ms", "gpu_operators_exclusive_ms",
+      ] {
+      output[key] = top(get(trace, key), 18)
+    }
+    let chosen : Map[String, Json] = Map([])
+    chosen["side"] = Json(side)
+    let keys = match selection {
+      "summary" =>
+        [
+          "off", "aten_nsys", "observed_body_delta_ms", "counts", "gpu_kernels_ms",
+          "gpu_all_events_ms", "cpu_cuda_api_categories_ms", "runtime_structure_check",
+        ]
+      "cpu" =>
+        [
+          "cpu_range_exclusive_wall_sum_ms", "cpu_structural_inclusive_ms", "cpu_cuda_api_by_name_ms",
+        ]
+      "gpu" => ["gpu_kernel_symbols_ms", "gpu_operators_exclusive_ms"]
+      "source" =>
+        [
+          "gpu_source_direct_ms", "gpu_source_backward_ms", "gpu_source_unknown_ms",
+        ]
+      _ => []
+    }
+    for key in keys {
+      chosen[key] = get(Json(output), key)
+    }
+    if selection == "details" {
+      chosen["details"] = get(
+        data,
+        if phase == "world" {
+          "sync_details"
+        } else if phase == "collect" {
+          "copy_details"
+        } else {
+          "trace"
+        },
+      )
+    }
+    if selection == "copies" {
+      guard phase == "collect" else { fail("copies requires collect") }
+      chosen["copy_stages"] = copy_stages(get(data, "copy_details"))
+    }
+    if selection == "focus" {
+      let labels = [
+        "diag.geometry.robot_fk", "diag.geometry.reference_fk", "diag.actor.critic_features",
+        "diag.profile.actor.critic_features", "diag.profile.batch.policy.references_history",
+        "diag.profile.batch.resident_reference.gather", "diag.actor.reward", "diag.actor.adam",
+        "diag.critic.normalizer", "diag.critic.bootstrap", "diag.critic.gae", "diag.critic.adam",
+        "diag.profile.critic.forward", "diag.profile.critic.backward", "diag.profile.critic.adam",
+        "diag.critic.features", "diag.critic.feature_pack", "diag.critic.logical_batch_gae",
+        "diag.critic.fit.gather_forward", "diag.critic.fit.backward", "diag.critic.fit.adam",
+        "diag.collection.state_read", "diag.collection.inspect", "diag.collection.physics_step",
+        "diag.collection.policy_normalizers", "diag.collection.world_normalizers",
+      ]
+      for
+        key in [
+          "cpu_structural_inclusive_ms", "gpu_source_direct_ms", "gpu_source_backward_ms",
+        ] {
+        chosen[key] = selected(get(trace, key), labels)
+      }
+    }
+    println(Json(chosen).stringify(indent=2))
+  }
+}

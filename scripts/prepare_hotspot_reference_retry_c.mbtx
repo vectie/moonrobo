@@ -1,0 +1,37 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (reader, redirect) = @process.read_from_process()
+  defer reader.close()
+  @async.with_task_group() <| group => {
+    let child = group.spawn(() => @process.run("sha256sum", [path], stdout=redirect))
+    let bytes = FixedArray::make(2048, b'\x00')
+    let n = reader.read(bytes)
+    guard n >= 64 && n < 2048 && child.wait() == 0 else { fail("sha failed") }
+    @utf8.decode(Bytes::from_array(bytes[:64]))
+  }
+}
+
+///|
+async fn main {
+  let base = "/home/wlc004s/moonrobo/private/hotspot-optimization-20261025-b"
+  let parent = "/home/wlc004s/moonrobo/runs/hotspot-reference_fk-abba-20261026-a/spec.json"
+  guard sha(parent) == "67adbc0e277523820cdbb144c83aa967cb20f4fb7a165c46d4e35436ef86694e" else { fail("frozen source specification changed") }
+  let spec = @json.parse(@fs.read_file(parent).text())
+  guard spec is Object(fields) && fields.get("pins") is Some(Array(pins)) && fields.get("known_differences") is Some(Array(notes)) else { fail("frozen fields required") }
+  fields["name"] = Json("native-reference-fk-batch4096-fresh-abba-after-measured-closed-cache-advice")
+  for path in [base + "/run_hotspot_candidate_series_v3.mbtx", base + "/prepare_hotspot_reference_retry_c.mbtx", "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_hotspot_recent_cache_f.mbtx", "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/cache-hotspot-expanded-closed-builds-20261026-c.json", "/home/wlc004s/moonrobo/runs/hotspot-apic-exact-gate-20261025-b/checkpoint-page-advice.json", "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_hotspot_apic_gate_cache.mbtx", "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/cache-apic-gate-before-reference-retry-20261026-c.json"] {
+    pins.push({ "path": Json(path), "sha256": Json(sha(path)), "role": "fixed-housekeeping-controller-or-receipt" })
+  }
+  notes.push(Json("Prior root hotspot-reference_fk-abba-20261026-a completed only run0; image cache helper rejected underscore in receipt name before touching files. Preserve that incomplete series, use no measurements from it, and run a fresh complete ABBA with identical binaries/configs/input pins/thresholds. Only housekeeping receipt naming is corrected."))
+  notes.push(Json("Root20261026-b passed run0/run1; run2 was rejected before training by original admission: cuda80959668224B below required80968197816B. No OOM. No survivor timings retained. Closed APIC-gate checkpoint/CUDA pages and measured closed-build/trace pages were advised before this fresh ABBA; all files retained, no reserve or guard changes."))
+  @fs.write_file(base + "/spec-reference_fk-v3.json", spec.stringify(indent=2), create_mode=CreateNew)
+}

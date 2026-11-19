@@ -1,0 +1,16 @@
+{
+  "seeds": [0, 1, 2],
+  "updates": 1000,
+  "batch_size": 256,
+  "learning_rate": 0.001,
+  "history_length": 10,
+  "future_length": 10,
+  "width": 128,
+  "latent_dim": 32,
+  "output_bound_rad": 0.6,
+  "normalization_floor": 0.05,
+  "cpu_threads": 2,
+  "reference_only_initialization": true,
+  "checkpoint_rule": "Use the final fixed update; no checkpoint or seed selection on quality trials",
+  "scope": "Same reference data, architecture, inherited relative feedback, normalization, update budget and quality gate as the joint-input initializer. Zero and mask only the decoder input weights from the observation encoder during supervised fitting; actual observation still drives frozen relative balance feedback. Remove the fitting hook before saving so a later shared RL run may learn that path from identical initial outputs. This tests whether on-reference observation shortcuts hurt closed-loop initialization, not world-model/PPO efficiency or generalization."
+}

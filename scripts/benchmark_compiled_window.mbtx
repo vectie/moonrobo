@@ -1,0 +1,40 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, amp] && ["bf16", "none"].contains(amp) else {
+    fail("precision")
+  }
+  let root = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let gate = @json.parse(
+    @fs.read_file(root + "/aoti-window-smc-" + amp + "-gate-g/result.json").text(),
+  )
+  guard gate is { "numerical_comparison": { "passed": True, .. }, .. } else {
+    fail("strict world-update gate required before benchmark")
+  }
+  for
+    (side, slot) in [
+      ("baseline", "a"),
+      ("native", "a"),
+      ("smc", "a"),
+      ("smc", "b"),
+      ("native", "b"),
+      ("baseline", "b"),
+    ] {
+    let label = "aoti-window-bench-" + side + "-" + amp + "-" + slot
+    assert_eq(
+      @process.run("moon", [
+        "run", "--target", "native", "scripts/complete_compiled_window.mbtx", "run",
+        side, amp, "13", label,
+      ]),
+      0,
+    )
+  }
+}

@@ -1,0 +1,179 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn num(j : Json) -> Double raise {
+  guard j is Number(n, ..) else { fail("number required") }
+  n
+}
+
+///|
+fn array(j : Json) -> Array[Json] raise {
+  guard j is Array(a) else { fail("array required") }
+  a
+}
+
+///|
+fn median(values : Array[Double]) -> Double raise {
+  guard !values.is_empty() else { fail("empty median") }
+  let v = values.copy()
+  v.sort()
+  (v[(v.length() - 1) / 2] + v[v.length() / 2]) / 2.0
+}
+
+///|
+fn labels(row : Json, selected : Array[Json]) -> Double raise {
+  let spans = match field(row, "profile") {
+    {
+      "spans": Array(s),
+      "dropped_spans": Number(0, ..),
+      "open_spans": Number(0, ..),
+      ..
+    } => s
+    Array(s) => s
+    _ => fail("invalid stage profile")
+  }
+  let seen : Map[String, Bool] = Map([])
+  let mut sum = 0.0
+  for span in spans {
+    if selected.contains(field(span, "label")) {
+      guard field(span, "label") is String(name) else { fail("label") }
+      seen[name] = true
+      sum += match span {
+        { "gpu_elapsed_ms": Number(n, ..), .. } => n
+        { "stream_elapsed_ms": Number(n, ..), .. } => n
+        _ => fail("missing CUDA stage elapsed")
+      }
+    }
+  }
+  guard seen.length() == selected.length() else {
+    fail("missing requested stage")
+  }
+  sum
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/latest-phase-comparison-20261026"
+  let old = @json.parse(
+    @fs.read_file(
+      "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/shared-compute-20261026/reconciliation.json",
+    ).text(),
+  )
+  let phases : Array[Json] = []
+  for phase in ["world", "actor"] {
+    let runs : Array[Json] = []
+    let measured_rows : Array[Array[Json]] = []
+    for implementation in ["native", "smc"] {
+      let name = "latest-ln-" + phase + "-" + implementation + "-events-a"
+      let destination = root + "/" + name
+      guard !@fs.exists(destination) else { fail("preserve prior fetch") }
+      @fs.mkdir(destination)
+      for
+        file in [
+          "result.json", "protocol.json", "training-guard.json", "training-docker-final.json",
+          "completion.json",
+        ] {
+        guard @process.run("scp", [
+            "-o",
+            "ControlPath=/tmp/moonrobo-operator-179.sock",
+            "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/runs/hotspot-shared-" +
+            name +
+            "/" +
+            file,
+            destination + "/" + file,
+          ]) ==
+          0 else {
+          fail("fetch " + name)
+        }
+      }
+      let result = @json.parse(
+        @fs.read_file(destination + "/result.json").text(),
+      )
+      let rows = array(field(result, "rows")).filter(r => {
+        field(r, "steady") == Json(true)
+      })
+      guard rows.length() == 10 &&
+        rows.all(r => field(r, "observer_active") == Json(true)) else {
+        fail("ten measured event repetitions required")
+      }
+      measured_rows.push(rows)
+      runs.push({
+        "implementation": Json(implementation),
+        "wall_median_ms": Json(median(rows.map(r => num(field(r, "wall_ms"))))),
+        "resource_guard": @json.parse(
+          @fs.read_file(destination + "/training-guard.json").text(),
+        ),
+      })
+    }
+    let matches = array(field(old, "phases")).filter(p => {
+      field(p, "phase") == Json(phase)
+    })
+    guard matches is [previous] else { fail("one prior phase mapping") }
+    let comparisons : Array[Json] = []
+    for mapping in array(field(previous, "stream_interval_comparison")) {
+      let a = median(
+        measured_rows[0].map(r => {
+          labels(r, array(field(mapping, "native_labels")))
+        }),
+      )
+      let b = median(
+        measured_rows[1].map(r => labels(r, array(field(mapping, "smc_labels")))),
+      )
+      comparisons.push({
+        "name": field(mapping, "name"),
+        "native_ms": Json(a),
+        "smc_ms": Json(b),
+        "difference_ms": Json(a - b),
+        "ratio": Json(a / b),
+        "scope": field(mapping, "scope"),
+        "native_labels": field(mapping, "native_labels"),
+        "smc_labels": field(mapping, "smc_labels"),
+      })
+    }
+    let a = num(field(runs[0], "wall_median_ms"))
+    let b = num(field(runs[1], "wall_median_ms"))
+    phases.push({
+      "phase": Json(phase),
+      "native_wall_ms": Json(a),
+      "smc_wall_ms": Json(b),
+      "wall_difference_ms": Json(a - b),
+      "operations": Json(comparisons),
+      "runs": Json(runs),
+    })
+  }
+  let summary : Json = {
+    "format": "moonrobo.latest-phase-comparison.v1",
+    "latest_native_ln_and_linear": true,
+    "phases": Json(phases),
+    "scope": "one process per side/phase; 3 warmups + 10 repeats, median; fixed iteration60 inputs, weights, noise and optimizer state; world one2048x8 update; actor4096 eight512 H32 plus20critic updates; uploads/reset excluded",
+    "timing": "CUDA stage event intervals include queue gaps, overlap CPU, not kernel-active-only; no Nsight or ATen observer; not observer-off full training",
+    "limits": "single paired sample per operation, not ABBA; grouping boundary mismatches retained; timings cannot be added/multiplied to close full iteration gap; full actor numeric gate fails, no numerical promotion",
+  }
+  @fs.write_file(
+    root + "/summary.json",
+    summary.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  for p in phases {
+    println(
+      Json({
+        "phase": field(p, "phase"),
+        "native_wall_ms": field(p, "native_wall_ms"),
+        "smc_wall_ms": field(p, "smc_wall_ms"),
+        "operations": field(p, "operations"),
+      }).stringify(indent=2),
+    )
+  }
+}

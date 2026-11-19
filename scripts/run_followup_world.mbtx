@@ -1,0 +1,51 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+let base = "/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a"
+///|
+async fn run(label : String, script : String, args : Array[String]) -> Unit {
+  println("Starting " + label)
+  guard @process.run("/home/wlc004s/moonrobo/toolchain/bin/moon",
+    ["run", "--target", "native", script, "--", ..args],
+    stdout=@process.redirect_to_file(base + "/" + label + ".stdout.log", create_mode=CreateNew),
+    stderr=@process.redirect_to_file(base + "/" + label + ".stderr.log", create_mode=CreateNew)) == 0 else {
+    fail(label + " failed; no retries or guard changes, evidence retained")
+  }
+  println("Completed " + label)
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["build", "gates", "pair"].contains(mode) else { fail("build|gates|pair") }
+  if mode == "build" {
+    for step in ["stage", "fixture-stage", "trainer", "gate-build"] {
+      run("build-" + step, base + "/build_followup_world.mbtx", [step])
+    }
+    return
+  }
+  if mode == "gates" {
+    run("spec-gate", base + "/prepare_followup_world_spec.mbtx", ["gate"])
+    for gate in ["world-fields", "world_packed"] {
+      run("gate-" + gate, base + "/run_followup_pairs.mbtx", ["--numeric-gate", base + "/spec-gate.json",
+        "/home/wlc004s/moonrobo/runs/hotspot-followup-" + gate + "-20261026-a", gate])
+    }
+    return
+  }
+  run("spec-pair", base + "/prepare_followup_world_spec.mbtx", ["pair"])
+  let root = "/home/wlc004s/moonrobo/runs/hotspot-world-packed-abba-20261026-a"
+  run("pair-prepare", base + "/run_followup_pairs.mbtx", ["--prepare", base + "/spec-pair.json", root])
+  let tools = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+  for i in 0..<4 {
+    run("pair-run-" + i.to_string(), base + "/run_followup_pairs.mbtx", ["--run", root, i.to_string()])
+    run("pair-cache-" + i.to_string(), tools + "/advise_hotspot_run_cache.mbtx", ["--advise-caches",
+      tools + "/cache-hotspot-world-packed-20261026-a-" + i.to_string() + ".json", root + "/run-" + i.to_string()])
+    run("pair-image-" + i.to_string(), "/home/wlc004s/moonrobo/private/hotspot-smc4096-20261026-a/advise_closed_smc_small_image_pages.mbtx", ["--advise", "cache-world-packed-image-20261026-a-" + i.to_string() + ".json"])
+  }
+  run("pair-summary", base + "/summarize_hotspot_pairs.mbtx", [root])
+  println("Completed world packed ABBA")
+}

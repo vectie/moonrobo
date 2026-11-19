@@ -1,0 +1,86 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/geometry-cost-20261030-a"
+  let old = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let socket = "/tmp/moonrobo-cost-179.sock"
+  let host = "wlc004s@192.168.2.179"
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=" + socket,
+      "scripts/inspect_task_file_residency.mbtx",
+      host + ":" + base + "/inspect_geometry_cost_residency.mbtx",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        socket,
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/inspect_geometry_cost_residency.mbtx -- --scan " +
+        base +
+        "/geometry-cost-build-residency-a.json " +
+        base +
+        "/workspace",
+      ],
+      stdout=@process.redirect_to_file(
+        root + "/build-residency.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        root + "/build-residency.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+  let script = @fs.read_file("scripts/reclaim_geometry_builds.mbtx")
+    .text()
+    .replace_all(
+      old="let out = \"" + old + "\"",
+      new="let out = \"" + root + "\"",
+    )
+    .replace_all(
+      old="out + \"/advise_heading_inputs_source.mbtx\"",
+      new="\"" + old + "/advise_heading_inputs_source.mbtx\"",
+    )
+    .replace_all(
+      old="geometry-residency-a.json",
+      new="geometry-cost-build-residency-a.json",
+    )
+    .replace_all(
+      old="geometry-build-advice-a.json",
+      new="geometry-cost-build-advice-a.json",
+    )
+    .replace_all(
+      old="advise_geometry_builds_b.mbtx",
+      new="advise_geometry_cost_builds_a.mbtx",
+    )
+    .replace_all(old="build-advice-b.", new="cost-build-advice-a.")
+    .replace_all(old="/build-advice.json", new="/cost-build-advice-a.json")
+    .replace_all(old="/tmp/moonrobo-math-179.sock", new=socket)
+  @fs.write_file(root + "/reclaim_builds_a.mbtx", script, create_mode=CreateNew)
+  assert_eq(
+    @process.run("moon", [
+      "run",
+      "--target",
+      "native",
+      root + "/reclaim_builds_a.mbtx",
+    ]),
+    0,
+  )
+}

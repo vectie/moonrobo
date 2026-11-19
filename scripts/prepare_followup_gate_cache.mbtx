@@ -1,0 +1,39 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let out = repo +
+    "/output/spark-runtime-20261024/world-ln-fk-20261026/advise_followup_gate_cache.mbtx"
+  let old = "guard field(result, \"passed\") == Json(true) && field(result, \"process_guard_passed\") == Json(true) && field(result, \"marker_seen\") == Json(true) && field(result, \"mode\") == Json(mode) && field(result, \"source_spec_sha256\") == Json(\"8caa57c3b9c28352eca5939e75e174e47e4f7e611645d26f3e614281d45ffaa5\") else { fail(\"exact completed numeric gate required\") }"
+  let replacement =
+    #|let is_world = mode == "world-fields" || mode == "world_packed"
+    #|    let expected_sha = if is_world { "58d929f32647ac1eaab6beac378b4e9ebab2e2df05064f1c88345517cedb90c2" } else { "4b45b76cd75c0140fa7c8e7b290ee2f3fe7bf6f653f25eac71be0e6739712569" }
+    #|    guard field(result, "process_guard_passed") == Json(true) && field(result, "mode") == Json(mode) && field(result, "source_spec_sha256") == Json(expected_sha) && field(result, "passed") == Json(mode != "fused_tail") else { fail("exact ended gate receipt required; failed numeric gate remains failed") }
+  let source = @fs.read_file(
+      repo + "/scripts/advise_hotspot_numeric_cache.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="[\"layernorm-unit\", \"layernorm\", \"cross\", \"reference_fk-gather\", \"reference_fk\"]",
+      new="[\"world-fields\", \"world_packed\", \"fused-tail-unit\", \"fused_tail\"]",
+    )
+    .replace_all(
+      old="\"/runs/hotspot-numeric-\" + mode + \"-20261025-a\"",
+      new="\"/runs/hotspot-followup-\" + mode + \"-20261026-a\"",
+    )
+    .replace_all(old~, new=replacement)
+  guard source.contains(replacement) else { fail("gate receipt derivation") }
+  @fs.write_file(out, source, create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o", "ControlPath=/tmp/moonrobo-operator-179.sock", out, "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_followup_gate_cache.mbtx",
+    ]) ==
+    0 else {
+    fail("copy")
+  }
+}

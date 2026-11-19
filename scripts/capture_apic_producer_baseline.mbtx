@@ -1,0 +1,115 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn sha256(bytes : Bytes) -> String {
+  let mut digest = ""
+  for byte in @crypto.sha256(bytes) {
+    digest += byte.to_hex()
+  }
+  digest
+}
+
+///|
+/// Only the original entrypoint moved. Its recorded identity never changes.
+fn preserved_location(path : String) -> String {
+  match path {
+    "cmd/reference_apic_export/main.mbt" =>
+      "cmd/reference_apic_export_legacy/main.mbt"
+    "cmd/reference_apic_export/moon.pkg" =>
+      "cmd/reference_apic_export_legacy/moon.pkg"
+    "cmd/reference_apic_export/pkg.generated.mbti" =>
+      "cmd/reference_apic_export_legacy/original.pkg.generated.mbti"
+    "scripts/export_g1_aligned_apic.mbtx" =>
+      "scripts/python_reference/export_g1_aligned_apic.mbtx"
+    _ => path
+  }
+}
+
+///|
+/// Metadata only. This tool consumes the existing baseline; it cannot refresh
+/// identities to approve edited original sources. --preserve only creates
+/// missing byte-identical .source copies, never overwrites an existing copy.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 4 && (args[2] == "--verify" || args[2] == "--preserve") else {
+    fail(
+      "usage: capture_apic_producer_baseline.mbtx REPO (--verify|--preserve) BASELINE.json; existing SHA identities are immutable",
+    )
+  }
+  let root = args[1]
+  let preserve = args[2] == "--preserve"
+  guard @json.parse(@fs.read_file(args[3]).text())
+    is {
+      "format": "moonrobo.apic-producer-source-baseline.v1",
+      "files": Array(expected),
+      ..
+    } &&
+    expected.length() == 13 else {
+    fail("expected the original 13-file APIC baseline")
+  }
+  let verified : Array[Json] = []
+  for entry in expected {
+    guard entry
+      is {
+        "path": String(path),
+        "sha256": String(digest),
+        "bytes": Number(size),
+        ..
+      } else {
+      fail("invalid original source identity")
+    }
+    guard !path.has_prefix("/") && !path.contains("..") else {
+      fail("invalid relative source identity path")
+    }
+    let actual = preserved_location(path)
+    let bytes = @fs.read_file(root + "/" + actual).binary()
+    guard sha256(bytes) == digest && bytes.length().to_double() == size else {
+      fail("original APIC source identity changed: " + actual)
+    }
+    let copy = "docs/migration-baselines/apic-producer/original/" +
+      path +
+      ".source"
+    let destination = root + "/" + copy
+    if preserve && !@fs.exists(destination) {
+      let segments = destination.split("/").collect()
+      let parent = segments[:segments.length() - 1].join("/")
+      if !@fs.exists(parent) {
+        @fs.mkdir(parent, recursive=true)
+      }
+      @fs.write_file(destination, bytes, create_mode=CreateNew)
+    }
+    let archived = @fs.read_file(destination).binary()
+    guard sha256(archived) == digest && archived == bytes else {
+      fail("immutable APIC source copy differs: " + copy)
+    }
+    verified.push({
+      "original_path": Json(path),
+      "preserved_path": Json(actual),
+      "immutable_copy": Json(copy),
+      "sha256": Json(digest),
+    })
+  }
+  println(
+    (
+      {
+        "format": "moonrobo.apic-producer-source-preservation-check.v1",
+        "files_verified": Json(verified.length()),
+        "files": Json(verified),
+        "identical": true,
+        "baseline_refreshed": false,
+        "sdk_initialized": false,
+        "sdk_kernel_compiler_invoked": false,
+        "cuda_context_created": false,
+        "artifact_generated": false,
+        "tests_executed": false,
+        "runtime_parity_verified": false,
+      } : Json).stringify(indent=2),
+  )
+}

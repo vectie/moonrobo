@@ -1,0 +1,87 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-math-179.sock"
+  let helper = @fs.read_file(
+    "providers/motion_learning/geometry_reference_constants.py",
+  ).text()
+  @fs.write_file(
+    out + "/geometry_reference_constants_a.py",
+    helper,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=" + socket,
+      out + "/geometry_reference_constants_a.py",
+      host + ":" + base + "/geometry_reference_constants_a.py",
+    ]),
+    0,
+  )
+  let code = @fs.read_file(out + "/geometry_reference_inputs_compare_a.py")
+    .text()
+    .replace_all(
+      old="if __name__=='__main__':main()",
+      new="if __name__=='__main__':\n    from geometry_reference_constants_a import fp64_robot_constants\n    with fp64_robot_constants():main()",
+    )
+  @fs.write_file(
+    out + "/geometry_constants_compare_b.py",
+    code,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=" + socket,
+      out + "/geometry_constants_compare_b.py",
+      host + ":" + base + "/geometry_constants_compare_b.py",
+    ]),
+    0,
+  )
+  let launcher = @fs.read_file("scripts/audit_geometry_world.mbtx")
+    .text()
+    .replace_all(
+      old="geometry_world_boundary_audit.py",
+      new="geometry_constants_compare_b.py",
+    )
+    .replace_all(
+      old="providers/motion_learning/geometry_constants_compare_b.py",
+      new=out + "/geometry_constants_compare_b.py",
+    )
+    .replace_all(
+      old="run_geometry_world_boundary_audit.mbtx",
+      new="run_geometry_constants_compare_b.mbtx",
+    )
+    .replace_all(old="boundary-audit-a", new="constants-compare-b")
+  // The generated launcher must not overwrite the already copied adapter.
+  let launcher = launcher.replace_all(
+    old="@fs.write_file(out+\"/\"+name,text,create_mode=CreateNew)",
+    new="if name!=\"geometry_constants_compare_b.py\" {@fs.write_file(out+\"/\"+name,text,create_mode=CreateNew)}",
+  )
+  @fs.write_file(
+    out + "/audit_constants_b.mbtx",
+    launcher,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("moon", [
+      "run",
+      "--target",
+      "native",
+      out + "/audit_constants_b.mbtx",
+    ]),
+    0,
+  )
+}

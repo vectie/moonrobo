@@ -1,0 +1,46 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(args.length(), 3, msg="usage: start_g1_long_study.mbtx REPO OUTPUT")
+  let root = args[1]
+  let charter = root + "/target/learning/g1-long-charter"
+  if !@fs.exists(charter) {
+    @fs.mkdir(charter, recursive=true)
+  }
+  let collection = @json.parse(
+    @fs.read_file(root + "/examples/learning/g1-goal-collection.json").text(),
+  )
+  guard collection is Object(fields) else { fail("expected collection config") }
+  fields.set("duration_s", 10)
+  @fs.write_file(
+    charter + "/collection.json",
+    collection.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let (code, stdout, stderr) = @process.collect_output("moon", [
+    "run",
+    "--target",
+    "native",
+    root + "/scripts/fit_g1_ppo.mbtx",
+    root,
+    root + "/target/learning/g1-dynamics",
+    args[2],
+    root + "/examples/learning/g1-ppo-long-fit.json",
+  ])
+  @fs.write_file(
+    args[2] + "/study.log",
+    stdout.text() + stderr.text(),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(code, 0, msg=stderr.text() + stdout.text())
+  println("Ten-second PPO study complete: " + args[2])
+}

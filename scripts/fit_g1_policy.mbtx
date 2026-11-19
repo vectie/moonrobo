@@ -1,0 +1,262 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = native_collect_output(exe, args)
+  assert_eq(code, 0, msg=stderr.text())
+  stdout.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() == 4 || args.length() == 5,
+    msg="usage: fit_g1_policy.mbtx ABSOLUTE_REPO DYNAMICS_RUN NEW_OUTPUT [PRIOR_POLICY_DIR]",
+  )
+  let root = args[1]
+  let source = args[2]
+  let output = args[3]
+  @fs.mkdir(output, recursive=true)
+  let launcher = root + "/scripts/run_native_learning.mbtx"
+  let policy = root + "/providers/motion_learning/policy.py"
+  let scene = root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml"
+  let physics = root + "/examples/learning/g1-cpu-experiment.json"
+  let collect_config = root + "/examples/learning/g1-dynamics-collection.json"
+  let config = root + "/examples/learning/g1-policy-fit.json"
+  let executable = root +
+    "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe"
+  println(
+    "Test execution deferred; preserved Python test runner is archived for later parity runs.",
+  )
+
+  println("Fitting actor/critic and evaluating in MuJoCo")
+  let fit_command = [
+    policy,
+    "fit",
+    "--train",
+    source + "/train-batch.json",
+    "--dynamics",
+    source + "/fit/dynamics-seed-0.moon.json",
+    "--scene",
+    scene,
+    "--config",
+    config,
+    "--experiment",
+    physics,
+    "--output",
+    output + "/policy",
+  ]
+  if args.length() == 5 {
+    fit_command.append(["--warm-start-policy", args[4]])
+  }
+  let fit_log = run(launcher, fit_command)
+  @fs.write_file(output + "/policy.log", fit_log, create_mode=CreateOrTruncate)
+  let report = @json.parse(@fs.read_file(output + "/policy/report.json").text())
+  assert_eq(
+    field(report, "checkpoint_selection"),
+    "validation-physics-only".to_json(),
+  )
+  let runs = array(field(report, "runs"))
+  assert_eq(runs.length(), 3)
+  for result in runs {
+    assert_eq(field(result, "actor_changed"), true.to_json())
+    assert_eq(field(result, "dynamics_unchanged"), true.to_json())
+    assert_eq(field(result, "reload_matches"), true.to_json())
+    println(
+      (
+        {
+          "seed": field(result, "seed"),
+          "selected_update": field(result, "selected_update"),
+          "baseline": field(result, "baseline"),
+          "candidate": field(result, "candidate"),
+          "qualifies": field(result, "qualifies"),
+        } : Json).stringify(),
+    )
+  }
+  println("Collecting fresh train-family trajectories from the latest actor")
+  println(
+    run(launcher, [
+      policy,
+      "collect",
+      "--checkpoint",
+      output + "/policy/latest-actor-seed-0.moon.json",
+      "--scene",
+      scene,
+      "--experiment",
+      collect_config,
+      "--output",
+      output + "/recollection",
+    ]),
+  )
+  let original = @json.parse(
+    @fs.read_file(source + "/collection/dataset.json").text(),
+  )
+  let fresh = @json.parse(
+    @fs.read_file(output + "/recollection/dataset.json").text(),
+  )
+  let fresh_episodes = array(field(fresh, "episodes"))
+  assert_eq(fresh_episodes.length(), 36)
+  for episode in fresh_episodes {
+    assert_eq(field(episode, "split"), "train".to_json())
+  }
+  assert_eq(field(fresh, "state_axes"), field(original, "state_axes"))
+  assert_eq(field(fresh, "action_axes"), field(original, "action_axes"))
+  let combined = array(field(original, "episodes")).copy()
+  combined.append(fresh_episodes)
+  guard original is Object(fields) else { fail("expected dataset") }
+  guard field(original, "dataset_id") is String(original_id) else {
+    fail("expected dataset id")
+  }
+  fields["dataset_id"] = (original_id + "-policy-round").to_json()
+  fields["provenance"] = ("Derived from initial dynamics collection plus " +
+  field(fresh, "provenance").stringify()).to_json()
+  fields["episodes"] = combined.to_json()
+  @fs.mkdir(output + "/collection", recursive=true)
+  let merged = output + "/collection/dataset.json"
+  @fs.write_file(merged, original.stringify(), create_mode=CreateOrTruncate)
+  for split in ["train", "validation", "test"] {
+    let batch = run(executable, [merged, split, "8"])
+    @fs.write_file(
+      output + "/" + split + "-batch.json",
+      batch,
+      create_mode=CreateOrTruncate,
+    )
+    if split != "train" {
+      assert_eq(
+        field(@json.parse(batch), "state"),
+        field(
+          @json.parse(
+            @fs.read_file(source + "/" + split + "-batch.json").text(),
+          ),
+          "state",
+        ),
+      )
+    }
+  }
+  println("Refitting dynamics with the fresh policy transitions")
+  let refit_log = run(launcher, [
+    root + "/providers/motion_learning/dynamics.py",
+    "--train",
+    output + "/train-batch.json",
+    "--validation",
+    output + "/validation-batch.json",
+    "--test",
+    output + "/test-batch.json",
+    "--config",
+    root + "/examples/learning/g1-dynamics-fit.json",
+    "--output",
+    output + "/fit",
+  ])
+  @fs.write_file(output + "/refit.log", refit_log, create_mode=CreateOrTruncate)
+  let refit = @json.parse(@fs.read_file(output + "/fit/report.json").text())
+  println(
+    "Refitted dynamics diagnostic passed: " +
+    field(refit, "all_passed").stringify(),
+  )
+  println("Controller qualified: " + field(report, "any_qualified").stringify())
+}
+
+///|
+/// Checkpoint copies are validated or converted by the reviewed native loader.
+fn native_checkpoint_copy_command(
+  exe : String,
+  args : Array[String],
+) -> (String, Array[String])? raise {
+  if exe != "/bin/cp" || args.length() < 2 {
+    return None
+  }
+  if !args[0].has_suffix(".moon.json") &&
+    !args[0].has_suffix(".pt") &&
+    !args[1].has_suffix(".moon.json") {
+    return None
+  }
+  guard args.length() == 2 && args[1].has_suffix(".moon.json") else {
+    fail("checkpoint copies require SOURCE and native .moon.json DESTINATION")
+  }
+  let name = args[0].split("/").last().unwrap_or("").to_owned()
+  let kind = if name.contains("dynamics-seed-") {
+    "residual-dynamics"
+  } else if name.contains("actor-seed-") {
+    "g1-actor"
+  } else {
+    fail("unreviewed checkpoint copy kind: " + name)
+  }
+  let root = @env.args()[1]
+  Some(
+    (
+      root,
+      [
+        "run",
+        root + "/scripts/run_native_learning.mbtx",
+        root,
+        "src/learning_training/launch/cmd",
+        "checkpoint-copy",
+        args[0],
+        args[1],
+        kind,
+      ],
+    ),
+  )
+}
+
+///|
+/// Structured native dispatch. A .py argument is a reviewed provider descriptor, never an executable or an interpreter fallback.
+async fn native_collect_output(
+  exe : String,
+  args : Array[String],
+) -> (Int32, &@io.Data, &@io.Data) {
+  let suffix = "/scripts/run_native_learning.mbtx"
+  if exe.has_suffix(suffix) {
+    let root = exe[:exe.length() - suffix.length()].to_owned()
+    let command = ["run", exe, root, "src/learning_training/launch/cmd"]
+    command.append(args)
+    return @process.collect_output("moon", command, cwd=root)
+  }
+  if native_checkpoint_copy_command(exe, args) is Some((root, command)) {
+    return @process.collect_output("moon", command, cwd=root)
+  }
+  @process.collect_output(exe, args)
+}
+
+///|
+async fn native_process_run(
+  exe : String,
+  args : Array[String],
+  stdout? : &@process.ProcessOutput,
+  stderr? : &@process.ProcessOutput,
+) -> Int32 {
+  let suffix = "/scripts/run_native_learning.mbtx"
+  if exe.has_suffix(suffix) {
+    let root = exe[:exe.length() - suffix.length()].to_owned()
+    let command = ["run", exe, root, "src/learning_training/launch/cmd"]
+    command.append(args)
+    return @process.run("moon", command, cwd=root, stdout?, stderr?)
+  }
+  if native_checkpoint_copy_command(exe, args) is Some((root, command)) {
+    return @process.run("moon", command, cwd=root, stdout?, stderr?)
+  }
+  @process.run(exe, args, stdout?, stderr?)
+}

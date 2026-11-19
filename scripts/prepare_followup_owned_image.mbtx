@@ -1,0 +1,28 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/world-ln-fk-20261026"
+  let source = @fs.read_file(root + "/advise_followup_image_large.mbtx")
+    .text()
+    .replace_all(old="\"0:0\"", new="\"1000:1000\"")
+  @fs.write_file(
+    root + "/advise_followup_owned_image.mbtx",
+    source,
+    create_mode=CreateNew,
+  )
+  guard @process.run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      root + "/advise_followup_owned_image.mbtx",
+      "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_followup_owned_image.mbtx",
+    ]) ==
+    0 else {
+    fail("copy")
+  }
+}

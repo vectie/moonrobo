@@ -1,0 +1,323 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+///|
+let parent_sha = "9b31cb2a54768e792106746c9b3e6de7ef95b7c4e3bfd9e9ce29ca2378180ec3"
+
+///|
+let pair_sha = "0e2db9db695160d23ef2e877e4ed90eba02b1cec8ffa89212755baec91f73f52"
+
+///|
+fn digest(s : String) -> String {
+  let h = @crypto.SHA256::new()
+  h.update(@utf8.encode(s))
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+async fn read(path : String) -> String {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("regular source required")
+  }
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  let n = f.size()
+  guard n > 0L && n <= 2097152L else { fail("source exceeds 2 MiB") }
+  @utf8.decode(f.read_exactly_at(n.to_int(), position=0L))
+}
+
+///|
+fn replace_exact(
+  s : String,
+  old : String,
+  new : String,
+  count~ : Int32 = 1,
+) -> String raise {
+  let parts = s.split(old).map(p => p.to_owned()).to_array()
+  guard parts.length() == count + 1 else {
+    fail("unexpected frozen-source match count for " + old)
+  }
+  parts.join(new)
+}
+
+///|
+fn replace_function(
+  source : String,
+  start : String,
+  end : String,
+  replacement : String,
+) -> String raise {
+  let first = source.split(start).map(p => p.to_owned()).to_array()
+  guard first.length() == 2 else { fail("function start not unique") }
+  let rest = first[1].split(end).map(p => p.to_owned()).to_array()
+  guard rest.length() == 2 else { fail("function end not unique") }
+  first[0] + replacement + "\n\n///|\n" + end + rest[1]
+}
+
+///|
+fn configuration_source(candidate : String, key : String) -> String {
+  let enabled = candidate == "six_plus_noise_snapshot"
+  (
+    $|fn diagnostic_config(source : Json, key : String) -> Json raise {
+    $|  guard key == "\{key}" else { fail("fixed candidate side required") }
+    $|  let source_bytes = @utf8.encode(source.stringify(indent=2) + "\{"\\n"}")
+    $|  let h = @crypto.SHA256::new()
+    $|  h.update(source_bytes)
+    $|  guard @crypto.bytes_to_hex_string(h.finalize()) == "\{pair_sha}" else { fail("exact frozen G2 pair required") }
+    $|  let side = field(source, key)
+    $|  let config = @json.parse(field(side, "expected_config").stringify())
+    $|  guard field(side, "kind") == Json("native") && config is Object(values) else { fail("native candidate config required") }
+    $|  for option in ["reuse_geometry", "body_orientation_batched", "resident_reference_cache", "adam_checked_norm", "defer_scalar_metrics", "world_staging_batch"] {
+    $|    guard values.get(option) == Some(Json(true)) else { fail("six optimization switches required") }
+    $|  }
+    $|  for option in ["noise_staging_batch", "actor_norm_snapshot"] {
+    $|    guard values.get(option) == Some(Json(\{enabled})) else { fail("candidate switch identity differs") }
+    $|  }
+    $|  for (name, expected) in [
+    $|    ("max_motion_sampler_bins", Json(9000)), ("noise_staging_max_mib", Json(16)),
+    $|    ("resident_reference_max_mib", Json(1376)), ("world_staging_max_mib", Json(128)),
+    $|    ("pi_batch", Json(4096)), ("pi_microbatch", Json(512)), ("wm_microbatch", Json(0)),
+    $|    ("reuse_critic_normalization", Json(false)), ("critic_cuda_graph", Json(false)),
+    $|    ("layer_norm_mode", Json("expanded")), ("memory_admission_percent", Json(80)),
+    $|    ("telemetry_max_samples", Json(512)), ("amp", Json("none")), ("allow_tf32", Json(true)),
+    $|  ] { guard values.get(name) == Some(expected) else { fail("candidate fixed configuration differs: " + name) } }
+    $|  values["iterations"] = Json(24)
+    $|  values["checkpoint_every"] = Json(24)
+    $|  values["profile_max_spans"] = Json(65536)
+    $|  values["scope"] = Json("standalone G2 \{candidate} logical4096/micro512 profile:20 world-only+4 actor rounds; not steady throughput or paired performance")
+    $|  config
+    $|}
+  )
+}
+
+///|
+fn resident_check_source() -> String {
+  (
+    #|async fn resident_usage(folder : String) -> Json {
+    #|  let stdout = @utf8.decode(read(folder + "/training.stdout.log", limit=33554432L))
+    #|  let found : Array[Json] = []
+    #|  for line in stdout.split("\n") {
+    #|    if line.has_prefix("{") {
+    #|      let value = @json.parse(line.to_owned()) catch { _ => Json::null() }
+    #|      if value is Object(fields) && fields.get("stage") == Some(Json("resident-reference-cache-ready")) {
+    #|        found.push(field(value, "usage"))
+    #|      }
+    #|    }
+    #|  }
+    #|  guard found.length() == 1 else { fail("unique resident reference ready record required") }
+    #|  let usage = found[0]
+    #|  for (key, expected) in [("frames", 441000L), ("goal_frames", 10L), ("resident_bytes", 1412964000L), ("build_block_rows", 256L)] {
+    #|    guard recorded_integer(field(usage, key)) == expected else { fail("resident coverage differs: " + key) }
+    #|  }
+    #|  usage
+    #|}
+    #|
+    #|///|
+  )
+}
+
+///|
+fn candidate_source(parent : String, candidate : String) -> String raise {
+  let eight = candidate == "six_plus_noise_snapshot"
+  guard candidate == "six" || eight else { fail("unsupported candidate") }
+  let filename = if eight { "six-plus-noise-snapshot" } else { "six" }
+  let mut s = replace_exact(
+    parent, "\"resident_reference_max_mib\", \"body_orientation_batched\", \"world_staging_batch\",",
+    "\"resident_reference_max_mib\", \"body_orientation_batched\", \"world_staging_batch\", \"noise_staging_batch\", \"actor_norm_snapshot\",",
+  )
+  s = replace_function(
+    s,
+    "fn diagnostic_config(",
+    "fn diagnostic_side(",
+    configuration_source(candidate, if eight { "b" } else { "a" }),
+  )
+  s = replace_exact(
+    s,
+    "moonrobo.native4096-execution-diagnostic",
+    "moonrobo.native4096-g2-execution-diagnostic",
+    count=5,
+  )
+  s = replace_exact(
+    s,
+    "scripts/run_native4096_diagnostic.mbtx",
+    "private/native4096-candidate-profile-tools-20261024-g2/" +
+    filename +
+    ".mbtx",
+    count=2,
+  )
+  s = replace_exact(
+    s,
+    "native-F-baseline-logical4096-micro512-profile24",
+    "native-G2-" + candidate + "-logical4096-micro512-profile24",
+  )
+  let selection =
+    #|  let key = if field(field(source, "a"), "kind") == Json("native") {
+    #|    "a"
+    #|  } else {
+    #|    "b"
+    #|  }
+  s = replace_exact(
+    s,
+    selection,
+    "  let key = \"" + (if eight { "b" } else { "a" }) + "\"",
+  )
+  for format in ["spec", "plan", "result"] {
+    let line = "\"format\": \"moonrobo.native4096-g2-execution-diagnostic." +
+      format +
+      ".v1\","
+    s = replace_exact(
+      s,
+      line,
+      line + "\n    \"diagnostic_candidate\": \"" + candidate + "\",",
+    )
+  }
+  s = replace_exact(
+    s,
+    "field(spec, \"paired_comparison\") == Json(false) else {",
+    "field(spec, \"paired_comparison\") == Json(false) && field(spec, \"diagnostic_candidate\") == Json(\"" +
+    candidate +
+    "\") else {",
+  )
+  s = replace_exact(
+    s,
+    "\"launcher_derivation_source_sha256\": \"52be50c8dc774283473a79d8cc7c5fb2b176308a3ab3f67938c5b8223dafede0\",",
+    "\"launcher_derivation_source_sha256\": \"" + parent_sha + "\",",
+  )
+  s = replace_exact(
+    s, "\"full60_minimum_spans_world_and_reference_uploads_only\": 150800,", "\"full60_profile_coverage_claim\": false,",
+  )
+  s = replace_exact(
+    s,
+    "\"short24_estimated_spans_without_extra_collection\": 39980,",
+    "\"short24_estimated_spans_without_extra_collection\": " +
+    (if eight { "18245" } else { "20165" }) +
+    ",\n      \"resident_frames\": 441000,\n      \"resident_payload_bytes\": 1412964000,",
+  )
+  s = replace_exact(
+    s, "no late-window reset exists in frozen F.", "no late-window reset exists in frozen G2.",
+  )
+  s = replace_exact(s, "      (\"batch.world.concatenate\", 240),\n", "")
+  s = replace_exact(
+    s, "      (\"actor.sample_prepare_upload\", 4),", "      (\"actor.sample_prepare_upload\", 4),\n      (\"actor.geometry\", 32),\n      (\"batch.resident_reference.build\", 1),\n      (\"batch.resident_reference.gather\", 4),",
+  )
+  s = replace_exact(
+    s, "(\"geometry.robot_fk\", 96)", "(\"geometry.robot_fk\", 64)",
+  )
+  s = replace_exact(
+    s, "(\"geometry.reference_fk\", 96)", "(\"geometry.reference_fk\", 64)",
+  )
+  s = replace_exact(
+    s,
+    "counts.get(\"batch.upload\") == Some(17016) &&\n    counts.get(\"batch.upload\") == counts.get(\"batch.validate_values\")",
+    "counts.get(\"batch.upload\") == Some(" +
+    (if eight { "5922" } else { "7842" }) +
+    ") &&\n    counts.get(\"batch.validate_values\") == Some(6642) &&\n    counts.get(\"batch.world.concatenate\").unwrap_or(0) == 0",
+  )
+  s = replace_exact(
+    s,
+    "async fn run_diagnostic(root : String)",
+    resident_check_source() + "\nasync fn run_diagnostic(root : String)",
+  )
+  s = replace_exact(
+    s, "  let mut coverage : Json = Json::null()", "  let mut coverage : Json = Json::null()\n  let mut resident : Json = Json::null()",
+  )
+  s = replace_exact(
+    s, "    coverage = diagnostic_coverage(", "    resident = resident_usage(folder)\n    coverage = diagnostic_coverage(",
+  )
+  s = replace_exact(
+    s, "    \"coverage\": coverage,", "    \"coverage\": coverage,\n    \"resident_reference_usage\": resident,",
+  )
+  s = replace_exact(
+    s, "fn self_test() -> Unit raise {", "async fn self_test() -> Unit {",
+  )
+  let old_fixture =
+    #|  let diagnostic_fixture = @json.parse(fixture.stringify())
+    #|  guard field(field(diagnostic_fixture, "a"), "expected_config")
+    #|    is Object(diagnostic_fields) else {
+    #|    fail("diagnostic fixture")
+    #|  }
+    #|  diagnostic_fields["pi_batch"] = Json(4096)
+    #|  diagnostic_fields["pi_microbatch"] = Json(512)
+    #|  let diagnostic = diagnostic_config(diagnostic_fixture, "a")
+  s = replace_exact(
+    s,
+    old_fixture,
+    "  let diagnostic_fixture = read_json(allowed_root + \"private/smc-native-aligned-20261024-g2/spec-six-vs-noise-snapshot4096.json\")\n  let diagnostic = diagnostic_config(diagnostic_fixture, \"" +
+    (if eight { "b" } else { "a" }) +
+    "\")",
+  )
+  "// G2 candidate-only derivation; fixed stage " +
+  candidate +
+  ".\n// Parent SHA " +
+  parent_sha +
+  "; guards and process lifecycle preserved.\n" +
+  s
+}
+
+///|
+async fn generate(repo : String, pair : String, output : String) -> Unit {
+  guard @fs.realpath(repo) == repo && !@fs.exists(output) else {
+    fail("canonical repo and fresh output required")
+  }
+  let source = read(repo + "/scripts/run_native4096_diagnostic.mbtx")
+  let pair_source = read(pair)
+  guard digest(source) == parent_sha && digest(pair_source) == pair_sha else {
+    fail("frozen source/spec identity differs")
+  }
+  let six_source = candidate_source(source, "six")
+  let eight_source = candidate_source(source, "six_plus_noise_snapshot")
+  @fs.mkdir(output)
+  guard @fs.realpath(output) == output else {
+    fail("canonical output required")
+  }
+  for
+    (name, content) in [
+      ("six.mbtx", six_source),
+      ("six-plus-noise-snapshot.mbtx", eight_source),
+    ] {
+    @fs.write_file(
+      output + "/" + name,
+      content,
+      create_mode=CreateNew,
+      sync=Full,
+    )
+  }
+  @fs.write_file(
+    output + "/derivation.json",
+    (
+      {
+        "format": "moonrobo.native4096-g2-profile-derivation.v1",
+        "parent_sha256": Json(parent_sha),
+        "pair_spec_sha256": Json(pair_sha),
+        "six_launcher_sha256": Json(digest(six_source)),
+        "six_plus_noise_snapshot_launcher_sha256": Json(digest(eight_source)),
+        "changes": "separate G2 candidate format/side/config/coverage and resident-ready evidence; exact two new bool names in inherited pair whitelist; same guards, counters, pins, timeout, event bounds, no retries",
+        "gpu_started": false,
+        "performance_claim": false,
+      } : Json).stringify(indent=2) +
+    "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+  println(
+    "Derived two independent candidate diagnostic launchers; no GPU/process launched",
+  )
+}
+
+///|
+async fn main {
+  match @env.args()[1:].to_owned() {
+    ["--derive", repo, pair, output] => generate(repo, pair, output)
+    _ =>
+      fail(
+        "usage: --derive REPO FROZEN_G2_SECOND_PAIR_SPEC FRESH_TOOL_DIRECTORY; derived tools retain --self-test/--make-profile-spec/--prepare-profile/--run-profile",
+      )
+  }
+}

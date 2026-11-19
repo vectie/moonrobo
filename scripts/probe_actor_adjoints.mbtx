@@ -1,0 +1,121 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, rev] &&
+    ["prepare", "run"].contains(mode) &&
+    ["a", "b", "c", "d", "e", "f", "g", "h"].contains(rev) else {
+    fail("prepare/run fresh revision a..h")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let runner = "run_actor_adjoints_" + rev + ".mbtx"
+  let adapter = "actor_step_adjoints_" + rev + ".py"
+  if mode == "prepare" {
+    let code = @fs.read_file(out + "/run_actor_reward_c.mbtx")
+      .text()
+      .replace_all(old="run_actor_reward_c.mbtx", new=runner)
+      .replace_all(old="actor_reward_boundary_c.py", new=adapter)
+      .replace_all(
+        old="  write_json(root + \"/protocol.json\"",
+        new=(
+          #|  pins[base+"/compiled_world_detail_d.py"]=Json(hash_file(base+"/compiled_world_detail_d.py"))
+          #|  let package="/home/wlc004s/moonrobo/runs/hotspot-mlp-actor-step-export-b"
+          #|  for branch in ["initial","recurrent"] {for name in @fs.readdir(package+"/"+branch) {if name.has_suffix(".so")||name.has_suffix(".cubin")||name=="native.spec"||name=="manifest.json" {let path=package+"/"+branch+"/"+name;pins[path]=Json(hash_file(path))}}}
+          #|  write_json(root + "/protocol.json"
+        ),
+      )
+    let capture_mode = rev == "a" || rev == "c" || rev == "e"
+    let code = if capture_mode {
+      code
+    } else {
+      code
+      .replace_all(
+        old="  let package=\"/home/wlc004s/moonrobo/runs/hotspot-mlp-actor-step-export-b\"",
+        new="  let capture=\"/home/wlc004s/moonrobo/runs/hotspot-shared-actor-adjoints-e/original-adjoints.pt\"\n  pins[capture]=Json(hash_file(capture))\n  let package=\"/home/wlc004s/moonrobo/runs/hotspot-mlp-actor-step-export-b\"",
+      )
+      .replace_all(
+        old="guard n >= 0L && n <= 1073741824L else { fail(\"pin exceeds 1 GiB\") }",
+        new="guard n >= 0L && n <= (if path == \"/home/wlc004s/moonrobo/runs/hotspot-shared-actor-adjoints-e/original-adjoints.pt\" { 2147483648L } else { 1073741824L }) else { fail(\"pin exceeds admitted file size\") }",
+      )
+    }
+    @fs.write_file(out + "/" + runner, code, create_mode=CreateNew)
+    @fs.write_file(
+      out + "/" + adapter,
+      @fs.read_file(
+        if capture_mode {
+          "providers/motion_learning/actor_step_adjoint_probe.py"
+        } else {
+          "providers/motion_learning/actor_step_replay_probe.py"
+        },
+      ),
+      create_mode=CreateNew,
+    )
+    for name in [runner, adapter] {
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/adjoints-" + rev
+  @fs.mkdir(folder)
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      runner +
+      " -- actor smc off 1 actor-adjoints-" +
+      rev +
+      " bf16-full",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "progress.json", "capture-summary.json", "generated.json", "completion.json",
+      "training-guard.json", "training-docker-final.json", "training.stdout.log",
+      "training.stderr.log", "protocol.json", "compilation-audit.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-adjoints-" +
+        rev +
+        "/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(code, 0)
+}

@@ -1,0 +1,94 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let code = @fs.read_file(
+      "output/spark-runtime-20261024/world-backward-boundaries-20261029-a/reclaim_world_boundary_f.mbtx",
+    )
+    .text()
+    .replace_all(old="31457280.0", new="46137344.0")
+    .replace_all(old="17179869184L", new="549755813888L")
+    .replace_all(
+      old="world-boundary-cache-advice-f.json",
+      new="actor-boundary-cache-advice-d.json",
+    )
+    .replace_all(old="depth<=4",new="depth<=8")
+    .replace_all(old="files.length()<1024",new="files.length()<8192")
+    .replace_all(old="size<=4294967296L",new="size<=17179869184L")
+    .replace_all(
+      old="s.has_prefix(\"hotspot-shared-\")",
+      new="s.has_prefix(\"hotspot-shared-\")||s.has_prefix(\"hotspot-mlp-\")",
+    )
+    .replace_all(
+      old="    let mut size=0L",
+      new=(
+        #|    for name in @fs.readdir(dir) {if name.has_suffix(".f64")||name.has_suffix(".pt"){files.push(dir+"/"+name)}}
+        #|    for cache in ["inductor-cache","triton-cache"] {if @fs.exists(dir+"/"+cache){collect(dir+"/"+cache,files,0)}}
+        #|    if files.is_empty(){continue}
+        #|    let receipt="/home/wlc004s/moonrobo/private/shared-compute-20261026-a/actor-resident-d-"+name+".json"
+        #|    assert_eq(@process.run("/home/wlc004s/moonrobo/private/fincore-official-20261024-a/root/usr/bin/fincore",["--json","--bytes","--output","FILE,SIZE,RES,PAGES",..files],stdout=@process.redirect_to_file(receipt,create_mode=CreateNew)),0)
+        #|    guard field(read(receipt),"fincore") is Array(rows) else {fail("residency")}
+        #|    let mut resident=0.0
+        #|    for row in rows {match field(row,"res") {Number(n,..)=>resident+=n;String(s)=>resident+=@string.parse_double(s);_=>fail("bytes")}}
+        #|    if resident==0.0 {continue}
+        #|    let resident_paths:Array[String]=[]
+        #|    for row in rows {let bytes=match field(row,"res") {Number(n,..)=>n;String(s)=>@string.parse_double(s);_=>fail("bytes")};if bytes>0.0 {guard field(row,"file") is String(path)&&files.contains(path) else {fail("resident identity")};resident_paths.push(path)}}
+        #|    files.clear();files.append(resident_paths)
+        #|    let mut size=0L
+      ),
+    )
+  @fs.write_file(
+    out + "/reclaim_actor_pages_d.mbtx",
+    code,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/reclaim_actor_pages_d.mbtx",
+      "wlc004s@192.168.2.179:" + base + "/reclaim_actor_pages_d.mbtx",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179",
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/reclaim_actor_pages_d.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/cache-advice-d.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/cache-advice-d.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179:" + base + "/actor-boundary-cache-advice-d.json",
+      out + "/cache-advice-d.json",
+    ]),
+    0,
+  )
+}

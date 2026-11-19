@@ -1,0 +1,129 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, stage] &&
+    ["backend", "build", "native-gate", "reference-gate", "benchmark"].contains(stage) else {
+    fail("stage")
+  }
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-math-179.sock"
+  let command = "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+    base +
+    "/"
+  if stage == "backend" {
+    for name in ["build_geometry_backend_v4", "package_geometry_v4"] {
+      assert_eq(@process.run("ssh",["-S",socket,host,command+name+".mbtx"],stdout=@process.redirect_to_file(out+"/"+name+".stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(out+"/"+name+".stderr.log",create_mode=CreateNew)),0)
+    }
+    return
+  }
+  if stage == "build" {
+    assert_eq(
+      @process.run(
+        "ssh",
+        ["-S", socket, host, command + "build_geometry_math_e.mbtx"],
+        stdout=@process.redirect_to_file(
+          out + "/build-e.stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          out + "/build-e.stderr.log",
+          create_mode=CreateNew,
+        ),
+      ),
+      0,
+    )
+    return
+  }
+  for part in ["world-a", "steps-a", "heads-c"] {
+    guard @json.parse(
+        @fs.read_file(out + "/geometry-math-" + part + "/completion.json").text(),
+      )
+      is { "passed": True, .. } else {
+      fail("complete exports required")
+    }
+  }
+  if stage == "benchmark" {
+    guard @json.parse(
+        @fs.read_file(out + "/geometry-math-reference-gate-a/result.json").text(),
+      )
+      is { "passed": True, .. } else {
+      fail("numerical gate before timing")
+    }
+  }
+  let jobs = match stage {
+    "native-gate" => [("native", "geometry-math-native-gate-b", "1")]
+    "reference-gate" => [("smc", "geometry-math-reference-gate-a", "1")]
+    _ =>
+      [
+        ("native", "geometry-math-native-bench-a", "13"),
+        ("smc", "geometry-math-original-smc-bench-a", "13"),
+        ("smc", "geometry-math-original-smc-bench-b", "13"),
+        ("native", "geometry-math-native-bench-b", "13"),
+      ]
+  }
+  for (kind, label, repeats) in jobs {
+    let folder = out + "/" + label
+    @fs.mkdir(folder)
+    let runner = if stage == "reference-gate" {
+      "run_geometry_math_gate_e.mbtx"
+    } else {
+      "run_geometry_math_training_e.mbtx"
+    }
+    let code = @process.run(
+      "ssh",
+      [
+        "-S",
+        socket,
+        host,
+        command +
+        runner +
+        " -- train " +
+        kind +
+        " off " +
+        repeats +
+        " " +
+        label +
+        " bf16-full",
+      ],
+      stdout=@process.redirect_to_file(
+        folder + "/controller.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        folder + "/controller.stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    for
+      name in [
+        "result.json", "final.json", "completion.json", "training-guard.json", "training-docker-final.json",
+        "training.stdout.log", "training.stderr.log", "protocol.json", "compiled-packages.json",
+        "compilation-audit.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=" + socket,
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-" +
+          label +
+          "/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+    assert_eq(code, 0)
+  }
+}

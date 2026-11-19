@@ -1,0 +1,52 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  if !@fs.exists(dir) {
+    @fs.mkdir(dir)
+  }
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let runner = @fs.read_file(
+      "output/spark-runtime-20261024/precision-scaling-20261028-a/run_precision_components_a.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="run_precision_components_a.mbtx",
+      new="run_compiled_export_b.mbtx",
+    )
+    .replace_all(
+      old="precision_components_probe_a.py",
+      new="export_compiled_mlp_a.py",
+    )
+    .replace_all(
+      old="  let root = \"/home/wlc004s/moonrobo/runs/hotspot-mlp-\" + label",
+      new="  mounts.push({\"source\":\"/usr/local/cuda-13.0\",\"target\":\"/cuda-toolkit\",\"readonly\":true})\n  e[\"CUDA_HOME\"]=\"/cuda-toolkit\"\n  e[\"TORCHINDUCTOR_COMPILE_THREADS\"]=\"1\"\n  let root = \"/home/wlc004s/moonrobo/runs/hotspot-mlp-\" + label",
+    )
+    .replace_all(
+      old="source.has_prefix(allowed_root) ||",
+      new="source == \"/usr/local/cuda-13.0\" || source.has_prefix(allowed_root) ||",
+    )
+  @fs.write_file(
+    dir + "/run_compiled_export_b.mbtx",
+    runner,
+    create_mode=CreateNew,
+  )
+  for name in ["run_compiled_export_b.mbtx"] {
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        dir + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+}

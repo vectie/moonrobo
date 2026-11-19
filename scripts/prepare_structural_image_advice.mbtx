@@ -1,0 +1,14 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let repo="/Users/kq/Workspace/moonrobo"
+  let s=@fs.read_file(repo+"/scripts/advise_closed_smc_image_pages.mbtx").text()
+    .replace_all(old="sha256:e84e3c0d2b553e29ffa04fb6d738a3b635afa66e3d23824bfc6c6304e198ad46",new="sha256:c76815627562a180052cef8e7e07edb37fe8547d83158eed6182ebd99bb8385d")
+    .replace_all(old="b40b887a87540aea00fb5b7349e283b895ec4f95309f9781c2140fbc9b7244cf",new="a08d2d4fa710e742cfe5f9cc09cbd892e545fad6d5acc2ac5feb9921427e20c8")
+    .replace_all(old="(mode == \"--plan\" || c[1] == \"1000\")",new="(mode == \"--plan\" || c[1] == \"1000\" || c[1] == \"0\")")
+    .replace_all(old="immutable package file must match audited image UID1000",new="immutable runtime image package must match audited root/image-user ownership")
+  // Native runtime image differs from the CPU build image. The earlier
+  // build-image/owner mismatch was rejected before creating a worker or advice.
+  let file=repo+"/output/spark-runtime-20261024/smc-structural-20261028/advise_structural_runtime_image.mbtx"
+  @fs.write_file(file,s,create_mode=CreateNew)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",file,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_structural_runtime_image.mbtx"])==0 else{fail("stage")}
+}

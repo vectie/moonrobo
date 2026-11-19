@@ -1,0 +1,339 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+fn mean(values : Array[Double]) -> Json {
+  if values.is_empty() {
+    return Json::null()
+  }
+  Json(values.fold(init=0.0, (sum, x) => sum + x) / values.length().to_double())
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn digest(path : String) -> String {
+  let actual = if !@fs.exists(path) && path.has_suffix(".moon.json") {
+    let legacy = path[:path.length() - 10].to_owned() + ".pt"
+    if @fs.exists(legacy) {
+      legacy
+    } else {
+      path
+    }
+  } else {
+    path
+  }
+  // Hash the actual selected bytes; never convert or pretend that Torch and
+  // native encodings have the same digest.
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(actual).binary()))
+}
+
+///|
+fn prediction_rows(
+  label : String,
+  seed : Json,
+  method : String,
+  predictions : Array[Json],
+  origins : Map[Int32, Array[Json]],
+) -> Array[Json] raise {
+  let rows : Array[Json] = []
+  for motion in ["stand", "random_joint_sines"] {
+    for steps in [1, 8, 32] {
+      let selected = predictions.filter(r => {
+        let policy_seed = num(field(r, "policy_seed")).to_int()
+        let index = num(field(r, "origin")).to_int()
+        field(r, "steps") == Json(steps) &&
+        field(field(origins[policy_seed][index], "case"), "motion") ==
+        Json(motion)
+      })
+      rows.push({
+        "model": Json(label),
+        "fit_seed": seed,
+        "method": Json(method),
+        "motion": Json(motion),
+        "steps": Json(steps),
+        "windows": Json(selected.length()),
+        "mean_normalized_mse": mean(
+          selected.map(r => num(field(r, "normalized_mse"))),
+        ),
+        "mean_root_height_error_m": mean(
+          selected.map(r => num(field(r, "root_height_error_m"))),
+        ),
+      })
+    }
+  }
+  rows
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: report_g1_dynamic_refit.mbtx REFIT COMPARISON ORIGINAL_PROBE OUTPUT_JSON",
+  )
+  let comparison = read(args[2] + "/report.json")
+  assert_eq(field(comparison, "dynamics_unchanged"), true)
+  let results = array(field(comparison, "results"))
+  assert_eq(results.length(), 36)
+  guard field(read(args[1] + "/charter.json"), "initial") is String(initial_fit) else {
+    fail("missing initial fit")
+  }
+  assert_eq(
+    Json(digest(initial_fit + "/dynamics-seed-0.moon.json")),
+    field(comparison, "initial_dynamics_sha256"),
+  )
+  let initial_metrics = field(
+    array(field(read(initial_fit + "/report.json"), "runs"))[0],
+    "metrics",
+  )
+  let fit_reports : Array[Json] = []
+  let mut initial_validation : Json = ""
+  let mut heldout : Json = ""
+  for arm in ["old-only", "mixed"] {
+    let directory = args[1] + "/" + arm
+    let report = read(directory + "/report.json")
+    if arm == "old-only" {
+      heldout = field(report, "canonical_inputs")
+    } else {
+      assert_eq(field(report, "canonical_inputs"), heldout)
+    }
+    assert_eq(
+      field(report, "initial_dynamics_sha256"),
+      field(comparison, "initial_dynamics_sha256"),
+    )
+    assert_eq(field(field(report, "added_dataset"), "episodes"), 1332)
+    let runs = array(field(report, "runs"))
+    assert_eq(runs.length(), 3)
+    for row in runs {
+      let seed = num(field(row, "seed")).to_int()
+      assert_eq(field(row, "normalization_unchanged"), true)
+      assert_eq(field(row, "reload_matches"), true)
+      assert_eq(field(field(row, "gradient_probe"), "passed"), true)
+      println(
+        (
+          {
+            "arm": Json(arm),
+            "seed": Json(seed),
+            "selected_update": field(row, "selected_update"),
+            "validation": field(
+              field(field(row, "metrics"), "validation"),
+              "normalized_state_mse",
+            ),
+            "test": field(
+              field(field(row, "metrics"), "test"),
+              "normalized_state_mse",
+            ),
+            "late_test": field(
+              field(field(field(row, "metrics"), "test"), "after_two_seconds"),
+              "normalized_state_mse",
+            ),
+          } : Json).stringify(),
+      )
+      let history = array(field(row, "history"))
+      assert_eq(history.length(), 11)
+      if initial_validation == ("" : Json) {
+        initial_validation = field(history[0], "validation")
+      } else {
+        assert_eq(field(history[0], "validation"), initial_validation)
+      }
+      let checkpoints = results.filter(r => {
+        field(r, "arm") == Json(arm) && field(r, "fit_seed") == Json(seed)
+      })
+      assert_eq(checkpoints.length(), 6)
+      for c in checkpoints {
+        assert_eq(
+          field(c, "selected_model_update"),
+          field(row, "selected_update"),
+        )
+        assert_eq(
+          field(c, "checkpoint_sha256"),
+          Json(digest(directory + "/dynamics-seed-\{seed}.moon.json")),
+        )
+      }
+    }
+    fit_reports.push(report)
+  }
+  let predictions : Array[Json] = []
+  assert_eq(field(initial_metrics, "validation"), initial_validation)
+  for method in ["frame", "preview"] {
+    let original = read(args[3] + "/" + method + "/report.json")
+    assert_eq(
+      field(original, "dynamics_sha256"),
+      field(comparison, "initial_dynamics_sha256"),
+    )
+    let origins : Map[Int32, Array[Json]] = Map([])
+    for group in array(field(original, "origins")) {
+      origins.set(
+        num(field(group, "seed")).to_int(),
+        array(field(group, "origins")),
+      )
+    }
+    let initial_predictions : Array[Json] = []
+    for group in array(field(original, "open_loop_predictions")) {
+      for row in array(field(group, "records")) {
+        guard row is Object(fields) else { fail("expected prediction") }
+        fields.set("policy_seed", field(group, "seed"))
+        initial_predictions.push(row)
+      }
+    }
+    predictions.append(
+      prediction_rows(
+        "initial",
+        Json::null(),
+        method,
+        initial_predictions,
+        origins,
+      ),
+    )
+    for arm in ["old-only", "mixed"] {
+      for seed in 0..<3 {
+        let fresh : Array[Json] = []
+        for
+          result in results.filter(r => {
+            field(r, "arm") == Json(arm) &&
+            field(r, "fit_seed") == Json(seed) &&
+            field(r, "method") == Json(method)
+          }) {
+          let policy_seed = field(result, "policy_seed")
+          let records = array(field(result, "records"))
+          assert_eq(
+            records.length(),
+            origins[num(policy_seed).to_int()].length() * 4,
+          )
+          for row in records.filter(r => field(r, "multiplier") == (0 : Json)) {
+            assert_eq(field(row, "baseline"), field(row, "candidate"))
+          }
+          for row in array(field(result, "open_loop_predictions")) {
+            guard row is Object(fields) else { fail("expected prediction") }
+            fields.set("policy_seed", policy_seed)
+            fresh.push(row)
+          }
+        }
+        predictions.append(
+          prediction_rows(arm, Json(seed), method, fresh, origins),
+        )
+        let latest : Array[Json] = []
+        for
+          result in array(field(comparison, "latest_predictions")).filter(r => {
+            field(r, "arm") == Json(arm) &&
+            field(r, "fit_seed") == Json(seed) &&
+            field(r, "method") == Json(method)
+          }) {
+          assert_eq(field(result, "update"), 2000)
+          assert_eq(
+            field(result, "checkpoint_sha256"),
+            Json(
+              digest(
+                args[1] + "/" + arm + "/latest-dynamics-seed-\{seed}.moon.json",
+              ),
+            ),
+          )
+          for row in array(field(result, "records")) {
+            guard row is Object(fields) else {
+              fail("expected latest prediction")
+            }
+            fields.set("policy_seed", field(result, "policy_seed"))
+            latest.push(row)
+          }
+        }
+        predictions.append(
+          prediction_rows(
+            arm + "-latest-diagnostic",
+            Json(seed),
+            method,
+            latest,
+            origins,
+          ),
+        )
+      }
+    }
+  }
+  for row in predictions {
+    if field(row, "steps") == (32 : Json) {
+      println(row.stringify())
+    }
+  }
+  let direction_summary : Array[Json] = []
+  for arm in ["old-only", "mixed"] {
+    for seed in 0..<3 {
+      for subset in ["all", "dynamic"] {
+        let rows = array(field(comparison, "summaries")).filter(r => {
+          field(r, "arm") == Json(arm) &&
+          field(r, "fit_seed") == Json(seed) &&
+          field(r, "subset") == Json(subset)
+        })
+        assert_eq(rows.length(), 6)
+        let row : Json = {
+          "arm": Json(arm),
+          "fit_seed": Json(seed),
+          "subset": Json(subset),
+          "actor_batches": Json(rows.length()),
+          "positive_local_batches": Json(
+            rows
+            .filter(r => num(field(r, "local_physical_change")) > 0)
+            .length(),
+          ),
+          "positive_full_batches": Json(
+            rows.filter(r => num(field(r, "full_physical_change")) > 0).length(),
+          ),
+          "mean_local_physical_change": mean(
+            rows.map(r => num(field(r, "local_physical_change"))),
+          ),
+          "mean_full_physical_change": mean(
+            rows.map(r => num(field(r, "full_physical_change"))),
+          ),
+        }
+        direction_summary.push(row)
+        println(row.stringify())
+      }
+    }
+  }
+  @fs.write_file(
+    args[4],
+    (
+      {
+        "format": "moonrobo.g1-dynamic-refit-study.v1",
+        "fits": Json(fit_reports),
+        "initial_metrics": initial_metrics,
+        "initial_fit_report_sha256": Json(digest(initial_fit + "/report.json")),
+        "comparison": read(args[2] + "/summary.json"),
+        "comparison_sha256": Json(digest(args[2] + "/report.json")),
+        "prediction_by_motion": Json(predictions),
+        "direction_batch_summary": Json(direction_summary),
+        "physical_execution_allowed": false,
+        "scope": "Frozen incoming units and model, matched further-fitting budgets, old-only versus half-old/half-new actual-action replay. Canonical validation-only model selection, same saved dynamic physics origins, all refit seeds, no selected policy or qualification.",
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

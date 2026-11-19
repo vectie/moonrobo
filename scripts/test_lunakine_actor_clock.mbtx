@@ -1,0 +1,156 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/http",
+  "moonbitlang/async@0.20.2/socket",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+// Real task service/runner with either explicit actor backend under a live
+// clock. Recorded features and a shadow-only sink; no SDK or motor publication.
+async fn main {
+  let (repo, tape, output, arguments, actor_name, npu) = match @env.args()[1:] {
+    [repo, bundle, tape, output] =>
+      (
+        repo,
+        tape,
+        output,
+        ["serve-shadow-reference", bundle, tape],
+        "real portable actor",
+        false,
+      )
+    [repo, bundle, library, model, tape, output] =>
+      (
+        repo,
+        tape,
+        output,
+        ["serve-shadow-ascend", bundle, library, model, tape],
+        "real Ascend actor",
+        true,
+      )
+    _ =>
+      fail(
+        "usage: test_lunakine_actor_clock.mbtx MOONROBO BUNDLE [CANN_LIBRARY MODEL_OM] RECORDED_TAPE NEW_OUTPUT",
+      )
+  }
+  guard !@fs.exists(output) else { fail("output must be new") }
+  @fs.mkdir(output, recursive=true)
+  guard @process.run("moon", [
+      "-C", repo, "build", "--release", "--target", "native", "--deny-warn", "cmd/e1_actor",
+    ]) ==
+    0 else {
+    fail("actor CLI build failed")
+  }
+  let cli = repo +
+    "/_build/native/release/build/vectie/moonrobo/cmd/e1_actor/e1_actor.exe"
+  let reservation = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
+  let address = "127.0.0.1:\{reservation.addr.port()}"
+  reservation.close()
+  let endpoint = "http://" + address
+  @async.with_timeout(30000, () => {
+    @async.with_task_group() <| group => {
+      let child = @process.spawn(
+        group,
+        cli,
+        arguments + [address],
+        cwd=repo,
+        stdout=@process.redirect_to_file(
+          output + "/service.stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          output + "/service.stderr.log",
+          create_mode=CreateNew,
+        ),
+      )
+      defer child.cancel()
+      let catalog = for ;; {
+        guard child.try_wait() is None else {
+          fail(
+            "shadow service stopped before readiness; inspect service.stderr.log",
+          )
+        }
+        let result = Some(@http.get(endpoint + "/v1/catalog")) catch {
+          _ => None
+        }
+        if result is Some((response, body)) && response.code == 200 {
+          break body.json()
+        }
+        @async.sleep(20)
+      }
+      guard catalog
+        is {
+          "now_ms": String(now),
+          "catalog": {
+            "catalog_id": catalog_id,
+            "context_version": version,
+            ..
+          },
+          ..
+        } else {
+        fail("invalid task catalog response")
+      }
+      guard @fs.read_file(tape).json() is { "request": Object(request), .. } else {
+        fail("recorded request missing")
+      }
+      request["request_id"] = "wall-clock-shadow"
+      request["catalog_id"] = catalog_id
+      request["context_version"] = version
+      request["expires_at_ms"] = Json(
+        (@string.parse_int64(now) + 5000L).to_string(),
+      )
+      let body = @utf8.encode(Json(request).stringify())
+      let client = @http.Client(endpoint)
+      defer client.close()
+      let accepted = client.post("/v1/skills", body, extra_headers={
+        "Content-Type": "application/json",
+        "Content-Length": body.length().to_string(),
+      })
+      guard accepted.code == 200 else { fail("recorded task was not accepted") }
+      ignore(client.read_all())
+      let execution = for ;; {
+        guard child.try_wait() is None else {
+          fail(
+            "shadow service stopped during actor execution; inspect service.stderr.log",
+          )
+        }
+        let (response, body) = @http.get(endpoint + "/v1/state")
+        guard response.code == 200 &&
+          body.json() is { "execution": execution, .. } else {
+          fail("invalid shadow execution response")
+        }
+        if execution is { "state": String(state), .. } {
+          guard state != "Failed" && state != "Interrupted" else {
+            fail("shadow task did not complete within local timing rules")
+          }
+          if state == "Completed" {
+            break execution
+          }
+        }
+        @async.sleep(20)
+      }
+      let report : Json = {
+        "passed": true,
+        "execution": execution,
+        "actor": Json(actor_name),
+        "clock": "live host clock shared by task admission and runner",
+        "features": "recorded replay",
+        "published": false,
+        "hardware_access": Json(npu),
+        "physical_timing_qualified": false,
+      }
+      @fs.write_file(
+        output + "/report.json",
+        @utf8.encode(report.stringify(indent=2)),
+        create_mode=CreateNew,
+      )
+      println(report.stringify(indent=2))
+    }
+  })
+}

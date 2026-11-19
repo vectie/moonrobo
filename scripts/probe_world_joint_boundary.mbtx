@@ -1,0 +1,95 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/world-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let code = @fs.read_file(out + "/run_world_boundary_g.mbtx")
+    .text()
+    .replace_all(
+      old="run_world_boundary_g.mbtx",
+      new="run_world_boundary_j.mbtx",
+    )
+    .replace_all(
+      old="compiled_world_boundaries_g.py",
+      new="compiled_world_boundaries_j.py",
+    )
+    .replace_all(
+      old="e[\"WORLD_PADDING_INTERVENTION\"]=\"1\"",
+      new="e[\"WORLD_PADDING_INTERVENTION\"]=\"1\"\n  e[\"WORLD_JOINT_CONTROL\"]=\"1\"\n  pins[base+\"/world_joint_boundary_control_b.py\"]=Json(hash_file(base+\"/world_joint_boundary_control_b.py\"))",
+    )
+  @fs.write_file(
+    out + "/run_world_boundary_j.mbtx",
+    code,
+    create_mode=CreateNew,
+  )
+  for
+    (source, name) in [
+      (out + "/run_world_boundary_j.mbtx", "run_world_boundary_j.mbtx"),
+      (
+        "providers/motion_learning/compiled_world_boundaries.py", "compiled_world_boundaries_j.py",
+      ),
+      (
+        "providers/motion_learning/world_joint_boundary_control.py", "world_joint_boundary_control_b.py",
+      ),
+    ] {
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        source,
+        host + ":" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  let folder = out + "/world-boundary-j"
+  @fs.mkdir(folder)
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/run_world_boundary_j.mbtx -- smc bf16 0 world-boundary-j",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "joint-normalization-control.json", "joint_native_generated_bodies.py",
+      "joint-native-normalize.ptx", "joint-native-combine.ptx", "completion.json",
+      "training-guard.json", "training-docker-final.json", "training.stdout.log",
+      "training.stderr.log", "world-pins.json", "protocol.json", "compilation-snapshot.json",
+      "compilation-audit.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-mlp-world-boundary-j/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(status, 0)
+}

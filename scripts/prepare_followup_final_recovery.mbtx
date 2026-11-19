@@ -1,0 +1,60 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let evidence = repo + "/output/spark-runtime-20261024/world-ln-fk-20261026"
+  let small = @fs.read_file(evidence + "/advise_followup_final_gate_cache.mbtx")
+    .text()
+    .replace_all(old="if size >= 1048576L", new="if size >= 65536L")
+  let build = @fs.read_file(evidence + "/advise_followup_remaining_cache.mbtx")
+    .text()
+    .replace_all(
+      old="trace_root + \"/run/native\",",
+      new="trace_root + \"/run/native\",\n        \"/home/wlc004s/moonrobo/private/hotspot-followup-fk-20261026-a/workspace/moonrobo/_build\",\n        \"/home/wlc004s/moonrobo/private/hotspot-followup-fk-20261026-a/workspace/moonrobo-fixtures/_build\",\n        \"/home/wlc004s/moonrobo/private/hotspot-followup-fk-20261026-a/_build\",",
+    )
+  let controller = @fs.read_file(repo + "/scripts/run_followup_measured.mbtx")
+    .text()
+    .replace_all(
+      old="run_followup_measured.mbtx",
+      new="run_followup_measured_b.mbtx",
+    )
+    .replace_all(old="/measured-", new="/measured-b-")
+    .replace_all(old="spec-measured.json", new="spec-measured-b.json")
+    .replace_all(
+      old="candidate + \"-20261026-a\"",
+      new="candidate + \"-20261026-b\"",
+    )
+  for
+    (name, source, dest) in [
+      (
+        "advise_followup_final_small.mbtx", small, "operator-diagnostic-20261025-a",
+      ),
+      (
+        "advise_followup_final_build.mbtx", build, "operator-diagnostic-20261025-a",
+      ),
+      (
+        "run_followup_measured_b.mbtx", controller, "hotspot-followup-world-20261026-a",
+      ),
+    ] {
+    let path = evidence + "/" + name
+    @fs.write_file(path, source, create_mode=CreateNew)
+    guard @process.run("scp", [
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        path,
+        "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/" +
+        dest +
+        "/" +
+        name,
+      ]) ==
+      0 else {
+      fail("copy")
+    }
+  }
+}

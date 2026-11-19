@@ -1,0 +1,274 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x/crypto",
+}
+
+///|
+fn digest(bytes : Bytes) -> String {
+  @crypto.sha256(bytes).map(byte => byte.to_hex()).join("")
+}
+
+///|
+fn field(value : Json, name : String) -> Json raise {
+  guard value is Object(fields) && fields.get(name) is Some(found) else {
+    fail("missing source inventory field: " + name)
+  }
+  found
+}
+
+///|
+fn ignored(name : String) -> Bool {
+  [
+    ".git", "_build", "target", "node_modules", "dist", "output", ".mooncakes", "python_reference",
+  ].contains(name)
+}
+
+///|
+async fn source_paths(
+  root : String,
+  folder : String,
+  paths : Array[String],
+) -> Unit {
+  if !@fs.exists(root + "/" + folder) {
+    return
+  }
+  for name in @fs.readdir(root + "/" + folder, sort=true) {
+    if ignored(name) {
+      continue
+    }
+    let path = folder + "/" + name
+    match @fs.kind(root + "/" + path, follow_symlink=false) {
+      Directory => source_paths(root, path, paths)
+      Regular =>
+        if [
+            ".mbt", ".mbtx", ".c", ".cpp", ".h", ".hpp", ".cuh", ".inc", ".inl",
+            ".cu", ".js", ".mjs", ".yml", ".yaml", ".sh", ".toml", ".mk",
+          ].any(suffix => name.has_suffix(suffix)) ||
+          ["moon.pkg", "CMakeLists.txt", "package.json", "Makefile"].contains(
+            name,
+          ) {
+          paths.push(path)
+        }
+      _ => ()
+    }
+  }
+}
+
+///|
+fn marker(line : String) -> String? {
+  let line = line.trim().to_owned()
+  if line.has_prefix("//") || line.has_prefix("*") || line.has_prefix("# ") {
+    return None
+  }
+  if line.contains("Python.h") ||
+    line.contains("Py_Initialize") ||
+    line.contains("Python3::Python") ||
+    line.contains("find_package(Python") {
+    Some("cpython-embedding-or-build")
+  } else if line.contains("/bin/python") ||
+    line.contains("\"python3\"") ||
+    line.contains("\"python\"") ||
+    line.contains("python_path") ||
+    line.contains("reference_python") ||
+    line.contains("python3 ") ||
+    line.contains("python ") ||
+    line.contains("uv run") ||
+    line.contains("pytest") {
+    Some("possible-interpreter-route-review-required")
+  } else if line.contains(".py\"") ||
+    line.contains(".py'") ||
+    line.contains("executed-upstream-python") {
+    Some("source-provenance-or-explicit-reference-review-required")
+  } else {
+    None
+  }
+}
+
+///|
+async fn archive_identities(root : String) -> Array[Json] {
+  let folder = root + "/scripts/python_reference"
+  let output : Array[Json] = []
+  if !@fs.exists(folder) {
+    return output
+  }
+  let recorded : Map[String, String] = {}
+  for name in @fs.readdir(folder, sort=true) {
+    if !name.has_suffix("-sources.json") {
+      continue
+    }
+    let manifest = @json.parse(@fs.read_file(folder + "/" + name).text())
+    guard manifest is Array(entries) else {
+      fail("archive identity manifest must be an array")
+    }
+    for entry in entries {
+      let script : String = @json.from_json(field(entry, "script"))
+      let expected : String = @json.from_json(field(entry, "sha256"))
+      guard !script.contains("/") && script.has_suffix(".mbtx") else {
+        fail("archive basename required")
+      }
+      let actual = digest(@fs.read_file(folder + "/" + script).binary())
+      guard expected == actual else {
+        fail("preserved launcher changed: " + script)
+      }
+      if recorded.get(script) is Some(prior) {
+        guard prior == actual else {
+          fail("conflicting preserved launcher identities")
+        }
+      } else {
+        recorded[script] = actual
+        output.push({
+          "path": "scripts/python_reference/" + script,
+          "sha256": actual,
+          "identity_manifest": name,
+          "role": "explicit-historical-reference",
+        })
+      }
+    }
+  }
+  for name in @fs.readdir(folder, sort=true) {
+    if name.has_suffix(".mbtx") {
+      guard recorded.contains(name) else {
+        fail("preserved launcher lacks original SHA identity: " + name)
+      }
+    }
+  }
+  output
+}
+
+///|
+/// Metadata-only audit: reads source and hashes; never imports Python, loads a
+/// native plugin, invokes an experiment, generates numerical data or runs tests.
+async fn main {
+  let args = @env.args()
+  let requested = args.get(1).unwrap_or(".")
+  let root = if requested.has_prefix("/") {
+    requested
+  } else {
+    @env.current_dir().unwrap() + "/" + requested
+  }
+  let paths : Array[String] = []
+  for folder in ["src", "cmd", "scripts", "ui", ".github", "deploy"] {
+    source_paths(root, folder, paths)
+  }
+  if @fs.exists(root + "/providers/motion_learning/requirements.txt") {
+    paths.push("providers/motion_learning/requirements.txt")
+  }
+  paths.sort()
+  let sources : Array[Json] = []
+  let candidates : Array[Json] = []
+  for path in paths {
+    let data = @fs.read_file(root + "/" + path)
+    let test_source = path.has_suffix("_test.mbt") ||
+      path.has_suffix("_wbtest.mbt") ||
+      path.contains(".test.")
+    sources.push({
+      "path": path,
+      "sha256": digest(data.binary()),
+      "test_source": test_source,
+    })
+    for i, line in data.text().split("\n").to_array() {
+      if marker(line.to_owned()) is Some(kind) {
+        candidates.push({
+          "path": path,
+          "line": i + 1,
+          "kind": kind,
+          "test_source": test_source,
+        })
+      }
+    }
+  }
+  let preserved = archive_identities(root)
+  let original = @json.parse(
+    @fs.read_file(root + "/docs/PYTHON_MIGRATION_INVENTORY.json").text(),
+  )
+  let result : Json = {
+    "format": "moonrobo.python-dependency-audit.v1",
+    "scope": "first-party active source, launchers, build manifests and UI; dependencies, build outputs and experiment archives excluded",
+    "method": "static marker candidates plus documented call-graph review; a token match is not proof of Python execution",
+    "source_files": sources,
+    "marker_candidates": candidates,
+    "preserved_launchers": preserved,
+    "python_source_files": field(original, "source_files"),
+    "python_source_count_basis": "historical baseline; not a scan of current Python sources",
+    "python_source_baseline": "docs/PYTHON_MIGRATION_INVENTORY.json",
+    "python_source_preservation_status": "docs/PYTHON_SOURCE_PRESERVATION_STATUS.md",
+    "runtime_dependencies": [
+      {
+        "component": "SDK E1 PythonReference",
+        "activation": "explicit backend=python-reference",
+        "kind": "optional-reference-interpreter",
+      },
+      {
+        "component": "scripts/python_reference and preserved Python providers",
+        "activation": "explicit historical invocation",
+        "kind": "optional-reference-interpreter",
+      },
+      {
+        "component": "executed-upstream-python differential oracle",
+        "activation": "explicit original upstream fixture production",
+        "kind": "reference-test-interpreter",
+      },
+    ],
+    "artifact_build_dependencies": [
+      {
+        "component": "learning_aligned/producer (preserved reference)",
+        "kind": "CPython embedding + official IsaacLab/Newton/Warp model construction and capture_save",
+        "first_party_orchestration": "MoonBit",
+        "production_replay_links_cpython": false,
+      },
+      {
+        "component": "learning_aligned/producer_native/hybrid",
+        "kind": "CPython for complete Newton scene/model and physical kernels/codegen, callbacks/FK/publication and APIC registry; optional MoonBit recipe/manager/solver-forward-context host ordering; C ABI for native operations and serialization; independent builder/constant/collision-sparse fragments do not replace the full SDK backend",
+        "python_capture_save_called": false,
+        "production_replay_links_cpython": false,
+      },
+    ],
+    "python_free_authoring_stages": [
+      "producer_native/model", "producer_native/compiler", "producer_native/warp",
+      "producer_native/contracts", "producer_native/scene", "producer_native/schedule",
+      "producer_native/kernels", "producer_native/dispatch", "producer_native/capture",
+      "producer_native/builder", "producer_native/constants", "producer_native/physics_kernels",
+      "producer_native/finalize", "producer_native/narrowphase", "producer_native/factorization",
+      "producer_native/convergence", "producer_native/set_constants", "producer_native/narrowphase/collision_native",
+      "producer_native/gpu_pipeline", "producer_native/cooking", "producer_native/schema_constraints",
+      "producer_native/convex", "producer_native/tile_solver", "producer_native/device_convergence",
+      "producer_native/convex/contacts", "producer_native/sparse_solver", "producer_native/newton_solver",
+      "producer_native/solver_metrics", "producer_native/solver_adapters",
+    ],
+    "python_free_authoring_scope": "Scene IR/recipe, rigid-tree builder arrays/FK, CPU/Double constant fragments, 13 G1 entries over 11 functions, 4 collision/sparse entries plus mass gather layout, CUB/conditional APIs and independent single-G1-kernel capture; no complete native model/physics four-graph closure is claimed",
+    "remaining_apic_source_evidence": "docs/APIC_REMAINING_SOURCE_EVIDENCE.json",
+    "physics_subsystem_source_evidence": "docs/APIC_PHYSICS_SOURCE_EVIDENCE.json",
+    "further_python_free_scope": "Typed model/state/control storage with explicit native upload, six primitive contact pairs, packed-tree LDL/small-block Cholesky, dynamic line search/convergence and rigid reference mass/inverse weights; standalone ports do not complete the native physics closure",
+    "finalize_solver_source_evidence": "docs/APIC_FINALIZE_SOLVER_SOURCE_EVIDENCE.json",
+    "model_gpu_source_evidence": "docs/APIC_MODEL_GPU_SOURCE_EVIDENCE.json",
+    "model_gpu_scope": "Resolved primitive shape/contact typed storage; seven primitive CUDA contact pairs; explicit native MuJoCo CPU/Double collision from existing MJB; mixed compact/tiled-gather/tree sparse factorization baseline; owned multi-kernel native GPU launch/capture. Each has its own supported subset and artifact format; none automatically completes or replaces the Newton/MuJoCo-Warp four-graph backend",
+    "cooking_device_source_evidence": "docs/APIC_COOKING_DEVICE_SOURCE_EVIDENCE.json",
+    "cooking_device_scope": "Historical cooking/device milestone: host Mesh/BVH, authored schema/equalities, distance GJK and shallow contacts, MathDx tiles and convergence control. Superseded for rigid contacts and sparse/solver bodies by full_native_translation_scope below; runtime validation remains deferred",
+    "full_native_translation_source_evidence": "docs/APIC_FULL_NATIVE_SOURCE_EVIDENCE.json",
+    "full_native_translation_ledger": "docs/APIC_FULL_NATIVE_TRANSLATION.md",
+    "full_native_translation_scope": "Native owned Mesh/BVH/Qhull/SDF/NanoVDB cooking resources, rigid GJK/EPA/manifold plus plane/heightfield contacts, cooperative mixed sparse LDL tails and no-pivot sparse LU, full-rebuild Newton/CG reference iteration and incremental/compact adapters, effective metric/preconditioner helpers, authenticated multi-module pipeline. Full SDK/model physical coefficient generation and deformable collision providers are separate boundaries; no whole-backend closure or numerical equivalence is claimed",
+    "passive_source_dependencies": "Some numerical reports and charter checks read preserved .py source bytes for SHA provenance; this requires source files, not an interpreter",
+    "native_library_dependencies": "Native MuJoCo, E1 C++ SDK and optional LibTorch RNG/oracle libraries are separate from CPython; Python-wheel installation paths do not imply interpreter execution",
+    "tests_executed": false,
+    "training_executed": false,
+    "simulation_executed": false,
+    "sdk_executed": false,
+    "artifact_export_executed": false,
+  }
+  @fs.write_file(
+    root + "/docs/PYTHON_DEPENDENCIES.json",
+    result.stringify(indent=2) + "\n",
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "Recorded " +
+    paths.length().to_string() +
+    " active-source identities and verified " +
+    preserved.length().to_string() +
+    " preserved launcher identities; no workloads executed",
+  )
+}

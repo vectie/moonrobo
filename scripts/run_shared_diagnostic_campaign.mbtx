@@ -1,0 +1,203 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn read_json(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, phase, group] &&
+    ["world", "actor"].contains(phase) &&
+    [
+      "off", "events", "events-tail", "controls", "observers", "captures", "capture-tail",
+      "ln-control", "rotation-control", "backward-captures", "actor-ln-numeric",
+      "backward-smc-drain",
+    ].contains(group) else {
+    fail("explicit shared diagnostic phase/group required")
+  }
+  guard group != "ln-control" || phase == "world" else {
+    fail("LN inverse ablation is world-only")
+  }
+  guard group != "rotation-control" || phase == "actor" else {
+    fail("rotation control is actor-only")
+  }
+  guard group != "actor-ln-numeric" || phase == "actor" else {
+    fail("actor-only LN numerical control")
+  }
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let cases = if group == "ln-control" {
+    [
+      ("smc-eager", "off"),
+      ("smc-expanded-eager", "off"),
+      ("smc-expanded-eager", "off"),
+      ("smc-eager", "off"),
+    ]
+  } else if group == "actor-ln-numeric" {
+    [("smc-expanded-eager", "off")]
+  } else if group == "rotation-control" {
+    [("smc-eager", "off"), ("smc-log-eager", "off")]
+  } else if group == "backward-smc-drain" {
+    [("smc", "aten-trace")]
+  } else if group == "backward-captures" {
+    [("native", "aten-trace"), ("smc", "aten-trace")]
+  } else if group == "events-tail" {
+    [("smc", "events"), ("native", "events")]
+  } else if group == "controls" {
+    [
+      ("native", "ranges"),
+      ("smc", "ranges"),
+      ("native", "aten"),
+      ("smc", "aten"),
+    ]
+  } else if group == "capture-tail" {
+    [("smc", "cuda-trace"), ("native", "aten-trace"), ("smc", "aten-trace")]
+  } else if group == "captures" {
+    [
+      ("native", "cuda-trace"),
+      ("smc", "cuda-trace"),
+      ("native", "aten-trace"),
+      ("smc", "aten-trace"),
+    ]
+  } else if group == "observers" {
+    [
+      ("native", "ranges"),
+      ("smc", "ranges"),
+      ("native", "cuda-trace"),
+      ("smc", "cuda-trace"),
+      ("native", "aten"),
+      ("smc", "aten"),
+      ("native", "aten-trace"),
+      ("smc", "aten-trace"),
+    ]
+  } else {
+    [("native", group), ("smc", group), ("smc", group), ("native", group)]
+  }
+  let records = []
+  for i, (implementation, observation) in cases {
+    let label = "diag-" +
+      phase +
+      "-" +
+      (if group == "backward-smc-drain" {
+        "captures-3c"
+      } else if group == "backward-captures" {
+        "captures-" + (if i == 0 { "2b" } else { "3" })
+      } else if group == "events-tail" {
+        "events-" + (if i == 0 { "2b" } else { "3" })
+      } else if group == "capture-tail" {
+        "captures-" + (if i == 0 { "1b" } else { (i + 1).to_string() })
+      } else {
+        group + "-" + i.to_string()
+      })
+    let root = "/home/wlc004s/moonrobo/runs/hotspot-shared-" + label
+    guard @process.run("/home/wlc004s/moonrobo/toolchain/bin/moon", [
+        "run",
+        "--target",
+        "native",
+        base + "/advise_shared_finished_snapshots_d.mbtx",
+        "--",
+        "before-" + label,
+      ]) ==
+      0 else {
+      fail("safe cache advice did not complete")
+    }
+    println("Starting " + label + " " + implementation + " " + observation)
+    let revision = if group == "backward-smc-drain" {
+      "v17"
+    } else if group == "backward-captures" || group == "actor-ln-numeric" {
+      "v16"
+    } else if group == "ln-control" || group == "rotation-control" {
+      "v15"
+    } else {
+      "v13"
+    }
+    let single = group == "rotation-control" || group == "actor-ln-numeric"
+    let repetitions = if single { "1" } else { "13" }
+    let code = @process.run(
+      "/home/wlc004s/moonrobo/toolchain/bin/moon",
+      [
+        "run",
+        "--target",
+        "native",
+        base + "/run_shared_compute_" + revision + ".mbtx",
+        "--",
+        phase,
+        implementation,
+        observation,
+        repetitions,
+        label,
+      ],
+      stdout=@process.redirect_to_file(
+        base + "/" + label + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        base + "/" + label + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    let result = read_json(root + "/result.json")
+    let memory = read_json(root + "/training-guard.json")
+    guard memory
+      is { "reason": "completed", "exit_code": Number(exit_code), .. } &&
+      exit_code == code.to_double() else {
+      fail("resource/runtime guard failed; stop campaign")
+    }
+    guard read_json(root + "/training-docker-final.json")
+      is [{ "State": { "OOMKilled": False, "Running": False, .. }, .. }] else {
+      fail("container did not end safely")
+    }
+    guard result is { "rows": Array(rows), .. } &&
+      rows.length() == (if single { 1 } else { 13 }) else {
+      fail("incomplete measurement rows")
+    }
+    if observation == "cuda-trace" || observation == "aten-trace" {
+      guard @fs.exists(root + "/trace.nsys-rep") else {
+        fail("capture not triggered")
+      }
+    }
+    let qualified = if implementation == "native" {
+      Json::null()
+    } else {
+      guard result is { "numerical_comparison": { "passed": passed, .. }, .. } else {
+        fail("comparison missing")
+      }
+      passed
+    }
+    if code != 0 {
+      // Strict comparisons still fail the individual job. Only this explicitly
+      // diagnostic campaign may retain its timing; nothing is promoted/enabled.
+      guard code == 1 &&
+        qualified == Json(false) &&
+        @fs.read_file(root + "/training.stderr.log")
+        .text()
+        .contains(
+          "fixed cross-language numerical limits failed; evidence retained",
+        ) else {
+        fail("unexpected execution failure")
+      }
+    }
+    records.push({
+      "path": Json(root),
+      "implementation": Json(implementation),
+      "observation": Json(observation),
+      "exit_code": Json(code),
+      "cross_language_numerical_passed": qualified,
+      "diagnostic_only": true,
+      "optimization_accepted": false,
+    })
+    @fs.write_file(
+      base + "/campaign-" + phase + "-" + group + "-" + i.to_string() + ".json",
+      Json(records).stringify(indent=2),
+      create_mode=CreateNew,
+    )
+    println("Recorded " + label + "; numerical status=" + qualified.stringify())
+  }
+}

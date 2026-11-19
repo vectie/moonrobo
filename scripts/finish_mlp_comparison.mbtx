@@ -1,0 +1,23 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  for group in ["matched-gates", "matched-off", "matched-events"] {
+    guard @process.run("moon", [
+        "run", "--target", "native", "scripts/run_mlp_comparison.mbtx", group,
+      ]) ==
+      0 else {
+      fail("matched MLP campaign stopped at " + group)
+    }
+  }
+  guard @process.run("moon", [
+      "run", "--target", "native", "scripts/report_mlp_comparison.mbtx", "matched",
+    ]) ==
+    0 else {
+    fail("MLP final report")
+  }
+}

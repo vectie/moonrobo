@@ -1,0 +1,444 @@
+///|
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+// Run inside the SAME diagnostic container/cgroup. This adds CUDA headroom
+// supervision; it does not replace outer host/cgroup/output/identity guards.
+// No Docker, SSH, training arguments, RNG or physics settings are changed.
+
+///|
+fn path(s : String) -> Bool {
+  s.has_prefix("/") &&
+  !s.contains("..") &&
+  s.all(c => c is ('a'..<='z' | 'A'..<='Z' | '0'..<='9' | '/' | '_' | '-' | '.'))
+}
+
+///|
+fn digest(s : String) -> Bool {
+  s.length() == 64 && s.all(c => c is ('a'..<='f' | '0'..<='9'))
+}
+
+///|
+async fn sha(path : String) -> String {
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  guard f.kind() == @fs.Regular && f.size() > 0L && f.size() <= 268435456L else {
+    fail("invalid diagnostic executable file bound")
+  }
+  let size = f.size()
+  let h = @crypto.SHA256::new()
+  for offset = 0L; offset < size; {
+    let count = (size - offset).min(65536L).to_int()
+    h.update(f.read_exactly_at(count, position=offset))
+    continue offset + count.to_int64()
+  }
+  guard f.size() == size else { fail("executable changed during hash") }
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+fn integer(j : Json) -> Int64 raise {
+  guard j is String(s) else { fail("expected exact Int64 JSON string") }
+  let value = @string.parse_int64(s)
+  guard value >= 0L else { fail("negative CUDA memory field") }
+  value
+}
+
+///|
+struct Sample {
+  state : String
+  sequence : Int32
+  available : Int64?
+} derive(Debug, Eq)
+
+///|
+fn parse_sample(j : Json) -> Sample raise {
+  guard j
+    is {
+      "format": String("moonrobo.cuda-memory-guard.v1"),
+      "state": String(state),
+      "sequence": Number(sequence),
+      ..
+    } &&
+    sequence >= 0.0 &&
+    sequence <= 7441.0 &&
+    sequence.to_int().to_double() == sequence else {
+    fail("invalid CUDA helper record")
+  }
+  if state == "closed" {
+    guard j is { "context_released": True, .. } else {
+      fail("CUDA context cleanup unconfirmed")
+    }
+    return { state, sequence: sequence.to_int(), available: None, }
+  }
+  guard ["ready", "sample", "breach"].contains(state) &&
+    j
+    is {
+      "cuda_free_bytes": free,
+      "cuda_total_bytes": total,
+      "context_overhead_included": True,
+      ..
+    } else {
+    fail("unknown CUDA guard sample state")
+  }
+  let available = integer(free)
+  guard available <= integer(total) else {
+    fail("CUDA helper free exceeds total")
+  }
+  { state, sequence: sequence.to_int(), available: Some(available), }
+}
+
+///|
+async fn latest(path : String) -> Sample? {
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  let size = f.size()
+  guard size <= 4194304L else { fail("CUDA helper log exceeded4MiB bound") }
+  if size == 0L {
+    return None
+  }
+  let count = size.min(8192L).to_int()
+  let tail = @utf8.decode(
+    f.read_exactly_at(count, position=size - count.to_int64()),
+  )
+  let lines = tail.split("\n").to_array()
+  // Only complete lines are evidence. The first tail line may be truncated.
+  let first = if size > count.to_int64() { 1 } else { 0 }
+  let mut found = None
+  for i = first; i + 1 < lines.length(); i = i + 1 {
+    if lines[i] != "" {
+      found = Some(parse_sample(@json.parse(lines[i])))
+    }
+  }
+  found
+}
+
+///|
+async fn initial_ready(path : String) -> Bool {
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  let size = f.size()
+  guard size <= 4194304L else { fail("CUDA helper log exceeded4MiB bound") }
+  if size == 0L {
+    return false
+  }
+  let prefix = @utf8.decode(
+    f.read_exactly_at(size.min(2048L).to_int(), position=0L),
+  )
+  let lines = prefix.split("\n").to_array()
+  if lines.length() < 2 {
+    return false
+  }
+  let first = parse_sample(@json.parse(lines[0]))
+  guard first.state == "ready" &&
+    first.sequence == 0 &&
+    first.available is Some(free) &&
+    free >= 17179869184L else {
+    fail("CUDA helper did not publish a safe ready0 record")
+  }
+  true
+}
+
+///|
+async fn write(path : String, j : Json) -> Unit {
+  @fs.write_file(
+    path,
+    j.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args is [_, "--self-test"] {
+    let ready : Json = {
+      "format": "moonrobo.cuda-memory-guard.v1",
+      "state": "ready",
+      "sequence": 0,
+      "cuda_free_bytes": "17179869184",
+      "cuda_total_bytes": "137438953472",
+      "context_overhead_included": true,
+    }
+    assert_eq(parse_sample(ready).available, Some(17179869184L))
+    assert_eq(
+      parse_sample({
+        "format": "moonrobo.cuda-memory-guard.v1",
+        "state": "closed",
+        "sequence": 2,
+        "context_released": true,
+      }).state,
+      "closed",
+    )
+    try
+      parse_sample({
+        "format": "moonrobo.cuda-memory-guard.v1",
+        "state": "sample",
+        "sequence": 1,
+        "cuda_free_bytes": "20",
+        "cuda_total_bytes": "10",
+        "context_overhead_included": true,
+      })
+    catch {
+      _ => ()
+    } noraise {
+      _ => fail("invalid free/total accepted")
+    }
+    println("CUDA guard parser self-test passed; no process or GPU launched")
+    return
+  }
+  guard args
+    is [_, mode, helper, helper_sha, runner, runner_sha, spec, directory] &&
+    ["--execute", "--preflight"].contains(mode) &&
+    path(helper) &&
+    path(runner) &&
+    path(spec) &&
+    path(directory) &&
+    directory.has_prefix("/run/") &&
+    digest(helper_sha) &&
+    digest(runner_sha) else {
+    fail(
+      "usage: --execute HELPER HELPER_SHA TIMELINE_RUNNER RUNNER_SHA SPEC FRESH_RUN_GUARD_DIR; --preflight HELPER HELPER_SHA TRAINER TRAINER_SHA SPEC FRESH_RUN_GUARD_DIR; or --self-test",
+    )
+  }
+  guard sha(helper) == helper_sha && sha(runner) == runner_sha else {
+    fail("guard/runner executable identity mismatch")
+  }
+  let mut target_args = ["--execute", spec]
+  let mut target_cwd : StringView? = None
+  let target_environment : Map[String, String] = Map([])
+  if mode == "--preflight" {
+    let f = @fs.open(spec, mode=ReadOnly)
+    defer f.close()
+    guard f.size() > 0L && f.size() <= 65536L else {
+      fail("preflight spec size bound")
+    }
+    let value = @json.parse(
+      @utf8.decode(f.read_exactly_at(f.size().to_int(), position=0L)),
+    )
+    guard value
+      is {
+        "format": String("moonrobo.operator-timeline-launch.v1"),
+        "protocol": String("native-prefix41"),
+        "program": String(program),
+        "program_sha256": String(program_sha),
+        "args": Array(argv),
+        "pinned_files": Object(pins),
+        "cwd": String(cwd),
+        "environment": Object(environment),
+        ..
+      } &&
+      program == runner &&
+      program_sha == runner_sha &&
+      pins.length() <= 64 &&
+      cwd == "/workspace/moonrobo" else {
+      fail("preflight requires exact native diagnostic spec/trainer identity")
+    }
+    target_args = argv.map(arg => {
+      guard arg is String(s) else { fail("invalid native preflight argument") }
+      s
+    })
+    target_cwd = Some(cwd[:])
+    for key, value in environment {
+      guard [
+          "MOONROBO_TRACE_ITERATION", "SM_PROFILE", "TORCH_COMPILE_DISABLE", "TORCHDYNAMO_DISABLE",
+          "OMP_NUM_THREADS", "MKL_NUM_THREADS",
+        ].contains(key) &&
+        value is String(s) &&
+        s.length() <= 16 &&
+        s.all(c => c is ('0'..<='9')) else {
+        fail("unexpected preflight environment override")
+      }
+      target_environment[key] = s
+    }
+    guard target_args.get(0) == Some("diagnose-operators") &&
+      target_args.length() <= 128 &&
+      !target_args.contains("--resume") &&
+      !target_args.contains("--distributed") &&
+      !target_args.contains("--preflight-only") else {
+      fail("preflight requires fresh original diagnostic argv")
+    }
+    let mut iteration_count = 0
+    for i, arg in target_args {
+      if arg == "--iterations" {
+        guard i + 1 < target_args.length() && target_args[i + 1] == "41" else {
+          fail("preflight iterations must remain41")
+        }
+        iteration_count += 1
+      }
+    }
+    guard iteration_count == 1 &&
+      target_args.contains("--cuda-memory-telemetry") &&
+      !target_args.contains("--execution-profile") else {
+      fail("preflight must retain exact diagnostic protocol")
+    }
+    for file, hash in pins {
+      guard path(file) &&
+        hash is String(expected) &&
+        digest(expected) &&
+        sha(file) == expected else {
+        fail("preflight pinned input mismatch")
+      }
+    }
+    target_args.push("--preflight-only")
+  }
+  guard !@fs.exists(directory) else {
+    fail("CUDA guard directory must be fresh")
+  }
+  let segments = directory.split("/").map(s => s.to_owned()).to_array()
+  ignore(segments.pop())
+  let parent = segments.join("/")
+  guard @fs.realpath(parent) == parent else {
+    fail("guard parent must be canonical")
+  }
+  @fs.mkdir(directory)
+  let log = directory + "/cuda.jsonl"
+  let stop = directory + "/stop-request"
+  let started = @async.now()
+  let mut minimum = 9223372036854775807L
+  let mut observations = 0
+  let mut last_sequence = -1
+  let mut last_progress = started
+  @async.with_timeout(1870000, () => {
+    @async.with_task_group() <| group => {
+      let watcher = @process.spawn(
+        group,
+        helper,
+        ["--watch", stop],
+        stdout=@process.redirect_to_file(log, create_mode=CreateNew),
+        stderr=@process.redirect_to_file(
+          directory + "/helper.stderr.log",
+          create_mode=CreateNew,
+        ),
+        cancel_handler=@process.graceful_cancel(timeout=2000),
+      )
+      let mut ready = false
+      while !ready {
+        guard watcher.try_wait() is None else {
+          fail("CUDA helper exited before ready")
+        }
+        if initial_ready(log) && latest(log) is Some(sample) {
+          guard ["ready", "sample"].contains(sample.state) &&
+            sample.available is Some(free) &&
+            free >= 17179869184L else {
+            fail("CUDA helper failed initial headroom query")
+          }
+          minimum = free
+          observations = 1
+          last_sequence = sample.sequence
+          last_progress = @async.now()
+          ready = true
+        }
+        guard @async.now() - started <= 10000L else {
+          fail("CUDA helper readiness timeout")
+        }
+        if !ready {
+          @async.sleep(50)
+        }
+      }
+      let target = @process.spawn(
+        group,
+        runner,
+        target_args,
+        cwd?=target_cwd,
+        extra_env=target_environment,
+        stdout=@process.redirect_to_file(
+          directory + "/runner.stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          directory + "/runner.stderr.log",
+          create_mode=CreateNew,
+        ),
+        cancel_handler=@process.graceful_cancel(timeout=3000),
+      )
+      let target_code = for ;; {
+        guard watcher.try_wait() is None else {
+          target.cancel()
+          fail("CUDA helper exited while target/profiler active")
+        }
+        if latest(log) is Some(sample) {
+          guard ["ready", "sample"].contains(sample.state) &&
+            sample.available is Some(free) &&
+            free >= 17179869184L else {
+            target.cancel()
+            fail("CUDA headroom breach or invalid sample")
+          }
+          guard sample.sequence >= last_sequence else {
+            target.cancel()
+            fail("CUDA helper sequence regressed")
+          }
+          if sample.sequence > last_sequence {
+            last_sequence = sample.sequence
+            last_progress = @async.now()
+            observations += 1
+            minimum = minimum.min(free)
+          }
+        }
+        guard @async.now() - last_progress <= 2000L else {
+          target.cancel()
+          fail("CUDA helper freshness exceeded2seconds")
+        }
+        if target.try_wait() is Some(code) {
+          break code
+        }
+        @async.sleep(250)
+      }
+      // The timeline runner returns only after its target/Nsight has exited.
+      // Keep CUDA context alive through that teardown, then request cleanup.
+      @fs.write_file(
+        stop,
+        "target-and-profiler-exited\n",
+        create_mode=CreateNew,
+        sync=Full,
+      )
+      let watcher_code = @async.with_timeout(3000, () => watcher.wait())
+      guard watcher_code == 0 && latest(log) is Some({ state: "closed", .. }) else {
+        fail("CUDA helper normal cleanup not verified")
+      }
+      write(directory + "/receipt.json", {
+        "format": "moonrobo.operator-cuda-guard.v1",
+        "mode": Json(mode),
+        "target_exit_code": Json(target_code),
+        "helper_exit_code": Json(watcher_code),
+        "helper_ready_before_target": true,
+        "helper_closed_after_target_and_profiler": true,
+        "observed_minimum_cuda_free_bytes": Json(minimum),
+        "minimum_scope": "minimum of wrapper-observed latest samples; complete helper JSONL retained, not the allocator peak or every250ms sample minimum",
+        "observed_progress_samples": Json(observations),
+        "last_sequence": Json(last_sequence),
+        "sample_interval_ms": 250,
+        "maximum_allowed_staleness_ms": 2000,
+        "elapsed_ms": Json(@async.now() - started),
+        "same_container_cgroup": true,
+        "reserve_scope": "driver context and guard processes count within existing4GiB diagnostic reserve; not zero GPU overhead",
+        "outer_container_exit_still_requires_verification": true,
+        "use_for_throughput_comparison": false,
+      })
+      guard target_code == 0 else {
+        fail("timeline target failed; retained CUDA guard evidence")
+      }
+    }
+  }) catch {
+    error => {
+      write(directory + "/failure.json", {
+        "format": "moonrobo.operator-cuda-guard-failure.v1",
+        "error": Json(error.to_string()),
+        "elapsed_ms": Json(@async.now() - started),
+        "observed_progress_samples": Json(observations),
+        "outer_action": "stop exact owned container; retain incomplete trace and both process logs",
+        "use_for_throughput_comparison": false,
+      })
+      raise error
+    }
+  }
+}

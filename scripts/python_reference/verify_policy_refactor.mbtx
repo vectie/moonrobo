@@ -1,0 +1,77 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: verify_policy_refactor.mbtx REPO OLD_POLICY_RUN OUTPUT",
+  )
+  let root = args[1]
+  for seed in 0..<3 {
+    let output = args[3] + "/seed-\{seed}"
+    let (code, _, stderr) = @process.collect_output(
+      root + "/target/learning-venv/bin/python",
+      [
+        root + "/providers/motion_learning/policy.py",
+        "evaluate",
+        "--checkpoint",
+        args[2] + "/policy/actor-seed-\{seed}.pt",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--experiment",
+        root + "/examples/learning/g1-cpu-experiment.json",
+        "--config",
+        root + "/examples/learning/g1-policy-fit.json",
+        "--output",
+        output,
+      ],
+    )
+    assert_eq(code, 0, msg=stderr.text())
+    let previous = @json.parse(
+      @fs.read_file(args[2] + "/policy/physics-seed-\{seed}.json").text(),
+    )
+    let current = @json.parse(@fs.read_file(output + "/physics.json").text())
+    for group in ["baseline", "candidate"] {
+      let old_group = field(previous, group)
+      let new_group = field(current, group)
+      assert_eq(field(old_group, "summary"), field(new_group, "summary"))
+      guard field(old_group, "trials") is Array(old_trials) &&
+        field(new_group, "trials") is Array(new_trials) else {
+        fail("missing trials")
+      }
+      assert_eq(old_trials.length(), 9)
+      assert_eq(new_trials.length(), old_trials.length())
+      for i, trial in old_trials {
+        for
+          key in [
+            "episode_id", "steps", "failed", "joint_rmse_rad", "simulated_seconds",
+            "end_reason", "replay",
+          ] {
+          assert_eq(
+            field(trial, key),
+            field(new_trials[i], key),
+            msg="shared-policy regression: " + key,
+          )
+        }
+      }
+    }
+    println("Seed \{seed}: baseline and candidate replay unchanged (18 trials)")
+  }
+}

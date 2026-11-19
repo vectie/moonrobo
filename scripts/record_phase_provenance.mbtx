@@ -1,0 +1,77 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x/crypto",
+}
+
+///|
+async fn digest(path : String) -> String {
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  let n = f.size()
+  guard n >= 0L && n <= 1048576L else { fail("1MiB source bound") }
+  let h = @crypto.SHA256::new()
+  h.update(f.read_exactly_at(n.to_int(), position=0L))
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+async fn main {
+  let (root, chunk_trace) = match @env.args() {
+    [_, root] => (root, false)
+    [_, root, "--chunk-trace"] => (root, true)
+    _ => fail("source root [--chunk-trace]")
+  }
+  let path = root +
+    (if chunk_trace {
+      "/phase-provenance-v2.json"
+    } else {
+      "/phase-provenance.json"
+    })
+  guard !@fs.exists(path) else { fail("new manifest only") }
+  let files : Array[Json] = []
+  let trees = ["original", "diagnostic", "benchmark"] +
+    (if chunk_trace { ["diagnostic-chunk"] } else { [] })
+  for tree in trees {
+    for
+      filename in [
+        "LICENSE", "supermimic/buffer.py", "supermimic/env.py", "supermimic/evaluate.py",
+        "supermimic/kinematics.py", "supermimic/mdp.py", "supermimic/motion.py",
+        "supermimic/networks.py", "supermimic/robot.py", "supermimic/rotations.py",
+        "supermimic/train.py",
+      ] {
+      let relative = tree + "/" + filename
+      files.push({ "path": relative, "sha256": digest(root + "/" + relative) })
+    }
+  }
+  if chunk_trace {
+    for
+      relative in [
+        "diagnostic-chunk/supermimic/policy_microbatch_fullcritic.py", "test_microbatch_trace_equivalence.py",
+      ] {
+      files.push({ "path": relative, "sha256": digest(root + "/" + relative) })
+    }
+  }
+  for
+    relative in [
+      "diagnostic/supermimic/policy_microbatch.py", "diagnostic/supermimic/policy_microbatch_fullcritic.py",
+      "benchmark/supermimic/policy_microbatch.py", "policy_microbatch_gate.py", "policy_microbatch_gate_a.py",
+      "policy_microbatch_gate_b.py", "policy_microbatch_gate_c.py", "policy_microbatch_gate_counterfactual.py",
+    ] {
+    files.push({ "path": relative, "sha256": digest(root + "/" + relative) })
+  }
+  let report : Json = {
+    "format": "moonrobo.phase-and-chunk-source-manifest.v1",
+    "files": Json(files),
+    "inherited_provenance": "provenance.json describes the prior actor-only diagnostic and is preserved as historical input; its hashes/status are not current phase or benchmark evidence",
+    "diagnostic_scope": "one selected phase in fresh iteration41; off/ranges/aten observers and off/nsys collectors, unchanged bounded41 prefix; no checkpoint or resumed run",
+    "benchmark_scope": "60 iterations, steady41-60, original full versus8x512 actor accumulation; full-logical critic features; original script retained; formula check passed in float64, FP32 critic parameter tolerance failed",
+    "remote_identity": "Actual executed binary/source and immutable image identities are in each frozen remote launch/review/spec; this manifest identifies local review copies only",
+    "counterfactual_status": "Authored but not yet executed; never a training candidate",
+  }
+  @fs.write_file(path, report.stringify(indent=2) + "\n", create_mode=CreateNew)
+  println(path)
+}

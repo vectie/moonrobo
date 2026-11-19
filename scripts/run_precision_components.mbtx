@@ -1,0 +1,99 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/precision-scaling-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-operator-179.sock"
+  let runner = @fs.read_file(dir + "/run_precision_mlp_a.mbtx")
+    .text()
+    .replace_all(
+      old="run_precision_mlp_a.mbtx",
+      new="run_precision_components_a.mbtx",
+    )
+    .replace_all(
+      old="precision_mlp_probe_a.py",
+      new="precision_components_probe_a.py",
+    )
+    .replace_all(
+      old="base + \"/shared_smc_probe_bf16_original.py\",",
+      new="base + \"/shared_smc_probe_bf16_original.py\", base + \"/precision_mlp_probe_a.py\",",
+    )
+  @fs.write_file(
+    dir + "/run_precision_components_a.mbtx",
+    runner,
+    create_mode=CreateNew,
+  )
+  for
+    name in [
+      "run_precision_components_a.mbtx", "precision_components_probe_a.py",
+    ] {
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        dir + "/" + name,
+        host + ":" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  let folder = dir + "/components"
+  @fs.mkdir(folder)
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      socket,
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/run_precision_components_a.mbtx -- world compiled off pscale-components-a bf16",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "protocol.json", "completion.json", "training-guard.json", "training-docker-final.json",
+      "training.stdout.log", "training.stderr.log", "result.json",
+    ] {
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-mlp-pscale-components-a/" +
+        name,
+        folder + "/" + name,
+      ]),
+      0,
+    )
+  }
+  assert_eq(code, 0)
+  guard @json.parse(@fs.read_file(folder + "/training-guard.json").text())
+    is { "reason": "completed", "error": Null, .. } else {
+    fail("guard")
+  }
+  guard @json.parse(
+      @fs.read_file(folder + "/training-docker-final.json").text(),
+    )
+    is [{ "State": { "OOMKilled": False, "Running": False, "Pid": 0, .. }, .. }] else {
+    fail("closed")
+  }
+}

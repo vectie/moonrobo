@@ -1,0 +1,181 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn integer(value : Json) -> Int32 raise {
+  guard value is Number(n, ..) else { fail("expected integer") }
+  n.to_int()
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=err.text() + out.text())
+  out.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: verify_g1_physics_critic.mbtx REPO STUDY MOONDATA_ROOT SUMMARY_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let cells : Array[Json] = []
+  for id in ["critic-imagined", "critic-physics"] {
+    let source = study + "/" + id
+    let policy = read(source + "/policy/report.json")
+    let imported = @json.parse(
+      run(
+        root +
+        "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe",
+        [
+          "import",
+          args[3],
+          source,
+          id,
+          @env.now().reinterpret_as_int64().to_string(),
+        ],
+      ),
+    )
+    assert_eq(field(imported, "physical_execution_allowed"), false.to_json())
+    let payloads = array(field(imported, "payloads"))
+    let rows : Array[Json] = []
+    for result in array(field(policy, "runs")) {
+      let seed = integer(field(result, "seed"))
+      let mut physics : Json = Json::null()
+      if id == "critic-physics" {
+        let evidence = field(result, "critic_physics")
+        let name = "critic-physics-seed-\{seed}.jsonl.gz"
+        assert_eq(field(evidence, "file"), name.to_json())
+        ignore(run("gzip", ["-t", source + "/policy/" + name]))
+        let matching = payloads.filter(p => {
+          field(p, "relative_path") == ("policy/" + name).to_json()
+        })
+        assert_eq(matching.length(), 1)
+        assert_eq(
+          field(field(matching[0], "data_ref"), "kind"),
+          "learning-critic-physics".to_json(),
+        )
+        guard field(evidence, "sha256") is String(sha) else {
+          fail("missing recorded digest")
+        }
+        assert_eq(
+          field(field(matching[0], "data_ref"), "checksum"),
+          ("sha256:" + sha).to_json(),
+        )
+        let batches = array(field(evidence, "batches"))
+        assert_eq(batches.length(), 10)
+        let mut steps = 0
+        let mut episodes = 0
+        let mut falls = 0
+        let mut limits = 0
+        let mut optimizer_steps = 0
+        for i, batch in batches {
+          assert_eq(field(batch, "actor_update"), (i * 20).to_json())
+          steps += integer(field(batch, "transitions"))
+          episodes += integer(field(batch, "episodes"))
+          falls += integer(field(batch, "falls"))
+          limits += integer(field(batch, "time_limits"))
+          optimizer_steps += integer(field(batch, "optimizer_steps"))
+        }
+        assert_eq(optimizer_steps, 1600)
+        physics = {
+          "batches": batches.length().to_json(),
+          "transitions": steps.to_json(),
+          "episodes": episodes.to_json(),
+          "falls": falls.to_json(),
+          "time_limits": limits.to_json(),
+          "optimizer_steps": optimizer_steps.to_json(),
+          "payload": matching[0],
+        }
+      }
+      rows.push({
+        "seed": seed.to_json(),
+        "selected_update": field(result, "selected_update"),
+        "candidate": field(result, "candidate"),
+        "qualifies": field(result, "qualifies"),
+        "training_seconds": field(result, "training_seconds"),
+        "critic_physics": physics,
+      })
+    }
+    let probe = read(
+      study +
+      "/" +
+      (if id == "critic-physics" { "physics" } else { "imagined" }) +
+      "-probe/summary.json",
+    )
+    cells.push({
+      "id": id.to_json(),
+      "runs": rows.to_json(),
+      "critic_probe": field(probe, "summaries"),
+    })
+  }
+  let a = array(field(read(study + "/imagined-probe/report.json"), "records"))
+  let b = array(field(read(study + "/physics-probe/report.json"), "records"))
+  assert_eq(a.length(), b.length())
+  for i in 0..<a.length() {
+    for
+      key in [
+        "policy_seed", "critic", "case", "reset_seed", "start_step", "hard_physics_return",
+        "soft_physics_return",
+      ] {
+      assert_eq(
+        field(a[i], key),
+        field(b[i], key),
+        msg="probe trajectories differ: " + key,
+      )
+    }
+  }
+  let validation = @json.parse(
+    run(root + "/_build/native/debug/build/cmd/moondata/moondata.exe", [
+      "validate",
+      args[3],
+    ]),
+  )
+  assert_eq(field(validation, "finding_count"), (0 : Json))
+  assert_eq(field(validation, "status"), "passed".to_json())
+  let summary : Json = {
+    "format": "moonrobo.g1-physics-critic-verification.v1",
+    "cells": cells.to_json(),
+    "critic_probe_physical_returns_identical": true,
+    "validation": validation,
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    args[4],
+    summary.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "Registered both methods and verified physical critic records, paired probe returns, and MoonData payload integrity.",
+  )
+}

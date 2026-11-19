@@ -1,0 +1,44 @@
+import {
+  "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/json",
+}
+let out="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-source-fixes-20261027"
+async fn fetch(remote : String, local : String) -> Unit {
+  if !@fs.exists(local) { guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/"+remote,local])==0 else {fail("fetch "+remote)} }
+}
+async fn main {
+  let checks : Array[Json]=[]
+  for (label,expected) in [("smc-fix-rotation-cpu-b",1),("smc-fix-config-cpu-b",4),("smc-fix-resume-cpu-b",1),("smc-fix-inference-cpu-b",1)] {
+    fetch("private/shared-compute-20261026-a/"+label+".stdout.log",out+"/"+label+".stdout.log")
+    fetch("private/shared-compute-20261026-a/"+label+".receipt.json",out+"/"+label+".receipt.json")
+    let text=@fs.read_file(out+"/"+label+".stdout.log").text()
+    guard !text.contains("SKIP") else {fail("skipped test")}
+    let mut count=0
+    for line in text.split("\n") {
+      if line.has_prefix("{\"type\":\"result\"") {
+        guard @json.parse(line.to_owned()) is { "type":"result","message":"",.. } else {fail("test failed "+label)}
+        count+=1
+      }
+    }
+    assert_eq(count,expected)
+    checks.push({"name":Json(label),"executed_passed":Json(count),"skipped":false})
+  }
+  for label in ["fix-aligned-actor-gate-b","fix-smc-eager-actor-gate-b","fix-world-aligned-0"] {
+    let folder=out+"/"+label
+    if !@fs.exists(folder) { @fs.mkdir(folder) }
+    let files=if label=="fix-world-aligned-0" { ["training.stdout.log","training-docker-final.json","training-guard.json"] } else { ["result.json","training.stdout.log","training-docker-final.json","training-guard.json"] }
+    for file in files { fetch("runs/hotspot-shared-"+label+"/"+file,folder+"/"+file) }
+  }
+  fetch("private/shared-compute-20261026-a/full-ln-cache-fix-after-actor-a.json",out+"/cache-advice.json")
+  let result=@json.parse(@fs.read_file(out+"/results.json").text())
+  guard result is Object(fields) else {fail("result")}
+  let corrected=@json.parse(@fs.read_file(out+"/fix-smc-eager-actor-gate-b/result.json").text())
+  guard corrected is { "numerical_comparison":Object(comparison),.. } else {fail("comparison")}
+  fields["corrected_metric_gate"]=Json::object(comparison)
+  fields["regression_checks"]=Json(checks)
+  fields["metric_fix"]={"old_metric_retained":"critic_loss: mean of20 losses","new_metric":"critic_loss_last: final minibatch; read from the same existing scalar readback, no additional GPU synchronization","benchmark_b":"compares critic_loss_last to SMC's final loss; a timing runs retained unchanged"}
+  @fs.write_file(out+"/results.json",result.stringify(indent=2))
+  for (source,name) in [("/tmp/moonrobo-smc-fix-info-final.log","moon-info.log"),("/tmp/moonrobo-smc-fix-fmt-check.log","moon-fmt-check.log"),("/tmp/moonrobo-smc-fix-check8.log","moon-check.log")] {
+    @fs.write_file(out+"/"+name,@fs.read_file(source).text(),create_mode=CreateNew)
+  }
+  println("Verified7 executed CPU tests, compiler/interface/format records and corrected cross-language metric gate")
+}

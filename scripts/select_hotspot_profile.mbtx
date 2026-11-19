@@ -1,0 +1,52 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(o) && o.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, root] else { fail("completed campaign directory required") }
+  let summary = @json.parse(@fs.read_file(root + "/results.json").text())
+  guard field(summary, "complete_abba_groups") == Json(5) && field(summary, "results") is Array(rows) && rows.length() == 5 else { fail("all five complete ABBA groups required") }
+  let mut use_fk = false
+  for row in rows {
+    guard field(row, "numerical_checks_passed") == Json(true) else { fail("all numerical evidence required") }
+    let faster = field(row, "candidate_faster_in_both_adjacent_pairs") == Json(true)
+    match field(row, "candidate") {
+      String("apic") => { guard faster else { fail("APIC bulk benefit not confirmed") } }
+      String("reference_fk") => use_fk = faster
+      _ => { guard !faster else { fail("another winner would need a separately validated composition; do not silently combine") } }
+    }
+  }
+  let source = root + "/reference_fk/run-" + (if use_fk { "1" } else { "0" }) + ".native-config.json"
+  let bytes = @fs.read_file(source).text()
+  let config = @json.parse(bytes)
+  guard field(config, "reference_fk_cache") == Json(use_fk) && field(config, "reuse_pre_step_state") == Json(false) && field(config, "geometry_submitted_cross") == Json(false) && field(config, "layer_norm_mode") == Json("expanded") else { fail("selected profile differs from measured winner") }
+  @fs.write_file(root + "/selected-native-config.json", bytes, create_mode=CreateNew)
+  @fs.write_file(root + "/selected-execution-profile.json", ({
+    "format": "moonrobo.measured-hotspot-profile.v1",
+    "scope": "Exact configuration selected from a completed fresh batch4096 ABBA member; benchmark60 iterations, not a long-training quality claim",
+    "source_config": Json(source),
+    "config": "selected-native-config.json",
+    "env": { "MOONROBO_APIC_IO": "bulk" },
+    "reference_fk_cache": Json(use_fk),
+    "reuse_pre_step_state": false,
+    "layer_norm_mode": "expanded",
+    "geometry_submitted_cross": false,
+    "source_binaries": "/home/wlc004s/moonrobo/private/hotspot-optimization-20261025-b; APIC plugin from hotspot-optimization-20261025-a; exact pins in reference_fk/summary.json",
+    "comparison_scope": "Reference FK pair already runs on APIC bulk; no unmeasured composition of separate arithmetic candidates",
+    "original_source_defaults_unchanged": true,
+    "rollback": { "env": { "MOONROBO_APIC_IO": "scalar" }, "config_override": { "reference_fk_cache": false } },
+    "guards_reduced": false,
+  } : Json).stringify(indent=2), create_mode=CreateNew)
+  println("Selected measured profile; reference_fk_cache=" + use_fk.to_string())
+}

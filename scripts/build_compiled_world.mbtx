@@ -1,0 +1,55 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  assert_eq(
+    @process.run("tar", [
+      "--disable-copyfile",
+      "-czf",
+      dir + "/compiled-world-overlay-a.tar.gz",
+      "src/learning_aligned_gpu/networks.mbt",
+      "src/learning_aligned_gpu/world_norm_snapshot.mbt",
+      "src/learning_aligned_gpu/cmd/compiled_mlp_wbtest.mbt",
+      "src/learning_aligned_gpu/cmd/moon.pkg",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      dir + "/compiled-world-overlay-a.tar.gz",
+      "wlc004s@192.168.2.179:" + base + "/compiled-world-overlay-a.tar.gz",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179",
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/build_compiled_world_a.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        dir + "/world-build.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        dir + "/world-build.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+}

@@ -1,0 +1,623 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/x/crypto",
+}
+
+///|
+let repo = "/workspace/moonrobo"
+
+///|
+fn config_path(n : Int32) -> String {
+  repo + "/examples/learning/g1-apic-export-" + n.to_string() + "env.json"
+}
+
+///|
+fn bundle_path(n : Int32) -> String {
+  "/gate/g1-" + n.to_string() + "env-apic"
+}
+
+///|
+fn manifest_path(n : Int32) -> String {
+  bundle_path(n) + "/manifest.json"
+}
+
+///|
+fn selected_worlds(n : Int32) -> Array[Int32] {
+  [0, n / 2, n - 1]
+}
+
+///|
+fn num_envs(args : Array[String]) -> Int32 raise {
+  match args {
+    [_, "export" | "oracle" | "replay", _] => 4
+    [_, "export" | "oracle" | "replay", _, "--num-envs", "4"] => 4
+    [_, "export" | "oracle" | "replay", _, "--num-envs", "8"] => 8
+    [_, "export" | "oracle" | "replay", _, "--num-envs", "128"] => 128
+    _ =>
+      fail(
+        "usage: run_spark_apic_n4_gate.mbtx {export|oracle|replay} PINS.json [--num-envs 4|8|128]; default N4, no other batch size or option accepted; inside existing 16GiB/no-swap/<=4CPU container; host must verify image ID",
+      )
+  }
+}
+
+///|
+let tape = "/gate/tape-v2.json"
+
+///|
+let oracle = "/gate/sdk-oracle-v2.json"
+
+///|
+let report = "/gate/replay-report-v2.json"
+
+///|
+let scene : String = repo + "/data/g1_description/scene-no-self-collision.xml"
+
+///|
+let usd : String = repo + "/data/g1_usd/g1_29dof/g1_29dof.usda"
+
+///|
+let authoring = "/opt/moonrobo/apic-authoring/libmoonrobo_apic_authoring.so"
+
+///|
+let runtime = "/opt/moonrobo/apic-runtime/libmoonrobo_aligned_apic.so"
+
+///|
+struct Pins {
+  executable : String
+  executable_sha256 : String
+  expected_image_id : String
+  adapter_sha256 : String
+  tape_sha256 : String?
+  manifest_sha256 : String?
+  oracle_sha256 : String?
+}
+
+///|
+fn sha(value : String) -> Bool {
+  value.length() == 64 &&
+  value.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(result) else {
+    fail("missing JSON field: " + key)
+  }
+  result
+}
+
+///|
+fn optional_string(value : Json, key : String) -> String? raise {
+  guard value is Object(fields) else { fail("pins must be a JSON object") }
+  match fields.get(key) {
+    None | Some(Null) => None
+    Some(String(value)) => Some(value)
+    _ => fail("pin field must be a string or null: " + key)
+  }
+}
+
+///|
+fn decode_pins(value : Json) -> Pins raise {
+  {
+    executable: @json.from_json(field(value, "executable")),
+    executable_sha256: @json.from_json(field(value, "executable_sha256")),
+    expected_image_id: @json.from_json(field(value, "expected_image_id")),
+    adapter_sha256: @json.from_json(field(value, "adapter_sha256")),
+    tape_sha256: optional_string(value, "tape_sha256"),
+    manifest_sha256: optional_string(value, "manifest_sha256"),
+    oracle_sha256: optional_string(value, "oracle_sha256"),
+  }
+}
+
+///|
+fn[T : ToJson] scalar_or_null(value : T?) -> Json {
+  match value {
+    Some(value) => Json(value)
+    None => Json::null()
+  }
+}
+
+///|
+async fn read_bytes(path : String, limit : Int64) -> Bytes {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected a regular input file: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= limit else { fail("input exceeds byte bound") }
+  file.read_exactly_at(size.to_int(), position=0L)
+}
+
+///|
+async fn read_json(path : String, limit : Int64) -> Json {
+  @json.parse(@utf8.decode(read_bytes(path, limit)))
+}
+
+///|
+async fn file_sha(path : String, limit : Int64) -> String {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected a regular pinned file: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= limit else {
+    fail("pinned file exceeds byte bound")
+  }
+  let hash = @crypto.SHA256::new()
+  for offset = 0L; offset < size; {
+    let n = (size - offset).min(65536L).to_int()
+    hash.update(file.read_exactly_at(n, position=offset))
+    continue offset + n.to_int64()
+  }
+  guard file.size() == size else {
+    fail("pinned file size changed during hash")
+  }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn write_json(path : String, value : Json) -> Unit {
+  @fs.write_file(
+    path,
+    value.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+}
+
+///|
+async fn cgroup() -> Json {
+  let values : Map[String, String] = Map([])
+  let errors : Map[String, String] = Map([])
+  for
+    name in [
+      "memory.max", "memory.current", "memory.peak", "memory.events", "memory.events.local",
+      "memory.swap.max", "memory.swap.current", "cpu.max",
+    ] {
+    try {
+      let file = @fs.open("/sys/fs/cgroup/" + name, mode=ReadOnly)
+      defer file.close()
+      let bytes = FixedArray::make(16385, b'\x00')
+      let n = file.read_at(bytes, position=0L)
+      guard n > 0 && n <= 16384 else { fail("missing/oversized cgroup value") }
+      values[name] = @utf8.decode(Bytes::makei(n, i => bytes[i]))
+        .trim()
+        .to_owned()
+    } catch {
+      error => errors[name] = error.to_string()
+    }
+  }
+  { "values": Json(values), "errors": Json(errors) }
+}
+
+///|
+fn verify_cgroup(value : Json) -> Int64 raise {
+  let values : Map[String, String] = @json.from_json(field(value, "values"))
+  guard values.get("memory.max") == Some("17179869184") &&
+    values.get("memory.swap.max") == Some("0") &&
+    values.get("cpu.max") is Some(cpu) &&
+    values.get("memory.peak") is Some(peak) &&
+    values.get("memory.events") is Some(events) else {
+    fail(
+      "N4/N8/N128 gate requires actual 16 GiB cgroup memory, zero swap and readable counters",
+    )
+  }
+  let words = cpu.split(" ").filter(x => x != "").to_array()
+  guard words.length() == 2 else { fail("invalid cpu.max") }
+  let quota = @string.parse_int64(words[0])
+  let period = @string.parse_int64(words[1])
+  guard quota > 0L && period > 0L && period <= 1000000L && quota <= period * 4L else {
+    fail("N4/N8 gate requires a finite CPU quota of at most four cores")
+  }
+  let counts : Map[String, Int64] = Map([])
+  for line in events.split("\n") {
+    let items = line.split(" ").filter(x => x != "").to_array()
+    guard items.length() == 2 else { fail("invalid memory.events") }
+    counts[items[0].to_owned()] = @string.parse_int64(items[1])
+  }
+  guard counts.get("oom") == Some(0L) &&
+    counts.get("oom_kill") == Some(0L) &&
+    counts.get("oom_group_kill").unwrap_or(0L) == 0L else {
+    fail("cgroup reports OOM; retain evidence and stop")
+  }
+  let result = @string.parse_int64(peak)
+  guard result > 0L else { fail("invalid memory.peak") }
+  result
+}
+
+///|
+async fn verify(mode : String, pins : Pins, n : Int32) -> Json {
+  let config = config_path(n)
+  let manifest = manifest_path(n)
+  guard @fs.realpath(repo) == repo &&
+    @fs.realpath("/gate") == "/gate" &&
+    pins.executable.has_prefix("/") &&
+    @fs.realpath(pins.executable) == pins.executable &&
+    sha(pins.executable_sha256) &&
+    sha(pins.adapter_sha256) &&
+    pins.expected_image_id.has_prefix("sha256:") &&
+    sha(pins.expected_image_id[7:].to_owned()) else {
+    fail("canonical mounts/executable and exact SHA pins required")
+  }
+  let expected : Json = {
+    "adapter": Json(authoring),
+    "python": "/opt/isaaclab-venv/bin/python3.12",
+    "site_packages": "/opt/isaaclab-venv/lib/python3.12/site-packages",
+    "isaaclab_root": "/opt/moonrobo/sdk/IsaacLab",
+    "newton_root": "/opt/moonrobo/sdk/newton",
+    "usd": Json(usd),
+    "usd_variants": { "Physics": "mujoco" },
+    "source_mjcf": Json(scene),
+    "output": Json(bundle_path(n)),
+    "num_envs": Json(n),
+    "device_id": 0,
+    "self_collisions": false,
+  }
+  guard read_json(config, 65536L) == expected else {
+    fail("N" + n.to_string() + " configuration changed")
+  }
+  let adapter = if mode == "replay" { runtime } else { authoring }
+  if mode != "replay" {
+    guard pins.expected_image_id ==
+      "sha256:3f0487da0faaf353f14c43c8a135efad70c8a988e7735bba6b991fef0e50899c" &&
+      pins.adapter_sha256 ==
+      "7bf09deb614960d820de6cdbbe127613d31c72da2d6af460b0e6bf943b150b52" else {
+      fail("authoring image/bridge differs from retained original SDK identity")
+    }
+  }
+  let checked : Map[String, Json] = Map([])
+  let inputs = [
+    (pins.executable, pins.executable_sha256, 1073741824L),
+    (adapter, pins.adapter_sha256, 268435456L),
+    (
+      scene, "34cf0cf3c5fa5452fc24d33d9f31fb4a4435f3050366041e1dc853b39bdd20ee",
+      16777216L,
+    ),
+    (
+      usd, "b79f5d54982304f3b33919d24fdd1290f470a2f0629409572cb2f7b2d0b28b67", 16777216L,
+    ),
+  ]
+  if mode != "export" {
+    guard pins.tape_sha256 is Some(tape_sha) &&
+      sha(tape_sha) &&
+      pins.manifest_sha256 is Some(manifest_sha) &&
+      sha(manifest_sha) else {
+      fail("oracle/replay requires actual new tape and manifest SHA pins")
+    }
+    inputs.push((tape, tape_sha, 4194304L))
+    inputs.push((manifest, manifest_sha, 4194304L))
+    let settings = read_json(tape, 4194304L)
+    guard field(settings, "format") == Json("moonrobo.apic-audit-tape.v2") &&
+      field(settings, "num_envs") == Json(n) &&
+      field(settings, "selected_worlds") == Json(selected_worlds(n)) &&
+      field(settings, "operations") is Array(ops) &&
+      ops.length() == 27 &&
+      ops.filter(op => field(op, "kind") == Json("step")).length() == 8 else {
+      fail(
+        "N4/N8/N128 gate requires the selected batch's v2 27-operation/eight-step tape",
+      )
+    }
+    guard field(read_json(manifest, 4194304L), "num_envs") == Json(n) else {
+      fail("manifest world count mismatch")
+    }
+  }
+  if mode == "replay" {
+    guard pins.oracle_sha256 is Some(value) && sha(value) else {
+      fail("replay requires the actual independent oracle SHA")
+    }
+    inputs.push((oracle, value, 16777216L))
+  }
+  for (path, expected_sha, limit) in inputs {
+    guard file_sha(path, limit) == expected_sha else {
+      fail("pinned file mismatch: " + path)
+    }
+    checked[path] = Json(expected_sha)
+  }
+  checked[config] = Json(file_sha(config, 65536L))
+  Json(checked)
+}
+
+///|
+fn command(mode : String, pins : Pins, n~ : Int32 = 4) -> Array[String] {
+  let config = config_path(n)
+  let manifest = manifest_path(n)
+  let deadline = if mode == "export" {
+    "600s"
+  } else if mode == "oracle" {
+    "300s"
+  } else {
+    "180s"
+  }
+  let args = ["--signal=TERM", "--kill-after=5s", deadline, pins.executable]
+  match mode {
+    "export" => args.append(["export", config])
+    "oracle" => args.append(["trace-sdk", config, tape, manifest, oracle])
+    _ =>
+      args.append([
+        "run",
+        "--adapter",
+        runtime,
+        "--manifest",
+        manifest,
+        "--manifest-sha256",
+        pins.manifest_sha256.unwrap_or(""),
+        "--scene",
+        scene,
+        "--tape",
+        tape,
+        "--oracle",
+        oracle,
+        "--output",
+        report,
+        "--device",
+        "0",
+        "--max-host-mib",
+        "8192",
+        "--max-device-mib",
+        "8192",
+        "--timeout-seconds",
+        "170",
+      ])
+  }
+  args
+}
+
+///|
+fn self_test() -> Unit raise {
+  let pin_json : Json = {
+    "executable": "/tool",
+    "executable_sha256": "a".repeat(64),
+    "expected_image_id": "sha256:" + "b".repeat(64),
+    "adapter_sha256": "c".repeat(64),
+  }
+  let omitted = decode_pins(pin_json)
+  assert_eq(omitted.tape_sha256, None)
+  let pin_fields : Map[String, Json] = @json.from_json(pin_json)
+  pin_fields["tape_sha256"] = Json::null()
+  pin_fields["manifest_sha256"] = Json::null()
+  pin_fields["oracle_sha256"] = Json::null()
+  let nullable = decode_pins(Json(pin_fields))
+  assert_eq(nullable.tape_sha256, None)
+  pin_fields["tape_sha256"] = Json("d".repeat(64))
+  pin_fields["manifest_sha256"] = Json("e".repeat(64))
+  pin_fields["oracle_sha256"] = Json("f".repeat(64))
+  let strings = decode_pins(Json(pin_fields))
+  assert_eq(strings.tape_sha256, Some("d".repeat(64)))
+  assert_eq(strings.manifest_sha256, Some("e".repeat(64)))
+  assert_eq(strings.oracle_sha256, Some("f".repeat(64)))
+  assert_eq(scalar_or_null(Some(0)), Json(0))
+  assert_eq(scalar_or_null(Some(1234567L)), Json(1234567L))
+  assert_eq(scalar_or_null(Some("error")), Json("error"))
+  let missing : String? = None
+  assert_eq(scalar_or_null(missing), Json::null())
+  assert_eq(
+    scalar_or_null(Some(Json({ "verified": true }))),
+    Json({ "verified": true }),
+  )
+  pin_fields["tape_sha256"] = Json(["d".repeat(64)])
+  try decode_pins(Json(pin_fields)) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Option-array pin encoding must not be accepted")
+  }
+  assert_true(sha("a".repeat(64)))
+  assert_false(sha("sha256:" + "a".repeat(64)))
+  let snapshot : Json = {
+    "values": {
+      "memory.max": "17179869184",
+      "memory.swap.max": "0",
+      "cpu.max": "200000 100000",
+      "memory.peak": "1234567",
+      "memory.events": "max 0\noom 0\noom_kill 0\noom_group_kill 0",
+    },
+    "errors": {},
+  }
+  assert_eq(verify_cgroup(snapshot), 1234567L)
+  let fields : Map[String, Json] = @json.from_json(field(snapshot, "values"))
+  for
+    (key, value) in [
+      ("memory.max", "max"),
+      ("memory.swap.max", "4096"),
+      ("cpu.max", "500000 100000"),
+      ("memory.events", "oom 1\noom_kill 0"),
+    ] {
+    let bad = fields.copy()
+    bad[key] = Json(value)
+    try verify_cgroup({ "values": Json(bad), "errors": {} }) catch {
+      _ => ()
+    } noraise {
+      _ => fail("unsafe cgroup was accepted")
+    }
+  }
+  let pins : Pins = {
+    executable: "/tool",
+    executable_sha256: "a".repeat(64),
+    expected_image_id: "sha256:" + "b".repeat(64),
+    adapter_sha256: "c".repeat(64),
+    tape_sha256: None,
+    manifest_sha256: Some("d".repeat(64)),
+    oracle_sha256: None,
+  }
+  assert_eq(command("export", pins), [
+    "--signal=TERM", "--kill-after=5s", "600s", "/tool", "export", "/workspace/moonrobo/examples/learning/g1-apic-export-4env.json",
+  ])
+  assert_eq(command("oracle", pins), [
+    "--signal=TERM", "--kill-after=5s", "300s", "/tool", "trace-sdk", "/workspace/moonrobo/examples/learning/g1-apic-export-4env.json",
+    "/gate/tape-v2.json", "/gate/g1-4env-apic/manifest.json", "/gate/sdk-oracle-v2.json",
+  ])
+  assert_eq(command("export", pins, n=8), [
+    "--signal=TERM", "--kill-after=5s", "600s", "/tool", "export", "/workspace/moonrobo/examples/learning/g1-apic-export-8env.json",
+  ])
+  assert_eq(command("oracle", pins, n=8), [
+    "--signal=TERM", "--kill-after=5s", "300s", "/tool", "trace-sdk", "/workspace/moonrobo/examples/learning/g1-apic-export-8env.json",
+    "/gate/tape-v2.json", "/gate/g1-8env-apic/manifest.json", "/gate/sdk-oracle-v2.json",
+  ])
+  let original_replay = command("replay", pins)
+  let expanded_replay = command("replay", pins, n=8)
+  assert_eq(original_replay.length(), expanded_replay.length())
+  for i in 0..<original_replay.length() {
+    assert_eq(
+      expanded_replay[i],
+      if original_replay[i] == "/gate/g1-4env-apic/manifest.json" {
+        "/gate/g1-8env-apic/manifest.json"
+      } else {
+        original_replay[i]
+      },
+    )
+  }
+  assert_eq(selected_worlds(4), [0, 2, 3])
+  assert_eq(selected_worlds(8), [0, 4, 7])
+  assert_eq(selected_worlds(128), [0, 64, 127])
+  for mode in ["export", "oracle", "replay"] {
+    assert_eq(num_envs(["gate", mode, "pins.json"]), 4)
+    assert_eq(num_envs(["gate", mode, "pins.json", "--num-envs", "4"]), 4)
+    assert_eq(num_envs(["gate", mode, "pins.json", "--num-envs", "8"]), 8)
+    assert_eq(num_envs(["gate", mode, "pins.json", "--num-envs", "128"]), 128)
+    let scaled = command(mode, pins, n=128)
+    assert_true(
+      scaled.contains(
+        if mode == "replay" {
+          "/gate/g1-128env-apic/manifest.json"
+        } else {
+          "/workspace/moonrobo/examples/learning/g1-apic-export-128env.json"
+        },
+      ),
+    )
+  }
+  for
+    bad in [
+      ["gate", "export", "pins.json", "--num-envs", "2"],
+      ["gate", "export", "pins.json", "--num-envs", "16"],
+      ["gate", "export", "pins.json", "--num-envs", "129"],
+      ["gate", "export", "pins.json", "--num-envs", "08"],
+      ["gate", "export", "pins.json", "--num-envs"],
+      ["gate", "export", "pins.json", "--other", "8"],
+      ["gate", "export", "pins.json", "--num-envs", "8", "extra"],
+      ["gate", "train", "pins.json"],
+    ] {
+    try num_envs(bad) catch {
+      _ => ()
+    } noraise {
+      _ => fail("unsupported N4/N8/N128 CLI accepted")
+    }
+  }
+  assert_eq(command("oracle", pins)[4], "trace-sdk")
+  assert_eq(command("replay", pins)[4], "run")
+  assert_true(command("replay", pins).contains("--oracle"))
+  println(
+    "N4/N8/N128 gate command/cgroup checks passed; no filesystem, process or GPU work",
+  )
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args == [args[0], "--self-test"] {
+    self_test()
+    return
+  }
+  let n = num_envs(args)
+  let mode = args[1]
+  let pins = decode_pins(read_json(args[2], 65536L))
+  let folder = "/gate/" + mode + "-evidence"
+  guard !@fs.exists(folder) else {
+    fail("fresh per-step evidence directory required")
+  }
+  let destination = if mode == "export" {
+    bundle_path(n)
+  } else if mode == "oracle" {
+    oracle
+  } else {
+    report
+  }
+  guard !@fs.exists(destination) else {
+    fail("existing result must not be overwritten")
+  }
+  @fs.mkdir(folder)
+  let before = cgroup()
+  write_json(folder + "/cgroup-before.json", before)
+  let argv = command(mode, pins, n~)
+  write_json(folder + "/command-plan.json", {
+    "format": Json("moonrobo.apic-n" + n.to_string() + "-gate-plan.v1"),
+    "mode": Json(mode),
+    "expected_image_id": Json(pins.expected_image_id),
+    "image_id_verification": "host-launcher-required; not verified inside container",
+    "argv": Json(argv),
+    "pin_file_sha256": Json(file_sha(args[2], 65536L)),
+    "num_envs": Json(n),
+    "memory_limit_bytes": "17179869184",
+    "mutates_sdk_or_runtime": false,
+    "physics_equivalence_claimed": false,
+  })
+  let mut exit_code : Int32? = None
+  let mut failure : String? = None
+  let mut verified : Json? = None
+  let started = @env.now().reinterpret_as_int64()
+  try {
+    ignore(verify_cgroup(before))
+    verified = Some(verify(mode, pins, n))
+    write_json(folder + "/verified-inputs.json", verified.unwrap())
+    let timeout_ms = if mode == "export" {
+      620000
+    } else if mode == "oracle" {
+      320000
+    } else {
+      200000
+    }
+    let code = @shell.Cmd(
+      "/usr/bin/timeout",
+      argv,
+      stdout=ToFile(folder + "/stdout.log"),
+      stderr=ToFile(folder + "/stderr.log"),
+    ).status(timeout_ms~)
+    exit_code = Some(code)
+    guard code == 0 else {
+      fail("bounded N4/N8/N128 operation failed; retain all evidence")
+    }
+    if mode == "replay" {
+      guard field(read_json(report, 16777216L), "success") == Json(true) else {
+        fail("native comparison report did not pass")
+      }
+    }
+  } catch {
+    error => failure = Some(error.to_string())
+  }
+  let after = cgroup()
+  write_json(folder + "/cgroup-after.json", after)
+  let peak : Int64? = Some(verify_cgroup(after)) catch {
+    error => {
+      if failure is None {
+        failure = Some(error.to_string())
+      }
+      None
+    }
+  }
+  let summary : Json = {
+    "format": Json("moonrobo.apic-n" + n.to_string() + "-gate-result.v1"),
+    "mode": Json(mode),
+    "success": Json(failure is None && exit_code == Some(0)),
+    "exit_code": scalar_or_null(exit_code),
+    "error": scalar_or_null(failure),
+    "verified_inputs": scalar_or_null(verified),
+    "elapsed_ms": Json(@env.now().reinterpret_as_int64() - started),
+    "kernel_memory_peak_observed_bytes": scalar_or_null(peak),
+    "complete_lifetime_peak_certified": false,
+    "memory_scope": "cgroup before step and before helper exit; may include earlier container activity",
+    "physics_equivalence_claimed": false,
+    "known_n2_sdk_numerical_gap_unresolved": true,
+  }
+  write_json(folder + "/summary.json", summary)
+  println(summary.stringify(indent=2))
+  guard failure is None && exit_code == Some(0) else {
+    fail("N4/N8/N128 step failed; do not enlarge or overwrite evidence")
+  }
+}

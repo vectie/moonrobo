@@ -1,0 +1,151 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, label] &&
+    ["prepare", "export"].contains(mode) &&
+    label.all(c => c is ('a'..<='z' | '0'..<='9' | '-')) else {
+    fail("prepare/export label")
+  }
+  let out = "output/spark-runtime-20261024/world-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  if mode == "prepare" {
+    let prefix = @fs.read_file(
+      "output/spark-runtime-20261024/compiled-vjp-detail-20261029-a/run_frozen_compilation_b.mbtx",
+    )
+    .text()
+    .split("async fn main {")
+    .to_array()[0].to_owned()
+    let body = @fs.read_file(
+      "output/spark-runtime-20261024/compiled-mlp-20261028-a/run_compiled_window_export_g.mbtx",
+    )
+    .text()
+    .split("async fn main {")
+    .to_array()[1].to_owned()
+    let insertion =
+      #|  let records:Array[Json]=[]
+      #|  let source="/home/wlc004s/moonrobo/runs/hotspot-mlp-world-boundary-f"
+      #|  guard field(read_json(source+"/completion.json"),"passed")==Json(true) else {fail("reference incomplete")}
+      #|  for name in ["inductor-cache","triton-cache"] {if @fs.exists(source+"/"+name){clone_compilation_tree(source+"/"+name,root+"/"+name,records)}}
+      #|  write_json(root+"/compilation-snapshot.json",{"source":Json(source),"original_smc_unchanged":true,"files":Json(records)})
+      #|  let passed = guarded(side, root, false)
+      #|  for row in records {guard Json(hash_file(text(field(row,"source"))))==field(row,"sha256") else {fail("original reference changed")}}
+      #|  let binaries:Map[String,Json]={}
+      #|  for branch in ["rollout","error"] {if @fs.exists(root+"/"+branch){for name in @fs.readdir(root+"/"+branch){if name.has_suffix(".so")||name.has_suffix(".cubin")||name=="native.spec"||name=="manifest.json" {let path=root+"/"+branch+"/"+name;binaries[path]=Json(hash_file(path))}}}}
+      #|  write_json(root+"/exported-artifacts.json",{"files":Json(binaries),"reference_unchanged":true})
+    let code = (prefix + "async fn main {" + body)
+      .replace_all(
+        old="run_compiled_window_export_g.mbtx",
+        new="run_world_reference_export_g.mbtx",
+      )
+      .replace_all(
+        old="export_compiled_world_g.py",
+        new="export_reference_world_backward_d.py",
+      )
+      .replace_all(old="let passed = guarded(side, root, false)", new=insertion)
+      .replace_all(
+        old="e[\"TORCHINDUCTOR_COMPILE_THREADS\"]=\"1\"",
+        new="e[\"TORCHINDUCTOR_COMPILE_THREADS\"]=\"1\"\n  e[\"MOONROBO_COMPILER_REFERENCE\"]=Json(mapped+\"/world_compiler_contract_b.json\")",
+      )
+      .replace_all(
+        old="write_json(root + \"/protocol.json\",",
+        new="pins[base+\"/compiler_reference_contract_b.py\"]=Json(hash_file(base+\"/compiler_reference_contract_b.py\"))\n  pins[base+\"/world_compiler_contract_b.json\"]=Json(hash_file(base+\"/world_compiler_contract_b.json\"))\n  write_json(root + \"/protocol.json\",",
+      )
+    @fs.write_file(
+      out + "/run_world_reference_export_g.mbtx",
+      code.replace_all(
+        old="compiler_reference_contract_b.py",
+        new="compiler_reference_contract_c.py",
+      ),
+      create_mode=CreateNew,
+    )
+    if !@fs.exists(out + "/world_compiler_contract_b.json") {
+      @fs.write_file(
+        out + "/world_compiler_contract_b.json",
+        (
+          {
+            "padding_cache": "/workspace/moonrobo/runs/hotspot-mlp-detail-world-c/inductor-cache/cache/f92a497d48fc1e801d19741fe9400d6fec3acb29f7fe6611804a20fa1dda1c24",
+            "backward_code": "/workspace/moonrobo/private/shared-compute-20261026-a/world_smc_backward_a.py",
+            "selected_kernels": "/workspace/moonrobo/runs/hotspot-mlp-world-boundary-f/result.json",
+          } : Json).stringify(indent=2),
+        create_mode=CreateNew,
+      )
+    }
+    for
+      (src, name) in [
+        (
+          out + "/run_world_reference_export_g.mbtx",
+          "run_world_reference_export_g.mbtx",
+        ),
+        (
+          "providers/motion_learning/export_reference_world_backward.py", "export_reference_world_backward_d.py",
+        ),
+        (
+          "providers/motion_learning/compiler_reference_contract.py", "compiler_reference_contract_c.py",
+        ),
+        (
+          out + "/world_compiler_contract_b.json",
+          "world_compiler_contract_b.json",
+        ),
+      ] {
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          src,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/" + label
+  @fs.mkdir(folder)
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/run_world_reference_export_g.mbtx -- world compiled off " +
+      label +
+      " bf16",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "completion.json", "training-guard.json", "training-docker-final.json",
+      "training.stdout.log", "training.stderr.log", "protocol.json", "compilation-snapshot.json",
+      "exported-artifacts.json", "reference-decisions.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host + ":/home/wlc004s/moonrobo/runs/hotspot-mlp-" + label + "/" + name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(code, 0)
+}

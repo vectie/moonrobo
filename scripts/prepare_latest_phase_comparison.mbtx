@@ -1,0 +1,57 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let folder = repo +
+    "/output/spark-runtime-20261024/latest-phase-comparison-20261026"
+  guard !@fs.exists(folder) else { fail("fresh short comparison required") }
+  @fs.mkdir(folder)
+  let cache = @fs.read_file(
+    repo +
+    "/output/spark-runtime-20261024/layernorm-full-retest-20261026/advise_full_ln_b.mbtx",
+  ).text()
+  let lines = cache.split("\n").to_array()
+  let output = StringBuilder()
+  let mut replacements = 0
+  for line in lines {
+    if line.contains("  let labels = [") {
+      output.write_string(
+        "  let labels = [\"latest-ln-world-native-events-a\", \"latest-ln-world-smc-events-a\", \"latest-ln-actor-native-events-a\", \"latest-ln-actor-smc-events-a\"]\n",
+      )
+      replacements += 1
+    } else {
+      output.write_string(line.to_owned() + "\n")
+    }
+  }
+  guard replacements == 1 else { fail("one explicit task allowlist") }
+  @fs.write_file(
+    folder + "/advise_latest_phase_a.mbtx",
+    output.to_string(),
+    create_mode=CreateNew,
+  )
+  for
+    (source, name) in [
+      (folder + "/advise_latest_phase_a.mbtx", "advise_latest_phase_a.mbtx"),
+      (
+        repo + "/scripts/run_latest_phase_comparison.mbtx",
+        "run_latest_phase_comparison.mbtx",
+      ),
+    ] {
+    guard @process.run("scp", [
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        source,
+        "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/" +
+        name,
+      ]) ==
+      0 else {
+      fail("upload")
+    }
+  }
+}

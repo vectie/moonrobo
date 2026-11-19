@@ -1,0 +1,40 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+fn[T : FromJson] field(v : Json, k : String) -> T raise {
+  guard v is Object(f) && f.get(k) is Some(x) else { fail(k) }
+  @json.from_json(x)
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, directory] else {
+    fail("dataset directory required")
+  }
+  let reports = @fs.readdir(directory + "/reports")
+  reports.sort()
+  for name in reports {
+    let report = @json.parse(
+      @utf8.decode(@fs.read_file(directory + "/reports/" + name).binary()),
+    )
+    let screen : Json = field(report, "screen")
+    let reasons : Array[String] = field(screen, "reasons")
+    let result : Json = {
+      "id": (field(report, "id") : String),
+      "reasons": reasons,
+      "rms": (field(screen, "body_rms_m") : Double),
+      "stance": (field(screen, "stance_position_max_m") : Double),
+      "rotation": (field(screen, "stance_rotation_max_rad") : Double),
+      "self": (field(screen, "maximum_self_penetration_m") : Double),
+      "sole": (field(screen, "minimum_sole_distance_m") : Double),
+    }
+    println(result.stringify())
+  }
+}

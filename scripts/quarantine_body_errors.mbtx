@@ -1,0 +1,65 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo"
+  let archive=root+"/output/spark-runtime-20261024/smc-heading-body-20261028/rejected-body-errors"
+  let package="src/learning_aligned_gpu/"
+  let paths=["execution_optimizations.mbt","learning.mbt","cmd/optimizations.mbt","cmd/optimizations_wbtest.mbt","geometry/context.mbt","geometry/body_errors.mbt","geometry/body_errors_test.mbt","geometry/moon.pkg"]
+  guard !@fs.exists(archive)else{fail("preserve rejected snapshot")}
+  @fs.mkdir(archive,recursive=true)
+  for path in paths {
+    let target=archive+"/"+path.replace_all(old="/",new="__")
+    @fs.write_file(target,@fs.read_file(root+"/"+package+path).text(),create_mode=CreateNew)
+  }
+  for path in paths {
+    let full=root+"/"+package+path
+    let mut s=@fs.read_file(full).text()
+    match path {
+      "execution_optimizations.mbt" => {
+        s=rep(s,"  body_errors_batched : Bool\n","")
+        s=rep(s,"    body_errors_batched: false,\n","")
+      }
+      "learning.mbt" => s=rep(s,"    .with_body_errors_batched(optimizations.body_errors_batched)\n","")
+      "cmd/optimizations.mbt" => {
+        s=rep(s,"    body_errors_batched: setting(config, \"body_errors_batched\", false),\n","")
+        s=rep(s,"  if s.optimizations.body_errors_batched {\n    values[\"execution_body_errors_batched\"] = 67108864L.max(\n      128L * 64L * (c.horizon.to_int64() + 1L) * actor_rows.to_int64(),\n    )\n  }\n","")
+        // Reject an obsolete explicit request instead of silently ignoring it.
+        s=rep(s,"  let gradient_bucket_bytes", "  guard !setting(config, \"body_errors_batched\", false) else {\n    fail(\"body_errors_batched rejected by strict parameter-update parity; disabled\")\n  }\n  let gradient_bucket_bytes")
+      }
+      "cmd/optimizations_wbtest.mbt" => {
+        s=rep(s,"heading and body errors keep independent opt-ins and conservative storage","heading and split keep independent opt-ins and conservative storage")
+        s=rep(s,"\"compact_heading\": true, \"body_errors_batched\": true","\"compact_heading\": true, \"split_world_delta\": true")
+        s=rep(s,"opts.compact_heading && opts.body_errors_batched","opts.compact_heading && opts.split_world_delta")
+        s=rep(s,"!@gpu.ExecutionOptimizations::default().body_errors_batched","!@gpu.ExecutionOptimizations::default().split_world_delta")
+        s=rep(s,"extra.get(\"execution_body_errors_batched\").unwrap() >= 67108864L","extra.get(\"execution_split_world_delta\").unwrap() == 33554432L")
+        // The existing invalid-config test now explicitly covers rejection.
+        s=rep(s,"    { \"body_errors_batched\": \"true\" },","    { \"body_errors_batched\": \"true\" },\n    { \"body_errors_batched\": true },")
+      }
+      "geometry/context.mbt" => {
+        s=rep(s,"  body_errors_batched : Bool\n","")
+        s=rep(s,"  body_errors_batched~ : Bool = false,\n","")
+        s=rep(s,"  guard !(body_orientation_batched || body_errors_batched) ||\n    kin.tracked.length() <= 64 else {","  guard !body_orientation_batched || kin.tracked.length() <= 64 else {")
+        s=rep(s,"    body_errors_batched,\n","")
+        s=rep(s,"    if !self.body_errors_batched {\n      let pos_range", "    {\n      let pos_range")
+        s=rep(s,"    if !self.body_errors_batched {\n      vs.push", "    {\n      vs.push")
+        s=rep(s,"  let (ep, ev, ew) = if self.body_errors_batched {\n    self.batched_body_errors(dr, anchor, reference, bodies, refs)\n  } else {\n    (\n      columns(self.backend, ps).mean_dim(1, keepdim=true),\n      columns(self.backend, vs).mean_dim(1, keepdim=true),\n      columns(self.backend, ws).mean_dim(1, keepdim=true),\n    )\n  }", "  let ep = columns(self.backend, ps).mean_dim(1, keepdim=true)\n  let ev = columns(self.backend, vs).mean_dim(1, keepdim=true)\n  let ew = columns(self.backend, ws).mean_dim(1, keepdim=true)")
+      }
+      "geometry/body_errors.mbt" => {
+        // Retain the independent admitted heading setter in a correctly named file.
+        let start=s.find("pub fn Context::with_compact_heading(").unwrap()
+        let tail=s.substring(start=start).to_string()
+        let stop=tail.find("\n///|").unwrap()
+        @fs.write_file(root+"/"+package+"geometry/compact_heading.mbt","///|\n"+tail.substring(end=stop).to_string()+"\n",create_mode=CreateNew)
+        @fs.remove(full);continue
+      }
+      "geometry/body_errors_test.mbt" => {@fs.remove(full);continue}
+      "geometry/moon.pkg" => {
+        s=rep(s,"    \"body_errors.mbt\": [ \"native\" ],","    \"compact_heading.mbt\": [ \"native\" ],")
+        s=rep(s,"    \"body_errors_test.mbt\": [ \"native\" ],\n","")
+      }
+      _ => fail(path)
+    }
+    @fs.write_file(full,s)
+  }
+  @fs.write_file(archive+"/README.txt","Rejected CPU parity experiment; not a production option. FP32,14 bodies,third Adam update: parameter0[355] baseline4.923548203805694e-6 vs candidate-5.044587851443794e-6, bound2.0010089175702887e-6. Original failing test and complete candidate edits preserved here and frozen remote build A. No tolerance relaxed; no GPU performance claim.\n",create_mode=CreateNew)
+}

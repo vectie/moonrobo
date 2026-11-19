@@ -1,0 +1,151 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/precision-scaling-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-operator-179.sock"
+  guard @env.args() is [_, mode] else { fail("prepare|run") }
+  if mode == "prepare" {
+    let probe = @fs.read_file(
+        "output/spark-runtime-20261024/bf16-original-20261028/shared_smc_probe_bf16_original.py",
+      )
+      .text()
+      .replace_all(
+        old="        compile_fn = torch.compile if compiled else lambda f: f",
+        new="        self.compiled_mlp_only = os.environ.get(\"SHARED_ONLY_MLP\") == \"1\"\n        if self.compiled_mlp_only:\n            assert not compiled\n            networks.run_mlp = torch.compile(networks.run_mlp)\n        compile_fn = torch.compile if compiled else lambda f: f",
+      )
+      .replace_all(
+        old="compiled=probe.compiled, rows=rows",
+        new="compiled=probe.compiled, compiled_mlp_only=probe.compiled_mlp_only, rows=rows",
+      )
+    let runner = @fs.read_file(dir + "/run_precision_scaling_a.mbtx")
+      .text()
+      .replace_all(
+        old="run_precision_scaling_a.mbtx",
+        new="run_precision_graph_a.mbtx",
+      )
+      .replace_all(
+        old="shared_smc_probe_bf16_original.py",
+        new="shared_precision_graph_a.py",
+      )
+      .replace_all(
+        old="\"smc-eager\", \"smc-adam-replay\"",
+        new="\"smc-eager\", \"smc-mlp\", \"smc-adam-replay\"",
+      )
+      .replace_all(
+        old="  e[\"MOONROBO_SHARED_AMP\"]",
+        new="  e[\"SHARED_ONLY_MLP\"] = Json(if implementation == \"smc-mlp\" {\"1\"}else{\"0\"})\n  e[\"MOONROBO_SHARED_AMP\"]",
+      )
+    let invoke = @fs.read_file(dir + "/invoke_precision_scaling_a.mbtx")
+      .text()
+      .replace_all(
+        old="run_precision_scaling_a.mbtx",
+        new="run_precision_graph_a.mbtx",
+      )
+    for
+      (name, content) in [
+        ("shared_precision_graph_a.py", probe),
+        ("run_precision_graph_a.mbtx", runner),
+        ("invoke_precision_graph_a.mbtx", invoke),
+      ] {
+      @fs.write_file(dir + "/" + name, content, create_mode=CreateNew)
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=" + socket,
+          dir + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  guard mode == "run" else { fail("mode") }
+  for
+    (implementation, suffix) in [
+      ("smc-eager", "a"),
+      ("smc-mlp", "a"),
+      ("smc-mlp", "b"),
+      ("smc-eager", "b"),
+    ] {
+    let label = "pscale-" + implementation + "-bf16-control-" + suffix
+    let folder = dir + "/" + label
+    @fs.mkdir(folder)
+    println("START " + label)
+    assert_eq(
+      @process.run(
+        "ssh",
+        [
+          "-S",
+          socket,
+          host,
+          "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+          base +
+          "/invoke_precision_graph_a.mbtx -- world " +
+          implementation +
+          " off 13 " +
+          label +
+          " bf16-full",
+        ],
+        stdout=@process.redirect_to_file(
+          folder + "/controller.stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          folder + "/controller.stderr.log",
+          create_mode=CreateNew,
+        ),
+      ),
+      0,
+    )
+    for
+      name in [
+        "protocol.json", "completion.json", "training-guard.json", "training-docker-final.json",
+        "training.stdout.log", "training.stderr.log", "result.json",
+      ] {
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=" + socket,
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-" +
+          label +
+          "/" +
+          name,
+          folder + "/" + name,
+        ]),
+        0,
+      )
+    }
+    guard @json.parse(@fs.read_file(folder + "/result.json").text())
+      is { "rows": Array(rows), "observer": "off", .. } &&
+      rows.length() == 13 else {
+      fail("complete diagnostic")
+    }
+    guard @json.parse(@fs.read_file(folder + "/training-guard.json").text())
+      is { "reason": "completed", "error": Null, .. } else {
+      fail("guard")
+    }
+    guard @json.parse(
+        @fs.read_file(folder + "/training-docker-final.json").text(),
+      )
+      is [
+        { "State": { "OOMKilled": False, "Running": False, "Pid": 0, .. }, .. },
+      ] else {
+      fail("closed")
+    }
+    println("DONE " + label)
+  }
+}

@@ -1,0 +1,89 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+struct Runtime {
+  torch_dir : String
+  python_include : String
+  python_lib : String
+  python_name : String
+  cuda : Bool
+  cxx11_abi : Bool
+} derive(@json.FromJson)
+
+///|
+/// Run inside the target Linux runtime so that link paths and the embedded
+/// interpreter refer to the same Torch build used by mjlab.
+async fn main {
+  guard @env.args() is [_, repo, python, output] else {
+    fail(
+      "usage: build_author_gencoord.mbtx ABSOLUTE_REPO VENV_PYTHON NEW_PLUGIN_PATH",
+    )
+  }
+  guard repo.has_prefix("/") &&
+    python.has_prefix("/") &&
+    output.has_prefix("/") &&
+    !@fs.exists(output) else {
+    fail("expected absolute paths and a fresh plugin destination")
+  }
+  let inspect =
+    #|import json, sysconfig, torch
+    #|from pathlib import Path
+    #|print(json.dumps(dict(torch_dir=str(Path(torch.__file__).resolve().parent),
+    #|    python_include=sysconfig.get_path("include"), python_lib=sysconfig.get_config_var("LIBDIR"),
+    #|    python_name="python"+sysconfig.get_config_var("LDVERSION"),
+    #|    cuda=torch.version.cuda is not None, cxx11_abi=torch.compiled_with_cxx11_abi())))
+  let (code, stdout, stderr) = @process.collect_output(python, ["-c", inspect])
+  guard code == 0 else { fail(stderr.text()) }
+  let rt : Runtime = @json.from_json(@json.parse(stdout.text()))
+  guard rt.cuda else {
+    fail("G1 mjlab training requires a CUDA LibTorch build")
+  }
+  let adapter = repo + "/src/learning_tensor/adapter.cpp"
+  let bridge = repo + "/providers/mjlab_physics/bridge.cpp"
+  let torchlib = rt.torch_dir + "/lib"
+  let temporary = output + "." + @env.now().to_string() + ".partial"
+  let args = [
+    "-std=c++20",
+    "-O2",
+    "-fPIC",
+    "-shared",
+    "-D_GLIBCXX_USE_CXX11_ABI=" + (if rt.cxx11_abi { "1" } else { "0" }),
+    "-I" + rt.torch_dir + "/include",
+    "-I" + rt.torch_dir + "/include/torch/csrc/api/include",
+    "-I" + rt.python_include,
+    adapter,
+    bridge,
+    "-L" + torchlib,
+    "-L" + rt.python_lib,
+    "-Wl,-rpath," + torchlib + ":" + rt.python_lib,
+    "-Wl,--no-as-needed",
+    "-ltorch",
+    "-ltorch_cpu",
+    "-lc10",
+    "-ltorch_cuda",
+    "-ltorch_python",
+    "-l" + rt.python_name,
+    "-ldl",
+    "-o",
+    temporary,
+  ]
+  let compiler = @env.get_env_var("CXX").unwrap_or("c++")
+  guard @process.run(compiler, args) == 0 else {
+    if @fs.exists(temporary) {
+      ignore(@process.run("rm", ["--", temporary]))
+    }
+    fail("failed to build G1 physics and tensor plugin")
+  }
+  // Link publishes without overwriting an existing artifact.
+  let publish = @process.run("ln", [temporary, output])
+  ignore(@process.run("rm", ["--", temporary]))
+  guard publish == 0 else { fail("could not publish plugin") }
+  println(output)
+}

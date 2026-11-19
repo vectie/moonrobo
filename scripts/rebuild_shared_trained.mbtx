@@ -1,0 +1,61 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn run(program : String, args : Array[String]) -> Unit {
+  guard @process.run(program, args) == 0 else { fail(program + " failed") }
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/shared-compute-20261026"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-operator-179.sock"
+  let build = @fs.read_file(root + "/build_shared_v2.mbtx")
+    .text()
+    .replace_all(old="moonrobo-fixtures-b", new="moonrobo-fixtures-c")
+    .replace_all(old="\"numeric-gate\"", new="\"numeric-gate-v2\"")
+    .replace_all(old="\"tensor-gate\"", new="\"tensor-gate-v2\"")
+    .replace_all(old="\"runtime-gate\"", new="\"runtime-gate-v2\"")
+  @fs.write_file(root + "/build_shared_v3.mbtx", build, create_mode=CreateNew)
+  @fs.write_file(
+    root + "/shared_fixture_v2_wbtest.mbt",
+    @fs.read_file(
+      "/Users/kq/Workspace/moonrobo/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt",
+    ).text(),
+    create_mode=CreateNew,
+  )
+  for name in ["build_shared_v3.mbtx", "shared_fixture_v2_wbtest.mbt"] {
+    run("scp", [
+      "-o",
+      "ControlPath=" + socket,
+      root + "/" + name,
+      host + ":" + base + "/" + name,
+    ])
+  }
+  run("ssh", [
+    "-S",
+    socket,
+    host,
+    "cp -a --reflink=auto " +
+    base +
+    "/workspace/moonrobo-fixtures-b " +
+    base +
+    "/workspace/moonrobo-fixtures-c",
+  ])
+  run("ssh", [
+    "-S",
+    socket,
+    host,
+    "cp " +
+    base +
+    "/shared_fixture_v2_wbtest.mbt " +
+    base +
+    "/workspace/moonrobo-fixtures-c/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt",
+  ])
+}

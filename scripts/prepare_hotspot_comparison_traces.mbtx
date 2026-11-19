@@ -1,0 +1,295 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+let base = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+
+///|
+let campaign = "/home/wlc004s/moonrobo/private/hotspot-smc4096-20261026-a"
+
+///|
+fn obj(j : Json) -> Map[String, Json] raise {
+  guard j is Object(o) else { fail("object required") }
+  o
+}
+
+///|
+fn get(j : Json, key : String) -> Json raise {
+  guard obj(j).get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn str(j : Json) -> String raise {
+  guard j is String(s) else { fail("string required") }
+  s
+}
+
+///|
+fn arr(j : Json) -> Array[Json] raise {
+  guard j is Array(a) else { fail("array required") }
+  a
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (reader, redirect) = @process.read_from_process()
+  defer reader.close()
+  @async.with_task_group() <| group => {
+    let child = group.spawn(() => {
+      @process.run("sha256sum", [path], stdout=redirect)
+    })
+    let bytes = FixedArray::make(4096, b'\x00')
+    let n = reader.read(bytes)
+    guard n >= 64 && n < 4096 && child.wait() == 0 else { fail("sha failed") }
+    @utf8.decode(Bytes::from_array(bytes[:64]))
+  }
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn write(path : String, j : Json) -> Unit {
+  @fs.write_file(path, j.stringify(indent=2) + "\n", create_mode=CreateNew)
+}
+
+///|
+fn replace(source : String, old : String, new : String) -> String raise {
+  guard source.contains(old) else {
+    fail("missing pinned source anchor: " + old)
+  }
+  source.replace_all(old~, new~)
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, label, phase, observer, collector] &&
+    label.has_prefix("combo26-") &&
+    label.length() <= 40 &&
+    label.all(c => c is ('a'..<='z' | '0'..<='9' | '-')) &&
+    ["world", "collection", "actor_critic"].contains(phase) &&
+    ["off", "aten"].contains(observer) &&
+    ["off", "nsys"].contains(collector) else {
+    fail("fresh combo26 label, phase, observer, collector required")
+  }
+  let old = base + "/specs41-phase-actortraceb"
+  let next = base + "/specs41-phase-" + label
+  guard !@fs.exists(next) &&
+    sha(base + "/run_phase_actortraceb.mbtx") ==
+    "19e8a8d6c5910343631992caa2df0a42b9056bdcd4fcef3ca541d30ddc1ab4e5" &&
+    sha(old + "/review.json") ==
+    "1356f97ed3c1c1d3fa44aeb1ef89f72e76be0f52f5d901ab08a503c995bdc0cb" &&
+    sha(campaign + "/spec-b.json") ==
+    "5197095bd124a4e212cd4b5c8ed07a14323c9d7d1f56115a47967489105e757f" else {
+    fail("fresh scope or frozen template identity differs")
+  }
+  let pair = read(campaign + "/spec-b.json")
+  let native = get(pair, "a")
+  let config = get(native, "expected_config")
+  let trainer = str(get(native, "entrypoint"))
+  let trainer_host = trainer.replace_all(
+    old="/workspace/moonrobo/",
+    new="/home/wlc004s/moonrobo/",
+  )
+  let trainer_sha = sha(trainer_host)
+  let review = read(old + "/review.json")
+  let pinned : Map[String, Json] = Map([])
+  for key in ["original_pins_unchanged", "additional_host_pins"] {
+    for pin in arr(get(review, key)) {
+      pinned[str(get(pin, "path"))] = get(pin, "sha256")
+    }
+  }
+  let extra = arr(get(review, "additional_host_pins"))
+  for pin in arr(get(pair, "pins")) {
+    let path = str(get(pin, "path"))
+    let digest = get(pin, "sha256")
+    match pinned.get(path) {
+      Some(previous) => {
+        guard previous == digest else { fail("conflicting trace pin: " + path) }
+      }
+      None => {
+        extra.push(pin)
+        pinned[path] = digest
+      }
+    }
+  }
+  for
+    path in [
+      campaign + "/spec-b.json",
+      campaign + "/prepare_hotspot_comparison_traces.mbtx",
+    ] {
+    extra.push({ "path": Json(path), "sha256": Json(sha(path)) })
+  }
+  for
+    name in [
+      "LICENSE", "supermimic/buffer.py", "supermimic/env.py", "supermimic/evaluate.py",
+      "supermimic/kinematics.py", "supermimic/mdp.py", "supermimic/motion.py", "supermimic/networks.py",
+      "supermimic/robot.py", "supermimic/rotations.py", "supermimic/train.py", "supermimic/policy_microbatch_fullcritic.py",
+    ] {
+    let path = base + "/smc-phase-chunk-d/" + name
+    let digest = sha(path)
+    if name != "supermimic/train.py" &&
+      name != "supermimic/policy_microbatch_fullcritic.py" {
+      guard digest == sha(base + "/smc-benchmark-c/" + name) else {
+        fail("non-instrumented SMC source differs: " + name)
+      }
+    }
+    match pinned.get(path) {
+      Some(previous) => {
+        guard previous == Json(digest) else {
+          fail("diagnostic source pin differs")
+        }
+      }
+      None => {
+        extra.push({ "path": Json(path), "sha256": Json(digest) })
+        pinned[path] = Json(digest)
+      }
+    }
+  }
+  obj(review)["capture_scope"] = Json(
+    "one selected complete phase at iteration41; both logical4096/eight512; native APIC bulk and resident reference FK enabled",
+  )
+  obj(review)["historical_metadata_note"] = Json(
+    "source_spec_sha256, smc_provenance_sha256 and artifact_pins describe the preserved historical template; actual current artifacts are the generated timeline/member JSON pins and combo_comparison below",
+  )
+  obj(review)["combo_comparison"] = {
+    "parent_spec_sha256": "5197095bd124a4e212cd4b5c8ed07a14323c9d7d1f56115a47967489105e757f",
+    "native_exact_measured_binaries_config": true,
+    "native_program": Json(trainer),
+    "native_program_sha256": Json(trainer_sha),
+    "smc_source": "preserved smc-phase-chunk-d; fullcritic diff from smc-benchmark-c consists of trace context managers only",
+    "logical_batch": 4096,
+    "microbatch": 512,
+    "phase": Json(phase),
+    "observer": Json(observer),
+    "collector": Json(collector),
+    "native_instrumentation_reserve_bytes": "4294967296",
+    "guards_reduced": false,
+    "trace_times_are_not_throughput": true,
+  }
+  @fs.mkdir(next)
+  write(next + "/native-config.json", config)
+  write(next + "/review.json", review)
+  let mut outer = @fs.read_file(base + "/run_phase_actortraceb.mbtx").text()
+  outer = replace(outer, sha(old + "/review.json"), sha(next + "/review.json"))
+  outer = replace(
+    outer,
+    sha(old + "/native-config.json"),
+    sha(next + "/native-config.json"),
+  )
+  for kind in ["native", "smc-compiled", "smc-eager"] {
+    let timeline = read(old + "/" + kind + "-timeline.json")
+    let target = read(old + "/" + kind + "-member.json")
+    let environment = obj(get(target, "env"))
+    environment["MOONROBO_OPERATOR_PHASE"] = Json(phase)
+    environment["MOONROBO_OPERATOR_OBSERVER"] = Json(observer)
+    environment["MOONROBO_OPERATOR_COLLECTOR"] = Json(collector)
+    obj(timeline)["session"] = Json("moonrobo-op-" + label + "-" + kind)
+    if kind == "native" {
+      obj(timeline)["program"] = Json(trainer)
+      obj(timeline)["program_sha256"] = Json(trainer_sha)
+      obj(target)["expected_config"] = config
+      environment["MOONROBO_APIC_IO"] = Json("bulk")
+      let args = arr(get(timeline, "args"))
+      let original_args = arr(get(native, "argv"))
+      for flag in ["--tensor-library", "--physics-library"] {
+        let mut replacement = Json::null()
+        for i in 0..<(original_args.length() - 1) {
+          if original_args[i] == Json(flag) {
+            replacement = original_args[i + 1]
+          }
+        }
+        guard replacement is String(path) else {
+          fail("measured library argument missing")
+        }
+        let file_hash = sha(
+          path.replace_all(
+            old="/workspace/moonrobo/",
+            new="/home/wlc004s/moonrobo/",
+          ),
+        )
+        let mut changed = false
+        for i in 0..<(args.length() - 1) {
+          if args[i] == Json(flag) {
+            obj(get(timeline, "pinned_files")).remove(str(args[i + 1]))
+            |> ignore
+            args[i + 1] = replacement
+            changed = true
+          }
+        }
+        guard changed else { fail("diagnostic library argument missing") }
+        obj(get(timeline, "pinned_files"))[path] = Json(file_hash)
+      }
+      obj(get(timeline, "pinned_files"))["/pair/native-config.json"] = Json(
+        sha(next + "/native-config.json"),
+      )
+      let normalized : Array[Json] = []
+      for i = 0; i < args.length(); {
+        if args[i] == Json("--iterations") {
+          guard i + 1 < args.length() && args[i + 1] == Json("41") else {
+            fail("exact diagnostic iteration override required")
+          }
+          continue i + 2
+        }
+        normalized.push(if i == 0 { Json("train") } else { args[i] })
+        continue i + 1
+      }
+      guard Json(normalized) == get(native, "argv") else {
+        fail(
+          "native diagnostic argv differs beyond command and41-iteration bound",
+        )
+      }
+    } else {
+      guard environment["SMC_ACTOR_MICROBATCH"] == Json("512") else {
+        fail("SMC diagnostics must use eight chunks in every phase")
+      }
+      let args = arr(get(timeline, "args"))
+      let normalized = args.copy()
+      for i in 0..<(normalized.length() - 1) {
+        if normalized[i] == Json("--iterations") {
+          guard normalized[i + 1] == Json("41") else {
+            fail("diagnostic iteration override differs")
+          }
+          normalized[i + 1] = Json("60")
+        }
+      }
+      guard Json(normalized) == get(get(pair, "b"), "argv") else {
+        fail("SMC diagnostic argv differs beyond41-iteration bound")
+      }
+    }
+    write(next + "/" + kind + "-timeline.json", timeline)
+    write(next + "/" + kind + "-member.json", target)
+    for suffix in ["-timeline.json", "-member.json"] {
+      outer = replace(
+        outer,
+        sha(old + "/" + kind + suffix),
+        sha(next + "/" + kind + suffix),
+      )
+    }
+  }
+  outer = replace(outer, "phase-actortraceb", "phase-" + label)
+  outer = replace(
+    outer, "/workspace/moonrobo/private/operator-diagnostic-20261025-a/trainer-phase-c",
+    trainer,
+  )
+  outer = replace(
+    outer, "473c6b3358d1824c11b70f09649443a4d55ec6f0d52b99d39387a7290f7dc77b", trainer_sha,
+  )
+  @fs.write_file(
+    base + "/run_phase_" + label + ".mbtx",
+    outer,
+    create_mode=CreateNew,
+  )
+  println("Prepared diagnostic " + label + "; no GPU launched")
+}

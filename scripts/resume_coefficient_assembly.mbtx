@@ -1,0 +1,37 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="output/spark-runtime-20261024/coefficient-assembly-20261028"
+  let mut s=@fs.read_file(dir+"/coefficient_assembly_suite_a.mbtx").text()
+  let a="{\"coefficient-assembly-\"+v+\"-\"+phase+\"-\"+kind+\"-a\"}"
+  let b="{\"coefficient-assembly-\"+v+\"-\"+phase+\"-\"+kind+(if phase==\"world\"&&v==\"forward\"&&kind==\"gate\"{\"-b\"}else{\"-a\"})}"
+  guard s.contains(a)else{fail("label")};s=s.replace_all(old=a,new=b)
+  s=s.replace_all(old="coefficient_assembly_suite_a.mbtx",new="coefficient_assembly_suite_b.mbtx")
+  let original="async fn release(name : String) -> Unit { println(\"Retaining completed input/output caches within active memory guards: \"+name) }"
+  guard s.contains(original)else{fail("release")}
+  let release=
+    #|async fn release(name : String) -> Unit {
+    #|  // Serialized runner has joined this job and its comparison. Retain files;
+    #|  // advise only ended output snapshots, never input or compiler cache pages.
+    #|  let phase=if name.contains("-world-"){"world"}else{"actor"}
+    #|  let before=@fs.read_file("/proc/meminfo").text();let records=[];let mut bytes=0L
+    #|  let names=if name.contains("-smc-"){[name]}else{[name,label(phase,"baseline","gate")]}
+    #|  for n in names {
+    #|    let dir=runs+n;guard @fs.realpath(dir)==dir else{fail("canonical output")}
+    #|    assert_eq(field(read(dir+"/training-guard.json"),"reason"),Json("completed"))
+    #|    guard read(dir+"/training-docker-final.json") is [{"State":{"OOMKilled":False,"Running":False,"Pid":0,..},..}]else{fail("job not closed")}
+    #|    for file in @fs.readdir(dir) {
+    #|      if !file.has_suffix(".f64"){continue}
+    #|      guard (file.has_prefix("world-")||file.has_prefix("policy-")||file.has_prefix("critic-"))&&file.all(c=>c is ('a'..<='z'|'0'..<='9'|'-'|'.'))else{fail("output name")}
+    #|      let path=dir+"/"+file;guard @fs.realpath(path)==path&&@fs.kind(path,follow_symlink=false)==Regular else{fail("regular output")}
+    #|      let f=@fs.open(path,mode=ReadOnly);bytes+=f.size();f.close();guard bytes<=2147483648L else{fail("2GiB per-call bound")}
+    #|      guard @process.run("dd",["if="+path,"iflag=nocache,nofollow","count=0","status=none"])==0else{fail("output cache advice")};records.push(Json(path))
+    #|    }
+    #|  }
+    #|  @fs.write_file(base+"/"+name+".cache-advice.json",({"only_completed_output_snapshots":true,"no_file_deletion":true,"input_and_compiler_caches_retained":true,"all_thresholds_unchanged":true,"advised_bytes":Json(bytes.to_double()),"before":Json(before),"after":Json(@fs.read_file("/proc/meminfo").text()),"files":Json(records)}:Json).stringify(),create_mode=CreateNew)
+    #|}
+  s=s.replace_all(old=original,new=release)
+  @fs.write_file(dir+"/coefficient_assembly_suite_b.mbtx",s,create_mode=CreateNew)
+  let p=dir+"/report.mbtx";let r=@fs.read_file(p).text();let old="{\"coefficient-assembly-\"+v+\"-\"+p+\"-\"+k+\"-a\"}";guard r.contains(old)else{fail("report label")}
+  @fs.write_file(p,r.replace_all(old=old,new="{\"coefficient-assembly-\"+v+\"-\"+p+\"-\"+k+(if p==\"world\"&&v==\"forward\"&&k==\"gate\"{\"-b\"}else{\"-a\"})}"))
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+"/coefficient_assembly_suite_b.mbtx","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/coefficient_assembly_suite_b.mbtx"])==0else{fail("stage")}
+}

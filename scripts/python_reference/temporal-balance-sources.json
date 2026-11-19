@@ -1,0 +1,154 @@
+[
+  {
+    "script": "fit_g1_temporal_ppo.mbtx",
+    "sha256": "e027b1a7647dd047182e49e4669e36ef2f524a98f70b431fbbea05b524dd15b1"
+  },
+  {
+    "script": "fit_g1_teacher_value.mbtx",
+    "sha256": "458f050d0ac039686278d3dd87dadd59267c45800c85cfe7de40602d03f80ab6"
+  },
+  {
+    "script": "fit_g1_temporal_value.mbtx",
+    "sha256": "20ceff03bfc89f52d8a997e682993b3bbd010b94831674b1640f1032f1231fe4"
+  },
+  {
+    "script": "fit_g1_balance_teacher.mbtx",
+    "sha256": "45faed415b6e0b0af7f14340395efd836f11cb96bca80616bc3146fc45c942e8"
+  },
+  {
+    "script": "fit_g1_learned_balance.mbtx",
+    "sha256": "1c452ec6dce620291aab0890467ed4594390cc5586440fd5426515db181bf5d0"
+  },
+  {
+    "script": "fit_g1_temporal_inputs.mbtx",
+    "sha256": "a275eb2f5239c87f3c054976844fb75790c5a1f8fab5e1e6bcfd8053df0fd591"
+  },
+  {
+    "script": "report_g1_temporal_ppo.mbtx",
+    "sha256": "2695c946d4689cc8e26bf323dc9239d788e84525a50b7f2fda659e5e3542634a"
+  },
+  {
+    "script": "fit_g1_sustained_policy.mbtx",
+    "sha256": "dbad6f84f08d37834aba3d8b43392946dc80c879355733a7ef15ca083bcfa409"
+  },
+  {
+    "script": "report_g1_teacher_value.mbtx",
+    "sha256": "45cd08ed49ce0d5819c08ba50fec0a3dfa471b58e152808e5ad4884dcaa5ea52"
+  },
+  {
+    "script": "score_g1_temporal_probe.mbtx",
+    "sha256": "2826c74fb00a5ff3fa0b0053e11541da5012c3128f8626f7214690c19fbbc803"
+  },
+  {
+    "script": "verify_g1_balance_views.mbtx",
+    "sha256": "a2cd525f95ff898262e62ad08b8ef41544c2e38e3378a65504317d068c06f35d"
+  },
+  {
+    "script": "fit_g1_sustained_balance.mbtx",
+    "sha256": "824970c0657c3222069c6ad0f95b8e09338d1aac31566aa89a1ce53a28041f7d"
+  },
+  {
+    "script": "probe_g1_temporal_inputs.mbtx",
+    "sha256": "84bad720cabc42c9a6108c186a4d7b88ad07301c0221cbd109411b6a13ab9a63"
+  },
+  {
+    "script": "report_g1_temporal_value.mbtx",
+    "sha256": "1f33084a5aab89cee66bad0137e1e39a4908b8517643c532bf0cfad5c4b12e81"
+  },
+  {
+    "script": "build_g1_sustained_replay.mbtx",
+    "sha256": "fc50ea958f87b0e818b17d7a327f359ec15a672bdcad694ec678b28358c9c48a"
+  },
+  {
+    "script": "export_g1_learned_balance.mbtx",
+    "sha256": "3fbb3aeffbfd921383cf8cfd5b74160c50bc2c0c058c970c7c878ad292531c15"
+  },
+  {
+    "script": "refine_g1_temporal_inputs.mbtx",
+    "sha256": "b8b82e2b3222cb21f124db42417e21fa2232c373009b5b96d64c7e2cf58df352"
+  },
+  {
+    "script": "report_g1_learned_balance.mbtx",
+    "sha256": "33ba7379299ec613d7351a35eb10605c8b14e9a4f3fc25366ad46f782ce3c4d9"
+  },
+  {
+    "script": "report_g1_temporal_inputs.mbtx",
+    "sha256": "3111523af1128e384ff270bab6e048cd40e73e38453978f5e50f9335d0693715"
+  },
+  {
+    "script": "collect_g1_balance_teacher.mbtx",
+    "sha256": "638a32f430cbe83a2e4a68a32e77bbcabd20c849eb57342c7fdf8762203fa839"
+  },
+  {
+    "script": "report_g1_balance_features.mbtx",
+    "sha256": "71e2e63d6eedff8d649ca02880263d01c154271d57b7b05ade0dd52c8bba8f4a"
+  },
+  {
+    "script": "verify_g1_balance_features.mbtx",
+    "sha256": "d61d82b7cc13234de7769c1e8e78aa018716dd409f93b7d16f10d4d76bec077e"
+  },
+  {
+    "script": "verify_g1_sustained_policy.mbtx",
+    "sha256": "d59e423365e1f17ad2c707c2f6b26a2f2ed0ab08a31b871a1261c2a10a50768b"
+  },
+  {
+    "script": "export_g1_sustained_balance.mbtx",
+    "sha256": "6d66eb4669aa769254aec346e6ca10cacc947b69266ca14e525a2c756ca59d70"
+  },
+  {
+    "script": "fit_g1_balance_teacher_long.mbtx",
+    "sha256": "1b04504e1557ba8c15daac4a32a63759b439e08bd7f55d9c2f60ce604d61dc45"
+  },
+  {
+    "script": "fit_g1_temporal_disturbance.mbtx",
+    "sha256": "7285c0336783f3386369199f34bbdaece3c00f5837adaaf7db2c6de7a5d274f5"
+  },
+  {
+    "script": "register_g1_learned_balance.mbtx",
+    "sha256": "2078fe85397b8229cbeefddf0559a0e720ccb12135e60c311862f1adcd06ebd1"
+  },
+  {
+    "script": "report_g1_sustained_balance.mbtx",
+    "sha256": "aa5bc8da0485df1266e752e87f96aa49fbe4928cd355586001a111ddefa478de"
+  },
+  {
+    "script": "probe_g1_balance_intervention.mbtx",
+    "sha256": "1d10fc68cb8c653e980de779564b75be8ab8260c3538f5291f2bd302afa03d29"
+  },
+  {
+    "script": "register_g1_sustained_balance.mbtx",
+    "sha256": "42f898bf5f1f1b755dd8cda19ed69b2be1598af74f7319ac0516d86b54e251ec"
+  },
+  {
+    "script": "report_g1_balance_intervention.mbtx",
+    "sha256": "99ca06df6f1e5489839e235402ed877e7e1fb54bce41bf90af712087185d8abe"
+  },
+  {
+    "script": "report_g1_balance_teacher_long.mbtx",
+    "sha256": "d2e5d92836b7dc13c216bbda3d026f99c16b83f81e3069e6fa0c38271960bcd7"
+  },
+  {
+    "script": "report_g1_temporal_disturbance.mbtx",
+    "sha256": "0072666ce27c3d52c28fc72d3a5699472d4b7a67a3c82e7d3044e6f84863e196"
+  },
+  {
+    "script": "verify_g1_learned_balance_long.mbtx",
+    "sha256": "a4235c7a113feaff23fc2f524f70471b0647f442a5981a9e1b47acb07544f42c"
+  },
+  {
+    "script": "calibrate_g1_temporal_ppo_noise.mbtx",
+    "sha256": "9b9deb8e6d4f2c694b41d9cbd351a2918a6f6fe594381f4eaaace23256415166"
+  },
+  {
+    "script": "report_g1_teacher_initialization.mbtx",
+    "sha256": "01b0370f615c1ae723b810b6dce017375014ebdc2092d346826e9b045de4e63a"
+  },
+  {
+    "script": "probe_g1_balance_long_intervention.mbtx",
+    "sha256": "af6b0b488cde143d0fada96680b53f415c0d07c6ae36de9964eb40a29e6f7f18"
+  },
+  {
+    "script": "report_g1_balance_long_intervention.mbtx",
+    "sha256": "e1beae6616059e5bc5a4d24eb69c97757056363505fe55fb3c9f31fdf243efa0"
+  }
+]

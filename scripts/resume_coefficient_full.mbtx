@@ -1,0 +1,12 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="output/spark-runtime-20261024/coefficient-full-20261028"
+  let old="output/spark-runtime-20261024/coefficient-assembly-20261028/close_cache.mbtx"
+  let cache=@fs.read_file(old).text().replace_all(old="[\"geometry-vjp-tail-world-gate-a\",\"geometry-vjp-tail-actor-gate-a\",\"coefficient-assembly-baseline-world-gate-a\",\"coefficient-assembly-baseline-actor-gate-a\",\"coefficient-assembly-route-world-c\",\"coefficient-assembly-route-actor-c\",\"return-split-baseline-actor-gate-a\",\"return-split-both-actor-gate-a\"]",new="[\"encoder-batch-baseline-actor-gate-a\",\"encoder-batch-both-actor-gate-a\",\"coefficient-assembly-forward-world-gate-b\",\"coefficient-assembly-forward-actor-gate-a\",\"coefficient-full-baseline-world-gate-a\"]").replace_all(old="coefficient-assembly-final-output-cache-advice-a",new="coefficient-full-pre-retry-output-cache-advice-a")
+  @fs.write_file(dir+"/cache_retry.mbtx",cache,create_mode=CreateNew)
+  let suite=@fs.read_file(dir+"/coefficient_full_suite_a.mbtx").text().replace_all(old="v==\"forward\"",new="v==\"both\"")
+    .replace_all(old="      let name=label(phase,v,\"gate\");invoke",new="      if passed(phase,v) { continue }\n      let name=label(phase,v,\"gate\");invoke")
+  @fs.write_file(dir+"/coefficient_full_suite_b.mbtx",suite,create_mode=CreateNew)
+  let report=@fs.read_file(dir+"/report.mbtx").text().replace_all(old="v==\"forward\"",new="v==\"both\"");@fs.write_file(dir+"/report.mbtx",report)
+  for f in ["cache_retry.mbtx","coefficient_full_suite_b.mbtx"] {guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+"/"+f,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/"+f])==0else{fail("stage")}}
+}

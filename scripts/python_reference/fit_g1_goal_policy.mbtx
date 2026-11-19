@@ -1,0 +1,95 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() == 4 || args.length() == 5,
+    msg="usage: fit_g1_goal_policy.mbtx REPO GOAL_DYNAMICS PPO_GOALS [CONFIG]",
+  )
+  let root = args[1]
+  let source = args[2]
+  let config_path = if args.length() == 5 {
+    args[4]
+  } else {
+    root + "/examples/learning/g1-policy-goal-fit.json"
+  }
+  let config = @json.parse(@fs.read_file(config_path).text())
+  let experiment = match config {
+    Object(fields) =>
+      match fields.get("evaluation_experiment") {
+        Some(String(path)) => root + "/" + path
+        _ => root + "/examples/learning/g1-cpu-experiment.json"
+      }
+    _ => fail("expected policy config")
+  }
+  @fs.mkdir(source + "/policy-provider-sources", recursive=true)
+  for name in ["policy.py", "cpu_physics.py", "dynamics.py"] {
+    @fs.write_file(
+      source + "/policy-provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let (code, stdout, stderr) = @process.collect_output(
+    root + "/target/learning-venv/bin/python",
+    [
+      root + "/providers/motion_learning/policy.py",
+      "fit",
+      "--train",
+      source + "/train-batch.json",
+      "--dynamics",
+      source + "/fit/dynamics-seed-0.pt",
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--config",
+      config_path,
+      "--experiment",
+      experiment,
+      "--warm-start-policy",
+      args[3],
+      "--output",
+      source + "/policy",
+    ],
+  )
+  @fs.write_file(
+    source + "/policy.log",
+    stdout.text() + stderr.text(),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(code, 0, msg=stderr.text() + stdout.text())
+  let report = @json.parse(@fs.read_file(source + "/policy/report.json").text())
+  guard field(report, "runs") is Array(runs) else {
+    fail("missing policy results")
+  }
+  assert_eq(runs.length(), 3)
+  for run in runs {
+    assert_eq(field(run, "dynamics_unchanged"), true.to_json())
+    assert_eq(field(run, "reload_matches"), true.to_json())
+    println(
+      (
+        {
+          "seed": field(run, "seed"),
+          "selected_update": field(run, "selected_update"),
+          "baseline": field(run, "baseline"),
+          "candidate": field(run, "candidate"),
+          "qualifies": field(run, "qualifies"),
+        } : Json).stringify(),
+    )
+  }
+}

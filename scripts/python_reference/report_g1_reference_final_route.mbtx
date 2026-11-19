@@ -1,0 +1,404 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) else { fail("expected object") }
+  fields[key]
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn str(value : Json) -> String raise {
+  guard value is String(text) else { fail("expected string") }
+  text
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(number, ..) else { fail("expected number") }
+  number
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (code, bytes, error) = @process.collect_output("/usr/bin/shasum", [
+    "-a", "256", path,
+  ])
+  assert_eq(code, 0, msg=error.text())
+  bytes.text().split(" ").to_array()[0].to_owned()
+}
+
+///|
+fn check_quality(run : Json, target : Json) -> Unit raise {
+  let trials = array(field(run, "trials"))
+  let summary = field(run, "summary")
+  let assessed = field(run, "quality")
+  let cells : Map[String, Bool] = Map([])
+  let mut falls = 0
+  let mut failed = 0
+  let mut total_steps = 0.0
+  let mut survival = 0.0
+  guard field(target, "maximum_per_trial") is Object(limits) else {
+    fail("expected quality limits")
+  }
+  assert_eq(trials.length(), 27)
+  for trial in trials {
+    let case_id = str(field(trial, "case_id"))
+    let origin = num(field(trial, "reference_start_step"))
+    assert_true(array(field(target, "reference_ids")).contains(Json(case_id)))
+    assert_true([0.0, 500.0, 1000.0].contains(origin))
+    let key = case_id + ":" + field(trial, "reference_start_step").stringify()
+    assert_false(cells.contains(key))
+    cells[key] = true
+    let requested = 30.0 - origin * 0.02
+    assert_true(
+      (num(field(trial, "requested_seconds")) - requested).abs() < 1.0e-12,
+    )
+    let elapsed = num(field(trial, "simulated_seconds"))
+    let steps = num(field(trial, "steps"))
+    assert_true((elapsed - steps * 0.02).abs() < 1.0e-12)
+    let fall = field(trial, "failed") == (true : Json)
+    if fall {
+      falls += 1
+    }
+    let mut outside = fall || (elapsed - requested).abs() > 1.0e-12
+    for metric, limit in limits {
+      if num(field(trial, metric)) > num(limit) {
+        outside = true
+      }
+    }
+    if outside {
+      failed += 1
+    }
+    total_steps += steps
+    survival += elapsed
+  }
+  assert_eq(field(summary, "trials"), 27)
+  assert_eq(num(field(summary, "falls")).to_int(), falls)
+  assert_eq(num(field(summary, "steps")), total_steps)
+  assert_true(
+    (num(field(summary, "mean_survival_s")) - survival / 27.0).abs() < 1.0e-12,
+  )
+  for metric, _ in limits {
+    let mut squared = 0.0
+    for trial in trials {
+      let value = num(field(trial, metric))
+      squared += value * value * num(field(trial, "steps"))
+    }
+    assert_true(
+      (num(field(summary, metric)) - (squared / total_steps).sqrt()).abs() <
+      1.0e-12,
+    )
+  }
+  assert_eq(field(assessed, "coverage_complete"), true)
+  assert_eq(num(field(assessed, "failed_quality_trials")).to_int(), failed)
+  assert_eq(field(assessed, "quality_passed"), Json(failed == 0))
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: report_g1_reference_final_route.mbtx REPO STUDY OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let report = read(study + "/report.json")
+  let source = str(field(report, "source_study"))
+  let original = read(source + "/report.json")
+  assert_eq(
+    Json(sha(source + "/report.json")),
+    field(report, "source_report_sha256"),
+  )
+  assert_eq(
+    Json(sha(str(field(report, "diagnostic_study")) + "/report.json")),
+    field(report, "diagnostic_source_sha256"),
+  )
+  assert_eq(field(report, "quality_target"), field(original, "quality_target"))
+  assert_eq(field(report, "physical_execution_allowed"), false)
+  assert_eq(field(report, "release_qualified"), false)
+  let original_runs : Map[String, Json] = Map([])
+  for run in array(field(original, "runs")) {
+    original_runs[str(field(run, "method")) +
+    ":" +
+    field(run, "seed").stringify()] = run
+  }
+  let checks = array(field(report, "reconstruction"))
+  assert_eq(checks.length(), 6)
+  for check in checks {
+    let key = str(field(check, "method")) +
+      ":" +
+      field(check, "seed").stringify()
+    let old_cycles = array(field(original_runs[key], "cycles"))
+    let cycles = array(field(check, "cycles"))
+    assert_eq(cycles.length(), 6)
+    for i in 0..<6 {
+      assert_eq(field(cycles[i], "all_tensors_identical"), true)
+      assert_eq(field(cycles[i], "actor_origin_draws_identical"), true)
+      assert_eq(
+        field(cycles[i], "actor_state_sha256"),
+        field(field(old_cycles[i], "checkpoint"), "state_sha256"),
+      )
+      assert_eq(
+        field(cycles[i], "checkpoint_sha256"),
+        field(field(old_cycles[i], "checkpoint"), "sha256"),
+      )
+      assert_eq(
+        field(cycles[i], "training_episode_ids"),
+        field(old_cycles[i], "training_episode_ids"),
+      )
+      assert_eq(
+        Json(sha(str(field(cycles[i], "model_checkpoint")))),
+        field(cycles[i], "model_sha256"),
+      )
+    }
+  }
+  let runs = array(field(report, "runs"))
+  assert_eq(runs.length(), 12)
+  let full_runs : Map[String, Json] = Map([])
+  let candidate_runs : Map[String, Json] = Map([])
+  let summary : Array[Json] = []
+  for run in runs {
+    check_quality(run, field(report, "quality_target"))
+    let fit = field(run, "final_actor_fit")
+    assert_eq(field(fit, "actor_steps"), 12)
+    assert_eq(field(fit, "critic_tail_used"), false)
+    assert_eq(field(fit, "frozen_model_unchanged"), true)
+    assert_eq(array(field(fit, "logit_step_calibration")).length(), 12)
+    for step in array(field(fit, "logit_step_calibration")) {
+      assert_true(num(field(step, "applied_logit_rms")) <= 0.005)
+    }
+    let key = str(field(run, "method")) + ":" + field(run, "seed").stringify()
+    if field(run, "gradient_route") == Json("full") {
+      assert_eq(field(run, "summary"), field(original_runs[key], "summary"))
+      assert_eq(field(run, "trials"), field(original_runs[key], "trials"))
+      assert_eq(field(run, "quality"), field(original_runs[key], "quality"))
+      assert_eq(field(run, "reconstructed_final_actor_identical"), true)
+      full_runs[key] = run
+    } else {
+      assert_eq(field(run, "gradient_route"), "stop-policy-inputs")
+      assert_eq(field(run, "intervention_actor_steps"), 12)
+      assert_eq(field(run, "origin_draws_identical"), true)
+      candidate_runs[key] = run
+      let artifact = field(run, "actor_update_state")
+      assert_eq(
+        Json(sha(study + "/" + str(field(artifact, "file")))),
+        field(artifact, "sha256"),
+      )
+      assert_eq(field(artifact, "reload_identical"), true)
+    }
+    assert_eq(field(run, "actor_optimizer_steps"), 72)
+    summary.push({
+      "method": field(run, "method"),
+      "seed": field(run, "seed"),
+      "gradient_route": field(run, "gradient_route"),
+      "summary": field(run, "summary"),
+      "individual_quality_passes": Json(
+        27 - num(field(field(run, "quality"), "failed_quality_trials")).to_int(),
+      ),
+      "full_policy_quality_passed": field(
+        field(run, "quality"),
+        "quality_passed",
+      ),
+    })
+  }
+  assert_eq(full_runs.length(), 6)
+  assert_eq(candidate_runs.length(), 6)
+  for key, run in candidate_runs {
+    let full = full_runs[key]
+    for
+      name in [
+        "matched_start_actor_sha256", "matched_start_optimizer_sha256", "matched_start_sampler_sha256",
+        "fork_forward_objective", "fork_active_steps", "final_sampler_sha256",
+      ] {
+      assert_eq(field(run, name), field(full, name))
+    }
+    assert_eq(field(run, "equal_fork_forward_objective"), true)
+    assert_eq(
+      field(field(run, "final_actor_fit"), "actor_origin_samples"),
+      field(field(full, "final_actor_fit"), "actor_origin_samples"),
+    )
+    let old = original_runs[key]
+    assert_eq(
+      field(field(full, "final_actor_fit"), "actor_origin_samples"),
+      field(
+        field(array(field(old, "cycles"))[5], "actor"),
+        "actor_origin_samples",
+      ),
+    )
+    assert_eq(
+      field(run, "matched_start_actor_sha256"),
+      field(field(array(field(old, "cycles"))[4], "checkpoint"), "state_sha256"),
+    )
+  }
+  let original_records : Map[String, Json] = Map([])
+  for record in array(field(original, "physical_records")) {
+    original_records[str(field(record, "episode_id"))] = record
+  }
+  let records = array(field(report, "physical_records"))
+  assert_eq(records.length(), 324)
+  let by_id : Map[String, Json] = Map([])
+  for record in records {
+    let id = str(field(record, "episode_id"))
+    assert_false(by_id.contains(id))
+    by_id[id] = record
+    if original_records.get(id) is Some(old) {
+      assert_eq(field(record, "sha256"), field(old, "sha256"))
+    }
+  }
+  for run in runs {
+    for trial in array(field(run, "trials")) {
+      let record = by_id[str(field(trial, "episode_id"))]
+      assert_eq(
+        field(field(record, "behavior"), "sha256"),
+        field(field(run, "checkpoint"), "sha256"),
+      )
+    }
+  }
+  let verifier = study +
+    "/provider-sources/reference_learning_export-final-verify.py"
+  @fs.write_file(
+    verifier,
+    @fs.read_file(
+      root + "/providers/motion_learning/reference_learning_export.py",
+    ).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let seen : Map[String, Bool] = Map([])
+  let maxima : Map[String, Double] = Map([])
+  let mut transitions = 0
+  let mut new_transitions = 0
+  let mut reused = 0
+  @async.with_task_group() <| group => {
+    let (reader, out) = @process.read_from_process()
+    let child = @process.spawn(
+      group,
+      root + "/target/learning-venv/bin/python",
+      [
+        verifier,
+        "--study",
+        study,
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      ],
+      stdout=out,
+      stderr=@process.redirect_to_file(
+        study + "/verification-stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    )
+    while reader.read_until("\n") is Some(line) {
+      let entry = @json.parse(line)
+      let record = field(entry, "record")
+      let id = str(field(record, "episode_id"))
+      assert_eq(record, by_id[id])
+      assert_false(seen.contains(id))
+      seen[id] = true
+      let dataset = field(entry, "dataset")
+      let episodes = array(field(dataset, "episodes"))
+      assert_eq(episodes.length(), 1)
+      let steps = array(field(episodes[0], "steps"))
+      assert_eq(steps.length(), num(field(record, "steps")).to_int())
+      guard field(entry, "verification") is Object(errors) else {
+        fail("expected verification")
+      }
+      for key, value in errors {
+        if value is Number(_, ..) {
+          maxima[key] = maxima.get(key).unwrap_or(0.0).max(num(value))
+        }
+      }
+      let scratch = study + "/native-episode.json"
+      @fs.write_file(scratch, dataset.stringify(), create_mode=CreateOrTruncate)
+      let (code, bytes, error) = @process.collect_output(
+        root +
+        "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+        [scratch, "train", "1", "1000000"],
+      )
+      assert_eq(code, 0, msg=error.text())
+      assert_eq(field(@json.parse(bytes.text()), "window_length"), 1)
+      @fs.remove(scratch)
+      transitions += steps.length()
+      if original_records.contains(id) {
+        reused += 1
+      } else {
+        new_transitions += steps.length()
+      }
+      if seen.length() % 27 == 0 {
+        println("Verified \{seen.length()}/324 final evaluation episodes")
+      }
+    }
+    reader.close()
+    assert_eq(child.wait(), 0)
+  }
+  assert_eq(seen.length(), 324)
+  assert_eq(reused, 162)
+  let state_checks = read(study + "/actor-update-state-verification.json")
+  assert_eq(
+    field(state_checks, "source_report_sha256"),
+    Json(sha(study + "/report.json")),
+  )
+  assert_eq(field(state_checks, "fixed_model_actor_state_only"), true)
+  assert_eq(array(field(state_checks, "checks")).length(), 6)
+  for check in array(field(state_checks, "checks")) {
+    let key = str(field(check, "method")) +
+      ":" +
+      field(check, "seed").stringify()
+    let run = candidate_runs[key]
+    assert_eq(
+      field(check, "actor_sha256"),
+      field(field(run, "checkpoint"), "sha256"),
+    )
+    for name in ["optimizer_sha256", "sampler_sha256"] {
+      assert_eq(
+        field(check, name),
+        field(field(run, "actor_update_state"), name),
+      )
+    }
+  }
+  guard report is Object(fields) else { fail("expected report") }
+  fields["native_verification"] = {
+    "physics_scene_sha256": Json(sha(root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml")),
+    "all_records_validated": true,
+    "episodes": 324,
+    "transitions": Json(transitions),
+    "new_episodes": 162,
+    "new_transitions": Json(new_transitions),
+    "reused_episodes": Json(reused),
+    "original_actor_cycles_verified": 36,
+    "reconstructed_actor_updates": 432,
+    "intervention_actor_updates": 72,
+    "matched_final_cycle_forks": 6,
+    "actor_update_state_reloads_verified": 6,
+    "full_27_cell_quality_recomputed": true,
+    "maxima": Json(maxima),
+  }
+  fields["diagnostic_report_sha256"] = Json(sha(study + "/report.json"))
+  fields["verification_provider_sha256"] = Json(sha(verifier))
+  fields["summary"] = Json(summary)
+  @fs.write_file(
+    args[3],
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(Json(summary).stringify(indent=2))
+}

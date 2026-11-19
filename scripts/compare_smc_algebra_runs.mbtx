@@ -1,0 +1,13 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let root="/home/wlc004s/moonrobo/runs/hotspot-shared-"
+  for (phase,variants) in [("world",["rotation","xi","all"]),("actor",["xi","return","all"])] {
+    for variant in variants {
+      let label="algebra-numeric-"+phase+"-"+variant
+      let code=@process.run("/home/wlc004s/moonrobo/toolchain/bin/moon",["run","--target","native",base+"/compare_algebra_snapshots.mbtx","--",root+"algebra-"+phase+"-baseline-a",root+"algebra-"+phase+"-"+variant+"-a",base+"/"+label+".json"],stdout=@process.redirect_to_file(base+"/"+label+".stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(base+"/"+label+".stderr.log",create_mode=CreateNew))
+      guard code==0 else {fail(label)}
+      println(label+": "+@fs.read_file(base+"/"+label+".stdout.log").text())
+    }
+  }
+}

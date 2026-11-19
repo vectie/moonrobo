@@ -1,0 +1,10 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="output/spark-runtime-20261024/coefficient-full-20261028"
+  let s=@fs.read_file(dir+"/coefficient_full_suite_d.mbtx").text()
+    .replace_all(old="let names=if name.contains(\"-smc-\"){[name]}else{[name,label(phase,\"baseline\",\"gate\")]}",new="let names=if name.contains(\"-smc-\"){[name,\"primitives-baseline-\"+phase+\"-gate-a\"]}else{[name,label(phase,\"baseline\",\"gate\"),\"primitives-baseline-\"+phase+\"-gate-a\"]}")
+    .replace_all(old="      guard @process.run(\"dd\",",new="      guard @process.run(\"sync\",[\"-d\",path])==0else{fail(\"flush ended snapshot\")}\n      guard @process.run(\"dd\",")
+    .replace_all(old="    if v!=\"smc\" {release(name)}",new="    release(name)")
+  @fs.write_file(dir+"/coefficient_full_suite_e.mbtx",s,create_mode=CreateNew)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+"/coefficient_full_suite_e.mbtx","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/coefficient_full_suite_e.mbtx"])==0else{fail("stage")}
+}

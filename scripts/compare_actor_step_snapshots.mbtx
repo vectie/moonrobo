@@ -1,0 +1,115 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, revision] &&
+    [
+      "b", "c", "d", "e", "f", "g", "aligned-a", "reward-reference-a", "geometry-b",
+      "geometry-c", "geometry-c2", "geometry-e", "geometry-f", "geometry-g",
+    ].contains(revision) else {
+    fail("expected a retained actor-step revision")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let name = "actor-step-comparison-" + revision
+  let runner = "compare_actor_step_" + revision + ".mbtx"
+  let adapter = "compare_actor_step_" + revision + ".py"
+  let native_name = if revision.has_prefix("geometry-") {
+    revision.replace_all(old="geometry-", new="actor-geometry-native-")
+  } else if revision == "reward-reference-a" {
+    "actor-reward-reference-native-a"
+  } else if revision == "aligned-a" {
+    "actor-aligned-native-a"
+  } else {
+    "actor-step-native-" + revision
+  }
+  let reference_name = if revision.has_prefix("geometry-") {
+    "actor-frozen-reference-c"
+  } else if revision == "reward-reference-a" {
+    "actor-frozen-reference-c"
+  } else if revision == "aligned-a" {
+    "actor-frozen-reference-c"
+  } else {
+    "actor-boundary-smc-b"
+  }
+  let prefix = @fs.read_file(out + "/build_actor_boundary_a.mbtx")
+    .text()
+    .split("async fn main {")
+    .to_array()[0]
+    .to_owned()
+    .replace_all(
+      old="      \"--workdir\",",
+      new="      \"--mount\",\"type=bind,src=/home/wlc004s/moonrobo/runs,dst=/data,readonly\",\n      \"--workdir\",",
+    )
+  assert_true(prefix.contains("dst=/data"))
+  let code = prefix +
+    "async fn main {\n  container(\"" +
+    name +
+    "\",\"/opt/isaaclab-venv/bin/python\",[\"/build/" +
+    adapter +
+    "\",\"/data/hotspot-shared-" +
+    native_name +
+    "\",\"/data/hotspot-shared-" +
+    reference_name +
+    "\",\"/build/" +
+    name +
+    ".json\"])\n}\n"
+  @fs.write_file(out + "/" + runner, code, create_mode=CreateNew)
+  @fs.write_file(
+    out + "/" + adapter,
+    @fs.read_file("providers/motion_learning/compare_actor_boundaries.py"),
+    create_mode=CreateNew,
+  )
+  for file in [runner, adapter] {
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/" + file,
+        host + ":" + base + "/" + file,
+      ]),
+      0,
+    )
+  }
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/" +
+        runner,
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/" + name + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/" + name + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      host + ":" + base + "/" + name + ".json",
+      out + "/" + name + ".json",
+    ]),
+    0,
+  )
+}

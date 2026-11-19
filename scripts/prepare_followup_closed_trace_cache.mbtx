@@ -1,0 +1,42 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let out = repo +
+    "/output/spark-runtime-20261024/world-ln-fk-20261026/advise_followup_closed_trace.mbtx"
+  let extra =
+    #|"phase-combo26-s-world-off-smc-compiled", "phase-combo26-s-world-trace-smc-compiled", "phase-combo26-s-actor-off-smc-compiled", "phase-combo26-s-actor-trace-smc-compiled", "phase-combo26-s-collect-off-smc-compiled", "phase-combo26-s-collect-trace-smc-compiled",
+  let more =
+    #|trace_root + "/run/native",
+    #|        "/home/wlc004s/moonrobo/private/hotspot-smc4096-20261026-a/_build",
+    #|        "/home/wlc004s/moonrobo/private/hotspot-followup-ln-20261026-a/_build",
+    #|        "/home/wlc004s/moonrobo/private/hotspot-followup-ln-20261026-a/workspace/moonrobo/_build",
+    #|        "/home/wlc004s/moonrobo/private/hotspot-followup-ln-20261026-a/workspace/moonrobo-fixtures/_build",
+    #|        base + "/trace41-phase-combo26-n-actor-trace-native-export",
+    #|        base + "/trace41-phase-combo26-n-world-tracec-native-export",
+    #|        base + "/trace41-phase-combo26-s-actor-trace-smc-compiled-export",
+  let source = @fs.read_file(
+      repo +
+      "/output/spark-runtime-20261024/world-ln-fk-20261026/advise_followup_build.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="\"phase-actortraceb-smc-compiled\",\n        ]",
+      new="\"phase-actortraceb-smc-compiled\",\n" + extra + "\n        ]",
+    )
+    .replace_all(old="trace_root + \"/run/native\",", new=more)
+  guard source.contains(extra) else { fail("trace scope derivation") }
+  @fs.write_file(out, source, create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o", "ControlPath=/tmp/moonrobo-operator-179.sock", out, "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_followup_closed_trace.mbtx",
+    ]) ==
+    0 else {
+    fail("copy")
+  }
+}

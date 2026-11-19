@@ -1,0 +1,55 @@
+///|
+async fn main {
+  guard @env.args() is [_, mode, implementation, observer, label] &&
+    ["gate", "world", "actor"].contains(mode) &&
+    ["native", "ln-only", "expanded", "smc", "compiled"].contains(implementation) &&
+    ["off", "events"].contains(observer) && label.length() <= 64 &&
+    label.all(c => c is ('a'..<='z' | '0'..<='9' | '-')) else { fail("MLP fixed arguments") }
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let mapped = "/workspace/moonrobo/private/shared-compute-20261026-a"
+  let native = ["native", "ln-only", "expanded"].contains(implementation)
+  let parent = "/home/wlc004s/moonrobo/runs/native-hotspot-vs-smc512-20261026-b/spec.json"
+  guard hash_file(parent) == "5197095bd124a4e212cd4b5c8ed07a14323c9d7d1f56115a47967489105e757f" else { fail("parent changed") }
+  let spec = read_json(parent)
+  verify_pins(spec)
+  let side = @json.parse(field(spec, if native { "a" } else { "b" }).stringify())
+  guard side is Object(s) && field(side, "env") is Object(e) && field(side, "mounts") is Array(mounts) else { fail("side") }
+  e["MOONROBO_TENSOR_LIBRARY"] = Json(mapped + "/libmoonrobo_mlp_a.so")
+  e["MOONROBO_SHARED_INPUT"] = "/workspace/moonrobo/runs/hotspot-shared-trained-export-b"
+  e["MOONROBO_SHARED_OUTPUT"] = "/pair"
+  e["MOONROBO_MLP_MODE"] = Json(mode)
+  e["MOONROBO_MLP_LN"] = Json(if implementation == "expanded" { "expanded" } else { "native" })
+  e["MOONROBO_MLP_LINEAR"] = Json(if implementation == "native" { "native" } else { "matmul_bias" })
+  e["MOONROBO_MLP_EVENTS"] = Json(if observer == "events" { "1" } else { "0" })
+  e["MLP_COMPILED"] = Json(if implementation == "compiled" { "1" } else { "0" })
+  e["MLP_NATIVE_GATE"] = "/workspace/moonrobo/runs/hotspot-mlp-native-gate-a"
+  if !native {
+    mounts.clear()
+    mounts.append([
+      { "source": "/home/wlc004s/moonrobo", "target": "/workspace/moonrobo", "readonly": true },
+      { "source": Json(base), "target": "/workspace/supermimic", "readonly": true },
+    ])
+    e["PYTHONPATH"] = "/workspace/supermimic"
+    e["SHARED_SMC_TRAIN"] = "/workspace/supermimic/supermimic/train.py"
+  }
+  s["entrypoint"] = Json(if native { mapped + "/mlp-gate-a" } else { "python" })
+  s["argv"] = Json(if native { ["mlp_comparison_wbtest.mbt:0-1"] } else { [mapped + "/mlp_smc_probe_a.py"] })
+  let root = "/home/wlc004s/moonrobo/runs/hotspot-mlp-" + label
+  guard !@fs.exists(root) else { fail("fresh MLP output required") }
+  @fs.mkdir(root)
+  let pins : Map[String, Json] = {}
+  for path in [base + "/mlp-gate-a", base + "/libmoonrobo_mlp_a.so", base + "/mlp_smc_probe_a.py",
+    base + "/shared_smc_probe_v17.py", base + "/run_mlp_comparison_a.mbtx",
+    base + "/supermimic/networks.py", base + "/supermimic/robot.py", base + "/supermimic/train.py",
+    "/home/wlc004s/moonrobo/runs/hotspot-shared-trained-export-b/initial.json"] {
+    pins[path] = Json(hash_file(path))
+  }
+  write_json(root + "/protocol.json", { "mode": Json(mode), "implementation": Json(implementation),
+    "observer": Json(observer), "pins": Json(pins), "side": side, "original_guards_unchanged": true,
+    "scope": "isolated trained world MLP; world2048; actor4096=8x512 input VJP; no temporal rollout" })
+  let passed = guarded(side, root, false)
+  for path, expected in pins { guard Json(hash_file(path)) == expected else { fail("MLP source changed") } }
+  write_json(root + "/completion.json", { "passed": Json(passed), "result_present": Json(@fs.exists(root + "/result.json")) })
+  guard passed && @fs.exists(root + "/result.json") else { fail("MLP gate/run failed; retained") }
+  println("MLP_COMPLETED " + root)
+}

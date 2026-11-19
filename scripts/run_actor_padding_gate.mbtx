@@ -1,0 +1,85 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["prepare", "run"].contains(mode) else {
+    fail("prepare/run")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let runner = "run_actor_padding_gate_g.mbtx"
+  if mode == "prepare" {
+    let code = @fs.read_file(out + "/run_actor_step_gate_e.mbtx")
+      .text()
+      .replace_all(old="run_actor_step_gate_e.mbtx", new=runner)
+      .replace_all(
+        old="  e[\"MOONROBO_SHARED_AMP\"] = Json(amp)",
+        new="  mounts.push({\"source\":\"/home/wlc004s/moonrobo/runs/hotspot-mlp-actor-backward-padding-g\",\"target\":\"/workspace/moonrobo/runs/hotspot-mlp-actor-step-export-b\",\"readonly\":true})\n  e[\"MOONROBO_SHARED_AMP\"] = Json(amp)",
+      )
+      .replace_all(
+        old="/home/wlc004s/moonrobo/runs/hotspot-mlp-actor-step-export-b",
+        new="/home/wlc004s/moonrobo/runs/hotspot-mlp-actor-backward-padding-g",
+      )
+    @fs.write_file(out + "/" + runner, code, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/" + runner,
+        host + ":" + base + "/" + runner,
+      ]),
+      0,
+    )
+    return
+  }
+  let folder = out + "/step-run-g"
+  @fs.mkdir(folder)
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      runner +
+      " -- actor native off 1 actor-step-native-g bf16-full",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "boundaries.json", "completion.json", "training-guard.json",
+      "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+      "protocol.json", "compiled-packages.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-step-native-g/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(status, 0)
+}

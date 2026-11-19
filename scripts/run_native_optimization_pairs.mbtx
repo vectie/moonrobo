@@ -1,0 +1,992 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/x/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(values) && values.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn text(value : Json) -> String raise {
+  guard value is String(value) else { fail("expected string") }
+  value
+}
+
+///|
+fn integer(value : Json) -> Int32 raise {
+  guard value is Number(n, ..) &&
+    n >= 0.0 &&
+    n <= 2147483647.0 &&
+    n.to_int().to_double() == n else {
+    fail("expected bounded integer")
+  }
+  n.to_int()
+}
+
+///|
+fn sha(value : String) -> Bool {
+  value.length() == 64 &&
+  value.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+fn safe_path(value : String, absolute~ : Bool) -> Bool {
+  value.length() > 0 &&
+  value.has_prefix("/") == absolute &&
+  !value.contains(",") &&
+  !value.contains("\n") &&
+  !value.contains("\r") &&
+  !value.contains("\u0000") &&
+  !value.split("/").any(p => p == ".." || p == ".")
+}
+
+///|
+fn option(value : Json, key : String, default : Json) -> Json raise {
+  guard value is Object(values) else { fail("expected object") }
+  values.get(key).unwrap_or(default)
+}
+
+///|
+fn option_defaults() -> Array[(String, Json)] {
+  [
+    ("reuse_geometry", Json(false)),
+    ("reuse_critic_normalization", Json(false)),
+    ("layer_norm_mode", Json("expanded")),
+    ("critic_cuda_graph", Json(false)),
+  ]
+}
+
+///|
+fn config_delta(
+  base : Json,
+  candidate : Json,
+  stage : String,
+) -> Array[Json] raise {
+  guard base is Object(before) && candidate is Object(after) else {
+    fail("configs must be objects")
+  }
+  let allowed = match stage {
+    "geometry" => "reuse_geometry"
+    "critic-normalization" => "reuse_critic_normalization"
+    "layer-norm" => "layer_norm_mode"
+    "critic-cuda-graph" | "critic_cuda_graph" => "critic_cuda_graph"
+    "timing" => ""
+    _ => fail("unsupported stage; DDP requires its own coordinated launcher")
+  }
+  let defaults = option_defaults()
+  for (key, expected) in defaults {
+    guard option(base, key, expected) == expected else {
+      fail("baseline must retain original implementation: " + key)
+    }
+    let target = if key == allowed {
+      if key == "layer_norm_mode" {
+        Json("native")
+      } else {
+        Json(true)
+      }
+    } else {
+      expected
+    }
+    guard option(candidate, key, expected) == target else {
+      fail("candidate option does not match stage: " + key)
+    }
+  }
+  let keys : Map[String, Unit] = Map([])
+  for key, _ in before {
+    keys[key] = ()
+  }
+  for key, _ in after {
+    keys[key] = ()
+  }
+  let changes : Array[Json] = []
+  for key, _ in keys {
+    let default = Map::from_array(defaults).get(key)
+    let a = match before.get(key) {
+      Some(value) => Some(value)
+      None => default
+    }
+    let b = match after.get(key) {
+      Some(value) => Some(value)
+      None => default
+    }
+    if a != b {
+      guard key == allowed && a is Some(a) && b is Some(b) else {
+        fail("non-optimization config changed: " + key)
+      }
+      changes.push({ "field": Json(key), "before": a, "after": b })
+    }
+  }
+  guard changes.length() == (if stage == "timing" { 0 } else { 1 }) else {
+    fail("expected exactly one candidate change")
+  }
+  changes
+}
+
+///|
+fn validate(spec : Json) -> Unit raise {
+  guard field(spec, "format") ==
+    Json("moonrobo.native-optimization-pairs.spec.v1") else {
+    fail("unexpected spec format")
+  }
+  let base = field(spec, "baseline_config")
+  ignore(
+    config_delta(
+      base,
+      field(spec, "candidate_config"),
+      text(field(spec, "stage")),
+    ),
+  )
+  for
+    (key, expected) in [
+      ("capacity_profile", Json("paper-4096")),
+      ("memory_admission_percent", Json(80)),
+      ("num_envs", Json(256)),
+      ("wm_batch", Json(2048)),
+      ("pi_batch", Json(4096)),
+      ("wm_microbatch", Json(2048)),
+      ("pi_microbatch", Json(512)),
+      ("wm_window", Json(8)),
+      ("hist", Json(10)),
+      ("goal_frames", Json(10)),
+      ("horizon", Json(32)),
+      ("wm_batches", Json(10)),
+      ("wm_only_iters", Json(0)),
+      ("critic_epochs", Json(5)),
+      ("critic_minibatches", Json(4)),
+      ("precision", Json("float32")),
+      ("amp", Json("none")),
+      ("allow_tf32", Json(true)),
+      ("observation_mode", Json("paper")),
+      ("self_collisions", Json(true)),
+      ("reference_storage", Json("mmap")),
+      ("motion_cache_dir", Json("/motion-cache")),
+      ("device", Json("cuda:0")),
+      ("physics_dt", Json(0.005)),
+      ("utd", Json(0.4)),
+    ] {
+    guard field(base, key) == expected else {
+      fail("unsupported baseline: " + key)
+    }
+  }
+  let iterations = integer(field(base, "iterations"))
+  let profile_capacity = integer(option(base, "profile_max_spans", Json(8192)))
+  let warmup = integer(field(spec, "warmup_iterations"))
+  let blocks = integer(field(spec, "abba_blocks"))
+  let timeout = integer(field(spec, "timeout_seconds"))
+  guard iterations >= 4 &&
+    iterations <= 30 &&
+    warmup >= 1 &&
+    warmup < iterations &&
+    integer(field(base, "checkpoint_every")) == iterations &&
+    blocks >= 1 &&
+    blocks <= 3 &&
+    timeout >= 60 &&
+    timeout <= 1800 &&
+    profile_capacity >= 1 &&
+    profile_capacity <= 65536 else {
+    fail("iteration/checkpoint/warmup/ABBA/deadline bounds violated")
+  }
+  guard field(spec, "execution_profile") is (True | False) else {
+    fail("execution_profile must be boolean")
+  }
+  guard safe_path(text(field(spec, "repo")), absolute=true) &&
+    safe_path(text(field(spec, "motion_cache_relative_path")), absolute=false) &&
+    safe_path(text(field(spec, "mujoco_library")), absolute=true) else {
+    fail("invalid absolute/relative path")
+  }
+  let image = text(field(spec, "image_id"))
+  guard image.has_prefix("sha256:") &&
+    sha(image[7:].to_owned()) &&
+    sha(text(field(spec, "mujoco_library_sha256"))) else {
+    fail("immutable image/library pins required")
+  }
+  let files = field(spec, "files")
+  for
+    key in [
+      "trainer", "tensor_library", "physics_library", "scene", "manifest", "physics_artifact",
+    ] {
+    let pin = field(files, key)
+    guard safe_path(text(field(pin, "relative_path")), absolute=false) &&
+      sha(text(field(pin, "sha256"))) else {
+      fail("invalid file pin: " + key)
+    }
+  }
+  guard field(base, "physics_artifact_sha256") ==
+    field(field(files, "physics_artifact"), "sha256") else {
+    fail("physics artifact config/pin mismatch")
+  }
+}
+
+///|
+async fn read_json(path : String, limit~ : Int64 = 1048576L) -> Json {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected regular JSON: " + path)
+  }
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  let n = f.size()
+  guard n > 0L && n <= limit else { fail("JSON size exceeds bound: " + path) }
+  let bytes = f.read_exactly_at(n.to_int(), position=0L)
+  guard f.size() == n else { fail("file changed during read") }
+  @json.parse(@utf8.decode(bytes))
+}
+
+///|
+async fn write_json(path : String, value : Json) -> Unit {
+  @fs.write_file(
+    path,
+    value.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+}
+
+///|
+async fn file_sha(path : String) -> String {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected regular pinned file: " + path)
+  }
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  let n = f.size()
+  guard n > 0L && n <= 1073741824L else {
+    fail("pinned file outside 1 GiB bound")
+  }
+  let digest = @crypto.SHA256::new()
+  for offset = 0L; offset < n; {
+    let size = (n - offset).min(65536L).to_int()
+    digest.update(f.read_exactly_at(size, position=offset))
+    continue offset + size.to_int64()
+  }
+  guard f.size() == n else { fail("file size changed while hashing") }
+  @crypto.bytes_to_hex_string(digest.finalize())
+}
+
+///|
+fn schedule(blocks : Int32) -> Array[String] {
+  let order : Array[String] = []
+  for _ in 0..<blocks {
+    for variant in ["baseline", "candidate", "candidate", "baseline"] {
+      order.push(variant)
+    }
+  }
+  order
+}
+
+///|
+async fn make_spec(
+  base_path : String,
+  stage : String,
+  pins_path : String,
+  output : String,
+) -> Unit {
+  let base = read_json(base_path)
+  let pins = read_json(pins_path)
+  guard base is Object(base_fields) && pins is Object(pin_fields) else {
+    fail("base and pins must be objects")
+  }
+  let baseline = base_fields.copy()
+  if stage == "timing" {
+    baseline["profile_max_spans"] = Json(65536)
+  }
+  let candidate = baseline.copy()
+  match stage {
+    "geometry" => candidate["reuse_geometry"] = Json(true)
+    "critic-normalization" =>
+      candidate["reuse_critic_normalization"] = Json(true)
+    "layer-norm" => candidate["layer_norm_mode"] = Json("native")
+    "critic-cuda-graph" | "critic_cuda_graph" =>
+      candidate["critic_cuda_graph"] = Json(true)
+    "timing" => ()
+    _ => fail("unsupported stage")
+  }
+  let spec = pin_fields.copy()
+  spec["format"] = Json("moonrobo.native-optimization-pairs.spec.v1")
+  spec["stage"] = Json(stage)
+  spec["baseline_config"] = Json::object(baseline)
+  spec["candidate_config"] = Json::object(candidate)
+  spec["warmup_iterations"] = Json(1)
+  spec["abba_blocks"] = Json(1)
+  spec["timeout_seconds"] = Json(600)
+  spec["execution_profile"] = Json(stage == "timing")
+  let spec = Json::object(spec)
+  validate(spec)
+  write_json(output, spec)
+  println("Created validated spec without launching: " + output)
+}
+
+///|
+async fn prepare(spec_path : String, root : String) -> Unit {
+  let spec = read_json(spec_path)
+  validate(spec)
+  guard safe_path(root, absolute=true) else {
+    fail("fresh output must be absolute")
+  }
+  guard !@fs.exists(root) else { fail("output directory already exists") }
+  @fs.mkdir(root)
+  write_json(root + "/spec.json", spec)
+  write_json(root + "/plan.json", {
+    "format": "moonrobo.native-optimization-pairs.plan.v1",
+    "spec_sha256": Json(file_sha(root + "/spec.json")),
+    "order": Json(schedule(integer(field(spec, "abba_blocks")))),
+    "changes": Json(
+      config_delta(
+        field(spec, "baseline_config"),
+        field(spec, "candidate_config"),
+        text(field(spec, "stage")),
+      ),
+    ),
+    "memory_limit_bytes": 107374182400,
+    "memory_swap_limit_bytes": 107374182400,
+    "cpus": 12,
+    "minimum_cuda_free_reserve_bytes": 17179869184,
+    "same_frozen_build_for_both_variants": true,
+    "old_measured_reference_used_as_paired_baseline": false,
+    "preflight_before_each_run": true,
+    "motion_cache_mount": "read-write for validated cache lock protocol; source dataset and repository remain read-only",
+    "automatic_launch": false,
+    "automatic_retry": false,
+    "automatic_capacity_escalation": false,
+    "numerical_equivalence_verified": false,
+    "scope": "single-node N256 Paper93 execution optimization; not convergence or N4096; DDP needs coordinated rank launcher",
+  })
+  println("Prepared immutable ABBA plan without launching: " + root)
+}
+
+///|
+fn pinned_runtime_path(spec : Json, key : String) -> String raise {
+  "/workspace/moonrobo/" +
+  text(field(field(field(spec, "files"), key), "relative_path"))
+}
+
+///|
+fn command(spec : Json, folder : String, mode : String) -> Array[String] raise {
+  let repo = text(field(spec, "repo"))
+  let command = [
+    "create",
+    "--gpus",
+    "all",
+    "--network",
+    "none",
+    "--memory",
+    "107374182400",
+    "--memory-swap",
+    "107374182400",
+    "--cpus",
+    "12",
+    "--pids-limit",
+    "1024",
+    "--mount",
+    "type=bind,src=" + repo + ",dst=/workspace/moonrobo,readonly",
+    "--mount",
+    "type=bind,src=" + folder + ",dst=/gate",
+    "--mount",
+    "type=bind,src=" +
+    repo +
+    "/" +
+    text(field(spec, "motion_cache_relative_path")) +
+    ",dst=/motion-cache",
+    "--workdir",
+    "/workspace/moonrobo",
+    "--entrypoint",
+    "/usr/bin/timeout",
+    text(field(spec, "image_id")),
+    "--signal=TERM",
+    "--kill-after=10s",
+    integer(field(spec, "timeout_seconds")).to_string() + "s",
+  ]
+  // Direct argv: no shell expansion, eval, or interpolated command string.
+  command.push("/usr/bin/env")
+  command.push("-u")
+  command.push("NVIDIA_TF32_OVERRIDE")
+  command.push("-u")
+  command.push("TORCH_ALLOW_TF32_CUBLAS_OVERRIDE")
+  command.push(pinned_runtime_path(spec, "trainer"))
+  command.push(mode)
+  for
+    (flag, key) in [
+      ("--tensor-library", "tensor_library"),
+      ("--physics-library", "physics_library"),
+      ("--scene", "scene"),
+      ("--manifest", "manifest"),
+      ("--physics-artifact", "physics_artifact"),
+    ] {
+    command.push(flag)
+    command.push(pinned_runtime_path(spec, key))
+  }
+  for
+    arg in [
+      "--library",
+      text(field(spec, "mujoco_library")),
+      "--config",
+      "/gate/config.json",
+      "--output",
+      "/gate/train",
+      "--checkpoint-format",
+      "stream-v2",
+      "--cuda-memory-telemetry",
+    ] {
+    command.push(arg)
+  }
+  if field(spec, "execution_profile") == Json(true) {
+    command.push("--execution-profile")
+  }
+  command
+}
+
+///|
+async fn checked_output(args : Array[String]) -> String {
+  @async.with_timeout(30000, () => {
+    let (out, out_to) = @process.read_from_process()
+    let (err, err_to) = @process.read_from_process()
+    @async.with_task_group() <| group => {
+      let child = group.spawn(() => {
+        @process.run("docker", args, stdout=out_to, stderr=err_to)
+      })
+      let stdout = group.spawn(() => {
+        defer out.close()
+        bounded_output(out)
+      })
+      let stderr = group.spawn(() => {
+        defer err.close()
+        bounded_output(err)
+      })
+      let code = child.wait()
+      let output = stdout.wait()
+      let errors = stderr.wait()
+      guard code == 0 else { fail("docker failed (\{code}): " + errors) }
+      output.trim().to_owned()
+    }
+  })
+}
+
+///|
+async fn bounded_output(reader : &@io.Reader) -> String {
+  let buffer = FixedArray::make(1048577, b'\x00')
+  let mut total = 0
+  for ;; {
+    let count = reader.read(buffer, offset=total, max_len=1048577 - total)
+    if count == 0 {
+      break
+    }
+    total += count
+    guard total <= 1048576 else { fail("process output exceeds 1 MiB bound") }
+  }
+  @utf8.decode(Bytes::from_array(buffer[:total]))
+}
+
+///|
+async fn stop_container(id : String) -> Unit {
+  ignore(
+    @async.with_timeout(20000, () => {
+      @process.run("docker", ["stop", "--time", "10", id])
+    }),
+  )
+}
+
+///|
+async fn container(spec : Json, folder : String, mode : String) -> Bool {
+  let argv = command(spec, folder, mode)
+  write_json(folder + "/" + mode + "-launch.json", {
+    "program": "docker",
+    "argv": Json(argv),
+  })
+  let id = checked_output(argv) catch {
+    error => {
+      write_json(folder + "/" + mode + "-result.json", {
+        "passed": false,
+        "stage": "create",
+        "error": Json(error.to_string()),
+      })
+      return false
+    }
+  }
+  guard sha(id) else { fail("unexpected Docker container ID") }
+  errdefer (stop_container(id) catch { _ => () })
+  let start = @env.now().reinterpret_as_int64()
+  let mut error_text : String? = None
+  let exit_code = @async.with_timeout(
+    (integer(field(spec, "timeout_seconds")) + 45) * 1000,
+    () => {
+      @process.run(
+        "docker",
+        ["start", "--attach", id],
+        stdout=@process.redirect_to_file(
+          folder + "/" + mode + ".stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          folder + "/" + mode + ".stderr.log",
+          create_mode=CreateNew,
+        ),
+      )
+    },
+  ) catch {
+    error => {
+      error_text = Some(error.to_string())
+      -1
+    }
+  }
+  if error_text is Some(_) {
+    stop_container(id) catch {
+      _ => ()
+    }
+  }
+  let inspection : Json = @json.parse(checked_output(["inspect", id])) catch {
+    error => ({ "inspection_error": Json(error.to_string()) } : Json)
+  }
+  write_json(folder + "/" + mode + "-docker-final.json", inspection)
+  let passed = match inspection {
+    Array([Object(container)]) =>
+      match container.get("State") {
+        Some(Object(state)) =>
+          exit_code == 0 &&
+          error_text is None &&
+          state.get("ExitCode") == Some(Json(0)) &&
+          state.get("OOMKilled") == Some(Json(false)) &&
+          state.get("Running") == Some(Json(false))
+        _ => false
+      }
+    _ => false
+  }
+  write_json(folder + "/" + mode + "-result.json", {
+    "passed": Json(passed),
+    "attach_exit_code": Json(exit_code),
+    "attach_error": Json(error_text),
+    "elapsed_ms": Json(@env.now().reinterpret_as_int64() - start),
+    "container_id": Json(id),
+    "container_retained": true,
+    "automatic_retry": false,
+  })
+  passed
+}
+
+///|
+async fn verify_run_report(
+  spec : Json,
+  folder : String,
+  expected : Json,
+) -> Unit {
+  let report = read_json(folder + "/train/report.json", limit=33554432L)
+  guard field(report, "format") ==
+    Json("moonrobo.native-tensor-training-report.v1") &&
+    field(report, "training_complete_for_requested_iterations") == Json(true) &&
+    field(report, "iteration") == field(expected, "iterations") &&
+    field(report, "distributed") == Json(false) else {
+    fail("missing/incomplete runtime report")
+  }
+  let identity = field(report, "identity")
+  guard field(identity, "config") == expected &&
+    field(identity, "mujoco_library_sha256") ==
+    field(spec, "mujoco_library_sha256") else {
+    fail("runtime config/MuJoCo identity changed")
+  }
+  for
+    (key, pin) in [
+      ("native_executable_sha256", "trainer"),
+      ("tensor_library_sha256", "tensor_library"),
+      ("physics_library_sha256", "physics_library"),
+      ("physics_artifact_sha256", "physics_artifact"),
+      ("manifest_sha256", "manifest"),
+      ("scene_sha256", "scene"),
+    ] {
+    guard field(identity, key) ==
+      field(field(field(spec, "files"), pin), "sha256") else {
+      fail("runtime file identity changed: " + key)
+    }
+  }
+  let telemetry = field(report, "cuda_memory_telemetry")
+  guard field(telemetry, "status") == Json("complete") &&
+    field(telemetry, "error") == Json::null() else {
+    fail("runtime memory telemetry incomplete")
+  }
+  if graph_stage(spec) {
+    let route = field(report, "critic_cuda_graph")
+    let expected_replays = if option(expected, "critic_cuda_graph", Json(false)) ==
+      Json(true) {
+      integer(field(expected, "iterations")) *
+      integer(field(expected, "critic_epochs")) *
+      integer(field(expected, "critic_minibatches"))
+    } else {
+      0
+    }
+    guard count(field(route, "replays")) == expected_replays.to_int64() &&
+      count(field(route, "captures")) ==
+      (if expected_replays > 0 {
+        integer(field(expected, "iterations")).to_int64()
+      } else {
+        0L
+      }) &&
+      count(field(route, "peak_private_pool_reserved_bytes")) <= 1073741824L else {
+      fail("critic graph execution count/pool evidence rejected")
+    }
+  }
+  if field(spec, "execution_profile") == Json(true) {
+    let profile = read_json(
+      folder + "/train/execution-profile.json",
+      limit=33554432L,
+    )
+    guard (
+        option(profile, "schema", Json::null()) ==
+        Json("moonrobo.execution-profile.v1") ||
+        option(profile, "format", Json::null()) ==
+        Json("moonrobo.execution-profile.v1")
+      ) &&
+      field(profile, "enabled") == Json(true) else {
+      fail("execution profiling requested but evidence missing/disabled")
+    }
+  }
+}
+
+///|
+fn graph_stage(spec : Json) -> Bool raise {
+  ["critic-cuda-graph", "critic_cuda_graph"].contains(
+    text(field(spec, "stage")),
+  )
+}
+
+///|
+fn count(value : Json) -> Int64 raise {
+  let result = match value {
+    String(value) => @string.parse_int64(value)
+    Number(value, ..) if value >= 0.0 &&
+      value <= 9007199254740991.0 &&
+      value.to_int64().to_double() == value => value.to_int64()
+    _ => fail("expected exact nonnegative counter")
+  }
+  guard result >= 0L else { fail("negative counter") }
+  result
+}
+
+///|
+fn check_graph_capability(plan : Json, requested : Bool) -> Unit raise {
+  let capability = field(plan, "critic_cuda_graph_capability")
+  guard field(capability, "requested") == Json(requested) &&
+    field(capability, "available") == Json(true) else {
+    fail(
+      "critic graph pair requires available capability in both pinned builds and matching requested flag",
+    )
+  }
+}
+
+///|
+async fn verify_graph_preflight(
+  spec : Json,
+  folder : String,
+  expected : Json,
+) -> Unit {
+  if !graph_stage(spec) {
+    return
+  }
+  let path = folder + "/preflight.stdout.log"
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 4194304L else {
+    fail("preflight output exceeds 4 MiB bound")
+  }
+  let output = @utf8.decode(file.read_exactly_at(size.to_int(), position=0L))
+  guard file.size() == size else { fail("preflight log changed while reading") }
+  let plans : Array[Json] = []
+  for line in output.split("\n") {
+    let parsed = @json.parse(line) catch { _ => Json::null() }
+    if parsed is Object(values) &&
+      values.get("format") ==
+      Some(Json("moonrobo.native-tensor-memory-plan.v1")) {
+      plans.push(parsed)
+    }
+  }
+  guard plans.length() == 1 else { fail("expected one native preflight plan") }
+  check_graph_capability(
+    plans[0],
+    option(expected, "critic_cuda_graph", Json(false)) == Json(true),
+  )
+  write_json(folder + "/graph-preflight-evidence.json", {
+    "format": "moonrobo.critic-cuda-graph-preflight.v1",
+    "capability": field(plans[0], "critic_cuda_graph_capability"),
+    "preflight_stdout_sha256": Json(file_sha(path)),
+    "memory_plan": field(plans[0], "plan"),
+    "single_node_only": true,
+  })
+}
+
+///|
+async fn run_one(root : String, index : Int32) -> Unit {
+  let spec = read_json(root + "/spec.json")
+  validate(spec)
+  let plan = read_json(root + "/plan.json")
+  guard field(plan, "spec_sha256") == Json(file_sha(root + "/spec.json")) else {
+    fail("plan/spec identity changed")
+  }
+  let order = schedule(integer(field(spec, "abba_blocks")))
+  guard index >= 0 && index < order.length() else {
+    fail("run index outside plan")
+  }
+  if index > 0 {
+    guard field(read_json(root + "/run-\{index - 1}/result.json"), "passed") ==
+      Json(true) else {
+      fail("previous run failed/incomplete; no automatic continuation")
+    }
+  }
+  let folder = root + "/run-\{index}"
+  guard !@fs.exists(folder) else {
+    fail("run directory already exists; no overwrite/retry")
+  }
+  @fs.mkdir(folder)
+  let variant = order[index]
+  let config = field(spec, variant + "_config")
+  write_json(folder + "/config.json", config)
+  let started = @env.now().reinterpret_as_int64()
+  let mut error_text : String? = None
+  let passed = try {
+    let repo = text(field(spec, "repo"))
+    guard @fs.realpath(repo) == repo && @fs.realpath(root) == root else {
+      fail("canonical repo/root required")
+    }
+    for
+      key in [
+        "trainer", "tensor_library", "physics_library", "scene", "manifest", "physics_artifact",
+      ] {
+      let pin = field(field(spec, "files"), key)
+      let path = repo + "/" + text(field(pin, "relative_path"))
+      guard @fs.realpath(path) == path &&
+        file_sha(path) == text(field(pin, "sha256")) else {
+        fail("frozen file identity mismatch: " + key)
+      }
+    }
+    guard container(spec, folder, "preflight") else {
+      fail("preflight rejected; preserved failure")
+    }
+    verify_graph_preflight(spec, folder, config)
+    guard container(spec, folder, "train") else {
+      fail("training failed; preserved failure")
+    }
+    verify_run_report(spec, folder, config)
+    true
+  } catch {
+    error => {
+      error_text = Some(error.to_string())
+      false
+    }
+  }
+  write_json(folder + "/result.json", {
+    "format": "moonrobo.native-optimization-pairs.run.v1",
+    "index": Json(index),
+    "variant": Json(variant),
+    "spec_sha256": field(plan, "spec_sha256"),
+    "config_sha256": Json(file_sha(folder + "/config.json")),
+    "passed": Json(passed),
+    "error": Json(error_text),
+    "launcher_elapsed_ms": Json(@env.now().reinterpret_as_int64() - started),
+    "numerical_equivalence_verified": false,
+  })
+  guard passed else {
+    fail("paired run failed; all evidence retained: " + folder)
+  }
+  println("Completed one independent run: " + folder)
+}
+
+///|
+fn range_indices(
+  start : Int32,
+  end : Int32,
+  blocks : Int32,
+) -> Array[Int32] raise {
+  guard blocks >= 1 &&
+    blocks <= 3 &&
+    start >= 0 &&
+    start < end &&
+    end <= 4 * blocks else {
+    fail("range requires 0 <= START < END <= 4 * abba_blocks; END is exclusive")
+  }
+  [
+    for i in start..<end => i
+  ]
+}
+
+///|
+fn require_fresh_range(
+  indices : Array[Int32],
+  occupied : Array[Int32],
+) -> Unit raise {
+  for i in indices {
+    guard !occupied.contains(i) else {
+      fail(
+        "run-\{i} already exists; ranges never skip, resume or overwrite existing evidence",
+      )
+    }
+  }
+}
+
+///|
+async fn run_range(root : String, start : Int32, end : Int32) -> Unit {
+  let spec = read_json(root + "/spec.json")
+  validate(spec)
+  let indices = range_indices(start, end, integer(field(spec, "abba_blocks")))
+  let occupied : Array[Int32] = []
+  for i in indices {
+    if @fs.exists(root + "/run-\{i}") {
+      occupied.push(i)
+    }
+  }
+  // Validate the complete requested range before its first process. A caller
+  // chooses a fresh remaining range explicitly; this is never implicit resume.
+  require_fresh_range(indices, occupied)
+  for i in indices {
+    run_one(root, i)
+  }
+}
+
+///|
+fn self_test() -> Unit raise {
+  let a : Json = { "seed": 179, "lr": 0.0002 }
+  let b : Json = { "seed": 179, "lr": 0.0002, "reuse_geometry": true }
+  assert_eq(config_delta(a, b, "geometry").length(), 1)
+  let graph : Json = { "seed": 179, "lr": 0.0002, "critic_cuda_graph": true }
+  assert_eq(config_delta(a, graph, "critic-cuda-graph").length(), 1)
+  assert_eq(config_delta(a, graph, "critic_cuda_graph").length(), 1)
+  check_graph_capability(
+    { "critic_cuda_graph_capability": { "requested": true, "available": true } },
+    true,
+  )
+  for
+    bad in (
+      [
+        {
+          "critic_cuda_graph_capability": {
+            "requested": true,
+            "available": false,
+          },
+        },
+        {
+          "critic_cuda_graph_capability": {
+            "requested": false,
+            "available": true,
+          },
+        },
+        {},
+      ] : Array[Json]) {
+    try check_graph_capability(bad, true) catch {
+      _ => ()
+    } noraise {
+      _ => fail("accepted missing/unavailable graph capability")
+    }
+  }
+  try config_delta(a, graph, "geometry") catch {
+    _ => ()
+  } noraise {
+    _ => fail("accepted graph in geometry-only stage")
+  }
+  assert_eq(schedule(2), [
+    "baseline", "candidate", "candidate", "baseline", "baseline", "candidate", "candidate",
+    "baseline",
+  ])
+  let bad_configs : Array[Json] = [
+    { "seed": 180, "lr": 0.0002, "reuse_geometry": true },
+    { "seed": 179, "lr": 0.0003, "reuse_geometry": true },
+    {
+      "seed": 179,
+      "lr": 0.0002,
+      "reuse_geometry": true,
+      "layer_norm_mode": "native",
+    },
+  ]
+  for bad in bad_configs {
+    try config_delta(a, bad, "geometry") catch {
+      _ => ()
+    } noraise {
+      _ => fail("accepted semantic drift")
+    }
+  }
+  assert_true(safe_path("/a/$literal/space name", absolute=true))
+  assert_false(safe_path("/a/../b", absolute=true))
+  assert_false(safe_path("/a,b", absolute=true))
+  assert_false(sha("a".repeat(63)))
+  let file_pins : Map[String, Json] = Map([])
+  for
+    key in [
+      "trainer", "tensor_library", "physics_library", "scene", "manifest", "physics_artifact",
+    ] {
+    file_pins[key] = { "relative_path": Json("private/" + key) }
+  }
+  let launch_spec : Json = {
+    "repo": "/test/repo",
+    "motion_cache_relative_path": "private/cache",
+    "image_id": "sha256:fixture",
+    "timeout_seconds": 600,
+    "mujoco_library": "/opt/mujoco.so",
+    "files": Json::object(file_pins),
+    "execution_profile": false,
+  }
+  let launch = command(launch_spec, "/test/run-0", "train")
+  assert_true(
+    launch.contains("type=bind,src=/test/repo,dst=/workspace/moonrobo,readonly"),
+  )
+  assert_true(
+    launch.contains("type=bind,src=/test/repo/private/cache,dst=/motion-cache"),
+  )
+  assert_false(
+    launch.contains(
+      "type=bind,src=/test/repo/private/cache,dst=/motion-cache,readonly",
+    ),
+  )
+  assert_true(launch.contains("107374182400"))
+  assert_eq(range_indices(1, 4, 1), [1, 2, 3])
+  assert_eq(range_indices(0, 8, 2).length(), 8)
+  for
+    (start, end, blocks) in [
+      (0, 0, 1),
+      (-1, 4, 1),
+      (0, 5, 1),
+      (3, 2, 1),
+      (0, 4, 0),
+    ] {
+    try range_indices(start, end, blocks) catch {
+      _ => ()
+    } noraise {
+      _ => fail("accepted invalid range")
+    }
+  }
+  require_fresh_range([1, 2, 3], [0])
+  try require_fresh_range([1, 2, 3], [2]) catch {
+    _ => ()
+  } noraise {
+    _ => fail("range implicitly resumed an existing run")
+  }
+  println("paired launcher self-tests passed (no Docker/GPU)")
+}
+
+///|
+async fn main {
+  match @env.args() {
+    [_, "--self-test"] => self_test()
+    [_, "--make-spec", base, stage, pins, output] =>
+      make_spec(base, stage, pins, output)
+    [_, "--prepare", spec, root] => prepare(spec, root)
+    [_, "--plan", root] => {
+      let spec = read_json(root + "/spec.json")
+      validate(spec)
+      println(read_json(root + "/plan.json").stringify(indent=2))
+    }
+    [_, "--run", root, index] => run_one(root, @string.parse_int(index))
+    [_, "--run-range", root, start, end] =>
+      run_range(root, @string.parse_int(start), @string.parse_int(end))
+    _ =>
+      fail(
+        "usage: --make-spec BASE_JSON STAGE PINS_JSON FRESH_SPEC_JSON | --prepare SPEC_JSON FRESH_ABSOLUTE_DIR | --plan ROOT | --run ROOT ZERO_BASED_INDEX | --run-range ROOT START END_EXCLUSIVE | --self-test; ranges execute sequentially and stop on failure without retries or implicit resume",
+      )
+  }
+}

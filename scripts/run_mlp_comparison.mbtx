@@ -1,0 +1,193 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, requested] &&
+    [
+      "gates", "compiled-gate", "off", "off-tail", "events", "matched-gates", "matched-off",
+      "matched-events",
+    ].contains(requested) else {
+    fail("campaign group")
+  }
+  let group = if requested == "off-tail" { "off" } else { requested }
+  let matched = requested.has_prefix("matched-")
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/layernorm-mlp-20261026"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-operator-179.sock"
+  let tasks : Array[(String, String, String)] = match group {
+    "matched-gates" =>
+      [("gate", "native", "native-gate-c"), ("gate", "smc", "smc-gate-c")]
+    "gates" =>
+      [("gate", "native", "native-gate-b"), ("gate", "smc", "smc-gate-b")]
+    "compiled-gate" => [("gate", "compiled", "compiled-gate-b")]
+    _ => {
+      let order = if matched {
+        [
+          "expanded", "ln-only", "native", "smc", "smc", "native", "ln-only", "expanded",
+        ]
+      } else {
+        [
+          "expanded", "ln-only", "native", "smc", "compiled", "compiled", "smc",
+          "native", "ln-only", "expanded",
+        ]
+      }
+      let tasks = []
+      for phase in ["world", "actor"] {
+        for i, implementation in order {
+          tasks.push(
+            (
+              phase,
+              implementation,
+              if requested == "off-tail" && phase == "actor" && i == 5 {
+                "off-actor-5-retry-c"
+              } else if requested == "off-tail" && phase == "actor" && i == 6 {
+                "off-actor-6-retry-d"
+              } else {
+                group +
+                "-" +
+                phase +
+                "-\{i}" +
+                (if matched { "-c" } else { "-b" })
+              },
+            ),
+          )
+        }
+      }
+      tasks
+    }
+  }
+  if group.has_suffix("off") || group.has_suffix("events") {
+    let gate = @json.parse(
+      @fs.read_file(
+        root +
+        (if matched { "/smc-gate-c" } else { "/smc-gate-b" }) +
+        "/result.json",
+      ).text(),
+    )
+    guard gate is { "passed": True, .. } else {
+      fail("native/SMC numerical gate must pass first")
+    }
+  }
+  let results : Array[Json] = []
+  for (phase, implementation, label) in tasks {
+    let folder = root + "/" + label
+    if requested == "off-tail" && @fs.exists(folder + "/completion.json") {
+      let completion = @json.parse(
+        @fs.read_file(folder + "/completion.json").text(),
+      )
+      guard completion is { "passed": True, "result_present": True, .. } else {
+        fail("only verified finished runs can be reused")
+      }
+      results.push({
+        "phase": Json(phase),
+        "implementation": Json(implementation),
+        "label": Json(label),
+        "exit_code": Json(0),
+        "reused_completed": true,
+      })
+      continue
+    }
+    @fs.mkdir(folder)
+    println("MLP starting " + label + " " + implementation)
+    let code = @process.run(
+      "ssh",
+      [
+        "-S",
+        socket,
+        "-o",
+        "BatchMode=yes",
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        (if matched {
+          "/run_mlp_comparison_c.mbtx"
+        } else {
+          "/run_mlp_comparison_b.mbtx"
+        }) +
+        " -- " +
+        phase +
+        " " +
+        implementation +
+        " " +
+        (if group.has_suffix("events") { "events" } else { "off" }) +
+        " " +
+        label,
+      ],
+      stdout=@process.redirect_to_file(
+        folder + "/controller.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        folder + "/controller.stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    for
+      name in [
+        "result.json", "protocol.json", "completion.json", "training-guard.json",
+        "training.stderr.log", "training.stdout.log",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-o",
+          "ControlPath=" + socket,
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-mlp-" +
+          label +
+          "/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+    results.push({
+      "phase": Json(phase),
+      "implementation": Json(implementation),
+      "label": Json(label),
+      "exit_code": Json(code),
+    })
+    guard code == 0 else { fail(label + " failed; evidence retained") }
+    println("MLP completed " + label)
+    guard @process.run(
+        "ssh",
+        [
+          "-S",
+          socket,
+          host,
+          "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+          base +
+          (if matched {
+            "/advise_mlp_cuda_b.mbtx"
+          } else {
+            "/advise_mlp_cuda_a.mbtx"
+          }) +
+          " -- after-" +
+          label,
+        ],
+        stdout=@process.redirect_to_file(
+          folder + "/cache.stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          folder + "/cache.stderr.log",
+          create_mode=CreateNew,
+        ),
+      ) ==
+      0 else {
+      fail("cache advice")
+    }
+  }
+  @fs.write_file(
+    root + "/" + group + "-runs.json",
+    Json(results).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+}

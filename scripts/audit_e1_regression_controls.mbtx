@@ -1,0 +1,153 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+async fn main {
+  let root = "/home/wlc004s/moonrobo/private/e1-native-20261110"
+  let output = root + "/regression-audit-controls"
+  guard !@fs.exists(output) else { fail("fresh control directory required") }
+  @fs.mkdir(output + "/actors", recursive=true)
+  let original4000 = @json.parse(
+    @utf8.decode(
+      @fs.read_file(
+        root + "/out/train-qualified/evaluation-4000/actor/actor.json",
+      ).binary(),
+    ),
+  )
+  let original5500 = @json.parse(
+    @utf8.decode(
+      @fs.read_file(
+        root + "/out/train-qualified/evaluation-5500/actor/actor.json",
+      ).binary(),
+    ),
+  )
+  for
+    (name, weights, donor) in [
+      ("weights5500-norm4000", 5500, original4000),
+      ("weights4000-norm5500", 4000, original5500),
+    ] {
+    let base = @json.parse(
+      @utf8.decode(
+        @fs.read_file(
+          root +
+          "/out/train-qualified/evaluation-" +
+          weights.to_string() +
+          "/actor/actor.json",
+        ).binary(),
+      ),
+    )
+    guard base is Object(fields) &&
+      fields.get("spec") is Some(Object(spec)) &&
+      donor is { "spec": Object(donor_spec), .. } else {
+      fail("actor metadata")
+    }
+    spec["obs_norm"] = donor_spec["obs_norm"]
+    spec["goal_norm"] = donor_spec["goal_norm"]
+    let variant : Json = {
+      "name": name,
+      "weights_checkpoint": weights,
+      "normalizers_checkpoint": if weights == 5500 {
+        4000
+      } else {
+        5500
+      },
+      "production_artifact": false,
+    }
+    fields["diagnostic_variant"] = variant
+    @fs.mkdir(output + "/actors/" + name)
+    @fs.write_file(
+      output + "/actors/" + name + "/actor.json",
+      @utf8.encode(base.stringify(indent=2)),
+      create_mode=CreateNew,
+    )
+    @fs.symlink(
+      target="/job/out/train-qualified/evaluation-" +
+        weights.to_string() +
+        "/actor/actor.pt",
+      output + "/actors/" + name + "/actor.pt",
+    )
+  }
+  for
+    (name, actor, split, indices) in [
+      (
+        "repeat4000-validation", "/job/out/train-qualified/evaluation-4000/actor",
+        "validation", "[0]",
+      ),
+      (
+        "repeat5500-validation", "/job/out/train-qualified/evaluation-5500/actor",
+        "validation", "[0]",
+      ),
+      (
+        "weights5500-norm4000-validation", "/audit/actors/weights5500-norm4000",
+        "validation", "[0]",
+      ),
+      (
+        "weights4000-norm5500-validation", "/audit/actors/weights4000-norm5500",
+        "validation", "[0]",
+      ),
+      (
+        "repeat4000-sprint", "/job/out/train-qualified/evaluation-4000/actor", "train",
+        "[3]",
+      ),
+      (
+        "repeat5500-sprint", "/job/out/train-qualified/evaluation-5500/actor", "train",
+        "[3]",
+      ),
+    ] {
+    let log = @process.redirect_to_file(
+      output + "/" + name + ".log",
+      create_mode=CreateNew,
+    )
+    let code = @process.run(
+      "docker",
+      [
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--cpus",
+        "2",
+        "--memory",
+        "8g",
+        "--memory-swap",
+        "8g",
+        "--user",
+        "1000:1000",
+        "-e",
+        "OMP_NUM_THREADS=1",
+        "-v",
+        root + ":/job:ro",
+        "-v",
+        output + ":/audit",
+        "--entrypoint",
+        "/job/e1-trainer-qualified-verified",
+        "moonrobo-operator-compiler:20261025-b",
+        "evaluate",
+        "--actor",
+        actor,
+        "--dataset",
+        "/job/data-qualified-v9",
+        "--tensor-library",
+        "/job/libmoonrobo_learning_tensor.so",
+        "--library",
+        "/opt/isaaclab-venv/lib/python3.12/site-packages/mujoco/libmujoco.so.3.15.0",
+        "--output",
+        "/audit/" + name + ".json",
+        "--split",
+        split,
+        "--clip-indices",
+        indices,
+      ],
+      stdout=log,
+      stderr=log,
+    )
+    println(name + " exit=" + code.to_string())
+    guard code == 0 else { fail("control failed: " + name) }
+  }
+}

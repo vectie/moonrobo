@@ -1,0 +1,80 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=stderr.text() + stdout.text())
+  stdout.text()
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="run from repo root: verify_learning_registry.mbtx REPO MOONDATA_ROOT FIRST_RUN LATEST_RUN",
+  )
+  let root = args[1]
+  let data_root = args[2]
+  for command in ["learning_experiment", "moondata"] {
+    ignore(run("moon", ["build", "cmd/" + command, "--target", "native"]))
+  }
+  let executable = root +
+    "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe"
+  let summaries : Array[Json] = []
+  for (id, input) in [("first", args[3]), ("warm", args[4])] {
+    let imported = @json.parse(
+      run(executable, ["import", data_root, input, id, "1792689986000"]),
+    )
+    assert_eq(field(imported, "physical_execution_allowed"), false.to_json())
+    guard field(imported, "candidates") is Array(candidates) else {
+      fail("missing candidates")
+    }
+    assert_eq(candidates.length(), 3)
+    for candidate in candidates {
+      assert_eq(field(candidate, "producer_qualified"), false.to_json())
+      assert_eq(field(field(candidate, "candidate"), "falls"), (9 : Json))
+    }
+    let inspected = @json.parse(run(executable, ["inspect", data_root, id]))
+    assert_eq(inspected, imported)
+    let repeated = @json.parse(
+      run(executable, ["import", data_root, input, id, "1792689987000"]),
+    )
+    assert_eq(repeated, imported)
+    summaries.push({
+      "experiment_id": id.to_json(),
+      "candidates": candidates.to_json(),
+    })
+  }
+  let listed = @json.parse(run(executable, ["list", data_root]))
+  guard listed is Array(experiments) else { fail("missing experiment list") }
+  assert_true(experiments.length() >= 2)
+  let validator = root + "/_build/native/debug/build/cmd/moondata/moondata.exe"
+  let validation = @json.parse(
+    run(validator, ["validate", data_root, "1792689988000"]),
+  )
+  assert_eq(field(validation, "status"), "passed".to_json())
+  assert_eq(field(validation, "blocker_count"), (0 : Json))
+  let report : Json = {
+    "format": "moonrobo.learning-registration-check.v1",
+    "root": data_root.to_json(),
+    "experiments": summaries.to_json(),
+    "validation": validation,
+  }
+  println(report.stringify(indent=2))
+}

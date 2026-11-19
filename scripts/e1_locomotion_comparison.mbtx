@@ -1,0 +1,191 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@utf8.decode(@fs.read_file(path).binary()))
+}
+
+///|
+async fn write(path : String, value : Json) -> Unit {
+  @fs.write_file(
+    path,
+    @utf8.encode(value.stringify(indent=2)),
+    create_mode=CreateNew,
+  )
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, root, catalog, binary] &&
+    !catalog.contains("/") &&
+    !binary.contains("/") else {
+    fail("usage: job root, admitted dataset basename, trainer basename")
+  }
+  let result = root + "/locomotion-comparison"
+  let base = root + "/retained-locomotion-baselines"
+  let admission = read(root + "/" + catalog + "/admission.json")
+  guard admission
+    is {
+      "passed": True,
+      "format": String("moonrobo.e1-locomotion-admission.v1"),
+      "dataset_sha256": String(digest),
+      ..
+    } else {
+    fail("locomotion admission")
+  }
+  let template = root + "/qualified-training.json"
+  let prefix = [
+    "run",
+    "--rm",
+    "--network",
+    "none",
+    "--cpus",
+    "4",
+    "--memory",
+    "30g",
+    "--memory-swap",
+    "30g",
+    "--user",
+    "1000:1000",
+    "-e",
+    "OMP_NUM_THREADS=1",
+    "-v",
+    root + ":/job:ro",
+    "-v",
+    result + ":/results",
+  ]
+  let common = [
+    "--entrypoint",
+    "/job/" + binary,
+    "moonrobo-operator-compiler:20261025-b",
+  ]
+  let input = [
+    "--library",
+    "/opt/isaaclab-venv/lib/python3.12/site-packages/mujoco/libmujoco.so.3.15.0",
+    "--tensor-library",
+    "/job/libmoonrobo_learning_tensor.so",
+    "--dataset",
+    "/job/" + catalog,
+  ]
+  let pointer = base + "/pointer-4000.json"
+  if !@fs.exists(pointer) {
+    write(pointer, {
+      "format": "moonrobo.e1-checkpoint-pointer.v1",
+      "iteration": 4000,
+      "generation": "generation-4000",
+      "sha256": "043077577b7159627ffe33993898ade9e652c34ad278312b9e40cdd362df754b",
+    })
+  }
+  // Share the fixed panel and initialization. Only the two global batch sizes vary.
+  for size in [16, 256] {
+    let name = "wm" + size.to_string()
+    let config = read(template)
+    guard config is Object(fields) && fields["learner"] is Object(learner) else {
+      fail("template")
+    }
+    fields["environments"] = Json(32)
+    fields["update_to_data"] = Json(0.4)
+    fields["world_only_iterations"] = Json(0)
+    fields["checkpoint_every"] = Json(32)
+    fields["world_microbatch"] = Json(16)
+    fields["actor_microbatch"] = Json(32)
+    learner["wm_batch"] = Json(size)
+    learner["policy_batch"] = Json(size * 2)
+    if @fs.exists(result + "/" + name + ".json") {
+      guard read(result + "/" + name + ".json") == config else {
+        fail("config changed")
+      }
+    } else {
+      write(result + "/" + name + ".json", config)
+    }
+  }
+  async fn run(label : String, args : Array[String]) -> Unit {
+    let log = @process.redirect_to_file(
+      result + "/" + label + ".log",
+      create_mode=CreateOrTruncate,
+    )
+    guard @process.run("docker", args, stdout=log, stderr=log) == 0 else {
+      fail(label + " failed, inspect its log")
+    }
+  }
+  for generation in ["4000", "6500"] {
+    for split in ["validation", "train"] {
+      let label = "baseline-" + generation + "-" + split
+      let path = result + "/" + label + ".json"
+      if @fs.exists(path) {
+        guard read(path)
+          is {
+            "evaluation_dataset_sha256": String(d),
+            "benchmark_complete": True,
+            ..
+          } &&
+          d == digest else {
+          fail("stale baseline")
+        }
+        continue
+      }
+      let args = prefix.copy()
+      args.append(common)
+      args.push("benchmark")
+      args.append(input)
+      args.append([
+        "--training-dataset",
+        "/job/data-qualified-v9",
+        "--actor",
+        "/job/retained-locomotion-baselines/evaluation-" + generation + "/actor",
+        "--split",
+        split,
+        "--output",
+        "/results/" + label + ".json",
+      ])
+      run(label, args)
+    }
+  }
+  for name in ["wm16", "wm256"] {
+    let args = prefix.copy()
+    args.append(["--gpus", "all", "--name", "e1-locomotion-" + name])
+    args.append(common)
+    args.push("train")
+    args.append(input)
+    args.append([
+      "--config",
+      "/results/" + name + ".json",
+      "--device",
+      "0",
+      "--iterations",
+      "64",
+      "--evaluate-every",
+      "32",
+      "--output",
+      "/results/" + name,
+    ])
+    if @fs.exists(result + "/" + name + "/report.json") {
+      guard read(result + "/" + name + "/report.json")
+        is {
+          "iteration": Number(64, ..),
+          "identity": { "dataset_sha256": String(d), .. },
+          ..
+        } &&
+        d == digest else {
+        fail("stale run")
+      }
+      continue
+    }
+    if @fs.exists(result + "/" + name + "/current.json") {
+      args.append(["--resume", "/results/" + name + "/current.json"])
+    } else {
+      args.append([
+        "--initialize-from", "/job/retained-locomotion-baselines/pointer-4000.json",
+      ])
+    }
+    run(name, args)
+  }
+}

@@ -1,0 +1,633 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn number(value : Json) -> Double raise {
+  guard value is Number(n, ..) && !n.is_nan() && !n.is_inf() else {
+    fail("expected finite number")
+  }
+  n
+}
+
+///|
+fn exact(value : Json) -> Int64 raise {
+  if value is String(text) {
+    return @string.parse_int64(text)
+  }
+  let n = number(value)
+  guard n >= 0.0 && n <= 9007199254740991.0 && n.to_int64().to_double() == n else {
+    fail("expected nonnegative exact integer")
+  }
+  n.to_int64()
+}
+
+///|
+async fn bounded_json(path : String) -> Json {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 1048576L else {
+    fail("JSON outside 1 MiB bound: " + path)
+  }
+  let data = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else { fail("JSON changed during read") }
+  @json.parse(@utf8.decode(data))
+}
+
+///|
+async fn write_json(path : String, value : Json) -> Unit {
+  @fs.write_file(
+    path,
+    value.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+}
+
+///|
+fn verify_memlock(value : Json) -> Unit raise {
+  let soft = exact(field(value, "soft_bytes"))
+  let hard = exact(field(value, "hard_bytes"))
+  guard soft >= 1073741824L && soft <= hard && hard <= 8589934592L else {
+    fail(
+      "NCCL requires bounded memlock soft/hard limits of 1..8 GiB; use --ulimit memlock=1073741824:1073741824",
+    )
+  }
+}
+
+///|
+async fn memlock_snapshot() -> Json {
+  let file = @fs.open("/proc/self/limits", mode=ReadOnly)
+  defer file.close()
+  let source = file.read_all().text()
+  guard source.length() <= 16384 else { fail("oversized process limits") }
+  for line in source.split("\n") {
+    if line.has_prefix("Max locked memory") {
+      let words = line.split(" ").filter(x => x != "").to_array()
+      guard words.length() == 6 && words[5] == "bytes" else {
+        fail("unexpected memlock limits format")
+      }
+      let value : Json = {
+        "soft_bytes": Json(words[3].to_owned()),
+        "hard_bytes": Json(words[4].to_owned()),
+      }
+      verify_memlock(value)
+      return value
+    }
+  }
+  fail("Max locked memory not found in /proc/self/limits")
+}
+
+///|
+async fn cgroup_snapshot() -> Json {
+  let fields : Map[String, Json] = Map([])
+  for
+    name in [
+      "memory.max", "memory.current", "memory.peak", "memory.events", "memory.swap.max",
+      "memory.swap.current", "cpu.max",
+    ] {
+    let file = @fs.open("/sys/fs/cgroup/" + name, mode=ReadOnly)
+    defer file.close()
+    let text = file.read_all().text()
+    guard text.length() <= 16384 else { fail("cgroup counter exceeded bound") }
+    fields[name] = Json(text.trim().to_owned())
+  }
+  Json(fields)
+}
+
+///|
+fn text(value : Json) -> String raise {
+  guard value is String(v) else { fail("expected string") }
+  v
+}
+
+///|
+fn verify_cgroup(value : Json) -> Unit raise {
+  let limit = @string.parse_int64(text(field(value, "memory.max")))
+  guard limit >= 1073741824L &&
+    limit <= 8589934592L &&
+    text(field(value, "memory.swap.max")) == "0" &&
+    text(field(value, "memory.swap.current")) == "0" &&
+    @string.parse_int64(text(field(value, "memory.peak"))) <= limit else {
+    fail(
+      "run requires an existing 1..8 GiB cgroup with zero swap; tensor working-set budget is separate",
+    )
+  }
+  let cpu = text(field(value, "cpu.max"))
+    .split(" ")
+    .filter(v => v != "")
+    .to_array()
+  guard cpu.length() == 2 else { fail("invalid cpu.max") }
+  let quota = @string.parse_int64(cpu[0])
+  let period = @string.parse_int64(cpu[1])
+  guard quota > 0L && period > 0L && quota <= 4L * period else {
+    fail("bounded <=4CPU cgroup required")
+  }
+  for line in text(field(value, "memory.events")).split("\n") {
+    let words = line.split(" ").filter(x => x != "").to_array()
+    guard words.length() == 2 else { fail("invalid cgroup memory.events") }
+    if ["oom", "oom_kill", "oom_group_kill", "max"].contains(
+        words[0].to_owned(),
+      ) {
+      guard @string.parse_int64(words[1]) == 0L else {
+        fail("memory pressure/OOM counter is nonzero")
+      }
+    }
+  }
+}
+
+///|
+async fn bounded_output(reader : &@io.Reader) -> String {
+  let buffer = FixedArray::make(4097, b'\x00')
+  let mut total = 0
+  for ;; {
+    let count = reader.read(buffer, offset=total, max_len=4097 - total)
+    if count == 0 {
+      break
+    }
+    total += count
+    guard total <= 4096 else { fail("process output exceeds 4 KiB bound") }
+  }
+  @utf8.decode(Bytes::from_array(buffer[:total]))
+}
+
+///|
+async fn sha256(path : String) -> String {
+  let output = @async.with_timeout(10000, () => {
+    let (out, out_to) = @process.read_from_process()
+    let (err, err_to) = @process.read_from_process()
+    @async.with_task_group() <| group => {
+      let child = group.spawn(() => {
+        @process.run("sha256sum", [path], stdout=out_to, stderr=err_to)
+      })
+      let stdout = group.spawn(() => {
+        defer out.close()
+        bounded_output(out)
+      })
+      let stderr = group.spawn(() => {
+        defer err.close()
+        bounded_output(err)
+      })
+      let code = child.wait()
+      let output = stdout.wait()
+      let errors = stderr.wait()
+      guard code == 0 else { fail("sha256sum failed (\{code}): " + errors) }
+      output
+    }
+  })
+  let hash = output.split(" ").to_array()[0].to_owned()
+  guard hash.length() == 64 &&
+    hash.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) else {
+    fail("invalid SHA-256 output")
+  }
+  hash
+}
+
+///|
+async fn run(args : Array[String]) -> Unit {
+  guard args.length() == 8 else {
+    fail(
+      "usage: run_native_bucket_pairs.mbtx run BENCHMARK PLUGIN RANK ID_FILE SESSION FRESH_OUTPUT_DIR",
+    )
+  }
+  let output = args[7]
+  guard args[2].has_prefix("/") &&
+    args[3].has_prefix("/") &&
+    args[5].has_prefix("/") &&
+    output.has_prefix("/") &&
+    !@fs.exists(output) else {
+    fail(
+      "absolute artifact/ID/output paths and fresh output directory required",
+    )
+  }
+  let rank = @string.parse_int(args[4])
+  guard rank == 0 || rank == 1 else { fail("rank must be 0 or 1") }
+  @fs.mkdir(output)
+  let before = cgroup_snapshot()
+  write_json(output + "/cgroup-before.json", before)
+  verify_cgroup(before)
+  let memlock = memlock_snapshot()
+  write_json(output + "/memlock.json", memlock)
+  let transport : Map[String, Json] = Map([])
+  for
+    key in [
+      "NCCL_NET", "NCCL_IB_HCA", "NCCL_SOCKET_IFNAME", "NCCL_IB_ADDR_FAMILY", "NCCL_IB_ADDR_RANGE",
+      "NCCL_DEBUG", "NCCL_DEBUG_SUBSYS", "NCCL_DEBUG_FILE",
+    ] {
+    transport[key] = Json(@env.get_env_var(key).unwrap_or(""))
+  }
+  guard transport["NCCL_NET"] == Json("IB") else {
+    fail("paired ConnectX benchmark requires explicit NCCL_NET=IB")
+  }
+  let command = [
+    "--signal=TERM",
+    "--kill-after=5s",
+    "900s",
+    args[2],
+    args[3],
+    args[4],
+    args[5],
+    args[6],
+    output + "/benchmark.json",
+  ]
+  write_json(output + "/launch.json", {
+    "schema": "moonrobo.native-bucket-launch.v1",
+    "rank": rank,
+    "session": args[6],
+    "program": "/usr/bin/timeout",
+    "arguments": Json(command),
+    "benchmark_sha256": sha256(args[2]),
+    "plugin_sha256": sha256(args[3]),
+    "transport_environment": Json(transport),
+    "transport_proven": false,
+    "working_allocator_budget_bytes": "1090519040",
+    "memlock": memlock,
+    "process_timeout_seconds": 900,
+  })
+  let mut failure = ""
+  let code = @async.with_timeout(915000, () => {
+    @process.run(
+      "/usr/bin/timeout",
+      command,
+      stdout=@process.redirect_to_file(
+        output + "/stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+  }) catch {
+    error => {
+      failure = error.to_string()
+      -1
+    }
+  }
+  let after = cgroup_snapshot()
+  write_json(output + "/cgroup-after.json", after)
+  verify_cgroup(after) catch {
+    error => failure = error.to_string()
+  }
+  if code == 0 && failure == "" {
+    ignore(validate_report(bounded_json(output + "/benchmark.json"), rank)) catch {
+      error => failure = error.to_string()
+    }
+  }
+  write_json(output + "/result.json", {
+    "schema": "moonrobo.native-bucket-result.v1",
+    "rank": rank,
+    "exit_code": code,
+    "failure": failure,
+    "success": code == 0 && failure == "",
+  })
+  guard code == 0 && failure == "" else {
+    fail("bucket run failed; retained evidence in " + output)
+  }
+  println("Completed bounded bucket communication benchmark: " + output)
+}
+
+///|
+fn validate_report(report : Json, rank : Int32) -> Array[Json] raise {
+  verify_memlock(field(report, "memlock"))
+  guard field(report, "schema") == Json("moonrobo.native-bucket-pairs.v1") &&
+    exact(field(report, "rank")) == rank.to_int64() &&
+    exact(field(report, "world_size")) == 2L &&
+    field(report, "scope") == Json("communication-critical-path-only") &&
+    field(report, "training_speedup_claimed") == Json(false) &&
+    field(report, "overlap_claimed") == Json(false) &&
+    exact(field(report, "bucket_bytes")) == 16777216L &&
+    exact(field(report, "parameter_elements")) == 18083716L &&
+    exact(field(report, "legacy_collectives_per_schedule")) == 280L &&
+    exact(field(report, "bucket_collectives_per_schedule")) == 53L &&
+    exact(field(report, "warmup_schedules_per_route")) == 3L &&
+    exact(field(report, "abba_blocks")) == 10L &&
+    exact(field(report, "samples_per_route")) == 20L else {
+    fail("benchmark contract mismatch")
+  }
+  for
+    (name, size, updates, legacy, buckets) in [
+      ("world", 8822854L, 10L, 14L, 3L),
+      ("policy", 8993597L, 1L, 20L, 3L),
+      ("critic", 267265L, 20L, 6L, 1L),
+    ] {
+    let layout = field(field(report, "layout"), name)
+    guard exact(field(layout, "elements")) == size &&
+      exact(field(layout, "payload_bytes")) == size * 4L &&
+      exact(field(layout, "updates_per_schedule")) == updates &&
+      exact(field(layout, "legacy_collectives_per_update")) == legacy &&
+      exact(field(layout, "bucket_collectives_per_update")) == buckets else {
+      fail("network layout/count mismatch: " + name)
+    }
+  }
+  guard field(report, "samples") is Array(samples) && samples.length() == 40 else {
+    fail("40 ABBA samples required")
+  }
+  for i, sample in samples {
+    guard exact(field(sample, "block")) == (i / 4).to_int64() &&
+      exact(field(sample, "position")) == (i % 4).to_int64() &&
+      field(sample, "route") ==
+      Json(if i % 4 == 0 || i % 4 == 3 { "legacy" } else { "bucket" }) else {
+      fail("ABBA sequence mismatch")
+    }
+    guard number(field(field(sample, "timing"), "host_complete_ms")) > 0.0 else {
+      fail("nonpositive host timing")
+    }
+    let memory = field(field(sample, "timing"), "memory")
+    guard exact(field(memory, "allocated_peak_bytes")) <= 1090519040L &&
+      exact(field(memory, "reserved_peak_bytes")) <= 1090519040L &&
+      exact(field(memory, "cuda_free_bytes")) >= 17179869184L else {
+      fail("benchmark allocator budget/reserve failed")
+    }
+  }
+  let events = field(report, "events")
+  guard exact(field(events, "dropped_spans")) == 0L &&
+    exact(field(events, "open_spans")) == 0L &&
+    field(events, "spans") is Array(spans) &&
+    spans.length() == 160 else {
+    fail("incomplete bounded CUDA-event evidence")
+  }
+  for span in spans {
+    guard field(span, "gpu_status") == Json("complete") &&
+      field(span, "cancelled") == Json(false) &&
+      number(field(span, "gpu_elapsed_ms")) > 0.0 else {
+      fail("CUDA event interval unavailable")
+    }
+  }
+  samples
+}
+
+///|
+fn stats(values : Array[Double]) -> Json raise {
+  guard !values.is_empty() &&
+    values.all(x => x > 0.0 && !x.is_inf() && !x.is_nan()) else {
+    fail("invalid sample values")
+  }
+  let sorted = values.copy()
+  sorted.sort()
+  let n = sorted.length()
+  let median = if n % 2 == 0 {
+    (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
+  } else {
+    sorted[n / 2]
+  }
+  {
+    "count": Json(n),
+    "median": Json(median),
+    "p90": Json(sorted[(n * 9 + 9) / 10 - 1]),
+    "min": Json(sorted[0]),
+    "max": Json(sorted[n - 1]),
+    "mean": Json(values.fold(init=0.0, (sum, v) => sum + v) / n.to_double()),
+  }
+}
+
+///|
+fn sample_ms(sample : Json, phase : String) -> Double raise {
+  let timing = field(sample, "timing")
+  if phase == "schedule" {
+    number(field(timing, "host_complete_ms"))
+  } else {
+    number(field(field(field(timing, "phases"), phase), "host_complete_ms"))
+  }
+}
+
+///|
+fn paired_summary(a : Json, b : Json) -> Json raise {
+  let sa = validate_report(a, 0)
+  let sb = validate_report(b, 1)
+  for
+    key in [
+      "session", "layout", "profile", "seed", "torch_version", "gradient_setup",
+    ] {
+    guard field(a, key) == field(b, key) else {
+      fail("rank identity differs: " + key)
+    }
+  }
+  let phases : Map[String, Json] = Map([])
+  for phase in ["schedule", "world", "policy", "critic"] {
+    let legacy = []
+    let bucket = []
+    let pairs = []
+    let ratios = []
+    for block in 0..<10 {
+      let values = Array::makei(4, p => {
+        sample_ms(sa[block * 4 + p], phase).max(
+          sample_ms(sb[block * 4 + p], phase),
+        )
+      })
+      legacy.push(values[0])
+      legacy.push(values[3])
+      bucket.push(values[1])
+      bucket.push(values[2])
+      let baseline = (values[0] + values[3]) / 2.0
+      let candidate = (values[1] + values[2]) / 2.0
+      guard baseline > 0.0 && candidate > 0.0 else {
+        fail("nonpositive pair duration")
+      }
+      ratios.push(baseline / candidate)
+      pairs.push({
+        "block": Json(block),
+        "legacy_mean_ms": Json(baseline),
+        "bucket_mean_ms": Json(candidate),
+        "legacy_over_bucket": Json(baseline / candidate),
+      })
+    }
+    phases[phase] = {
+      "legacy_ms": stats(legacy),
+      "bucket_ms": stats(bucket),
+      "paired_ratios": stats(ratios),
+      "pairs": Json(pairs),
+    }
+  }
+  {
+    "schema": "moonrobo.native-bucket-paired-summary.v1",
+    "session": field(a, "session"),
+    "scope": "communication-critical-path-only",
+    "critical_path_estimator": "maximum of both ranks' host complete duration per matched sample",
+    "abba_blocks": 10,
+    "phases": Json(phases),
+    "layout": field(a, "layout"),
+    "training_speedup_claimed": false,
+    "transport_proven": false,
+    "transport_log_review_required": true,
+    "cuda_event_semantics": "current-stream elapsed includes dependency/host-wait gaps; not NCCL kernel active time; full raw intervals retained in rank reports",
+  }
+}
+
+///|
+fn fixture(rank : Int32) -> Json {
+  let layouts : Map[String, Json] = Map([])
+  for
+    (name, size, updates, legacy, buckets) in [
+      ("world", 8822854L, 10L, 14L, 3L),
+      ("policy", 8993597L, 1L, 20L, 3L),
+      ("critic", 267265L, 20L, 6L, 1L),
+    ] {
+    layouts[name] = {
+      "elements": Json(size),
+      "payload_bytes": Json(size * 4L),
+      "updates_per_schedule": Json(updates),
+      "legacy_collectives_per_update": Json(legacy),
+      "bucket_collectives_per_update": Json(buckets),
+    }
+  }
+  let samples = Array::makei(40, i => {
+    let legacy = i % 4 == 0 || i % 4 == 3
+    let elapsed = (if legacy { 4.0 } else { 2.0 }) * (rank + 1).to_double()
+    let phases : Map[String, Json] = Map([])
+    for name in ["world", "policy", "critic"] {
+      phases[name] = { "host_complete_ms": Json(elapsed) }
+    }
+    {
+      "block": Json(i / 4),
+      "position": Json(i % 4),
+      "route": Json(if legacy { "legacy" } else { "bucket" }),
+      "timing": {
+        "host_complete_ms": Json(elapsed),
+        "phases": Json(phases),
+        "memory": {
+          "allocated_peak_bytes": "100",
+          "reserved_peak_bytes": "200",
+          "cuda_free_bytes": "17179869184",
+        },
+      },
+    }
+  })
+  {
+    "schema": "moonrobo.native-bucket-pairs.v1",
+    "rank": rank,
+    "world_size": 2,
+    "scope": "communication-critical-path-only",
+    "training_speedup_claimed": false,
+    "overlap_claimed": false,
+    "bucket_bytes": 16777216,
+    "parameter_elements": 18083716,
+    "legacy_collectives_per_schedule": 280,
+    "bucket_collectives_per_schedule": 53,
+    "warmup_schedules_per_route": 3,
+    "abba_blocks": 10,
+    "samples_per_route": 20,
+    "session": "self-test-fixture",
+    "layout": Json(layouts),
+    "profile": "fixture",
+    "seed": 179,
+    "torch_version": "fixture",
+    "gradient_setup": "fixture",
+    "memlock": { "soft_bytes": "1073741824", "hard_bytes": "1073741824" },
+    "samples": Json(samples),
+    "events": {
+      "dropped_spans": 0,
+      "open_spans": 0,
+      "spans": Json(
+        Array::make(
+          160,
+          (
+            {
+              "gpu_status": "complete",
+              "cancelled": false,
+              "gpu_elapsed_ms": 1.0,
+            } : Json),
+        ),
+      ),
+    },
+  }
+}
+
+///|
+async fn summarize(args : Array[String]) -> Unit {
+  guard args.length() == 5 else {
+    fail(
+      "usage: run_native_bucket_pairs.mbtx summarize RANK0_OUTPUT_DIR RANK1_OUTPUT_DIR FRESH_SUMMARY_JSON",
+    )
+  }
+  let la = bounded_json(args[2] + "/launch.json")
+  let lb = bounded_json(args[3] + "/launch.json")
+  verify_memlock(field(la, "memlock"))
+  verify_memlock(field(lb, "memlock"))
+  for key in ["benchmark_sha256", "plugin_sha256", "session"] {
+    guard field(la, key) == field(lb, key) else {
+      fail("launch identity differs: " + key)
+    }
+  }
+  for directory in [args[2], args[3]] {
+    guard field(bounded_json(directory + "/result.json"), "success") ==
+      Json(true) else {
+      fail("rank wrapper did not succeed")
+    }
+    verify_cgroup(bounded_json(directory + "/cgroup-before.json"))
+    verify_cgroup(bounded_json(directory + "/cgroup-after.json"))
+    verify_memlock(bounded_json(directory + "/memlock.json"))
+  }
+  let summary = paired_summary(
+    bounded_json(args[2] + "/benchmark.json"),
+    bounded_json(args[3] + "/benchmark.json"),
+  )
+  write_json(args[4], {
+    "comparison": summary,
+    "launch_rank0": la,
+    "launch_rank1": lb,
+  })
+  println("Recorded paired communication summary: " + args[4])
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  match args.get(1) {
+    Some("run") => run(args)
+    Some("summarize") => summarize(args)
+    Some("self-test") => {
+      verify_memlock({ "soft_bytes": "1073741824", "hard_bytes": "1073741824" })
+      for limit in ["8388608", "unlimited", "17179869184"] {
+        try
+          verify_memlock({
+            "soft_bytes": Json(limit),
+            "hard_bytes": Json(limit),
+          })
+        catch {
+          _ => ()
+        } noraise {
+          _ => fail("unsafe NCCL memlock limit was accepted")
+        }
+      }
+      let expected = stats([4.0, 1.0, 3.0, 2.0])
+      guard field(expected, "median") == Json(2.5) &&
+        field(expected, "p90") == Json(4.0) else {
+        fail("summary statistic regression")
+      }
+      let summary = paired_summary(fixture(0), fixture(1))
+      let schedule = field(field(summary, "phases"), "schedule")
+      guard field(field(schedule, "legacy_ms"), "median") == Json(8.0) &&
+        field(field(schedule, "bucket_ms"), "median") == Json(4.0) &&
+        field(field(schedule, "paired_ratios"), "median") == Json(2.0) else {
+        fail("paired max-rank ABBA aggregation regression")
+      }
+      try paired_summary(fixture(1), fixture(0)) catch {
+        _ => ()
+      } noraise {
+        _ => fail("rank inversion was accepted")
+      }
+      println(
+        "bucket paired-summary statistics/ABBA/max-rank/identity checks passed; no GPU launched",
+      )
+    }
+    _ => fail("commands: run, summarize, self-test")
+  }
+}

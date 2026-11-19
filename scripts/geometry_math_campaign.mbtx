@@ -1,0 +1,170 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+
+///|
+let old = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+
+///|
+let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+
+///|
+let host = "wlc004s@192.168.2.179"
+
+///|
+let socket = "/tmp/moonrobo-math-179.sock"
+
+///|
+async fn put(name : String, contents : String) -> Unit {
+  @fs.write_file(out + "/" + name, contents, create_mode=CreateNew)
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=" + socket,
+      out + "/" + name,
+      host + ":" + base + "/" + name,
+    ]),
+    0,
+  )
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, stage] else {
+    fail("prepare/export-world/export-steps/export-heads/build")
+  }
+  if stage == "prepare" {
+    @fs.mkdir(out)
+    put(
+      "geometry_math_revision.py",
+      @fs.read_file("providers/motion_learning/aligned/geometry_math.py")
+      .text()
+      .replace_all(
+        old="from .rotations import",
+        new="from geometry_math_rotations import",
+      ),
+    )
+    put(
+      "geometry_math_rotations.py",
+      @fs.read_file("providers/motion_learning/aligned/rotations.py").text(),
+    )
+    put(
+      "export_geometry_math.py",
+      @fs.read_file("providers/motion_learning/export_geometry_math.py").text(),
+    )
+    put(
+      "export_compiled_world_math.py",
+      @fs.read_file("providers/motion_learning/export_compiled_world.py").text(),
+    )
+    put(
+      "export_actor_steps_math.py",
+      @fs.read_file("providers/motion_learning/export_actor_steps.py")
+      .text()
+      .replace_all(
+        old="export_compiled_world_g",
+        new="export_compiled_world_math",
+      ),
+    )
+    let prefix = @fs.read_file(old + "/run_aligned_training_ap.mbtx")
+    .text()
+    .split("async fn main {")
+    .to_array()[0].to_owned()
+    let main =
+      #|async fn main {
+      #| guard @env.args() is [_,stage,label] && ["world","steps","heads"].contains(stage) else {fail("stage label")}
+      #| let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+      #| let mapped="/workspace/moonrobo/private/shared-compute-20261026-a"
+      #| let parent="/home/wlc004s/moonrobo/runs/native-hotspot-vs-smc512-20261026-b/spec.json"
+      #| assert_eq(hash_file(parent),"5197095bd124a4e212cd4b5c8ed07a14323c9d7d1f56115a47967489105e757f")
+      #| let spec=read_json(parent);verify_pins(spec)
+      #| let side=@json.parse(field(spec,"b").stringify())
+      #| guard side is Object(s)&&field(side,"env") is Object(e)&&field(side,"mounts") is Array(mounts) else {fail("side")}
+      #| mounts.clear();mounts.append([
+      #| {"source":"/home/wlc004s/moonrobo","target":"/workspace/moonrobo","readonly":true},
+      #| {"source":Json(base),"target":"/workspace/supermimic","readonly":true},
+      #| {"source":"/home/wlc004s/moonrobo/data","target":"/workspace/supermimic/data","readonly":true},
+      #| {"source":"/usr/local/cuda-13.0","target":"/cuda-toolkit","readonly":true}])
+      #| e["PYTHONPATH"]="/workspace/supermimic";e["SHARED_SMC_TRAIN"]="/workspace/supermimic/supermimic/train.py"
+      #| e["MOONROBO_SHARED_INPUT"]="/workspace/moonrobo/runs/hotspot-shared-trained-export-b"
+      #| e["MOONROBO_SHARED_OUTPUT"]="/pair";e["MOONROBO_SHARED_AMP"]="bf16";e["MOONROBO_SHARED_CHUNK"]="4096"
+      #| e["GEOMETRY_EXPORT_STAGE"]=Json(stage);e["CUDA_HOME"]="/cuda-toolkit";e["TORCHINDUCTOR_COMPILE_THREADS"]="1"
+      #| s["entrypoint"]="python";s["argv"]=Json([mapped+"/export_geometry_math.py"])
+      #| let root="/home/wlc004s/moonrobo/runs/hotspot-mlp-"+label
+      #| guard !@fs.exists(root) else {fail("fresh export")};@fs.mkdir(root)
+      #| let pins:Map[String,Json]={}
+      #| for name in ["geometry_math_revision.py","geometry_math_rotations.py","export_geometry_math.py","export_compiled_world_math.py","export_actor_steps_math.py","shared_smc_probe_bf16_original.py","run_geometry_math_export.mbtx"] {pins[base+"/"+name]=Json(hash_file(base+"/"+name))}
+      #| for name in ["networks","mdp","rotations","train"] {let p=base+"/supermimic/"+name+".py";pins[p]=Json(hash_file(p))}
+      #| write_json(root+"/protocol.json",{"pins":Json(pins),"side":side,"geometry_revision":"orthonormal-atlas-geodesic-squared-v1","guard_thresholds_unchanged":true})
+      #| let passed=guarded(side,root,false)
+      #| for p,h in pins {assert_eq(Json(hash_file(p)),h)}
+      #| let artifacts:Map[String,Json]={}
+      #| for branch in ["rollout","error","initial","recurrent","reward","features"] {let d=root+"/"+branch;if @fs.exists(d){for name in @fs.readdir(d){if name.has_suffix(".so")||name.has_suffix(".cubin")||name=="native.spec"||name=="manifest.json"{artifacts[d+"/"+name]=Json(hash_file(d+"/"+name))}}}}
+      #| write_json(root+"/exported-artifacts.json",Json(artifacts))
+      #| write_json(root+"/completion.json",{"passed":Json(passed),"result_present":Json(@fs.exists(root+"/result.json"))})
+      #| guard passed&&@fs.exists(root+"/result.json") else {fail("export failed; evidence retained")}
+      #|}
+    put("run_geometry_math_export.mbtx", prefix + main)
+    return
+  }
+  guard stage.has_prefix("export-") else { fail("export stage required") }
+  let part = stage[7:].to_owned()
+  guard ["world", "steps", "heads"].contains(part) else { fail("stage") }
+  let label = "geometry-math-" +
+    part +
+    (if part == "heads" { "-c" } else { "-a" })
+  let folder = out + "/" + label
+  @fs.mkdir(folder)
+  let runner = if part == "heads" {
+    "run_geometry_heads_ieee.mbtx"
+  } else {
+    "run_geometry_math_export.mbtx"
+  }
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      socket,
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      runner +
+      " -- " +
+      part +
+      " " +
+      label,
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "completion.json", "training-guard.json", "training-docker-final.json",
+      "training.stdout.log", "training.stderr.log", "protocol.json", "exported-artifacts.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        host + ":/home/wlc004s/moonrobo/runs/hotspot-mlp-" + label + "/" + name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(code, 0)
+}

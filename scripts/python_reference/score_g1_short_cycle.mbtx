@@ -1,0 +1,244 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn integer(value : Json) -> Int32 raise {
+  guard value is Number(n, ..) else { fail("expected integer") }
+  n.to_int()
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=err.text() + out.text())
+  out.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    6,
+    msg="usage: score_g1_short_cycle.mbtx REPO STUDY INCOMING_POLICIES MOONDATA_ROOT SUMMARY_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let incoming : Array[Json] = []
+  for seed in 0..<3 {
+    let path = study + "/incoming-evaluation-seed-\{seed}"
+    ignore(
+      run(root + "/target/learning-venv/bin/python", [
+        study + "/provider-sources/policy.py",
+        "evaluate",
+        "--checkpoint",
+        args[3] + "/actor-seed-\{seed}.pt",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--config",
+        study + "/cycle-fixed/config.json",
+        "--experiment",
+        root + "/examples/learning/g1-long-experiment.json",
+        "--output",
+        path,
+      ]),
+    )
+    incoming.push(read(path + "/physics.json"))
+  }
+  let cells : Array[Json] = []
+  for id in ["cycle-fixed", "cycle-adaptive"] {
+    let source = study + "/" + id
+    let policy = read(source + "/policy/report.json")
+    let imported = @json.parse(
+      run(
+        root +
+        "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe",
+        [
+          "import",
+          args[4],
+          source,
+          id,
+          @env.now().reinterpret_as_int64().to_string(),
+        ],
+      ),
+    )
+    assert_eq(field(imported, "physical_execution_allowed"), false.to_json())
+    let payloads = array(field(imported, "payloads"))
+    let rows : Array[Json] = []
+    for result in array(field(policy, "runs")) {
+      let seed = integer(field(result, "seed"))
+      let history = array(field(result, "history"))
+      assert_eq(
+        history.map(h => field(h, "update")),
+        ([0, 1, 5, 10, 20, 50, 100, 150, 200] : Array[Json]),
+      )
+      assert_eq(
+        field(result, "world_model_frozen_within_actor_updates"),
+        true.to_json(),
+      )
+      assert_eq(field(result, "reload_matches"), true.to_json())
+      assert_eq(
+        field(result, "dynamics_unchanged"),
+        (id == "cycle-fixed").to_json(),
+      )
+      let physics = field(result, "critic_physics")
+      let name = "critic-physics-seed-\{seed}.jsonl.gz"
+      ignore(run("gzip", ["-t", source + "/policy/" + name]))
+      guard field(physics, "sha256") is String(sha) else {
+        fail("missing gzip digest")
+      }
+      let matching = payloads.filter(p => {
+        field(p, "relative_path") == ("policy/" + name).to_json()
+      })
+      assert_eq(matching.length(), 1)
+      assert_eq(
+        field(field(matching[0], "data_ref"), "checksum"),
+        ("sha256:" + sha).to_json(),
+      )
+      let batches = array(field(physics, "batches"))
+      assert_eq(batches.length(), 40)
+      let mut transitions = 0
+      let mut falls = 0
+      let mut limits = 0
+      for i, batch in batches {
+        assert_eq(field(batch, "actor_update"), (i * 5).to_json())
+        assert_eq(field(batch, "optimizer_steps"), (40 : Json))
+        assert_eq(field(batch, "episodes"), (6 : Json))
+        transitions += integer(field(batch, "transitions"))
+        falls += integer(field(batch, "falls"))
+        limits += integer(field(batch, "time_limits"))
+        if id == "cycle-adaptive" {
+          let update = field(batch, "model_update")
+          assert_eq(field(update, "round"), (i + 1).to_json())
+          assert_eq(field(update, "optimizer_steps"), ((i + 1) * 20).to_json())
+          assert_eq(field(update, "normalization_unchanged"), true.to_json())
+        }
+      }
+      let online = field(result, "online_dynamics")
+      if id == "cycle-adaptive" {
+        assert_eq(field(online, "completed_model_rounds"), (40 : Json))
+        assert_eq(field(online, "model_optimizer_steps"), (800 : Json))
+        for
+          (key, relative) in [
+            ("selected_sha256", "fit/dynamics-seed-\{seed}.pt"),
+            ("latest_sha256", "fit/latest-dynamics-seed-\{seed}.pt"),
+          ] {
+          guard field(online, key) is String(sha) else {
+            fail("missing model digest")
+          }
+          let models = payloads.filter(p => {
+            field(p, "relative_path") == relative.to_json()
+          })
+          assert_eq(models.length(), 1)
+          assert_eq(
+            field(field(models[0], "data_ref"), "checksum"),
+            ("sha256:" + sha).to_json(),
+          )
+        }
+      }
+      let before = field(incoming[seed], "candidate")
+      println(
+        id +
+        " seed " +
+        seed.to_string() +
+        ": incoming " +
+        field(before, "summary").stringify() +
+        "; selected update " +
+        field(result, "selected_update").stringify() +
+        "; candidate " +
+        field(result, "candidate").stringify(),
+      )
+      if field(result, "selected_update") == (0 : Json) {
+        let current = field(
+          read(source + "/policy/physics-seed-\{seed}.json"),
+          "candidate",
+        )
+        let a = array(field(before, "trials"))
+        let b = array(field(current, "trials"))
+        assert_eq(a.length(), b.length())
+        for i in 0..<a.length() {
+          for
+            key in [
+              "case_id", "seed", "replay", "failed", "simulated_seconds", "joint_rmse_rad",
+            ] {
+            assert_eq(
+              field(a[i], key),
+              field(b[i], key),
+              msg="update-zero actor changed: " + key,
+            )
+          }
+        }
+      }
+      rows.push({
+        "seed": seed.to_json(),
+        "selected_update": field(result, "selected_update"),
+        "incoming": field(before, "summary"),
+        "candidate": field(result, "candidate"),
+        "qualifies": field(result, "qualifies"),
+        "training_seconds": field(result, "training_seconds"),
+        "validation_history": history,
+        "collection": {
+          "episodes": 240,
+          "transitions": transitions.to_json(),
+          "falls": falls.to_json(),
+          "time_limits": limits.to_json(),
+          "critic_optimizer_steps": 1600,
+        },
+        "physics_payload": matching[0],
+        "online_dynamics": online,
+      })
+    }
+    cells.push({
+      "id": id.to_json(),
+      "config": field(policy, "config"),
+      "runs": rows.to_json(),
+    })
+  }
+  let validation = @json.parse(
+    run(root + "/_build/native/debug/build/cmd/moondata/moondata.exe", [
+      "validate",
+      args[4],
+    ]),
+  )
+  assert_eq(field(validation, "status"), "passed".to_json())
+  assert_eq(field(validation, "finding_count"), (0 : Json))
+  @fs.write_file(
+    args[5],
+    (
+      {
+        "format": "moonrobo.g1-short-cycle-study.v1",
+        "cells": cells.to_json(),
+        "validation": validation,
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "Compared both short-cycle methods against incoming actors; paired model payloads, physical training records and MoonData integrity verified.",
+  )
+}

@@ -1,0 +1,36 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+///|
+async fn main {
+  let out="output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host="wlc004s@192.168.2.179"
+  let prefix=@fs.read_file(out+"/reclaim_actor_pages_d.mbtx").text().split("async fn main {").to_array()[0].to_owned()
+  let code=prefix+(
+    #|async fn main {
+    #|  idle();let before=@fs.read_file("/proc/meminfo").text();let records:Array[Json]=[];let mut advised=0L
+    #|  for name in @fs.readdir(root).filter(n=>n.has_prefix("native-")) {
+    #|    if @fs.kind(root+"/"+name,follow_symlink=false)!=Directory {continue}
+    #|    for run in @fs.readdir(root+"/"+name).filter(n=>["run-0","run-1","run-2","run-3"].contains(n)) {
+    #|      if free_kib(@fs.read_file("/proc/meminfo").text())>=46137344.0||advised>=68719476736L {break}
+    #|      let dir=root+"/"+name+"/"+run
+    #|      if !@fs.exists(dir+"/training-guard.json")||!@fs.exists(dir+"/training-docker-final.json"){continue}
+    #|      guard read(dir+"/training-guard.json") is {"passed":True,"reason":"completed","exit_code":0,..} else {continue}
+    #|      guard read(dir+"/training-docker-final.json") is [{"Id":String(id),"State":state,..}]&&state is {"OOMKilled":False,"Running":False,"Pid":0,"ExitCode":0,..} else {continue}
+    #|      idle();assert_eq(@json.parse(output("docker",["inspect","--format","{{json .State}}",id])),state)
+    #|      let files:Array[String]=[]
+    #|      for part in ["cuda-cache","train"] {if @fs.exists(dir+"/"+part){collect(dir+"/"+part,files,0)}}
+    #|      let mut bytes=0L
+    #|      for path in files {let f=@fs.open(path,mode=ReadOnly);bytes+=f.size();f.close()}
+    #|      if bytes+advised>68719476736L {continue};advised+=bytes
+    #|      for path in files {guard @fs.realpath(path)==path&&@fs.kind(path,follow_symlink=false)==Regular else{fail("regular own output")};assert_eq(@process.run("sync",["-d",path]),0);assert_eq(@process.run("dd",["if="+path,"iflag=nocache,nofollow","count=0","status=none"]),0)}
+    #|      records.push({"owner":Json(dir),"closed_container_id":Json(id),"file_bytes":Json(bytes.to_double()),"files":Json(files)})
+    #|    }
+    #|  }
+    #|  idle();@fs.write_file("/home/wlc004s/moonrobo/private/shared-compute-20261026-a/actor-full-training-pages-b.json",({"before":Json(before),"after":Json(@fs.read_file("/proc/meminfo").text()),"records":Json(records),"files_deleted":0,"contents_changed":false,"guards_changed":false}:Json).stringify(indent=2),create_mode=CreateNew)
+    #|}
+  )
+  @fs.write_file(out+"/reclaim_training_pages_b.mbtx",code,create_mode=CreateNew)
+  assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",out+"/reclaim_training_pages_b.mbtx",host+":"+base+"/reclaim_training_pages_b.mbtx"]),0)
+  assert_eq(@process.run("ssh",["-S","/tmp/moonrobo-operator-179.sock",host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/reclaim_training_pages_b.mbtx"],stdout=@process.redirect_to_file(out+"/training-pages-b.stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(out+"/training-pages-b.stderr.log",create_mode=CreateNew)),0)
+  assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",host+":"+base+"/actor-full-training-pages-b.json",out+"/training-pages-b.json"]),0)
+}

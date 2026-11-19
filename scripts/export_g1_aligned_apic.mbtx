@@ -1,0 +1,51 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 ||
+    (
+      args.length() == 4 &&
+      [
+        "--python-reference", "--native-schedule", "--native-physics-host", "--native-constants-host",
+      ].contains(args[3])
+    ) else {
+    fail(
+      "usage: export_g1_aligned_apic.mbtx REPO CONFIG.json [--python-reference|--native-schedule|--native-physics-host|--native-constants-host]",
+    )
+  }
+  let mode = if args.length() == 4 {
+    if args[3] == "--native-constants-host" {
+      "export-native-constants-host"
+    } else if args[3] == "--native-physics-host" {
+      "export-native-physics-host"
+    } else if args[3] == "--native-schedule" {
+      "export-native-schedule"
+    } else {
+      "export-reference"
+    }
+  } else {
+    "export-native-io"
+  }
+  assert_eq(
+    @process.run(
+      "moon",
+      [
+        "run",
+        "--target",
+        "native",
+        "cmd/reference_apic_export",
+        "--",
+        mode,
+        args[2],
+      ],
+      cwd=args[1],
+    ),
+    0,
+  )
+}

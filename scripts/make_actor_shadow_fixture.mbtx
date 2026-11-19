@@ -1,0 +1,65 @@
+///|
+// Converts previously recorded conversion fixtures into a shadow replay tape.
+// These numerical probes are not robot telemetry or qualified physical skills.
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 else {
+    fail("usage: make_actor_shadow_fixture.mbtx COMPARISON.json NEW_TAPE.json")
+  }
+  guard @fs.read_file(args[1]).json() is { "cases": Array(cases), .. } else {
+    fail("missing comparison cases")
+  }
+  let frames : Array[Json] = []
+  for i, c in cases {
+    guard c is { "history": Array(history), "goals": goals, .. } &&
+      !history.is_empty() else {
+      fail("missing actor inputs")
+    }
+    let frame : Json = {
+      "captured_at_ms": Json(100L + i.to_int64() * 20L),
+      "observation": history[history.length() - 1],
+      "goals": goals,
+    }
+    frames.push(frame)
+  }
+  let tape : Json = {
+    "format": "moonrobo.actor-replay.v1",
+    "catalog": {
+      "catalog_id": "conversion-fixture-v1",
+      "context_version": "0",
+      "last_sequence": "-1",
+      "skills": [
+        {
+          "id": "fixture",
+          "description": "conversion probes only; no physical qualification",
+          "reference_id": "probe-frames",
+          "maximum_duration_ms": 1000,
+          "parameters": [],
+        },
+      ],
+    },
+    "request": {
+      "request_id": "shadow-fixture-one",
+      "sequence": "0",
+      "catalog_id": "conversion-fixture-v1",
+      "context_version": "0",
+      "expires_at_ms": "2000",
+      "proposal": { "skill_id": "fixture", "parameters": {} },
+    },
+    "frames": { "probe-frames": Json(frames) },
+  }
+  @fs.write_file(
+    args[2],
+    @utf8.encode(tape.stringify(indent=2)),
+    create_mode=CreateNew,
+  )
+}

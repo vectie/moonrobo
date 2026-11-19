@@ -1,0 +1,47 @@
+import {"moonbitlang/async@0.20.2","moonbitlang/async@0.20.2/fs","moonbitlang/async@0.20.2/process"}
+///|
+async fn main {
+ let out="output/spark-runtime-20261024/geometry-math-20261029-a"
+ let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+ let put=async fn(name:String,content:String) {
+  @fs.write_file(out+"/"+name,content,create_mode=CreateNew)
+  assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-math-179.sock",out+"/"+name,"wlc004s@192.168.2.179:"+base+"/"+name]),0)
+ }
+ let prior="hotspot-geometry-math-ieee-packages-a"
+ let next="hotspot-mlp-geometry-world-actor-graphs-export-a"
+ let fix=fn(s:String)->String {
+  s.replace_all(old="let package=\"/workspace/moonrobo/runs/"+prior+"\"",new="let package=\"/workspace/moonrobo/runs/"+next+"\"")
+   .replace_all(old="let package=\"/home/wlc004s/moonrobo/runs/"+prior+"\"",new="let package=\"/home/wlc004s/moonrobo/runs/"+next+"\"")
+   .replace_all(old=prior+"/features",new=next+"/features")
+ }
+ put("geometry_math_fixture_j.mbt",fix(@fs.read_file(out+"/geometry_math_fixture_f.mbt").text()))
+ put("build_geometry_math_j.mbtx",@fs.read_file(out+"/build_geometry_math_f.mbtx").text().replace_all(old="geometry-math-f",new="geometry-math-j").replace_all(old="geometry_math_fixture_f.mbt",new="geometry_math_fixture_j.mbt"))
+ put("run_geometry_math_training_j.mbtx",fix(@fs.read_file(out+"/run_geometry_math_training_f.mbtx").text())
+ .replace_all(old="run_geometry_math_training_f.mbtx",new="run_geometry_math_training_j.mbtx")
+ .replace_all(old="actor-step-gate-geometry-math-f",new="actor-step-gate-geometry-math-j")
+ .replace_all(old="  e[\"MOONROBO_SHARED_AMP\"]",new="  mounts.push({\"source\":\"/home/wlc004s/moonrobo/runs/"+next+"\",\"target\":\"/workspace/moonrobo/runs/"+next+"\",\"readonly\":true})\n  e[\"MOONROBO_SHARED_AMP\"]"))
+ let runner=@fs.read_file(out+"/run_geometry_reference_i.mbtx").text()
+  .replace_all(old="build_geometry_math_f.mbtx",new="build_geometry_math_j.mbtx")
+  .replace_all(old="build-f.",new="build-j.")
+  .replace_all(old="geometry-math-native-gate-h",new="geometry-math-native-gate-j")
+  .replace_all(old="run_geometry_math_training_f.mbtx",new="run_geometry_math_training_j.mbtx")
+  .replace_all(old="geometry-math-reference-gate-i/result.json",new="geometry-math-snapshot-gate-j/result.json")
+ @fs.write_file(out+"/run_geometry_actor_training.mbtx",runner,create_mode=CreateNew)
+ put("geometry_snapshot_gate.py",@fs.read_file("providers/motion_learning/geometry_snapshot_gate.py").text())
+ let prefix=@fs.read_file(out+"/run_geometry_math_training_j.mbtx").text().split("async fn main {").to_array()[0].to_owned()
+ put("run_geometry_snapshot_gate.mbtx",prefix+
+ #|async fn main {
+ #| guard @env.args() is [_, label, native] && label.all(c=>c is ('a'..<='z'|'0'..<='9'|'-')) && native.has_prefix("hotspot-shared-geometry-math-native-gate-") && native.all(c=>c is ('a'..<='z'|'0'..<='9'|'-')) else {fail("fixed labels")}
+ #| guard docker(["ps","--quiet"])=="" else{fail("idle")}
+ #| let root="/home/wlc004s/moonrobo/runs/hotspot-shared-"+label
+ #| guard !@fs.exists(root) else{fail("fresh gate")};@fs.mkdir(root)
+ #| let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+ #| let program=base+"/geometry_snapshot_gate.py";let digest=hash_file(program)
+ #| let args=["--host","unix:///var/run/docker.sock","run","--rm","--network","none","--memory","4g","--memory-swap","4g","--cpus","2","--user","1000:1000","--cap-drop","ALL","--security-opt","no-new-privileges","--mount","type=bind,src=/home/wlc004s/moonrobo,dst=/workspace/moonrobo,readonly","--mount","type=bind,src="+root+",dst=/pair","--env","MOONROBO_SHARED_OUTPUT=/pair","--env","GEOMETRY_NATIVE_SNAPSHOT="+native,"--entrypoint","python","sha256:e84e3c0d2b553e29ffa04fb6d738a3b635afa66e3d23824bfc6c6304e198ad46","/workspace/moonrobo/private/shared-compute-20261026-a/geometry_snapshot_gate.py"]
+ #| let code=@process.run("docker",args,stdout=@process.redirect_to_file(root+"/training.stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(root+"/training.stderr.log",create_mode=CreateNew))
+ #| assert_eq(hash_file(program),digest)
+ #| write_json(root+"/completion.json",{"passed":Json(code==0),"gpu_used":false,"memory_bytes":4294967296,"source_sha256":Json(digest)})
+ #| assert_eq(code,0)
+ #|}
+ )
+}

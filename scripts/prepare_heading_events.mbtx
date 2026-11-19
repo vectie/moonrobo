@@ -1,0 +1,25 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-heading-body-20261028"
+  let src=@fs.read_file(root+"/heading_body_suite_b.mbtx").text()
+  let stop=src.find("async fn main {").unwrap()
+  let main=(
+    #|async fn main {
+    #|  guard @env.args() is [_,phase,variant] && ["world","actor"].contains(phase) && ["baseline","heading","split","both","smc"].contains(variant) else{fail("phase variant")}
+    #|  if variant!="smc" && variant!="baseline" {
+    #|    guard field(read(base+"/"+label(phase,variant,"gate")+".numeric.json"),"passed")==Json(true) else{fail("strict gate required")}
+    #|    guard field(read(base+"/"+label(phase,variant,"abba")+".block-validation.json"),"passed")==Json(true) else{fail("off ABBA required")}
+    #|  }
+    #|  let name=label(phase,variant,"events")
+    #|  invoke(phase,if variant=="smc"{"baseline"}else{variant},"13",name,observer="events",implementation=if variant=="smc"{"smc"}else{"native"})
+    #|  guard field(read(runs+name+"/result.json"),"rows") is Array(rows)&&rows.length()==13 else{fail("event rows")}
+    #|  if variant!="smc" {
+    #|    guard field(read(runs+label(phase,variant,"gate")+"/result.json"),"rows") is Array([gate])else{fail("gate")}
+    #|    for row in rows {guard near(field(gate,"metrics"),field(row,"metrics"))else{fail("event metrics changed")}}
+    #|  }
+    #|  release(name)
+    #|}
+  )
+  @fs.write_file(root+"/heading_events.mbtx",src[:stop].to_string()+main,create_mode=CreateNew)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",root+"/heading_events.mbtx","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/heading_events.mbtx"])==0 else{fail("stage")}
+}

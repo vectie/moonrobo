@@ -1,0 +1,161 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+priv struct Motion {
+  clip_id : String
+  expected_steps : Int32
+  executed_steps : Int32
+  normalized_return : Double
+  completed_full_duration : Bool
+  protocol_complete : Bool
+} derive(FromJson)
+
+///|
+priv struct Scores {
+  protocol : Json
+  actor_archive_sha256 : String
+  references_sha256 : String
+  training_dataset_sha256 : String
+  tensor_library_sha256 : String
+  mujoco_library_sha256 : String
+  benchmark_complete : Bool
+  per_clip : Array[Motion]
+} derive(FromJson)
+
+///|
+priv struct Pair {
+  motion : String
+  reference_sha256 : String
+  expected_steps : Int32
+  baseline_steps : Int32
+  candidate_steps : Int32
+  baseline_return : Double
+  candidate_return : Double
+  baseline_completed : Bool
+  candidate_completed : Bool
+} derive(ToJson)
+
+///|
+async fn[T : FromJson] read(path : String) -> T {
+  @json.from_json(@json.parse(@utf8.decode(@fs.read_file(path).binary())))
+}
+
+///|
+priv struct Reference {
+  id : String
+  reference_sha256 : String
+  source_in_e1_training_catalog : Bool
+} derive(FromJson)
+
+///|
+priv struct References {
+  clips : Array[Reference]
+} derive(FromJson)
+
+///|
+fn summary(rows : Array[Pair]) -> Json {
+  let n = rows.length().to_double()
+  let a = rows.fold(init=0.0, (s, p) => s + p.baseline_return) / n
+  let b = rows.fold(init=0.0, (s, p) => s + p.candidate_return) / n
+  {
+    "motions": rows.length(),
+    "baseline_mean_return": a,
+    "candidate_mean_return": b,
+    "paired_return_delta": b - a,
+    "baseline_completed": rows.filter(p => p.baseline_completed).length(),
+    "candidate_completed": rows.filter(p => p.candidate_completed).length(),
+    "gained": rows
+    .filter(p => !p.baseline_completed && p.candidate_completed)
+    .map(p => p.motion),
+    "lost": rows
+    .filter(p => p.baseline_completed && !p.candidate_completed)
+    .map(p => p.motion),
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, root] else {
+    fail("pass the directory containing frozen and fine-tuned reports")
+  }
+  let seen : Map[String, Bool] = Map([])
+  let fresh : Array[Pair] = []
+  let development : Array[Pair] = []
+  let actors : Map[String, String] = Map([])
+  for (panel, count) in [("reg40", 40), ("30", 2), ("60", 19)] {
+    let base = root + "/baseline-" + panel
+    let next = root + "/candidate-" + panel
+    let a : Scores = read(base + "/final.json")
+    let b : Scores = read(next + "/final.json")
+    guard a.benchmark_complete &&
+      b.benchmark_complete &&
+      a.protocol == b.protocol &&
+      a.references_sha256 == b.references_sha256 &&
+      a.mujoco_library_sha256 == b.mujoco_library_sha256 &&
+      a.tensor_library_sha256 == b.tensor_library_sha256 &&
+      a.training_dataset_sha256 != b.training_dataset_sha256 &&
+      a.actor_archive_sha256 != b.actor_archive_sha256 &&
+      a.per_clip.length() == count &&
+      b.per_clip.length() == count else {
+      fail("paired evaluation identities differ: " + panel)
+    }
+    for
+      (key, value) in [
+        ("baseline", a.actor_archive_sha256),
+        ("candidate", b.actor_archive_sha256),
+      ] {
+      guard actors.get(key).unwrap_or(value) == value else {
+        fail("checkpoint changed between panels")
+      }
+      actors[key] = value
+    }
+    let refs : References = read(base + "/references.json")
+    assert_eq(refs.clips.length(), count)
+    let rows = if panel == "reg40" { development } else { fresh }
+    for i, old in a.per_clip {
+      let candidate = b.per_clip[i]
+      let reference = refs.clips[i]
+      guard old.protocol_complete &&
+        candidate.protocol_complete &&
+        old.expected_steps == candidate.expected_steps &&
+        reference.id == old.clip_id &&
+        old.clip_id == candidate.clip_id &&
+        !reference.source_in_e1_training_catalog &&
+        !seen.contains(reference.id) else {
+        fail("incomplete, overlapping or mismatched clip: " + reference.id)
+      }
+      seen[reference.id] = true
+      rows.push({
+        motion: reference.id,
+        reference_sha256: reference.reference_sha256,
+        expected_steps: old.expected_steps,
+        baseline_steps: old.executed_steps,
+        candidate_steps: candidate.executed_steps,
+        baseline_return: old.normalized_return,
+        candidate_return: candidate.normalized_return,
+        baseline_completed: old.completed_full_duration,
+        candidate_completed: candidate.completed_full_duration,
+      })
+    }
+  }
+  let groups : Map[String, Json] = Map([])
+  for g in ["bonus", "dance", "karate"] {
+    groups[g] = summary(fresh.filter(p => p.motion.has_prefix(g + "/")))
+  }
+  let result : Json = {
+    "actor_sha256": actors,
+    "development40": summary(development),
+    "fresh21": summary(fresh),
+    "fresh_by_category": groups,
+    "development_motions": development,
+    "fresh_motions": fresh,
+  }
+  println(result.stringify(indent=2))
+}

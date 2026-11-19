@@ -1,0 +1,325 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+struct Evidence {
+  subsystem : String
+  project : String
+  pin : String
+  path : String
+  cached : String
+  symbols : Array[String]
+}
+
+///|
+fn sha256(bytes : Bytes) -> String {
+  let mut result = ""
+  for byte in @crypto.sha256(bytes) {
+    result += byte.to_hex()
+  }
+  result
+}
+
+///|
+/// Read source text only; this script cannot import Python, spawn a process,
+/// load a native library, compile a model/kernel or start a capture.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 || (args.length() == 4 && args[3] == "--verify") else {
+    fail("usage: audit_apic_physics_sources.mbtx REPO CACHE [--verify]")
+  }
+  let root = args[1]
+  let cache = args[2]
+  let newton = "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3"
+  let isaac = "46d6cc3d7b115906fad12efd372fbf69f4e3d3ed"
+  let entries : Array[Evidence] = [
+    {
+      subsystem: "builder",
+      project: "Newton",
+      pin: newton,
+      path: "newton/_src/sim/builder.py",
+      cached: "apic-audit-newton-builder.py",
+      symbols: [
+        "def add_usd(", "def replicate(", "def add_builder(", "def finalize(",
+      ],
+    },
+    {
+      subsystem: "builder",
+      project: "Newton",
+      pin: newton,
+      path: "newton/_src/utils/import_usd.py",
+      cached: "apic-audit-newton-import_usd.py",
+      symbols: [
+        "def parse_usd(", "R = SchemaResolverManager", "joint_ordering:", "collapse_results = builder.collapse_fixed_joints",
+      ],
+    },
+    {
+      subsystem: "builder-articulation-insertion",
+      project: "Newton",
+      pin: newton,
+      path: "newton/_src/usd/_articulations.py",
+      cached: "moonrobo-pinned-newton-articulations.py",
+      symbols: ["def _parse_articulations(", "bodies_follow_joint_ordering:"],
+    },
+    {
+      subsystem: "builder-joint-plan",
+      project: "Newton",
+      pin: newton,
+      path: "newton/_src/usd/_joint_plan.py",
+      cached: "moonrobo-pinned-newton-joint-plan.py",
+      symbols: [
+        "class _ArticulationJointPlan", "def add_joint(", "def get_joint_order(",
+      ],
+    },
+    {
+      subsystem: "builder-topology",
+      project: "Newton",
+      pin: newton,
+      path: "newton/_src/utils/topology.py",
+      cached: "moonrobo-pinned-newton-topology.py",
+      symbols: ["def topological_sort(", "def topological_sort_undirected("],
+    },
+    {
+      subsystem: "builder-types-and-state-flags",
+      project: "Newton",
+      pin: newton,
+      path: "newton/_src/sim/enums.py",
+      cached: "moonrobo-pinned-newton-enums.py",
+      symbols: ["class JointType(", "class ModelFlags(", "class StateFlags("],
+    },
+    {
+      subsystem: "manager",
+      project: "IsaacLab",
+      pin: isaac,
+      path: "source/isaaclab_newton/isaaclab_newton/physics/newton_manager.py",
+      cached: "apic-audit-newton_manager.py",
+      symbols: [
+        "def instantiate_builder_from_stage", "def _run_solver_substeps", "def _simulate_full",
+      ],
+    },
+    {
+      subsystem: "solver-adapter-and-constants",
+      project: "Newton",
+      pin: newton,
+      path: "newton/_src/solvers/mujoco/solver_mujoco.py",
+      cached: "apic-audit-solver_mujoco.py",
+      symbols: [
+        "def _convert_to_mjc(", "def step(", "def _notify_model_changed", "def _update_mjc_data",
+        "def _update_newton_state", "def _set_const_0_with_physical_meaninertia",
+      ],
+    },
+    {
+      subsystem: "body-geom-pair-constant-kernels",
+      project: "Newton",
+      pin: newton,
+      path: "newton/_src/solvers/mujoco/kernels.py",
+      cached: "moonrobo-apic-source-review-20261023/newton_mujoco_kernels.py",
+      symbols: [
+        "def convert_solref", "def update_body_mass_ipos_kernel", "def update_body_inertia_kernel",
+        "def update_geom_properties_kernel", "def compute_physical_meaninertia_kernel",
+        "def update_pair_properties_kernel",
+      ],
+    },
+    {
+      subsystem: "constant-modes-and-guards",
+      project: "Newton",
+      pin: newton,
+      path: "newton/_src/solvers/mujoco/constants.py",
+      cached: "moonrobo-apic-source-review-20261023/newton_mujoco_constants.py",
+      symbols: [
+        "KINEMATIC_ARMATURE =", "MJ_MINVAL =", "SOLREF_MODE_FORCE_SPACE =", "SOLREF_MODE_RAW =",
+      ],
+    },
+    {
+      subsystem: "native-conditional",
+      project: "Warp",
+      pin: "v1.17.0",
+      path: "warp/native/warp.h",
+      cached: "apic-audit-warp.h",
+      symbols: [
+        "wp_cuda_graph_insert_if_else", "wp_cuda_graph_insert_while", "wp_cuda_graph_set_condition",
+        "wp_cuda_graph_check_conditional_body",
+      ],
+    },
+    {
+      subsystem: "native-conditional",
+      project: "Warp",
+      pin: "v1.17.0",
+      path: "warp/native/apic.h",
+      cached: "apic-audit-apic.h",
+      symbols: [
+        "wp_apic_begin_branch", "wp_apic_end_branch", "wp_apic_record_conditional",
+      ],
+    },
+  ]
+  for
+    (subsystem, file, symbols) in [
+      (
+        "layout",
+        "io",
+        [
+          "def is_sparse", "M_mulm", "nxn_include.sum() < 250_000", "def put_model",
+        ],
+      ),
+      ("inertia", "support", ["def mul_m_kernel", "def mul_m("]),
+      (
+        "collision",
+        "collision_driver",
+        [
+          "def _nxn_broadphase", "def nxn_broadphase", "def sap_broadphase", "def _narrowphase",
+          "def collision(",
+        ],
+      ),
+      ("collision-convex", "collision_convex", ["def convex_narrowphase"]),
+      (
+        "collision-primitives",
+        "collision_primitive",
+        ["def primitive_narrowphase"],
+      ),
+      (
+        "constraint",
+        "constraint",
+        [
+          "def _efc_contact_init(", "def _efc_contact_jac_sparse", "def _efc_contact_update(",
+          "def make_constraint",
+        ],
+      ),
+      (
+        "sparse-and-conditional-solver",
+        "solver",
+        [
+          "def _create_solver_context", "def _update_constraint_init_qfrc_constraint_sparse",
+          "def _update_gradient(", "def _solver_iteration", "def _solve(", "wp.capture_while",
+        ],
+      ),
+      (
+        "inertia-and-factorization",
+        "smooth",
+        [
+          "def _factor_i_sparse", "def _factor_blocks", "def factor_m", "def factor_solve_i",
+        ],
+      ),
+      (
+        "blocked-cholesky",
+        "block_cholesky",
+        [
+          "def create_blocked_cholesky_factorize_solve_func", "def create_blocked_cholesky_solve_func",
+        ],
+      ),
+      (
+        "integrator-dispatch",
+        "forward",
+        ["def fwd_position", "def forward(", "def step(", "def implicit("],
+      ),
+      (
+        "set-constants",
+        "set_const",
+        ["def set_const_fixed", "def set_const_0", "def set_const("],
+      ),
+    ] {
+    let path = "mujoco_warp/_src/" + file + ".py"
+    entries.push({
+      subsystem,
+      project: "MuJoCo-Warp",
+      pin: "PyPI 3.15.0 sdist",
+      path,
+      cached: "mujoco_warp-3.15.0/" + path,
+      symbols,
+    })
+  }
+  let rows : Array[Json] = []
+  for entry in entries {
+    let bytes = @fs.read_file(cache + "/" + entry.cached).binary()
+    let lines = @utf8.decode(bytes).split("\n").collect()
+    let anchors : Array[Json] = []
+    for symbol in entry.symbols {
+      guard lines.find_index(line => line.contains(symbol)) is Some(index) else {
+        fail("physics source anchor missing: " + entry.path + ":" + symbol)
+      }
+      anchors.push({ "symbol": symbol.to_json(), "line": (index + 1).to_json() })
+    }
+    let url = match entry.project {
+      "Newton" =>
+        "https://github.com/newton-physics/newton/blob/" +
+        newton +
+        "/" +
+        entry.path
+      "IsaacLab" =>
+        "https://github.com/isaac-sim/IsaacLab/blob/" + isaac + "/" + entry.path
+      "Warp" => "https://github.com/NVIDIA/warp/blob/v1.17.0/" + entry.path
+      _ => "https://pypi.org/pypi/mujoco-warp/3.15.0/json"
+    }
+    rows.push({
+      "subsystem": entry.subsystem.to_json(),
+      "project": entry.project.to_json(),
+      "pin": entry.pin.to_json(),
+      "source_path": entry.path.to_json(),
+      "source_url": url.to_json(),
+      "sha256": sha256(bytes).to_json(),
+      "bytes": bytes.length().to_json(),
+      "anchors": anchors.to_json(),
+    })
+  }
+  let base_bytes = @fs.read_file(
+    root + "/docs/APIC_REMAINING_SOURCE_EVIDENCE.json",
+  ).binary()
+  let previous = @json.parse(@utf8.decode(base_bytes))
+  guard previous
+    is {
+      "mujoco_warp_distribution": {
+        "archive_sha256": String(archive_sha),
+        "official_pypi_digest_verified": true,
+        ..
+      },
+      ..
+    } &&
+    sha256(
+      @fs.read_file(cache + "/apic-audit-mujoco_warp-3.15.0.tar.gz").binary(),
+    ) ==
+    archive_sha else {
+    fail(
+      "physics source archive does not match previously verified official distribution",
+    )
+  }
+  let report : Json = {
+    "format": "moonrobo.apic-physics-native-decomposition-source-evidence.v1",
+    "scope": "Lexical primary-source anchors and exact source SHA; no Python AST evaluation, call graph execution or numerical closure attestation",
+    "sources": rows.to_json(),
+    "prior_evidence_sha256": sha256(base_bytes).to_json(),
+    "mujoco_warp_archive_sha256": archive_sha.to_json(),
+    "upstream_code_executed": false,
+    "tests_executed": false,
+    "sdk_initialized": false,
+    "gpu_initialized": false,
+    "model_compiled": false,
+    "kernel_compiled": false,
+    "apic_exported": false,
+    "full_solver_closure_verified": false,
+  }
+  let output = root + "/docs/APIC_PHYSICS_SOURCE_EVIDENCE.json"
+  if args.length() == 4 {
+    guard @json.parse(@fs.read_file(output).text()) == report else {
+      fail(
+        "physics source evidence changed; inspect source pins before refreshing",
+      )
+    }
+  } else {
+    @fs.write_file(
+      output,
+      report.stringify(indent=2) + "\n",
+      create_mode=CreateOrTruncate,
+    )
+  }
+  println(
+    "Verified " +
+    rows.length().to_string() +
+    " physics subsystem source identities; no upstream execution",
+  )
+}

@@ -1,0 +1,110 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn copy(source : String, dest : String) -> Unit {
+  guard !@fs.exists(dest) else { fail("fresh evidence destination") }
+  guard @process.run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179:" + source,
+      dest,
+    ]) ==
+    0 else {
+    fail("fetch evidence")
+  }
+}
+
+///|
+async fn main {
+  let local_root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/shared-compute-20261026/closure"
+  let remote = "/home/wlc004s/moonrobo"
+  guard !@fs.exists(local_root) else { fail("fresh closure directory") }
+  @fs.mkdir(local_root)
+  for
+    (name, source) in [
+      ("actor-backward-repair", "diag-actor-captures-3c"),
+      ("actor-ln-numeric", "diag-actor-actor-ln-numeric-0"),
+    ] {
+    let dest = local_root + "/" + name
+    @fs.mkdir(dest)
+    for
+      file in [
+        "result.json", "protocol.json", "completion.json", "training-guard.json",
+        "training-docker-final.json", "training.stderr.log",
+      ] {
+      copy(
+        remote + "/runs/hotspot-shared-" + source + "/" + file,
+        dest + "/" + file,
+      )
+    }
+    if name == "actor-backward-repair" {
+      copy(
+        remote + "/runs/hotspot-shared-" + source + "/analysis/report.json",
+        dest + "/trace-analysis.json",
+      )
+    }
+  }
+  for
+    source in [
+      "diag-actor-captures-3b", "diag-actor-captures-2", "diag-actor-events-2", "diag-world-captures-1",
+    ] {
+    let dest = local_root + "/excluded-" + source
+    @fs.mkdir(dest)
+    for
+      file in [
+        "completion.json", "training-guard.json", "training-docker-final.json", "training.stderr.log",
+      ] {
+      copy(
+        remote + "/runs/hotspot-shared-" + source + "/" + file,
+        dest + "/" + file,
+      )
+    }
+  }
+  for
+    file in [
+      "capture-count-validation.json", "finished-snapshot-advice-before-diag-actor-captures-3c.json",
+      "finished-snapshot-advice-final-d.json",
+    ] {
+    copy(
+      remote + "/private/shared-compute-20261026-a/" + file,
+      local_root + "/" + file,
+    )
+  }
+  for
+    (label, command) in [
+      ("docker-ps-final", "docker ps --quiet"),
+      (
+        "gpu-processes-final", "nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits",
+      ),
+      ("host-memory-final", "cat /proc/meminfo"),
+    ] {
+    guard @process.run(
+        "ssh",
+        [
+          "-S", "/tmp/moonrobo-operator-179.sock", "-o", "BatchMode=yes", "wlc004s@192.168.2.179",
+          command,
+        ],
+        stdout=@process.redirect_to_file(
+          local_root + "/" + label + ".txt",
+          create_mode=CreateNew,
+        ),
+      ) ==
+      0 else {
+      fail("final observation")
+    }
+  }
+  for name in ["docker-ps-final", "gpu-processes-final"] {
+    guard @fs.read_file(local_root + "/" + name + ".txt")
+      .text()
+      .trim()
+      .is_empty() else {
+      fail("workload remains active")
+    }
+  }
+  println("Closure evidence fetched; remote GPU/containers idle")
+}

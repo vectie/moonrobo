@@ -1,0 +1,36 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let source = @fs.read_file("scripts/audit_geometry_world.mbtx")
+    .text()
+    .replace_all(
+      old="geometry_world_boundary_audit.py",
+      new="export_geometry_world_backward.py",
+    )
+    .replace_all(
+      old="run_geometry_world_boundary_audit.mbtx",
+      new="run_geometry_world_backward.mbtx",
+    )
+    .replace_all(old="boundary-audit-a", new="backward-export-a")
+  @fs.write_file(
+    root + "/export_world_backward.mbtx",
+    source,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("moon", [
+      "run",
+      "--target",
+      "native",
+      root + "/export_world_backward.mbtx",
+    ]),
+    0,
+  )
+}

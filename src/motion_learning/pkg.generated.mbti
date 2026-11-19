@@ -1,0 +1,82 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/motion_learning"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn parse(String) -> Result[MotionDataset, String]
+
+// Errors
+
+// Types and methods
+pub(all) struct Axis {
+  name : String
+  unit : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Episode {
+  id : String
+  source_family : String
+  split : String
+  context : Array[Double]
+  steps : Array[Transition]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MotionDataset {
+  format : String
+  dataset_id : String
+  model_ref : String
+  provenance : String
+  frame_convention : String
+  dt_s : Double
+  state_axes : Array[Axis]
+  observation_axes : Array[Axis]
+  action_axes : Array[Axis]
+  goal_axes : Array[Axis]
+  context_axes : Array[Axis]
+  episodes : Array[Episode]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MotionDataset::validate(Self) -> Result[Unit, String]
+pub fn MotionDataset::windows(Self, split~ : String, length~ : Int, stride? : Int) -> Result[TrainingBatch, String]
+
+pub(all) struct TrainingBatch {
+  format : String
+  layout : MotionDataset
+  split : String
+  window_length : Int
+  windows : Array[WindowRef]
+  time_s : Array[Double]
+  state : Array[Double]
+  observation : Array[Double]
+  applied_action : Array[Double]
+  next_state : Array[Double]
+  goal : Array[Double]
+  context : Array[Double]
+  reward : Array[Double]
+  terminated : Array[Bool]
+  truncated : Array[Bool]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Transition {
+  time_s : Double
+  state : Array[Double]
+  observation : Array[Double]
+  applied_action : Array[Double]
+  next_state : Array[Double]
+  goal : Array[Double]
+  reward : Double
+  terminated : Bool
+  truncated : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct WindowRef {
+  episode_id : String
+  start_step : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

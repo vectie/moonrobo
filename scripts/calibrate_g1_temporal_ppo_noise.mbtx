@@ -1,0 +1,114 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: calibrate_g1_temporal_ppo_noise.mbtx REPO PPO_STUDY OUTPUT",
+  )
+  let root = args[1]
+  let study = args[2]
+  let output = args[3]
+  assert_false(@fs.exists(output), msg="choose a fresh calibration directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in ["temporal_actor.py", "policy.py", "dynamics.py", "cpu_physics.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(study + "/provider-sources/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/provider-sources/temporal_ppo_noise.py",
+    @fs.read_file(root + "/providers/motion_learning/temporal_ppo_noise.py").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let charter = @json.parse(@fs.read_file(study + "/charter.json").text())
+  guard charter is { "incoming": String(incoming), .. } else {
+    fail("missing incoming study")
+  }
+  let config : Json = {
+    "seeds": [0, 1, 2],
+    "standard_deviations": [0, 0.005, 0.01, 0.05],
+    "collect_seed_base": 5600,
+    "noise_seed": 9500,
+    "duration_s": 10,
+    "fall_height_m": 0.35,
+    "fall_upright_z": 0.5,
+    "cpu_threads": 2,
+  }
+  @fs.write_file(
+    output + "/config.json",
+    config.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(
+    @process.run(
+      "moon",
+      native_args(root, [
+        output + "/provider-sources/temporal_ppo_noise.py",
+        "--config",
+        output + "/config.json",
+        "--collection",
+        incoming + "/collection.json",
+        "--policies",
+        incoming + "/preview/policy",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--output",
+        output,
+      ]),
+      stdout=@process.redirect_to_file(
+        output + "/train.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+}
+
+///|
+/// Historical .py names are inert routing descriptors. Each target parses
+/// original flags and calls real native APIs; unknown descriptors fail closed.
+fn native_args(root : String, command : Array[String]) -> Array[String] raise {
+  guard !command.is_empty() else { fail("missing native provider descriptor") }
+  let descriptor = command[0].split("/").last().unwrap_or("").to_owned()
+  let training = [
+    "policy.py", "dynamics.py", "cpu_physics.py", "teacher_step_verification.py",
+    "compare_dynamics.py",
+  ].contains(descriptor)
+  let package = if training {
+    "src/learning_training/launch/cmd"
+  } else {
+    "src/learning_balance/launch"
+  }
+  [
+    "run",
+    "--quiet",
+    "--warn-list",
+    "-a",
+    root + "/scripts/run_native_learning.mbtx",
+    root,
+    package,
+    ..command,
+    ..if training {
+      []
+    } else {
+      ["--repo", root]
+    },
+  ]
+}

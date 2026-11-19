@@ -1,0 +1,265 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn str(value : Json) -> String raise {
+  guard value is String(s) else { fail("expected string") }
+  s
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (code, out, err) = @process.collect_output("/usr/bin/shasum", [
+    "-a", "256", path,
+  ])
+  assert_eq(code, 0, msg=err.text())
+  out.text().split(" ").to_array()[0].to_owned()
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> Json {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=err.text())
+  @json.parse(out.text())
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    7,
+    msg="usage: register_g1_reference_registry.mbtx REPO EXPORTED ID ROBOBOOK NOW_MS OUTPUT_JSON",
+  )
+  let root = args[1]
+  let exported = args[2]
+  let id = args[3]
+  let book = args[4]
+  let store = book + "/moondata"
+  let metadata = read(exported + "/export.json")
+  let learning = field(metadata, "format") ==
+    Json("moonrobo.g1-reference-learning-registry-export.v1")
+  let policy = read(exported + "/policy/report.json")
+  let study = read(exported + "/policy/reference-study.json")
+  assert_eq(
+    field(metadata, "source_report_sha256"),
+    Json(sha(exported + "/policy/reference-study.json")),
+  )
+  assert_eq(
+    field(metadata, "verification_sha256"),
+    Json(sha(exported + "/policy/reference-verification.json")),
+  )
+  for command in ["learning_experiment", "moondata"] {
+    assert_eq(
+      @process.run(
+        "moon",
+        ["build", "cmd/" + command, "--target", "native"],
+        stdout=@process.redirect_to_file(
+          exported + "/build-" + command + ".log",
+          create_mode=CreateOrTruncate,
+        ),
+        stderr=@process.redirect_to_file(
+          exported + "/build-" + command + "-stderr.log",
+          create_mode=CreateOrTruncate,
+        ),
+      ),
+      0,
+    )
+  }
+  let cli = root +
+    "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe"
+  // Clone the verified payloads into their existing content-addressed locations
+  // before import. put_local_file verifies and reuses existing blobs, so large
+  // archives do not need duplicate extents on this APFS research volume.
+  let mut cloned_blobs = 0
+  if learning {
+    for
+      file in array(
+        field(
+          read(exported + "/policy/reference-learning-evidence.json"),
+          "files",
+        ),
+      ) {
+      let source = exported + "/" + str(field(file, "file"))
+      let digest = sha(source)
+      assert_eq(Json(digest), field(file, "sha256"))
+      let shard = store + "/blobs/sha256/" + digest[0:2].to_owned()
+      let blob = shard + "/" + digest
+      if !@fs.exists(blob) {
+        if !@fs.exists(shard) {
+          @fs.mkdir(shard, recursive=true)
+        }
+        assert_eq(@process.run("/bin/cp", ["-c", source, blob]), 0)
+        cloned_blobs += 1
+      }
+    }
+  }
+  let imported = run(cli, ["import", store, exported, id, args[5]])
+  assert_eq(field(imported, "physical_execution_allowed"), false)
+  let candidates = array(field(imported, "candidates"))
+  let runs = array(field(policy, "runs"))
+  assert_eq(candidates.length(), 3)
+  for i, candidate in candidates {
+    assert_eq(
+      field(candidate, "producer_qualified"),
+      field(runs[i], "qualifies"),
+    )
+    assert_eq(field(candidate, "candidate"), field(runs[i], "candidate"))
+    assert_eq(field(candidate, "baseline"), field(runs[i], "baseline"))
+    if learning {
+      let original = array(field(study, "runs")).filter(r => {
+        field(r, "seed") == field(candidate, "seed") &&
+        field(r, "method") == field(metadata, "method")
+      })
+      assert_eq(original.length(), 1)
+      assert_eq(
+        field(candidate, "selected_update"),
+        field(original[0], "actor_optimizer_steps"),
+      )
+      assert_eq(
+        field(field(candidate, "checkpoint_ref"), "checksum"),
+        Json("sha256:" + str(field(field(original[0], "checkpoint"), "sha256"))),
+      )
+    } else {
+      assert_eq(field(candidate, "selected_update"), 1000)
+    }
+  }
+  let payloads = array(field(imported, "payloads"))
+  for
+    (kind, count) in [
+      ("learning-reference-clip", 9),
+      (
+        "learning-reference-physics",
+        if learning {
+          array(field(study, "physical_records")).length()
+        } else {
+          108
+        },
+      ),
+    ] {
+    assert_eq(
+      payloads
+      .filter(p => field(field(p, "data_ref"), "kind") == Json(kind))
+      .length(),
+      count,
+    )
+  }
+  assert_eq(run(cli, ["import", store, exported, id, args[5]]), imported)
+  assert_eq(run(cli, ["inspect", store, id]), imported)
+  // The package and its generated originals share immutable bytes with the
+  // newly sealed blobs through independent APFS clones, not hard links.
+  // This keeps all paths/data while avoiding duplicate extents on this host.
+  let origins = array(read(exported + "/export-sources.json"))
+  let compacted : Map[String, Bool] = Map([])
+  for payload in payloads {
+    let relative = str(field(payload, "relative_path"))
+    let data_ref = field(payload, "data_ref")
+    let uri = str(field(data_ref, "uri"))
+    assert_true(uri.has_prefix("moondata://blobs/sha256/"))
+    let blob = store + "/" + uri.split("moondata://").to_array()[1].to_owned()
+    let paths = [exported + "/" + relative]
+    for
+      origin in origins.filter(o => field(o, "relative_path") == Json(relative)) {
+      paths.push(str(field(origin, "source")))
+    }
+    for path in paths {
+      if compacted.contains(path) {
+        continue
+      }
+      assert_true(
+        path.has_prefix(root + "/target/learning/") ||
+        path.has_prefix(root + "/output/research/"),
+      )
+      assert_eq(Json("sha256:" + sha(path)), field(data_ref, "checksum"))
+      let temporary = path + ".registry-cow-stage"
+      assert_false(@fs.exists(temporary))
+      assert_eq(@process.run("/bin/cp", ["-c", blob, temporary]), 0)
+      assert_eq(Json("sha256:" + sha(temporary)), field(data_ref, "checksum"))
+      assert_eq(@process.run("/bin/mv", [temporary, path]), 0)
+      compacted[path] = true
+    }
+  }
+  let main_cli = root + "/_build/native/debug/build/cmd/main/main.exe"
+  let prefix = "/api/moondata/learning-experiments"
+  let listed = run(main_cli, ["api-route", book, "GET", prefix])
+  assert_eq(
+    array(field(listed, "experiments"))
+    .filter(e => field(e, "experiment_id") == Json(id))
+    .length(),
+    1,
+  )
+  let views : Array[Json] = []
+  for seed in [0, 1, 2] {
+    let evidence = run(main_cli, [
+      "api-route",
+      book,
+      "GET",
+      prefix + "/" + id + "/physics/\{seed}",
+    ])
+    assert_eq(
+      field(evidence, "report"),
+      read(exported + "/policy/physics-seed-\{seed}.json"),
+    )
+    assert_eq(field(evidence, "original_duration_s"), 30)
+    assert_eq(field(evidence, "physical_execution_allowed"), false)
+    let physical = field(evidence, "report")
+    assert_eq(field(field(physical, "evaluation_protocol"), "origins_s"), [
+      0, 10, 20,
+    ])
+    assert_eq(array(field(field(physical, "candidate"), "trials")).length(), 27)
+    views.push({
+      "seed": Json(seed),
+      "data_ref": field(evidence, "data_ref"),
+      "reference_origins_s": [0, 10, 20],
+    })
+  }
+  let validation = run(
+    root + "/_build/native/debug/build/cmd/moondata/moondata.exe",
+    ["validate", store, args[5]],
+  )
+  assert_eq(field(validation, "status"), "passed")
+  assert_eq(field(validation, "finding_count"), 0)
+  @fs.write_file(
+    args[6],
+    (
+      {
+        "format": "moonrobo.g1-reference-registration.v1",
+        "export": metadata,
+        "experiment": imported,
+        "api_views": Json(views),
+        "validation": validation,
+        "byte_identical_paths_compacted": Json(compacted.length()),
+        "blobs_prepared_by_apfs_clone": Json(cloned_blobs),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "Registered all reference evidence, reopened three stored physics reports through the API, and validated MoonData.",
+  )
+}

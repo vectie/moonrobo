@@ -1,0 +1,154 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(j : Json, name : String) -> Json raise {
+  guard j is Object(m) && m.get(name) is Some(value) else { fail(name) }
+  value
+}
+
+///|
+fn rows(j : Json) -> Array[Json] raise {
+  guard j is Array(items) else { fail("array") }
+  items
+}
+
+///|
+fn number(j : Json) -> Double raise {
+  guard j is Number(value, ..) else { fail("number") }
+  value
+}
+
+///|
+fn violations(j : Json) -> Double raise {
+  rows(j).fold(init=0.0, (sum, row) => sum + number(field(row, "violations")))
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/world-backward-boundaries-20261029-a"
+  let read = async fn(path : String) -> Json {
+    @json.parse(@fs.read_file(root + "/" + path).text())
+  }
+  let diagnostics : Array[Json] = []
+  for label in ["world-boundary-f", "world-boundary-h"] {
+    let r = read(label + "/result.json")
+    assert_eq(field(read(label + "/completion.json"), "passed"), Json(true))
+    assert_eq(field(r, "paired_capture_complete"), Json(true))
+    assert_eq(field(r, "instrumentation_bitwise_unchanged"), Json(true))
+    assert_eq(field(r, "native_count"), Json(181))
+    assert_eq(field(r, "smc_count"), Json(181))
+    let saved = field(r, "saved_forward")
+    assert_eq(rows(field(saved, "rows")).length(), 198)
+    assert_eq(rows(field(saved, "native_only")).length(), 0)
+    assert_eq(rows(field(saved, "smc_only")).length(), 0)
+    for row in rows(field(saved, "rows")) {
+      assert_eq(field(row, "unequal"), Json(0))
+    }
+    for side in ["native", "smc"] {
+      let joins = rows(field(field(r, "weight_joins"), side))
+      assert_eq(joins.length(), 4)
+      for row in joins {
+        assert_eq(field(row, "unequal"), Json(0))
+      }
+    }
+    let controls : Array[Json] = []
+    for name in ["mm", "bmm", "both"] {
+      let v = field(field(r, "interventions"), name)
+      controls.push({
+        "intervention": Json(name),
+        "changed_calls": field(v, "changed"),
+        "raw_gradient_violations": Json(violations(field(v, "gradients"))),
+        "clipped_gradient_violations": Json(violations(field(v, "clipped"))),
+      })
+    }
+    let matrices = rows(
+      field(field(field(r, "interventions"), "mm"), "matrices"),
+    )
+    let first = matrices.filter(row => {
+      rows(field(row, "tensors")).any(t => number(field(t, "unequal")) > 0)
+    })
+    guard !first.is_empty() else { fail("remaining discrepancy expected") }
+    diagnostics.push({
+      "run": Json(label),
+      "native_calls": field(r, "native_count"),
+      "smc_calls": field(r, "smc_count"),
+      "raw_gradient_violations": Json(violations(field(r, "gradients"))),
+      "saved_forward_bitwise_equal": 198,
+      "weight_join_reconstructions_exact_per_side": 4,
+      "controls": Json(controls),
+      "first_mismatched_matrix_after_mm_padding": first[0],
+      "torch_reserved_peak_bytes": field(r, "reserved_peak"),
+    })
+  }
+  let original = rows(
+    field(read("world-reference-native-gate-b/final.json"), "records"),
+  )
+  let replaced = rows(
+    field(read("world-reference-native-gate-e/final.json"), "records"),
+  )
+  assert_eq(original.length(), replaced.length())
+  for a in original {
+    let b = replaced.filter(row => field(row, "name") == field(a, "name"))
+    assert_eq(b.length(), 1)
+    assert_eq(
+      field(field(a, "blob"), "sha256"),
+      field(field(b[0], "blob"), "sha256"),
+    )
+  }
+  let gates : Array[Json] = []
+  for label in ["world-reference-smc-gate-b", "world-reference-smc-gate-e"] {
+    let r = read(label + "/result.json")
+    let n = field(r, "numerical_comparison")
+    assert_eq(field(n, "passed"), Json(false))
+    assert_eq(field(n, "atol"), Json(0.000002))
+    assert_eq(field(n, "rtol"), Json(0.0002))
+    let failures = rows(field(n, "tensors")).filter(t => {
+      number(field(t, "violations")) > 0
+    })
+    assert_eq(failures.length(), 2)
+    assert_eq(field(failures[0], "name"), Json("world-12-gradient"))
+    assert_eq(field(failures[0], "violations"), Json(48))
+    assert_eq(field(failures[1], "name"), Json("world-12-moment1"))
+    assert_eq(field(failures[1], "violations"), Json(1))
+    gates.push({
+      "run": Json(label),
+      "passed": false,
+      "failures": Json(failures),
+      "torch_reserved_peak_bytes": field(r, "reserved_peak"),
+    })
+  }
+  let audit = read("world-final-artifact-audit-a.json")
+  assert_eq(field(audit, "exported_binary_pins_unchanged"), Json(true))
+  let result : Json = {
+    "schema": "moonrobo.world-backward-boundary-investigation.v1",
+    "reference": "original SMC BF16 autocast; FP32 master parameters and Adam; unmodified loss and rollout",
+    "world_batch": 2048,
+    "world_unroll": 8,
+    "hidden": [2048, 2048, 2048],
+    "diagnostics": Json(diagnostics),
+    "full_world_update_gates": Json(gates),
+    "native_original_fx_vs_smc_fx_output_records_bitwise_equal": Json(
+      original.length(),
+    ),
+    "artifact_audit": audit,
+    "production_candidate_enabled": false,
+    "full_training_benchmark_performed": false,
+    "reason_benchmark_not_run": "unchanged numerical gate failed; cold one-call diagnostic durations are not performance results",
+    "unresolved": "first residual discrepancy before step-7 MLP backward, channels 15/51/62/69 (q/qd); split versus fused input-gradient normalization and accumulation require a numerical causal control before attributing the residual",
+    "original_implementations_retained": true,
+    "memory_thresholds_changed": false,
+  }
+  @fs.write_file(
+    root + "/findings.json",
+    result.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(
+    "Verified boundary evidence and failed candidate gates; no training speed claim.",
+  )
+}

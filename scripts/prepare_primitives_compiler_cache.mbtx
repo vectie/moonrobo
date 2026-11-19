@@ -1,0 +1,9 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-primitives-20261028"
+  let s=@fs.read_file(dir+"/advise_primitives_single.mbtx").text()
+  let a="entry.path.has_prefix(\"cuda-cache/\")";guard s.contains(a) else {fail("cache predicate")}
+  let s=s.replace_all(old=a,new=a+" || entry.path.has_prefix(\"inductor-cache/\")")
+  let p=dir+"/advise_primitives_compiler.mbtx";@fs.write_file(p,s,create_mode=CreateNew)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",p,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/advise_primitives_compiler.mbtx"])==0 else {fail("scp")}
+}

@@ -1,0 +1,120 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+// Deployment source view, keeping the original package/module identities.
+// The SDK shadow view adds the robot adapter without training or simulation.
+async fn main {
+  let (repo, output, role) = match @env.args()[1:] {
+    [repo, output] => (repo, output, "actor")
+    [repo, output, "planner" | "sdk-shadow" as role] => (repo, output, role)
+    _ =>
+      fail(
+        "usage: stage_lunakine_actor_host.mbtx MOONROBO NEW_OUTPUT [planner|sdk-shadow]",
+      )
+  }
+  let actor = role != "planner"
+  guard !@fs.exists(output) else { fail("output must be new") }
+  @fs.mkdir(output + "/src", recursive=true)
+  @fs.mkdir(output + "/cmd", recursive=true)
+  @fs.mkdir(output + "/scripts", recursive=true)
+  let packages = if role == "planner" {
+    [
+      "cmd/actor_task", "src/policy_skills", "src/policy_task", "src/policy_planner",
+    ]
+  } else if role == "sdk-shadow" {
+    [
+      "cmd/e1_sdk_shadow", "src/e1_actor", "src/e1_actor_reference", "src/e1_actor_sdk_shadow",
+      "src/e1_actor_control", "src/sdk_e1_low", "src/sdk_e1_policy", "src/policy_runner",
+      "src/policy_host", "src/policy_task", "src/policy_skills",
+    ]
+  } else {
+    [
+      "cmd/e1_actor", "src/e1_actor", "src/e1_actor_reference", "src/e1_actor_shadow",
+      "src/policy_runner", "src/policy_host", "src/policy_task", "src/policy_skills",
+    ]
+  }
+  for package_path in packages {
+    guard @process.run("cp", [
+        "-R",
+        repo + "/" + package_path,
+        output + "/" + package_path,
+      ]) ==
+      0 else {
+      fail("deployment source copy failed: " + package_path)
+    }
+  }
+  if role == "sdk-shadow" {
+    let build_path = "/src/sdk_e1_native"
+    @fs.mkdir(output + build_path)
+    for name in ["CMakeLists.txt", "sdk_v31_state.hpp", "sdk_adapter_v31.cpp"] {
+      let path = build_path + "/" + name
+      guard @process.run("cp", [repo + path, output + path]) == 0 else {
+        fail("SDK adapter source copy failed: " + path)
+      }
+    }
+  }
+  let scripts = if role == "actor" {
+    ["test_lunakine_actor_clock.mbtx", "make_actor_shadow_fixture.mbtx"]
+  } else {
+    []
+  }
+  for script in scripts {
+    guard @process.run("cp", [
+        repo + "/scripts/" + script,
+        output + "/scripts/" + script,
+      ]) ==
+      0 else {
+      fail("deployment diagnostic copy failed")
+    }
+  }
+  @fs.write_file(
+    output + "/moon.mod",
+    (
+      #|name = "vectie/moonrobo"
+      #|version = "0.1.1"
+      #|preferred_target = "native"
+      #|import {
+      #|
+    ) +
+    (if actor { "  \"vectie/lunakine@0.1.0\",\n" } else { "" }) +
+    (
+      #|  "moonbitlang/async@0.20.2",
+      #|}
+      #|
+    ),
+    create_mode=CreateNew,
+  )
+  @fs.write_file(
+    output + "/moon.work",
+    if actor {
+      "members = [\".\", \"../lunakine\"]\n"
+    } else {
+      "members = [\".\"]\n"
+    },
+    create_mode=CreateNew,
+  )
+  let receipt : Json = {
+    "format": "moonrobo.lunakine-actor-source-view.v1",
+    "source_repository": Json(repo),
+    "packages": Json(packages),
+    "role": Json(role),
+    "sibling_runtime": if actor {
+      Json("../lunakine")
+    } else {
+      Json::null()
+    },
+    "scope": "deployment-only actor/task packages for recorded or SDK shadow execution and planning",
+  }
+  @fs.write_file(
+    output + "/source-view.json",
+    receipt.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+}

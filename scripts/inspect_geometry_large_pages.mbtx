@@ -1,0 +1,56 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let code = @fs.read_file("scripts/inspect_task_file_residency.mbtx")
+    .text()
+    .replace_all(old="\"+8M\"", new="\"+24M\"")
+    .replace_all(old="8388608", new="25165824")
+  @fs.write_file(
+    out + "/inspect_large_pages_a.mbtx",
+    code,
+    create_mode=CreateNew,
+  )
+  let socket = "/tmp/moonrobo-math-179.sock"
+  let host = "wlc004s@192.168.2.179"
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=" + socket,
+      out + "/inspect_large_pages_a.mbtx",
+      host + ":" + base + "/inspect_large_pages_a.mbtx",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run("ssh", [
+      "-S",
+      socket,
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/inspect_large_pages_a.mbtx -- --scan " +
+      base +
+      "/large-pages-a.json /home/wlc004s/moonrobo/runs",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=" + socket,
+      host + ":" + base + "/large-pages-a.json",
+      out + "/large-pages-a.json",
+    ]),
+    0,
+  )
+}

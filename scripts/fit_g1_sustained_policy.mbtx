@@ -1,0 +1,281 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=err.text() + out.text())
+  out.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    6,
+    msg="usage: fit_g1_sustained_policy.mbtx REPO REPLAY OLD_DATA INITIAL_POLICIES OUTPUT",
+  )
+  let root = args[1]
+  let replay = args[2]
+  let old_data = args[3]
+  let output = args[5]
+  assert_true(!@fs.exists(output), msg="choose a fresh study directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for name in ["dynamics.py", "policy.py", "cpu_physics.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let provenance = read(replay + "/replay-report.json")
+  @fs.write_file(
+    output + "/dynamics-config.json",
+    @fs.read_file(root + "/examples/learning/g1-sustained-dynamics-fit.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let collection = read(root + "/examples/learning/g1-goal-collection.json")
+  guard collection is Object(collection_fields) else {
+    fail("expected collection config")
+  }
+  collection_fields.set("duration_s", 10)
+  collection_fields.set("action_noise_std_rad", 0)
+  @fs.write_file(
+    output + "/collection-experiment.json",
+    collection.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let cells : Array[Json] = []
+  for id in ["sustained-old-model", "sustained-new-model"] {
+    let cell = output + "/" + id
+    @fs.mkdir(cell, recursive=true)
+    let config = read(root + "/examples/learning/g1-policy-long-fit.json")
+    guard config is Object(fields) else { fail("expected policy config") }
+    fields.set("test_seeds", [8600, 8601, 8602])
+    fields.set("actor_critic_bootstrap", true)
+    fields.set("critic_horizontal_translation_invariant", true)
+    fields.set("critic_training_source", "physics-returns")
+    fields.set(
+      "critic_collection_experiment",
+      Json(output + "/collection-experiment.json"),
+    )
+    fields.set("critic_collect_seed_base", 3200)
+    fields.set("critic_physics_refresh_every", 20)
+    fields.set("critic_physics_fit_steps", 400)
+    fields.set("critic_physics_minibatch_size", 512)
+    fields.set("evaluation_updates", [1, 5, 10, 20])
+    fields.set("replay_provenance", provenance)
+    fields.set(
+      "study", "Same selected dataset-aggregation actors, same sustained policy replay, physical critic calibration and actor budget. Compare old 400-update world-model checkpoint with newly fitted 1000-update model. Different model data, normalization and fit budget; no isolated data-only or matched-efficiency claim. Critic starts explicitly untrained and is calibrated before first actor step.",
+    )
+    @fs.write_file(
+      cell + "/config.json",
+      config.stringify(indent=2),
+      create_mode=CreateOrTruncate,
+    )
+    cells.push({ "id": Json(id), "config": config })
+  }
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-sustained-model-charter.v1",
+        "cells": Json(cells),
+        "replay": Json(replay),
+        "old_data": Json(old_data),
+        "warm_policies": Json(args[4]),
+        "selection": "Dynamics validation only; fit seed zero fixed for policy use before testing. Physics validation seeds 30-32 at updates 0/1/5/10/20/50/100/150/200 select policy; fresh final seeds 8600-8602 never select weights.",
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/dynamics.log",
+    run(
+      "moon",
+      native_args(root, [
+        output + "/provider-sources/dynamics.py",
+        "--train",
+        replay + "/train-batch.json",
+        "--validation",
+        replay + "/validation-batch.json",
+        "--test",
+        replay + "/test-batch.json",
+        "--config",
+        output + "/dynamics-config.json",
+        "--output",
+        output + "/new-fit",
+      ]),
+    ),
+    create_mode=CreateOrTruncate,
+  )
+  println("New sustained-state world models fitted and scored.")
+  let summaries : Array[Json] = []
+  for entry in cells {
+    guard field(entry, "id") is String(id) else { fail("missing id") }
+    let cell = output + "/" + id
+    let model_source = if id == "sustained-old-model" {
+      old_data + "/fit"
+    } else {
+      output + "/new-fit"
+    }
+    @fs.mkdir(cell + "/collection", recursive=true)
+    @fs.mkdir(cell + "/fit", recursive=true)
+    ignore(
+      run("/bin/cp", [
+        replay + "/collection/dataset.json.gz",
+        cell + "/collection/dataset.json.gz",
+      ]),
+    )
+    for
+      name in [
+        "report.json", "dynamics-seed-0.moon.json", "dynamics-seed-1.moon.json",
+        "dynamics-seed-2.moon.json",
+      ] {
+      copy_model_file(root, model_source + "/" + name, cell + "/fit/" + name)
+    }
+    @fs.write_file(
+      cell + "/policy.log",
+      run(
+        "moon",
+        native_args(root, [
+          output + "/provider-sources/policy.py",
+          "fit",
+          "--train",
+          if id == "sustained-old-model" {
+            old_data + "/train-batch.json.gz"
+          } else {
+            replay + "/train-batch.json"
+          },
+          "--policy-replay",
+          replay + "/train-batch.json",
+          "--dynamics",
+          model_source + "/dynamics-seed-0.moon.json",
+          "--scene",
+          root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+          "--config",
+          cell + "/config.json",
+          "--experiment",
+          root + "/examples/learning/g1-long-experiment.json",
+          "--warm-start-policy",
+          args[4],
+          "--output",
+          cell + "/policy",
+        ]),
+      ),
+      create_mode=CreateOrTruncate,
+    )
+    let report = read(cell + "/policy/report.json")
+    guard field(report, "runs") is Array(runs) else { fail("missing runs") }
+    let rows : Array[Json] = []
+    for row in runs {
+      assert_eq(field(row, "dynamics_unchanged"), true)
+      assert_eq(field(row, "reload_matches"), true)
+      rows.push({
+        "seed": field(row, "seed"),
+        "selected_update": field(row, "selected_update"),
+        "candidate": field(row, "candidate"),
+        "qualifies": field(row, "qualifies"),
+        "training_seconds": field(row, "training_seconds"),
+      })
+    }
+    summaries.push({ "id": Json(id), "runs": Json(rows) })
+    println(id + ": " + Json(rows).stringify())
+  }
+  @fs.write_file(
+    output + "/summary.json",
+    (
+      {
+        "format": "moonrobo.g1-sustained-model-study.v1",
+        "cells": Json(summaries),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}
+
+///|
+/// Historical .py names are inert routing descriptors. Each target parses
+/// original flags and calls real native APIs; unknown descriptors fail closed.
+fn native_args(root : String, command : Array[String]) -> Array[String] raise {
+  guard !command.is_empty() else { fail("missing native provider descriptor") }
+  let descriptor = command[0].split("/").last().unwrap_or("").to_owned()
+  let training = [
+    "policy.py", "dynamics.py", "cpu_physics.py", "teacher_step_verification.py",
+    "compare_dynamics.py",
+  ].contains(descriptor)
+  let package = if training {
+    "src/learning_training/launch/cmd"
+  } else {
+    "src/learning_balance/launch"
+  }
+  [
+    "run",
+    "--quiet",
+    "--warn-list",
+    "-a",
+    root + "/scripts/run_native_learning.mbtx",
+    root,
+    package,
+    ..command,
+    ..if training {
+      []
+    } else {
+      ["--repo", root]
+    },
+  ]
+}
+
+///|
+/// Native checkpoint copies validate or explicitly convert restricted Torch
+/// state dictionaries. JSON names never contain renamed pickle bytes.
+async fn copy_model_file(
+  root : String,
+  source : String,
+  destination : String,
+) -> Unit {
+  if destination.has_suffix(".moon.json") {
+    assert_eq(
+      @process.run("moon", [
+        "run",
+        "--quiet",
+        "--warn-list",
+        "-a",
+        root + "/scripts/run_native_learning.mbtx",
+        root,
+        "src/learning_training/launch/cmd",
+        "checkpoint-copy",
+        source,
+        destination,
+        "residual-dynamics",
+      ]),
+      0,
+    )
+  } else {
+    @fs.write_file(
+      destination,
+      @fs.read_file(source).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+}

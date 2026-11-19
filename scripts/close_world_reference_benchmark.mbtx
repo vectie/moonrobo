@@ -1,0 +1,117 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/world-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let prefix = @fs.read_file(
+    "output/spark-runtime-20261024/compiled-vjp-detail-20261029-a/run_frozen_compilation_b.mbtx",
+  )
+  .text()
+  .split("async fn main {")
+  .to_array()[0].to_owned()
+  let code = prefix +
+    (
+      #|async fn main {
+      #|  let runs="/home/wlc004s/moonrobo/runs/"
+      #|  let pack=runs+"hotspot-mlp-world-reference-export-k"
+      #|  guard field(read_json(pack+"/exported-artifacts.json"),"files") is Object(pins) else {fail("export pins")}
+      #|  for path,hash in pins {assert_eq(Json(hash_file(path)),hash)}
+      #|  let original=runs+"hotspot-mlp-aoti-window-export-bf16-g"
+      #|  let unchanged:Array[Json]=[]
+      #|  for branch in ["rollout","error"] {for name in @fs.readdir(original+"/"+branch) {if name.has_suffix(".cubin")||name=="native.spec"||name=="forward.so"||(branch=="error"&&name=="backward.so") {let hash=hash_file(original+"/"+branch+"/"+name);assert_eq(hash_file(pack+"/"+branch+"/"+name),hash);unchanged.push(Json(branch+"/"+name))}}}
+      #|  guard field(read_json(runs+"hotspot-shared-world-reference-native-gate-f/final.json"),"records") is Array(baseline) else {fail("gate export")}
+      #|  let comparisons:Array[Json]=[]
+      #|  for block in ["a","b"] {
+      #|    let dir=runs+"hotspot-shared-world-reference-bench-native-"+block
+      #|    guard field(read_json(dir+"/final.json"),"records") is Array(records) else {fail("timed export")}
+      #|    assert_eq(records.length(),baseline.length())
+      #|    for row in records {let matched=baseline.filter(b=>field(b,"name")==field(row,"name"));assert_eq(matched.length(),1);assert_eq(field(field(matched[0],"blob"),"sha256"),field(field(row,"blob"),"sha256"))}
+      #|    comparisons.push({"block":Json(block),"bitwise_equal_output_records":Json(records.length())})
+      #|  }
+      #|  assert_eq(docker(["ps","--quiet"]),"")
+      #|  assert_eq(checkpoint_command("nvidia-smi",["--query-compute-apps=pid","--format=csv,noheader"]),"")
+      #|  write_json("/home/wlc004s/moonrobo/private/shared-compute-20261026-a/world-benchmark-final-audit-a.json",{"exported_artifacts_unchanged":true,"exported_pin_count":Json(pins.length()),"original_forward_error_files_unchanged":Json(unchanged),"native_steady_exports_vs_gate":Json(comparisons),"gpu_and_docker_idle":true,"host_memory_after":Json(@fs.read_file("/proc/meminfo").text())})
+      #|}
+    )
+  @fs.write_file(
+    out + "/world_benchmark_final_audit_a.mbtx",
+    code,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/world_benchmark_final_audit_a.mbtx",
+      host + ":" + base + "/world_benchmark_final_audit_a.mbtx",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/world_benchmark_final_audit_a.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/benchmark-final-audit.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/benchmark-final-audit.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+  for
+    (source, target) in [
+      (
+        base + "/world-benchmark-final-audit-a.json",
+        "world-benchmark-final-audit-a.json",
+      ),
+      (
+        base + "/export_reference_world_backward_c.py",
+        "frozen-sources/export_reference_world_backward_c.py",
+      ),
+      (
+        base + "/export_reference_world_backward_d.py",
+        "frozen-sources/export_reference_world_backward_d.py",
+      ),
+      (
+        "/home/wlc004s/moonrobo/runs/hotspot-mlp-world-reference-export-k/rollout/clfkcvvcahn222rb5a5237er746g62r4kx3cpr5s4uadzez7j433.wrapper.cpp",
+        "accepted-world-backward.wrapper.cpp",
+      ),
+      (
+        "/home/wlc004s/moonrobo/runs/hotspot-mlp-world-reference-export-k/rollout/manifest.json",
+        "accepted-world-rollout-manifest.json",
+      ),
+    ] {
+    guard !@fs.exists(out + "/" + target) else {
+      fail("retain frozen artifacts")
+    }
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host + ":" + source,
+        out + "/" + target,
+      ]),
+      0,
+    )
+  }
+}

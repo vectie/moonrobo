@@ -1,0 +1,427 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+fn string(value : Json) -> String raise {
+  guard value is String(s) else { fail("expected string") }
+  s
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=out.text() + err.text())
+  out.text()
+}
+
+///|
+fn pool(rows : Array[Json], scope : String) -> Json raise {
+  let mut trials = 0
+  let mut falls = 0
+  let mut survival = 0.0
+  let mut rmse = 0.0
+  for row in rows {
+    let summary = field(field(row, "summaries"), scope)
+    let n = num(field(summary, "trials")).to_int()
+    trials += n
+    falls += num(field(summary, "falls")).to_int()
+    survival += num(field(summary, "mean_survival_s")) * n.to_double()
+    rmse += num(field(summary, "mean_joint_rmse_rad")) * n.to_double()
+  }
+  {
+    "trials": Json(trials),
+    "falls": Json(falls),
+    "mean_survival_s": Json(survival / trials.to_double()),
+    "mean_joint_rmse_rad": Json(rmse / trials.to_double()),
+  }
+}
+
+///|
+/// Verify the actual native source snapshot or the preserved historical source.
+/// Native reports may not silently fall back to a Python digest.
+async fn source_digest(
+  study : String,
+  report : Json,
+  key : String,
+  legacy : String,
+) -> String {
+  guard report is Object(fields) else { fail("report object required") }
+  match fields.get("native_source_files") {
+    Some(bindings) => {
+      guard bindings is Object(all_bindings) else {
+        fail("native source bindings object required")
+      }
+      for source_key, binding in all_bindings {
+        let original = string(field(binding, "source"))
+        let extension = if original.has_suffix(".mbt") {
+          ".mbt"
+        } else {
+          assert_eq(source_key, "teacher_provider_sha256")
+          assert_true(original.has_suffix(".py"))
+          assert_eq(field(binding, "role"), "passive-parameter-source")
+          ".py"
+        }
+        let saved = string(field(binding, "snapshot"))
+        assert_eq(saved, "provider-sources/" + source_key + extension)
+        let expected = field(binding, "sha256")
+        assert_eq(expected, field(report, source_key))
+        assert_eq(expected, Json(digest(study + "/" + saved)))
+      }
+      let entry = field(bindings, key)
+      let source = string(field(entry, "source"))
+      let snapshot = string(field(entry, "snapshot"))
+      assert_true(source.has_suffix(".mbt"))
+      assert_eq(snapshot, "provider-sources/" + key + ".mbt")
+      let actual = digest(study + "/" + snapshot)
+      assert_eq(field(entry, "sha256"), Json(actual))
+      assert_eq(field(report, "source_language"), "moonbit")
+      actual
+    }
+    None => {
+      assert_false(
+        fields.get("source_language") == Some(("moonbit" : Json)),
+        msg="native report lacks actual source bindings; regenerate report",
+      )
+      digest(study + "/provider-sources/" + legacy)
+    }
+  }
+}
+
+///|
+async fn teacher_digest(
+  root : String,
+  teacher : Json,
+  legacy : String,
+) -> String {
+  guard teacher is Object(fields) else { fail("teacher object required") }
+  if fields.get("source_language") == Some(("moonbit" : Json)) {
+    let path = string(field(teacher, "provider_source"))
+    assert_true(path.has_suffix(".mbt"))
+    digest(if path.has_prefix("/") { path } else { root + "/" + path })
+  } else {
+    digest(legacy)
+  }
+}
+
+///|
+async fn checkpoint_digest(stem : String) -> String {
+  let paths : Array[String] = []
+  for suffix in [".moon.json", ".pt", ".json"] {
+    if @fs.exists(stem + suffix) {
+      paths.push(stem + suffix)
+    }
+  }
+  assert_eq(paths.length(), 1, msg="checkpoint missing or ambiguous: " + stem)
+  digest(paths[0])
+}
+
+///|
+fn source_metadata(report : Json) -> Json raise {
+  guard report is Object(fields) else { fail("report object required") }
+  {
+    "source_language": fields
+    .get("source_language")
+    .unwrap_or(("python-reference" : Json)),
+    "native_source_files": fields
+    .get("native_source_files")
+    .unwrap_or(Json::null()),
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: report_g1_balance_intervention.mbtx REPO STUDY OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let report = read(study + "/report.json")
+  let config = field(report, "config")
+  let charter = read(study + "/charter.json")
+  let policies = string(field(charter, "policies"))
+  assert_eq(config, field(charter, "config"))
+  assert_eq(field(report, "learned_policy_qualified"), false)
+  assert_eq(field(report, "physical_execution_allowed"), false)
+  assert_eq(field(report, "actor_and_normalization_unchanged"), true)
+  assert_eq(
+    field(report, "provider_sha256"),
+    Json(
+      source_digest(study, report, "provider_sha256", "balance_intervention.py"),
+    ),
+  )
+  assert_eq(
+    field(report, "source_policy_report_sha256"),
+    Json(digest(policies + "/report.json")),
+  )
+  assert_eq(
+    field(report, "teacher_sha256"),
+    Json(digest(study + "/teacher.json")),
+  )
+  let rows = array(field(report, "rows"))
+  assert_eq(rows.length(), 24)
+  let log = study + "/intervention-physics.jsonl.gz"
+  assert_eq(field(report, "physics_log_sha256"), Json(digest(log)))
+  let ids : Map[String, Bool] = Map([])
+  let teacher_repeats : Map[String, String] = Map([])
+  let chunks : Array[Json] = []
+  let mut transitions = 0
+  @async.with_task_group() <| group => {
+    let (reader, child_output) = @process.read_from_process()
+    let process = @process.spawn(
+      group,
+      "gzip",
+      ["-cd", log],
+      stdout=child_output,
+    )
+    while reader.read_until("\n") is Some(line) {
+      if line.trim().is_empty() {
+        continue
+      }
+      let record = @json.parse(line)
+      let index = chunks.length()
+      let row = rows[index]
+      let seed = num(field(row, "seed")).to_int()
+      let mode = string(field(row, "mode"))
+      assert_eq(field(record, "seed"), Json(seed))
+      assert_eq(field(record, "mode"), Json(mode))
+      assert_eq(
+        field(row, "actor_sha256"),
+        Json(checkpoint_digest(policies + "/actor-seed-\{seed}")),
+      )
+      assert_eq(field(row, "direct_baselines_match"), true)
+      let dataset = field(record, "dataset")
+      let episodes = array(field(dataset, "episodes"))
+      let trials = array(field(record, "trials"))
+      let diagnostics = array(field(record, "diagnostics"))
+      assert_eq(episodes.length(), 15)
+      assert_eq(trials.length(), 15)
+      assert_eq(diagnostics.length(), 15)
+      let mut chunk_transitions = 0
+      for i, episode in episodes {
+        let id = string(field(episode, "id"))
+        assert_false(ids.contains(id))
+        ids.set(id, true)
+        let trial = trials[i]
+        let scope = string(field(trial, "scope"))
+        assert_eq(
+          id,
+          string(field(trial, "episode_id")) +
+          "-policy-\{seed}-" +
+          mode +
+          "-" +
+          scope,
+        )
+        assert_eq(field(episode, "case_id"), field(trial, "case_id"))
+        let steps = array(field(episode, "steps"))
+        assert_eq(num(field(trial, "steps")).to_int(), steps.length())
+        assert_eq(
+          num(field(diagnostics[i], "samples")).to_int(),
+          steps.length(),
+        )
+        assert_eq(
+          field(trial, "failed"),
+          field(steps.last().unwrap(), "terminated"),
+        )
+        assert_true(
+          (num(field(trial, "simulated_seconds")) -
+          steps.length().to_double() * num(field(dataset, "dt_s"))).abs() <
+          1.0e-10,
+        )
+        if mode.has_prefix("teacher") && scope == "canonical-development" {
+          // Teacher-only controllers ignore actor identity. These repeats are
+          // not additional independent physical conditions.
+          let key = mode +
+            ":" +
+            string(field(trial, "case_id")) +
+            ":" +
+            field(trial, "seed").stringify()
+          let hash = @crypto.bytes_to_hex_string(
+            @crypto.sha256(@utf8.encode(field(episode, "steps").stringify())),
+          )
+          if teacher_repeats.get(key) is Some(previous) {
+            assert_eq(hash, previous)
+          } else {
+            teacher_repeats.set(key, hash)
+          }
+        }
+        chunk_transitions += steps.length()
+      }
+      assert_eq(num(field(row, "transitions")).to_int(), chunk_transitions)
+      transitions += chunk_transitions
+      let temporary = study + "/native-chunk.json"
+      @fs.write_file(
+        temporary,
+        dataset.stringify(),
+        create_mode=CreateOrTruncate,
+      )
+      let checked = @json.parse(
+        run(
+          root +
+          "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+          [temporary, "train", "1", "1000000"],
+        ),
+      )
+      assert_eq(field(checked, "window_length"), 1)
+      @fs.remove(temporary)
+      chunks.push({
+        "seed": Json(seed),
+        "mode": Json(mode),
+        "episodes": 15,
+        "transitions": Json(chunk_transitions),
+        "native_checked_all_splits": true,
+      })
+      println(
+        "Native checked intervention \{index + 1}/24: " + mode + " seed \{seed}",
+      )
+    }
+    reader.close()
+    assert_eq(process.wait(), 0)
+  }
+  assert_eq(chunks.length(), 24)
+  assert_eq(ids.length(), 360)
+  assert_eq(teacher_repeats.length(), 24)
+  let variants : Array[Json] = []
+  for mode in array(field(config, "modes")) {
+    let selected = rows.filter(r => field(r, "mode") == mode)
+    assert_eq(selected.length(), 3)
+    assert_eq(selected.map(r => field(r, "seed")), [0, 1, 2])
+    let canonical_counts : Array[Json] = []
+    for case_id in ["stand", "sway", "wave"] {
+      let mut falls = 0
+      for row in selected {
+        let trials = array(field(row, "trials")).filter(t => {
+          field(t, "scope") == "canonical-development" &&
+          field(t, "case_id") == Json(case_id)
+        })
+        assert_eq(trials.length(), 2)
+        falls += trials
+          .filter(t => field(t, "failed") == (true : Json))
+          .length()
+      }
+      canonical_counts.push({
+        "case": Json(case_id),
+        "policy_condition_cells": 6,
+        "falls": Json(falls),
+      })
+    }
+    variants.push({
+      "mode": mode,
+      "train": pool(selected, "train"),
+      "canonical": pool(selected, "canonical-development"),
+      "canonical_cases": Json(canonical_counts),
+    })
+  }
+  let shadows : Array[Json] = []
+  let student = rows.filter(r => field(r, "mode") == "student")
+  for scope in ["train", "canonical-development"] {
+    for comparison in ["student", "1", "10", "50"] {
+      let groups : Array[Json] = []
+      for group in ["ankle", "ankle_waist", "lower", "other", "all"] {
+        let mut count = 0.0
+        let mut squared = 0.0
+        for row in student {
+          for diagnostic in array(field(row, "diagnostics")) {
+            if field(diagnostic, "scope") != Json(scope) {
+              continue
+            }
+            let samples = num(field(diagnostic, "samples"))
+            let rmse = num(
+              field(
+                field(
+                  field(field(diagnostic, "shadow"), comparison),
+                  "group_rmse_rad",
+                ),
+                group,
+              ),
+            )
+            squared += samples * rmse * rmse
+            count += samples
+          }
+        }
+        groups.push({
+          "group": Json(group),
+          "rmse_rad": Json((squared / count).sqrt()),
+          "physical_states": Json(count.to_int()),
+        })
+      }
+      shadows.push({
+        "scope": Json(scope),
+        "comparison_to_full_teacher": Json(comparison),
+        "groups": Json(groups),
+      })
+    }
+  }
+  @fs.write_file(
+    args[3],
+    (
+      {
+        "format": "moonrobo.g1-balance-intervention-study.v1",
+        "variants": Json(variants),
+        "student_state_shadow": Json(shadows),
+        "native_chunks": Json(chunks),
+        "episodes": 360,
+        "transitions": Json(transitions),
+        "verification_repeat_episodes": field(report, "verification_rollouts"),
+        "source_report_sha256": Json(digest(study + "/report.json")),
+        "source_provenance": source_metadata(report),
+        "physics_log_sha256": field(report, "physics_log_sha256"),
+        "groups": field(report, "groups"),
+        "teacher_only_canonical_repeats_identical": true,
+        "denominator_note": "Canonical table counts 18 actor-condition cells per mode. Each teacher-only mode repeats the same six unique case/reset conditions for all three unused actors; exact physical step hashes match. No independent-trial inference.",
+        "scope": field(report, "scope"),
+        "learned_policy_qualified": false,
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    (
+      {
+        "variants": Json(variants),
+        "student_state_shadow": Json(shadows),
+        "transitions": Json(transitions),
+      } : Json).stringify(),
+  )
+}

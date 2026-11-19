@@ -1,0 +1,64 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  let suffix = match @env.args() {
+    [_] => "a"
+    [_, "completed"] => "b"
+    _ => fail("optional completed mode only")
+  }
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024"
+  let original = @fs.read_file(
+    root + "/layernorm-full-retest-20261026/advise_full_ln_b.mbtx",
+  ).text()
+  let labels = [
+    "top3-world-base-gate-a", "top3-world-batched-gate-a", "top3-actor1024-gate-a",
+    "top3-norm-snapshot-gate-a",
+  ]
+  for variant in ["world-batched", "norm-snapshot"] {
+    for i in 0..<4 {
+      labels.push("top3-" + variant + "-off-" + i.to_string())
+    }
+  }
+  if suffix == "b" {
+    labels.push("top3-sparse-axis-gate-b")
+    for i in 0..<4 {
+      labels.push("top3-sparse-axis-off-" + i.to_string())
+    }
+    for variant in ["world-batched", "sparse-axis"] {
+      for i in 0..<2 {
+        labels.push("top3-" + variant + "-events-" + i.to_string())
+      }
+    }
+  }
+  let builder = StringBuilder()
+  let mut n = 0
+  for line in original.split("\n") {
+    if line.contains("  let labels = [") {
+      builder.write_string("  let labels = " + Json(labels).stringify() + "\n")
+      n += 1
+    } else {
+      builder.write_string(line.to_owned() + "\n")
+    }
+  }
+  guard n == 1 else { fail("one fixed allowlist") }
+  let name = "advise_top3_" + suffix + ".mbtx"
+  let path = root + "/top3-frequency-20261026/" + name
+  @fs.write_file(path, builder.to_string(), create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      path,
+      "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/" +
+      name,
+    ]) ==
+    0 else {
+    fail("upload")
+  }
+}

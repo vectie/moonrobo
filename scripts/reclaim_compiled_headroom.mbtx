@@ -1,0 +1,57 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let code = @fs.read_file(dir + "/reclaim_resident_a.mbtx")
+    .text()
+    .replace_all(old="resident-aoti-", new="resident-aoti-b-")
+    .replace_all(
+      old="compiled-resident-output-advice-a.json",
+      new="compiled-resident-output-advice-b.json",
+    )
+    .replace_all(old="17179869184L", new="137438953472L")
+    .replace_all(
+      old="Reclaim at most16GiB",
+      new="Advise at most128GiB of backing files (resident bytes can be much lower)",
+    )
+  @fs.write_file(dir + "/reclaim_resident_b.mbtx", code, create_mode=CreateNew)
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      dir + "/reclaim_resident_b.mbtx",
+      "wlc004s@192.168.2.179:" + base + "/reclaim_resident_b.mbtx",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179",
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/reclaim_resident_b.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        dir + "/reclaim-resident-b.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        dir + "/reclaim-resident-b.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+}

@@ -1,0 +1,227 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+let tool = "/home/wlc004s/moonrobo/private/fincore-official-20261024-a/root/usr/bin/fincore"
+
+///|
+fn minimum(a : Int32, b : Int32) -> Int32 {
+  if a < b {
+    a
+  } else {
+    b
+  }
+}
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(m) && m.get(k) is Some(v) else { fail("missing " + k) }
+  v
+}
+
+///|
+fn number(j : Json) -> Int64 raise {
+  guard j is Number(n) && n >= 0.0 && n <= 9007199254740991.0 && n.floor() == n else {
+    fail("expected bounded nonnegative integer")
+  }
+  n.to_int64()
+}
+
+///|
+async fn bounded(reader : &@io.Reader) -> String {
+  let b = FixedArray::make(4194305, b'\x00')
+  let mut total = 0
+  for ;; {
+    let n = reader.read(b, offset=total, max_len=b.length() - total)
+    if n == 0 {
+      break
+    }
+    total += n
+    guard total <= 4194304 else { fail("command exceeded 4 MiB output cap") }
+  }
+  @utf8.decode(Bytes::from_array(b[:total]))
+}
+
+///|
+async fn command(program : String, args : Array[String]) -> String {
+  @async.with_timeout(60000, () => {
+    let (out, out_to) = @process.read_from_process()
+    let (err, err_to) = @process.read_from_process()
+    @async.with_task_group() <| g => {
+      let child = g.spawn(() => {
+        @process.run(program, args, stdout=out_to, stderr=err_to)
+      })
+      let stdout = g.spawn(() => {
+        defer out.close()
+        bounded(out)
+      })
+      let stderr = g.spawn(() => {
+        defer err.close()
+        bounded(err)
+      })
+      let code = child.wait()
+      let output = stdout.wait()
+      let errors = stderr.wait()
+      guard code == 0 else {
+        fail("command failed: " + program + ": " + errors)
+      }
+      output
+    }
+  })
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() >= 4 && args.length() <= 11 && args[1] == "--scan" else {
+    fail(
+      "usage: --scan FRESH_JSON CANONICAL_ROOT [ROOT ...]; metadata and mincore only",
+    )
+  }
+  let output = args[2]
+  guard output.has_prefix("/home/wlc004s/moonrobo/private/") &&
+    !output.contains("..") else {
+    fail("report must be a fresh task-private path")
+  }
+  let roots = args[3:].to_array()
+  let paths : Array[String] = []
+  let identities : Map[String, Bool] = Map([])
+  let duplicate_paths : Array[String] = []
+  for root in roots {
+    guard root.has_prefix("/home/wlc004s/moonrobo/") ||
+      root.has_prefix("/home/wlc004s/lunaflux-") ||
+      root == "/home/wlc004s/.cache/huggingface/hub" else {
+      fail("root outside explicit task/library scope")
+    }
+    guard @fs.realpath(root) == root &&
+      @fs.kind(root, follow_symlink=false) == Directory else {
+      fail("root must be an existing canonical directory")
+    }
+    let inventory = command("find", [
+      root, "-xdev", "-maxdepth", "14", "-type", "f", "-uid", "1000", "-size", "+8M",
+      "-printf", "%D:%i\t%p\\0",
+    ])
+    for line in inventory.split("\x00") {
+      if line == "" {
+        continue
+      }
+      let fields = line.split("\t").to_array()
+      guard fields.length() == 2 else { fail("invalid inventory record") }
+      let identity = fields[0].to_owned()
+      let path = fields[1].to_owned()
+      guard path.has_prefix(root + "/") &&
+        path.iter().all(c => c >= ' ' && c != '\u007f') else {
+        fail("invalid inventory path")
+      }
+      if identities.contains(identity) {
+        duplicate_paths.push(path)
+      } else {
+        identities[identity] = true
+        paths.push(path)
+      }
+      guard paths.length() <= 6000 else { fail("more than 6000 large files") }
+    }
+  }
+  let rows : Array[Json] = []
+  let resident : Array[Json] = []
+  let by_directory : Map[String, Int64] = Map([])
+  let mut total_size = 0L
+  let mut total_res = 0L
+  let mut total_pages = 0L
+  for start = 0; start < paths.length(); start = start + 32 {
+    let batch = paths[start:minimum(start + 32, paths.length())].to_array()
+    let argv = ["--json", "--bytes", "--output", "FILE,SIZE,RES,PAGES"]
+    for path in batch {
+      argv.push(path)
+    }
+    let report = @json.parse(command(tool, argv))
+    guard field(report, "fincore") is Array(result) &&
+      result.length() == batch.length() else {
+      fail("fincore returned incomplete records")
+    }
+    for i, row in result {
+      guard field(row, "file") == Json(batch[i]) else {
+        fail("fincore file order mismatch")
+      }
+      let size = number(field(row, "size"))
+      let res = number(field(row, "res"))
+      let pages = number(field(row, "pages"))
+      guard size <= 274877906944L && res <= size + 65536L else {
+        fail("file bounds exceeded")
+      }
+      total_size += size
+      total_res += res
+      total_pages += pages
+      rows.push(row)
+      if res > 0L {
+        resident.push(row)
+        let path = batch[i]
+        let prefix = "/home/wlc004s/moonrobo/"
+        let parts = path[prefix.length():].split("/").to_array()
+        let directory = if path.has_prefix(prefix) && parts.length() >= 3 {
+          prefix + parts[0].to_owned() + "/" + parts[1].to_owned()
+        } else {
+          roots[0]
+        }
+        by_directory[directory] = by_directory.get(directory).unwrap_or(0L) +
+          res
+      }
+    }
+  }
+  // Insertion sort is bounded by 6000 records and compares metadata only.
+  for i in 1..<resident.length() {
+    let row = resident[i]
+    let value = number(field(row, "res"))
+    let mut j = i
+    while j > 0 && number(field(resident[j - 1], "res")) < value {
+      resident[j] = resident[j - 1]
+      j -= 1
+    }
+    resident[j] = row
+  }
+  let report : Json = {
+    "format": "moonrobo.task-file-residency.v1",
+    "tool": tool,
+    "tool_sha256": "274ba306fe0b05add3a1b8a5fbdc3adba33a985b76686a2b9384860814b63ffb",
+    "roots": roots,
+    "minimum_file_size_exclusive_bytes": 8388608,
+    "max_depth": 14,
+    "only_file_uid": 1000,
+    "file_count": paths.length(),
+    "total_file_bytes": total_size,
+    "total_resident_bytes": total_res,
+    "total_resident_pages": total_pages,
+    "duplicate_inode_paths_skipped": duplicate_paths,
+    "resident_files_descending": resident,
+    "resident_bytes_by_directory": by_directory,
+    "all_files": rows,
+    "payload_read": false,
+    "cache_advice_performed": false,
+    "limitations": "Point-in-time mincore; metadata-only enumeration; depth/size bounds; no lifetime or reclaimability guarantee. Linux may conservatively report all pages for files not owned/writable by this user; verify ownership before interpreting nonzero residency.",
+  }
+  @fs.write_file(
+    output,
+    report.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+  println(
+    (
+      {
+        "output": output,
+        "files": paths.length(),
+        "resident_bytes": total_res,
+        "resident_files": resident.length(),
+        "top": resident[:minimum(20, resident.length())].to_array(),
+      } : Json).stringify(indent=2),
+  )
+}

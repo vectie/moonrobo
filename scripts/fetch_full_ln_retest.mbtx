@@ -1,0 +1,93 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["gates", "final"].contains(mode) else {
+    fail("gates|final")
+  }
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/layernorm-full-retest-20261026"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let pair = "/home/wlc004s/moonrobo/runs/native-full-ln-vs-smc512-20261026-d"
+  async fn fetch(source : String, target : String) -> Unit {
+    guard !@fs.exists(target) else { fail("keep prior evidence: " + target) }
+    guard @process.run("scp", [
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179:" + source,
+        target,
+      ]) ==
+      0 else {
+      fail("fetch " + source)
+    }
+  }
+  if mode == "gates" {
+    fetch(base + "/full-ln-gates-a.json", root + "/gates.json")
+    for phase in ["world", "actor"] {
+      for implementation in ["native", "smc-eager", "smc"] {
+        let label = "full-ln-" +
+          implementation +
+          "-" +
+          phase +
+          (if implementation == "native" { "-gate-a" } else { "-gate-c" })
+        let remote = "/home/wlc004s/moonrobo/runs/hotspot-shared-" + label
+        @fs.mkdir(root + "/" + label)
+        for
+          file in [
+            "result.json", "protocol.json", "completion.json", "training-guard.json",
+            "training.stdout.log", "training.stderr.log", "training-docker-final.json",
+          ] {
+          fetch(remote + "/" + file, root + "/" + label + "/" + file)
+        }
+      }
+    }
+    return
+  }
+  @fs.mkdir(root + "/pair")
+  for name in ["spec.json", "plan.json", "summary.json"] {
+    fetch(pair + "/" + name, root + "/pair/" + name)
+  }
+  for i in 0..<4 {
+    let folder = "/run-" + i.to_string()
+    @fs.mkdir(root + "/pair" + folder)
+    for
+      name in [
+        "result.json", "training-guard.json", "training-docker-final.json", "training.stdout.log",
+        "training.stderr.log",
+      ] {
+      fetch(pair + folder + "/" + name, root + "/pair" + folder + "/" + name)
+    }
+    if i == 0 || i == 3 {
+      for
+        name in [
+          "preflight.stdout.log", "preflight-guard.json", "native-config.json",
+        ] {
+        fetch(pair + folder + "/" + name, root + "/pair" + folder + "/" + name)
+      }
+    }
+  }
+  for
+    (name, argv) in [
+      (
+        "gpu-processes.txt", "nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv,noheader",
+      ),
+      ("docker-ps.txt", "docker ps --quiet"),
+    ] {
+    guard @process.run(
+        "ssh",
+        ["-S", "/tmp/moonrobo-operator-179.sock", "wlc004s@192.168.2.179", argv],
+        stdout=@process.redirect_to_file(
+          root + "/" + name,
+          create_mode=CreateNew,
+        ),
+      ) ==
+      0 else {
+      fail("idle inventory")
+    }
+  }
+}

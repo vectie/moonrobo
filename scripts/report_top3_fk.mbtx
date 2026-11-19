@@ -1,0 +1,191 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/top3-frequency-20261026"
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(m) && m.get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn num(j : Json) -> Double raise {
+  guard j is Number(x, ..) else { fail("number required") }
+  x
+}
+
+///|
+fn median(v : Array[Double]) -> Double raise {
+  guard v.length() == 10 else { fail("ten measurements required") }
+  let s = v.copy()
+  s.sort()
+  (s[4] + s[5]) / 2.0
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn fetch(path : String, dest : String) -> Unit {
+  if @fs.exists(dest) {
+    return
+  }
+  guard @process.run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/" + path,
+      dest,
+    ]) ==
+    0 else {
+    fail("fetch")
+  }
+}
+
+///|
+async fn result(label : String) -> Array[Json] {
+  let dir = root + "/" + label
+  if !@fs.exists(dir) {
+    @fs.mkdir(dir)
+  }
+  for
+    name in [
+      "result.json", "protocol.json", "training-guard.json", "training-docker-final.json",
+    ] {
+    fetch("runs/hotspot-shared-" + label + "/" + name, dir + "/" + name)
+  }
+  guard read(dir + "/training-guard.json")
+    is { "reason": "completed", "error": Null, .. } else {
+    fail("guard incomplete")
+  }
+  guard read(dir + "/training-docker-final.json")
+    is [{ "State": { "OOMKilled": False, "Running": False, .. }, .. }] else {
+    fail("unsafe")
+  }
+  guard field(read(dir + "/result.json"), "rows") is Array(all) else {
+    fail("rows")
+  }
+  all.filter(r => field(r, "steady") == Json(true))
+}
+
+///|
+fn phase_time(row : Json, labels : Array[String]) -> Double raise {
+  guard field(row, "profile")
+    is {
+      "spans": Array(spans),
+      "dropped_spans": Number(0, ..),
+      "open_spans": Number(0, ..),
+      ..
+    } else {
+    fail("bounded complete spans required")
+  }
+  let seen : Map[String, Bool] = Map([])
+  let mut total = 0.0
+  for span in spans {
+    guard field(span, "label") is String(name) else { fail("label") }
+    if labels.contains(name) {
+      seen[name] = true
+      total += num(field(span, "gpu_elapsed_ms"))
+    }
+  }
+  guard seen.length() == labels.length() else { fail("missing phase") }
+  total
+}
+
+///|
+async fn main {
+  let prefix = "private/shared-compute-20261026-a/"
+  let name = "top3-sparse-axis-gate-b.numeric.json"
+  fetch(prefix + name, root + "/" + name)
+  let gate = read(root + "/" + name)
+  let passed = field(gate, "passed") == Json(true)
+  let mut pair = Json::null()
+  if passed {
+    let ms = []
+    for i in 0..<4 {
+      let rows = result("top3-sparse-axis-off-" + i.to_string())
+      ms.push(median(rows.map(r => num(field(r, "wall_ms")))))
+    }
+    let a = (ms[0] + ms[3]) / 2.0
+    let b = (ms[1] + ms[2]) / 2.0
+    pair = {
+      "baseline_ms": Json(a),
+      "candidate_ms": Json(b),
+      "saved_ms": Json(a - b),
+      "time_reduction_percent": Json((a - b) / a * 100.0),
+      "medians_abba_ms": Json(ms),
+      "ab_saved_ms": Json(ms[0] - ms[1]),
+      "ba_saved_ms": Json(ms[3] - ms[2]),
+      "scope": "actor+critic complete update; logical 4096, eight512, H32, critic20 updates; no profiler",
+    }
+  }
+  let phases = []
+  let variants = if passed {
+    ["world-batched", "sparse-axis"]
+  } else {
+    ["world-batched"]
+  }
+  for variant in variants {
+    let a = result("top3-" + variant + "-events-0")
+    let b = result("top3-" + variant + "-events-1")
+    let groups = if variant == "world-batched" {
+      [
+        ("forward", ["world.forward"]),
+        ("backward", ["world.backward"]),
+        ("adam", ["world.adam"]),
+      ]
+    } else {
+      [
+        (
+          "forward_geometry_reward_tail",
+          ["actor.forward", "actor.geometry", "actor.reward", "actor.tail"],
+        ),
+        ("backward", ["actor.backward"]),
+        ("critic_prepare", ["actor.critic_features", "critic.prepare"]),
+      ]
+    }
+    let operations = []
+    for (name, labels) in groups {
+      let av = median(a.map(row => phase_time(row, labels)))
+      let bv = median(b.map(row => phase_time(row, labels)))
+      operations.push({
+        "operation": Json(name),
+        "baseline_ms": Json(av),
+        "candidate_ms": Json(bv),
+        "saved_ms": Json(av - bv),
+      })
+    }
+    phases.push({
+      "variant": Json(variant),
+      "operations": Json(operations),
+      "baseline_event_wall_ms": Json(
+        median(a.map(r => num(field(r, "wall_ms")))),
+      ),
+      "candidate_event_wall_ms": Json(
+        median(b.map(r => num(field(r, "wall_ms")))),
+      ),
+    })
+  }
+  fetch(prefix + "top3-fk-completed.json", root + "/top3-fk-completed.json")
+  let summary : Json = {
+    "numeric_gate": gate,
+    "unprofiled_abba": pair,
+    "low_overhead_phase_intervals": Json(phases),
+    "limits": "Phase intervals include stream queue gaps. No-profiler ABBA determines benefit. Independent optimizations are not added into a claimed full-round gain. Original flags and memory guards retained.",
+  }
+  @fs.write_file(
+    root + "/fk-results.json",
+    summary.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(pair.stringify(indent=2))
+  println(Json(phases).stringify(indent=2))
+}

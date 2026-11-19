@@ -1,0 +1,91 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, stage] && ["prepare", "build"].contains(stage) else {
+    fail("prepare/build")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  if stage == "prepare" {
+    let original = @fs.read_file(out + "/training_fixture_am.mbt").text()
+    let fixture = original
+      .replace_all(
+        old="if active == name || (active == \"actor\" && i > 0)",
+        new="if active == \"train\" || active == name || (active == \"actor\" && i > 0)",
+      )
+      .replace_all(
+        old="if mode == \"world\" {\n        \"world\"",
+        new="if mode == \"train\" {\n        \"train\"\n      } else if mode == \"world\" {\n        \"world\"",
+      )
+    guard fixture != original &&
+      fixture.contains("if active == \"train\"") &&
+      fixture.contains("\"train\"\n      } else if") else {
+      fail("all three training gradients required")
+    }
+    let build = @fs.read_file(out + "/build_aligned_training_am.mbtx")
+      .text()
+      .replace_all(old="training-native-am", new="training-native-ap")
+      .replace_all(old="training_fixture_am", new="training_fixture_ap")
+      .replace_all(old="training-am", new="training-ap")
+    let runner = @fs.read_file(out + "/run_aligned_training_am.mbtx")
+      .text()
+      .replace_all(
+        old="run_aligned_training_am.mbtx",
+        new="run_aligned_training_ap.mbtx",
+      )
+      .replace_all(
+        old="actor-step-gate-training-native-am",
+        new="actor-step-gate-training-native-ap",
+      )
+      .replace_all(old="training-native-gate-am", new="training-native-gate-ap")
+    for
+      (name, value) in [
+        ("training_fixture_ap.mbt", fixture),
+        ("build_aligned_training_ap.mbtx", build),
+        ("run_aligned_training_ap.mbtx", runner),
+      ] {
+      @fs.write_file(out + "/" + name, value, create_mode=CreateNew)
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/build_aligned_training_ap_complete.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/training-build-ap.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/training-build-ap.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+}

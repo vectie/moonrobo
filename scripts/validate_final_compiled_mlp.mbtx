@@ -1,0 +1,102 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let runner = @fs.read_file(out + "/run_compiled_contracts_a.mbtx")
+    .text()
+    .replace_all(
+      old="run_compiled_contracts_a.mbtx",
+      new="run_compiled_contracts_final2.mbtx",
+    )
+    .replace_all(old="compiled-world-gate-a", new="compiled-window-gate-c")
+    .replace_all(
+      old="libmoonrobo_compiled_mlp_a.so",
+      new="libmoonrobo_compiled_window_e.so",
+    )
+    .replace_all(
+      old="\"/workspace/moonrobo/runs/hotspot-mlp-aoti-native-\"+amp+(if amp==\"none\" {\"-gate-d\"}else{\"-gate-a\"})",
+      new="\"/workspace/moonrobo/runs/hotspot-mlp-aoti-final2-native-\"+amp+\"-gate\"",
+    )
+  assert_true(runner.contains("hotspot-mlp-aoti-final2-native-"))
+  @fs.write_file(
+    out + "/run_compiled_contracts_final2.mbtx",
+    runner,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/run_compiled_contracts_final2.mbtx",
+      "wlc004s@192.168.2.179:" + base + "/run_compiled_contracts_final2.mbtx",
+    ]),
+    0,
+  )
+  for
+    (amp, side, gate) in [
+      ("bf16", "aoti", "1"),
+      ("bf16", "smc", "1"),
+      ("none", "aoti", "1"),
+      ("none", "smc", "1"),
+      ("bf16", "aoti", "0"),
+      ("bf16", "smc", "0"),
+      ("none", "smc", "0"),
+      ("none", "aoti", "0"),
+    ] {
+    let label = "aoti-final2-" +
+      (if side == "aoti" { "native" } else { "smc" }) +
+      "-" +
+      amp +
+      (if gate == "1" { "-gate" } else { "-bench" })
+    let folder = out + "/" + label
+    @fs.mkdir(folder)
+    let code = @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179",
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/run_compiled_contracts_final2.mbtx -- " +
+        [side, amp, gate, label].join(" "),
+      ],
+      stdout=@process.redirect_to_file(
+        folder + "/controller.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        folder + "/controller.stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    for
+      file in [
+        "result.json", "protocol.json", "completion.json", "training-guard.json",
+        "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/runs/hotspot-mlp-" +
+          label +
+          "/" +
+          file,
+          folder + "/" + file,
+        ]),
+      )
+    }
+    println(label + " exit=" + code.to_string())
+    assert_eq(code, 0)
+  }
+}

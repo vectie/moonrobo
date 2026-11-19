@@ -1,0 +1,28 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() >= 3 else {
+    fail("usage: run_g1_aligned.mbtx REPO [aligned.train options]")
+  }
+  let root = args[1]
+  let (python, start) = if args[2] == "--python" {
+    guard args.length() >= 5 else {
+      fail("--python requires an interpreter and training arguments")
+    }
+    (args[3], 4)
+  } else {
+    (root + "/target/learning-venv/bin/python", 2)
+  }
+  let command = ["-m", "providers.motion_learning.aligned.train"]
+  for arg in args[start:] {
+    command.push(arg)
+  }
+  assert_eq(@process.run(python, command, cwd=root), 0)
+}

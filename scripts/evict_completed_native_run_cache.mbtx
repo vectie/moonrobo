@@ -1,0 +1,355 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+let allowed_root = "/home/wlc004s/moonrobo/runs"
+
+///|
+struct Progress {
+  mut eligible_files : Int32
+  mut eligible_bytes : Int64
+  mut advised_files : Int32
+  mut advised_bytes : Int64
+  mut skipped : Int32
+  mut bounded : Bool
+}
+
+///|
+fn safe_component(name : String) -> Bool {
+  name != "" &&
+  name != "." &&
+  name != ".." &&
+  name.iter().all(c => c >= ' ' && c != '\u007f' && c != '/' && c != '\\')
+}
+
+///|
+fn in_scope(path : String) -> Bool {
+  (path == allowed_root || path.has_prefix(allowed_root + "/")) &&
+  path[1:].split("/").all(part => safe_component(part.to_owned()))
+}
+
+///|
+fn excluded_component(name : String) -> Bool {
+  // Conservatively exclude any partial path component, plus private/model trees.
+  name.contains("partial") ||
+  name.contains(".building") ||
+  name == "private" ||
+  name == ".private" ||
+  name == "model" ||
+  name == "models"
+}
+
+///|
+fn published_payload(name : String) -> Bool {
+  if !safe_component(name) || excluded_component(name) {
+    return false
+  }
+  if name.has_suffix(".pt") ||
+    name.has_suffix(".f64") ||
+    name.has_suffix(".f64le") ||
+    name.has_suffix(".wrp") ||
+    name.has_suffix(".i32le") {
+    // i32le: replay_checkpoint.mbt, runtime/checkpoint_v2.mbt.
+    return true
+  }
+  // aligned/motion.py publishes exactly motion-<24 lowercase hex>.f32.
+  // Excludes motion-source-*.f32 and motion-*.building.f32 temporaries.
+  name.length() == 35 &&
+  name.has_prefix("motion-") &&
+  name.has_suffix(".f32") &&
+  name[7:31].iter().all(c => c is ('0'..<='9' | 'a'..<='f'))
+}
+
+///|
+fn lowercase_hex(value : StringView, length : Int32) -> Bool {
+  value.length() == length &&
+  value.iter().all(c => c is ('0'..<='9' | 'a'..<='f'))
+}
+
+///|
+fn published_compute_cache(path : String) -> Bool {
+  if !in_scope(path) || path == allowed_root {
+    return false
+  }
+  let parts = path[allowed_root.length() + 1:].split("/").to_array()
+  // DDP places home below rank-N, while single-rank runs use the run root.
+  // Require the same exact cache suffix within the bounded canonical runs tree.
+  let n = parts.length()
+  n >= 6 &&
+  !parts.any(part => excluded_component(part.to_owned())) &&
+  parts[n - 5] == ".nv" &&
+  parts[n - 4] == "ComputeCache" &&
+  lowercase_hex(parts[n - 3], 1) &&
+  lowercase_hex(parts[n - 2], 1) &&
+  lowercase_hex(parts[n - 1], 14)
+}
+
+///|
+fn selected_file(
+  path : String,
+  name : String,
+  compute_cache_only : Bool,
+) -> Bool {
+  if compute_cache_only {
+    published_compute_cache(path)
+  } else {
+    published_payload(name)
+  }
+}
+
+///|
+async fn require_idle_docker() -> Unit {
+  // Explicit local daemon: DOCKER_HOST/context must not inspect another host.
+  let status = @shell.Cmd("docker", [
+    "--host", "unix:///var/run/docker.sock", "ps", "--quiet",
+  ]).output(timeout_ms=10000, max_output_bytes=4096)
+  guard status.exit_code() == 0 && status.stdout().trim() == "" else {
+    fail(
+      "refusing cache advice: local docker ps failed or containers are running",
+    )
+  }
+}
+
+///|
+async fn require_canonical(path : String, directory~ : Bool) -> Unit {
+  guard in_scope(path) else { fail("path is outside the canonical runs scope") }
+  let expected = if directory { @fs.FileKind::Directory } else { Regular }
+  guard @fs.kind(path, follow_symlink=false) == expected &&
+    @fs.realpath(path) == path else {
+    fail("refusing a symlink, changed path, or unexpected file kind: " + path)
+  }
+}
+
+///|
+async fn advise_directory(
+  directory : String,
+  maximum : Int32,
+  progress : Progress,
+  depth : Int32,
+  compute_cache_only : Bool,
+) -> Unit {
+  guard depth <= 64 else { fail("runs directory depth exceeds 64") }
+  require_canonical(directory, directory=true)
+  let entries = @fs.opendir(directory)
+  defer entries.close()
+  while !progress.bounded {
+    guard entries.next(include_hidden=true, include_special=false)
+      is Some(entry) else {
+      break
+    }
+    guard safe_component(entry.name) else {
+      fail("unsafe path component in runs")
+    }
+    let path = directory + "/" + entry.name
+    let kind = @fs.kind(path, follow_symlink=false)
+    guard kind != SymLink else { fail("refusing symlink in runs: " + path) }
+    if excluded_component(entry.name) {
+      progress.skipped += 1
+      continue
+    }
+    match kind {
+      Directory =>
+        advise_directory(path, maximum, progress, depth + 1, compute_cache_only)
+      Regular if selected_file(path, entry.name, compute_cache_only) => {
+        if progress.advised_files == maximum {
+          progress.bounded = true
+          break
+        }
+        if progress.advised_files > 0 && progress.advised_files % 1000 == 0 {
+          require_idle_docker()
+        }
+        require_canonical(directory, directory=true)
+        require_canonical(path, directory=false)
+        let size = @fs.file_size(path)
+        guard size >= 0 &&
+          size <= 9223372036854775807L - progress.eligible_bytes else {
+          fail("invalid or overflowing payload size total")
+        }
+        progress.eligible_files += 1
+        progress.eligible_bytes += size
+        // Zero payload reads/writes; only file-specific POSIX_FADV_DONTNEED.
+        // nofollow also rejects a final symlink introduced after metadata checks.
+        let result = @shell.Cmd("dd", [
+          "if=" + path,
+          "iflag=nocache,nofollow",
+          "count=0",
+          "status=none",
+        ]).output(timeout_ms=30000, max_output_bytes=4096)
+        guard result.exit_code() == 0 else {
+          fail(
+            "GNU dd cache advice failed for " + path + ": " + result.stderr(),
+          )
+        }
+        progress.advised_files += 1
+        progress.advised_bytes += size
+      }
+      _ => progress.skipped += 1
+    }
+  }
+}
+
+///|
+fn report(
+  progress : Progress,
+  maximum : Int32,
+  complete : Bool,
+  compute_cache_only : Bool,
+) -> Json {
+  {
+    "format": "moonrobo.completed-native-run-cache-advice.v1",
+    "root": Json(allowed_root),
+    "selection": Json(
+      if compute_cache_only {
+        "compute-cache-only"
+      } else {
+        "published-payloads"
+      },
+    ),
+    "max_files": Json(maximum),
+    "depth_limit": 64,
+    "eligible_files": Json(progress.eligible_files),
+    "eligible_bytes": Json(progress.eligible_bytes),
+    "advised_files": Json(progress.advised_files),
+    "advised_bytes": Json(progress.advised_bytes),
+    "skipped_entries_or_subtrees": Json(progress.skipped),
+    "scan_complete": Json(complete && !progress.bounded),
+    "max_files_bound_reached": Json(progress.bounded),
+    "counts_cover_visited_candidates_only": true,
+    "payload_bytes_read": 0,
+    "payload_bytes_written": 0,
+    "global_cache_operation": false,
+    "cache_reclaim_guaranteed": false,
+  }
+}
+
+///|
+fn self_test() -> Unit raise {
+  assert_true(in_scope(allowed_root))
+  assert_true(in_scope(allowed_root + "/run/generation-1/world.pt"))
+  for
+    invalid in [
+      "home/wlc004s/moonrobo/runs",
+      allowed_root + "/",
+      allowed_root + "//world.pt",
+      allowed_root + "/../private/data.pt",
+      allowed_root + "/./world.pt",
+      allowed_root + "-other/world.pt",
+      allowed_root + "/bad\nworld.pt",
+      allowed_root + "/bad\u0000world.pt",
+    ] {
+    assert_false(in_scope(invalid))
+  }
+  for
+    valid in [
+      "world.pt", "policy.pt", "shard.f64", "APIC.wrp", "replay.values.f64le", "history.lengths.i32le",
+      "motion-0123456789abcdef01234567.f32",
+    ] {
+    assert_true(published_payload(valid))
+  }
+  for
+    invalid in [
+      "world.pt.partial", "partial-world.pt", "world.partial.pt", "motion-0123456789abcdef01234567.building.f32",
+      "motion-source-0123456789abcdef01234567.f32", "motion-short.f32", "motion-0123456789ABCDEF01234567.f32",
+      "motion-0123456789abcdef0123456g.f32", "unknown.mmap", "unknown.i64le", "metadata.json",
+      "../world.pt", "path/world.pt",
+    ] {
+    assert_false(published_payload(invalid))
+  }
+  for excluded in ["generation-1.partial", "partial-run", "private", "models"] {
+    assert_true(excluded_component(excluded))
+  }
+  for
+    valid in [
+      "/native-apic-evaluation-actor-20261024-a/.nv/ComputeCache/5/0/914aa6d761b746",
+      "/g1-smc-runtime-gate-20261024-179/.nv/ComputeCache/0/d/b8b5b4c110deef", "/spark-ddp-gate-gate-20261024-a/rank0001/home/.nv/ComputeCache/5/0/914aa6d761b746",
+      "/spark-native-ddp-gate-native-ddp-20261024-d/rank-1/home/.nv/ComputeCache/5/0/914aa6d761b746",
+    ] {
+    let path = allowed_root + valid
+    assert_true(published_compute_cache(path))
+    assert_true(selected_file(path, "914aa6d761b746", true))
+    assert_false(selected_file(path, "914aa6d761b746", false))
+  }
+  for
+    invalid in [
+      "/run/.nv/ComputeCache/5/0/914aa6d761b74", // 13 digits
+       "/run/.nv/ComputeCache/5/0/914aa6d761b7460", // 15 digits
+       "/run/.nv/ComputeCache/5/0/914aa6d761b74G", "/run/.nv/ComputeCache/A/0/914aa6d761b746",
+      "/run/.nv/ComputeCache/50/0/914aa6d761b746", "/run/.nv/ComputeCache/5/0/914aa6d761b746.pt",
+      "/run/.nv/ComputeCache/5/0/914aa6d761b746.partial", "/run/.nv/OtherCache/5/0/914aa6d761b746",
+      "/run/nested/.nv/ComputeCacheX/5/0/914aa6d761b746", "/run.partial/.nv/ComputeCache/5/0/914aa6d761b746",
+      "/private/.nv/ComputeCache/5/0/914aa6d761b746", "/../run/.nv/ComputeCache/5/0/914aa6d761b746",
+      "/run/.nv/ComputeCache/5/0/914aa6d761b746/extra",
+    ] {
+    assert_false(published_compute_cache(allowed_root + invalid))
+  }
+  assert_false(
+    published_compute_cache("/tmp/run/.nv/ComputeCache/5/0/914aa6d761b746"),
+  )
+  assert_false(selected_file(allowed_root + "/run/world.pt", "world.pt", true))
+  assert_true(selected_file(allowed_root + "/run/world.pt", "world.pt", false))
+  println(
+    "{\"self_test\":\"passed\",\"filesystem_access\":false,\"commands_executed\":0}",
+  )
+}
+
+///|
+/// Idle-run maintenance only. The operator must keep other writers stopped;
+/// Docker is checked at start, every 1000 files, and completion; these checks
+/// cannot atomically exclude a concurrent launch.
+/// Metadata is inspected; no payload is read, no file is written/deleted, and
+/// there is no global cache operation. Advice may reclaim no memory.
+async fn main {
+  let args = @env.args()
+  if args.length() == 2 && args[1] == "--self-test" {
+    self_test()
+    return
+  }
+  guard (
+      args.length() == 3 ||
+      (args.length() == 4 && args[3] == "--compute-cache-only")
+    ) &&
+    args[1] == allowed_root else {
+    fail(
+      "usage: moon run evict_completed_native_run_cache.mbtx /home/wlc004s/moonrobo/runs POSITIVE_MAX_FILES [--compute-cache-only]; or --self-test",
+    )
+  }
+  let maximum = @string.parse_int(args[2])
+  let compute_cache_only = args.length() == 4
+  guard maximum > 0 else { fail("max_files must be positive") }
+  require_idle_docker()
+  require_canonical(allowed_root, directory=true)
+  let version = @shell.Cmd("dd", ["--version"]).output(
+    timeout_ms=10000,
+    max_output_bytes=4096,
+  )
+  guard version.exit_code() == 0 &&
+    (
+      version.stdout().has_prefix("dd (coreutils) ") ||
+      version.stdout().has_prefix("dd (GNU coreutils) ")
+    ) else {
+    fail("GNU dd is required")
+  }
+  let progress = {
+    eligible_files: 0,
+    eligible_bytes: 0L,
+    advised_files: 0,
+    advised_bytes: 0L,
+    skipped: 0,
+    bounded: false,
+  }
+  errdefer println(
+    report(progress, maximum, false, compute_cache_only).stringify(indent=2),
+  )
+  advise_directory(allowed_root, maximum, progress, 0, compute_cache_only)
+  require_idle_docker()
+  println(
+    report(progress, maximum, true, compute_cache_only).stringify(indent=2),
+  )
+}

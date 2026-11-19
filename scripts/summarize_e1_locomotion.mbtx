@@ -1,0 +1,181 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@utf8.decode(@fs.read_file(path).binary()))
+}
+
+///|
+fn[T : FromJson] field(row : Json, key : String) -> T raise {
+  guard row is Object(fields) && fields.get(key) is Some(value) else {
+    fail(key)
+  }
+  @json.from_json(value)
+}
+
+///|
+fn summarize(rows : Array[Json]) -> Json raise {
+  let mut root = 0.0
+  let mut joint = 0.0
+  let mut relative = 0.0
+  let mut reward = 0.0
+  let mut completed = 0
+  let mut strict = 0
+  for row in rows {
+    let tracking : Json = field(row, "strict_tracking")
+    let rmse : Json = field(tracking, "rmse")
+    root += field(rmse, "root_position_rmse_m")
+    relative += field(rmse, "root_relative_body_position_rmse_m")
+    joint += field(rmse, "joint_rmse_rad")
+    reward += field(row, "normalized_return")
+    if (field(row, "completed_full_duration") : Bool) {
+      completed += 1
+    }
+    if (field(tracking, "passed") : Bool) {
+      strict += 1
+    }
+  }
+  guard !rows.is_empty() else { fail("empty panel") }
+  let n = rows.length().to_double()
+  {
+    "clips": rows.length(),
+    "completed": completed,
+    "strict_passes": strict,
+    "return": reward / n,
+    "mean_clip_root_rmse_m": root / n,
+    "mean_clip_relative_body_rmse_m": relative / n,
+    "mean_clip_joint_rmse_rad": joint / n,
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, root] else { fail("comparison directory") }
+  let catalog = read(root + "/data-locomotion-v3/dataset.json")
+  let entries : Array[Json] = field(catalog, "entries")
+  let before = Array::make(3, 0.0)
+  let after = Array::make(3, 0.0)
+  for entry in entries {
+    let id : String = field(entry, "id")
+    let old = read(root + "/data-locomotion-v2/reports/" + id + ".json")
+    let new = read(root + "/data-locomotion-v3/reports/" + id + ".json")
+    for (report, total) in [(old, before), (new, after)] {
+      let dynamics : Json = field(report, "local_dynamics")
+      let p : Array[Double] = field(dynamics, "target_p95")
+      for j, x in p {
+        total[j] += x / entries.length().to_double()
+      }
+    }
+    assert_eq(
+      (field(old, "source_sha256") : String),
+      (field(new, "source_sha256") : String),
+    )
+    assert_eq(
+      (field(old, "source_start_frame") : Json),
+      (field(new, "source_start_frame") : Json),
+    )
+  }
+  let runs : Array[Json] = []
+  for split in ["train", "validation"] {
+    let ids = entries
+      .filter(e => (field(e, "split") : String) == split)
+      .map(e => (field(e, "id") : String))
+    for
+      (label, path) in [
+        ("4000", "baseline-4000-" + split + ".json"),
+        ("6500", "baseline-6500-" + split + ".json"),
+        ("low-32", "wm16/evaluation-32/" + split + ".json"),
+        ("low-64", "wm16/evaluation-64/" + split + ".json"),
+        ("high-32", "wm256/evaluation-32/" + split + ".json"),
+        ("high-64", "wm256/evaluation-64/" + split + ".json"),
+      ] {
+      let report = read(root + "/locomotion-comparison/" + path)
+      let rows : Array[Json] = field(report, "per_clip")
+      assert_eq(rows.map(r => (field(r, "clip_id") : String)), ids)
+      assert_eq(
+        (field(report, "evaluation_dataset_sha256") : String),
+        "918e6be594f9318961269b9953dc8825b11db503545a62974ce303d78960bf41",
+      )
+      guard (field(report, "benchmark_complete") : Bool) else {
+        fail("incomplete protocol")
+      }
+      let unseen = rows.filter(r => {
+        (field(r, "clip_id") : String).contains("subject3")
+      })
+      runs.push({
+        "model": label,
+        "split": split,
+        "all": summarize(rows),
+        "subject3": if unseen.is_empty() {
+          Json(())
+        } else {
+          summarize(unseen)
+        },
+      })
+    }
+  }
+  let counters : Array[Json] = []
+  for name in ["wm16", "wm256"] {
+    let dir = root + "/locomotion-comparison/" + name
+    let report = read(dir + "/report.json")
+    assert_eq((field(report, "iteration") : Int32), 64)
+    let init = read(dir + "/initialization.json")
+    assert_eq(
+      (field(init, "checkpoint_sha256") : String),
+      "043077577b7159627ffe33993898ade9e652c34ad278312b9e40cdd362df754b",
+    )
+    counters.push({
+      "arm": name,
+      "counters": (field(report, "counters") : Json),
+    })
+  }
+  let moving : Array[Json] = []
+  let active = read(root + "/data-locomotion-moving/dataset.json")
+  let active_entries : Array[Json] = field(active, "entries")
+  let moving_ids = active_entries
+    .filter(e => (field(e, "split") : String) == "validation")
+    .map(e => (field(e, "id") : String))
+  for model in ["4000", "6500", "low64", "high64"] {
+    let report = read(root + "/locomotion-comparison/moving-" + model + ".json")
+    assert_eq(
+      (field(report, "evaluation_dataset_sha256") : String),
+      "216dc555c6433cb478a3814549745b78e1dfddac9c92da09d221bc305e422998",
+    )
+    let rows : Array[Json] = field(report, "per_clip")
+    assert_eq(rows.map(r => (field(r, "clip_id") : String)), moving_ids)
+    moving.push({ "model": model, "scores": summarize(rows) })
+  }
+  let original : Array[Json] = []
+  for model in ["4000", "6500"] {
+    let report = read(
+      root + "/locomotion-comparison/original-long-" + model + ".json",
+    )
+    original.push({
+      "model": model,
+      "scores": summarize(field(report, "per_clip")),
+    })
+  }
+  let result : Json = {
+    "fixed_panel": runs,
+    "moving_validation": moving,
+    "original_full_locomotion": original,
+    "training_counters": counters,
+    "matched_17_motions_mean_of_p95": {
+      "order": ["root linear m/s2", "root angular rad/s2", "max joint rad/s2"],
+      "one_pass": before,
+      "three_passes": after,
+    },
+  }
+  @fs.write_file(
+    root + "/comparison.json",
+    @utf8.encode(result.stringify(indent=2)),
+    create_mode=CreateOrTruncate,
+  )
+}

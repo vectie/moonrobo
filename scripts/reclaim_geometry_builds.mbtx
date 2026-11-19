@@ -1,0 +1,99 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let prefix = @fs.read_file(out + "/advise_heading_inputs_source.mbtx")
+  .text()
+  .split("async fn main {")
+  .to_array()[0].to_owned()
+  let main =
+    #|async fn main {
+    #| idle("")
+    #| let completed:Map[String,String]={}
+    #| for name in @fs.readdir(base) {
+    #|  if !name.has_suffix(".receipt.json") {continue}
+    #|  let j=read_json(base+"/"+name)
+    #|  if j is {"exit_code":Number(0.0,..),"program":String("docker"),"gpu_access":False,"argv":Array(argv),..} {
+    #|   for i in 0..<(argv.length()-1) {
+    #|    if argv[i]==Json("--workdir")&&argv[i+1] is String(work)&&work.has_prefix("/workspace/") {
+    #|     completed[work]=base+"/"+name
+    #|    }
+    #|   }
+    #|  }
+    #| }
+    #| let plan=read_json(base+"/geometry-residency-a.json")
+    #| guard field(plan,"resident_files_descending") is Array(rows) else{fail("residency")}
+    #| let records:Array[Json]=[];let skipped:Array[String]=[];let mut reclaimed=0L
+    #| for row in rows {
+    #|  let path=text(field(row,"file"));let prefix=base+"/workspace/"
+    #|  guard path.has_prefix(prefix) else{fail("workspace scope")}
+    #|  let parts=path[prefix.length():].split("/").to_array()
+    #|  guard parts.length()>3&&parts[1]=="_build"&&parts[2]=="native" else{skipped.push(path);continue}
+    #|  let work="/workspace/"+parts[0].to_owned()
+    #|  guard completed.get(work) is Some(owner) else{skipped.push(path);continue}
+    #|  idle("");assert_eq(@fs.realpath(path),path);assert_eq(@fs.kind(path,follow_symlink=false),Regular)
+    #|  let stamp=command("stat",["-c","%u:%h:%d:%i:%s:%Y:%Z",path])
+    #|  guard stamp.has_prefix("1000:1:") else{fail("owned regular build file")}
+    #|  let before=@json.parse(command(fincore,["--json","--bytes","--output","FILE,SIZE,RES",path]))
+    #|  guard field(before,"fincore") is [b] else{fail("before")}
+    #|  if num(field(b,"res"))==0L {continue}
+    #|  ignore(command("sync",["--data","--",path]));ignore(command("dd",["if="+path,"iflag=nocache,nofollow","count=0","status=none"]))
+    #|  assert_eq(command("stat",["-c","%u:%h:%d:%i:%s:%Y:%Z",path]),stamp)
+    #|  let after=@json.parse(command(fincore,["--json","--bytes","--output","FILE,SIZE,RES",path]))
+    #|  guard field(after,"fincore") is [a] else{fail("after")}
+    #|  reclaimed+=num(field(b,"res"))-num(field(a,"res"));records.push({"owner_receipt":Json(owner),"before":b,"after":a,"identity_preserved":true})
+    #| }
+    #| idle("")
+    #| @fs.write_file(base+"/geometry-build-advice-a.json",Json({"reclaimed_resident_bytes":Json(reclaimed),"records":Json(records),"skipped":Json(skipped),"no_deletion":true,"no_global_cache_drop":true}).stringify(indent=2),create_mode=CreateNew)
+    #| println("BUILD_CACHE_RECLAIMED "+reclaimed.to_string())
+    #|}
+  let runner = "advise_geometry_builds_b.mbtx"
+  @fs.write_file(out + "/" + runner, prefix + main, create_mode=CreateNew)
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-math-179.sock",
+      out + "/" + runner,
+      "wlc004s@192.168.2.179:" + base + "/" + runner,
+    ]),
+    0,
+  )
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-math-179.sock",
+      "wlc004s@192.168.2.179",
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      runner,
+    ],
+    stdout=@process.redirect_to_file(
+      out + "/build-advice-b.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      out + "/build-advice-b.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  ignore(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-math-179.sock",
+      "wlc004s@192.168.2.179:" + base + "/geometry-build-advice-a.json",
+      out + "/build-advice.json",
+    ]),
+  )
+  assert_eq(status, 0)
+}

@@ -1,0 +1,7 @@
+[
+  {
+    "script": "report_g1_dynamic_refit.mbtx",
+    "sha256": "1316ece3042ec78cb65145d03b9b22973b1a7ad39311faac80011d8e8130a5eb",
+    "legacy_entry": "scripts/python_reference/report_g1_dynamic_refit.mbtx"
+  }
+]

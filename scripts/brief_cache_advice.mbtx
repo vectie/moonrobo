@@ -1,0 +1,42 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(o) && o.get(k) is Some(v) else { fail("missing " + k) }
+  v
+}
+
+///|
+fn resident(j : Json) -> Double raise {
+  let rows = match j {
+    Array(a) => a
+    Object(_) => match field(j, "fincore") { Array(a) => a; _ => fail("rows") }
+    _ => fail("residency")
+  }
+  let mut total = 0.0
+  for row in rows {
+    guard field(row, "res") is Number(n, ..) else { fail("resident bytes") }
+    total += n
+  }
+  total
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, path] else { fail("cache receipt path") }
+  let report = @json.parse(@fs.read_file(path).text())
+  guard field(report, "passed") == Json(true) && field(report, "operations") is Array(operations) else { fail("passed advice receipt required") }
+  let mut before = 0.0
+  let mut after = 0.0
+  for operation in operations {
+    before += resident(field(operation, "before"))
+    after += resident(field(operation, "after"))
+  }
+  println(({ "files": Json(operations.length()), "resident_before_bytes": Json(before), "resident_after_bytes": Json(after), "resident_reduction_bytes": Json(before - after), "source": Json(path), "scope": "Per-file mincore residency, not a GPU allocation or global free-memory guarantee" } : Json).stringify(indent=2))
+}

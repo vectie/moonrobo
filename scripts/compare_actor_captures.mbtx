@@ -1,0 +1,63 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let local = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let code =
+    #|import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+    #|async fn main {
+    #| let root="/home/wlc004s/moonrobo/runs/actor-capture-cpu-compare-a"
+    #| guard !@fs.exists(root) else {fail("fresh output required")}
+    #| @fs.mkdir(root)
+    #| assert_eq(@process.run("docker",["run","--name","actor-capture-cpu-compare-a","--memory=8g","--memory-swap=8g","--cpus=2","--network=none","--mount","type=bind,src=/home/wlc004s/moonrobo,dst=/workspace/moonrobo,readonly","--mount","type=bind,src="+root+",dst=/out","-e","ACTOR_COMPARE_OUTPUT=/out/result.json","--entrypoint","python","sha256:e84e3c0d2b553e29ffa04fb6d738a3b635afa66e3d23824bfc6c6304e198ad46","/workspace/moonrobo/private/shared-compute-20261026-a/actor_capture_compare_a.py"]),0)
+    #|}
+  for
+    (name, content) in [
+      ("compare_actor_captures_a.mbtx", code),
+      (
+        "actor_capture_compare_a.py",
+        @fs.read_file("providers/motion_learning/actor_capture_compare.py").text(),
+      ),
+    ] {
+    @fs.write_file(local + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        local + "/" + name,
+        host + ":" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  assert_eq(
+    @process.run("ssh", [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/compare_actor_captures_a.mbtx",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      host +
+      ":/home/wlc004s/moonrobo/runs/actor-capture-cpu-compare-a/result.json",
+      local + "/capture-comparison-a.json",
+    ]),
+    0,
+  )
+}

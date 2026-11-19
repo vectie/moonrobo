@@ -1,0 +1,120 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: fit_g1_dataset_aggregation.mbtx REPO TEACHER_DATA BC_STUDY OUTPUT",
+  )
+  let root = args[1]
+  let output = args[4]
+  assert_true(!@fs.exists(output), msg="choose a fresh training directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "dataset_aggregation.py", "policy.py", "dynamics.py", "cpu_physics.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/provider-sources/balance_teacher.py",
+    @fs.read_file(args[2] + "/provider-sources/balance_teacher.py").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/config.json",
+    @fs.read_file(root + "/examples/learning/g1-dataset-aggregation.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/experiment.json",
+    @fs.read_file(args[2] + "/evaluation-experiment.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/collection.json",
+    @fs.read_file(args[2] + "/collection-experiment.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/teacher.json",
+    @fs.read_file(args[2] + "/teacher.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-aggregation-charter.v1",
+        "teacher_data": Json(args[2]),
+        "incoming_policies": Json(args[3]),
+        "config": @json.parse(@fs.read_file(output + "/config.json").text()),
+        "selection": "Physics validation seeds 30-32 after each of ten collection/fit rounds, including incoming actor. Final fresh seeds 8500-8502 never select weights.",
+        "kind": "teacher-initialization",
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let (code, out, err) = @process.collect_output(
+    root + "/target/learning-venv/bin/python",
+    [
+      output + "/provider-sources/dataset_aggregation.py",
+      "--train",
+      args[2] + "/train-batch.json",
+      "--policies",
+      args[3] + "/policy",
+      "--teacher",
+      output + "/teacher.json",
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--config",
+      output + "/config.json",
+      "--collection",
+      output + "/collection.json",
+      "--experiment",
+      output + "/experiment.json",
+      "--output",
+      output + "/policy",
+    ],
+  )
+  @fs.write_file(
+    output + "/train.log",
+    out.text() + err.text(),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(code, 0, msg=err.text())
+  let report = @json.parse(@fs.read_file(output + "/policy/report.json").text())
+  guard field(report, "runs") is Array(runs) else { fail("missing runs") }
+  for row in runs {
+    println(
+      (
+        {
+          "seed": field(row, "seed"),
+          "selected_round": field(row, "selected_round"),
+          "candidate": field(row, "candidate"),
+          "qualifies": field(row, "qualifies"),
+        } : Json).stringify(),
+    )
+  }
+}

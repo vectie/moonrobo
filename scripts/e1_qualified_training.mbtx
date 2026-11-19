@@ -1,0 +1,246 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+async fn sha(path : String) -> String {
+  let h = @crypto.SHA256::new()
+  h.update(@fs.read_file(path).binary())
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+async fn run(args : Array[String], log : String) -> Unit {
+  let redirect = @process.redirect_to_file(log, create_mode=CreateOrTruncate)
+  let code = @process.run("docker", args, stdout=redirect, stderr=redirect)
+  guard code == 0 else { fail("qualified operation failed: " + log) }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, dataset] &&
+    dataset.has_prefix("data-qualified-") &&
+    !dataset.contains("/") else {
+    fail(
+      "e1_qualified_training.mbtx <config|freeze|gate|train|test|regression> data-qualified-VERSION",
+    )
+  }
+  let (status, host, _) = @process.collect_output("hostname", [])
+  guard status == 0 && host.text().trim() == "spark-368c" else {
+    fail("qualified training belongs on 179")
+  }
+  let base = "/home/wlc004s/moonrobo"
+  let root = base + "/private/e1-native-20261110"
+  let source = root + "/srcroot/moonrobo"
+  let image = "moonrobo-operator-compiler:20261025-b"
+  let name = "moonrobo-e1-qualified-20261111"
+  let binary = "/job/e1-trainer-qualified-verified"
+  let common = [
+    "run",
+    "--rm",
+    "--network",
+    "none",
+    "--memory",
+    "100g",
+    "--memory-swap",
+    "100g",
+    "--cpus",
+    "8",
+    "--pids-limit",
+    "512",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--user",
+    "1000:1000",
+    "-e",
+    "OMP_NUM_THREADS=1",
+    "-v",
+    root + ":/job",
+  ]
+  let mujoco = "/opt/isaaclab-venv/lib/python3.12/site-packages/mujoco/libmujoco.so.3.15.0"
+  let tensor = "/job/libmoonrobo_learning_tensor.so"
+  if mode == "config" || mode == "freeze" {
+    guard !@fs.exists(root + "/e1-trainer-qualified-verified") else {
+      fail("qualified binary already frozen")
+    }
+    @fs.write_file(
+      root + "/e1-trainer-qualified-verified",
+      @fs.read_file(
+        source +
+        "/_build/native/release/build/vectie/moonrobo/cmd/e1_train/e1_train.exe",
+      ),
+      create_mode=CreateNew,
+    )
+    @fs.chmod(root + "/e1-trainer-qualified-verified", 0o755)
+    if mode == "freeze" {
+      guard @fs.exists(root + "/qualified-training.json") &&
+        @fs.exists(root + "/qualified-gate.json") &&
+        !@fs.exists(root + "/out/qualified-gate") &&
+        !@fs.exists(root + "/out/train-qualified") else {
+        fail("freeze only before gate/training with staged configs")
+      }
+      println(
+        "Frozen verified trainer SHA256: " +
+        sha(root + "/e1-trainer-qualified-verified"),
+      )
+      return
+    }
+    let args = common.copy()
+    args.append([
+      "--entrypoint", binary, image, "config", "--profile", "training", "--output",
+      "/job/qualified-training.json",
+    ])
+    run(args, root + "/qualified-config.log")
+    let config = @json.parse(
+      @utf8.decode(@fs.read_file(root + "/qualified-training.json").binary()),
+    )
+    guard config is Object(fields) else { fail("config") }
+    fields["world_only_iterations"] = Json(0)
+    fields["checkpoint_every"] = Json(1)
+    fields["learning_rate_decay_iterations"] = Json(2)
+    @fs.write_file(
+      root + "/qualified-gate.json",
+      @utf8.encode(config.stringify(indent=2)),
+      create_mode=CreateNew,
+    )
+    println(
+      "Frozen trainer SHA256: " + sha(root + "/e1-trainer-qualified-verified"),
+    )
+    return
+  }
+  if mode == "test" || mode == "regression" {
+    let args = common.copy()
+    args.append([
+      "--gpus",
+      "all",
+      "-v",
+      base + "/toolchain:/toolchain:ro",
+      "-v",
+      base + "/.mooncakes:" + base + "/.mooncakes",
+      "-e",
+      "MOON_HOME=/toolchain",
+      "-e",
+      "PATH=/toolchain/bin:/usr/local/bin:/usr/bin:/bin",
+      "-e",
+      "CPATH=/job/mujoco-include",
+      "-e",
+      "MOONROBO_TENSOR_LIBRARY=" + tensor,
+      "-e",
+      "MOONROBO_MUJOCO_LIBRARY=" + mujoco,
+      "-e",
+      "MOONROBO_E1_DATASET=/job/" + dataset,
+      "-e",
+      "MOONROBO_E1_ACTOR=/job/out/actor-23",
+      "-e",
+      "MOONROBO_E1_CHECKPOINT=/job/out/smoke-23/current.json",
+      "-e",
+      "MOONROBO_GPU_CHECKPOINT_DIR=/job/g1-checkpoints",
+      "--workdir",
+      "/job/srcroot/moonrobo",
+      "--entrypoint",
+      "/toolchain/bin/moon",
+      image,
+      "test",
+    ])
+    if mode == "test" {
+      args.push("src/learning_e1_training")
+    } else {
+      args.append([
+        "src/learning_aligned_gpu/learner_test.mbt", "src/learning_aligned_gpu/microbatch_wbtest.mbt",
+        "src/learning_aligned_gpu/actor_norm_snapshot_wbtest.mbt", "src/learning_aligned_gpu/inference/actor_wbtest.mbt",
+        "src/learning_aligned_gpu/runtime/runtime_wbtest.mbt", "src/learning_aligned_gpu/geometry/geometry_vjp_wbtest.mbt",
+      ])
+    }
+    args.append(["--target", "native", "--release", "--frozen", "-j", "2"])
+    run(args, root + "/qualified-" + mode + ".log")
+    return
+  }
+  let train = [
+    "--gpus",
+    "all",
+    "--entrypoint",
+    binary,
+    image,
+    "train",
+    "--dataset",
+    "/job/" + dataset,
+    "--tensor-library",
+    tensor,
+    "--library",
+    mujoco,
+    "--device",
+    "0",
+  ]
+  if mode == "gate" {
+    let args = common.copy()
+    args.append(train)
+    args.append([
+      "--config", "/job/qualified-gate.json", "--iterations", "2", "--evaluate-every",
+      "1", "--output", "/job/out/qualified-gate",
+    ])
+    run(args, root + "/qualified-gate.log")
+    return
+  }
+  guard mode == "train" else { fail("unknown mode") }
+  let gate = @json.parse(
+    @utf8.decode(
+      @fs.read_file(root + "/out/qualified-gate/report.json").binary(),
+    ),
+  )
+  guard gate
+    is {
+      "iteration": Number(2, ..),
+      "diagnostic": False,
+      "identity": { "dataset_sha256": String(digest), .. },
+      "full_motion_evaluations": Array(evaluations),
+      ..
+    } &&
+    digest == sha(root + "/" + dataset + "/dataset.json") &&
+    evaluations.length() == 2 else {
+    fail("qualified full-motion gate has not passed")
+  }
+  guard !@fs.exists(root + "/out/train-qualified") else {
+    fail("qualified run already exists")
+  }
+  let args = ["run", "--detach", "--name", name]
+  args.append(common[2:].to_owned())
+  args.append(train)
+  args.append([
+    "--config", "/job/qualified-training.json", "--iterations", "14000", "--evaluate-every",
+    "500", "--output", "/job/out/train-qualified",
+  ])
+  let (code, id, err) = @process.collect_output("docker", args)
+  guard code == 0 else { fail(err.text()) }
+  let receipt : Json = {
+    "container": id.text().trim().to_owned(),
+    "name": name,
+    "args": args,
+    "dataset_directory": dataset,
+    "base_source_archive_sha256": "5636c4084a770067016be570f2b22bbd5f8eb9e9fa23c5de481c2d422457bab1",
+    "source_update_archive_sha256": sha(
+      root + "/incoming/e1-qualified-verified-source.tar.gz",
+    ),
+    "executable_sha256": sha(root + "/e1-trainer-qualified-verified"),
+    "config_sha256": sha(root + "/qualified-training.json"),
+    "dataset_sha256": sha(root + "/" + dataset + "/dataset.json"),
+    "admission_sha256": sha(root + "/" + dataset + "/admission.json"),
+    "gate_report_sha256": sha(root + "/out/qualified-gate/report.json"),
+    "data_host": 178,
+    "training_host": 179,
+  }
+  @fs.write_file(
+    root + "/qualified-training-launch.json",
+    @utf8.encode(receipt.stringify(indent=2)),
+    create_mode=CreateNew,
+  )
+  println(receipt.stringify())
+}

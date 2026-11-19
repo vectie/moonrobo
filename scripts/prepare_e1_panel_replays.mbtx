@@ -1,0 +1,251 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn digest(bytes : Bytes) -> String {
+  let h = @crypto.SHA256::new()
+  h.update(bytes)
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+async fn read_json(path : String) -> Json {
+  @json.parse(@utf8.decode(@fs.read_file(path).binary()))
+}
+
+///|
+fn[T : FromJson] get(obj : Json, key : String) -> T raise {
+  guard obj is Object(fields) && fields.get(key) is Some(v) else {
+    fail("missing " + key)
+  }
+  @json.from_json(v)
+}
+
+///|
+fn append_pose(words : Array[UInt32], state : Array[Double]) -> Unit raise {
+  assert_eq(state.length(), 71)
+  let order = [0, 1, 2, 4, 5, 6, 3]
+  for i in 13..<36 {
+    order.push(i)
+  }
+  for i in order {
+    words.push(Float::from_double(state[i]).reinterpret_as_uint())
+  }
+}
+
+///|
+async fn main {
+  let (panel, actor, assets, mode) = match @env.args() {
+    [_, panel, actor, assets] => (panel, actor, assets, "legacy")
+    [_, panel, actor, assets, mode] if [
+        "anatomical", "retrained-7000", "retrained-14000",
+      ].contains(mode) => (panel, actor, assets, mode)
+    _ =>
+      fail(
+        "prepare_e1_panel_replays.mbtx PANEL_DIR ACTOR_DIR SHOWCASE_ASSETS [anatomical|retrained-7000|retrained-14000]",
+      )
+  }
+  let retrained = mode.has_prefix("retrained-")
+  let anatomical = mode != "legacy"
+  let iteration = if mode == "retrained-14000" { 14000 } else { 7000 }
+  let track = if iteration == 14000 { "primary" } else { "comparison" }
+  let results_dir = if retrained {
+    panel + "/panel"
+  } else {
+    panel + "/results"
+  }
+  let trace_dir = if retrained {
+    panel + "/site-panel40"
+  } else {
+    panel + "/divergence"
+  }
+  let model = read_json(actor + "/actor.json")
+  let hash = digest(@fs.read_file(actor + "/actor.pt").binary())
+  assert_eq(hash, (get(model, "archive_sha256") : String))
+  let label = if iteration == 14000 { "final" } else { "comparison" }
+  let evaluation = read_json(results_dir + "/" + label + ".json")
+  assert_eq(hash, (get(evaluation, "actor_archive_sha256") : String))
+  if retrained {
+    let checkpoint = @fs.read_file(
+      panel + "/train/generation-" + iteration.to_string() + "/checkpoint.json",
+    ).binary()
+    let identity = get(model, "identity")
+    assert_eq(
+      (get(identity, "dataset_sha256") : String),
+      (get(evaluation, "training_dataset_sha256") : String),
+    )
+    assert_eq(
+      digest(checkpoint),
+      (get(model, "source_checkpoint_sha256") : String),
+    )
+    assert_eq(
+      digest(checkpoint),
+      (get(evaluation, "source_checkpoint_sha256") : String),
+    )
+    assert_eq(
+      (
+        get(get(@json.parse(@utf8.decode(checkpoint)), "runtime"), "iteration") :
+        Int32),
+      iteration,
+    )
+  } else {
+    assert_eq(
+      hash, "1fb12d353b0187efed1d9a2984c8a7790a5277b91e29f339f112571a44ff5a60",
+    )
+  }
+  let contract : Json = get(model, "contract")
+  assert_eq((get(contract, "control_hz") : Int32), 50)
+  assert_eq((get(contract, "state_quaternion_order") : String), "wxyz")
+  let joints : Array[String] = get(
+    get(read_json(assets + "/manifest.json"), "robot"),
+    "joints",
+  )
+  assert_eq(joints.length(), 23)
+  assert_eq(
+    joints,
+    (get(get(get(model, "identity"), "robot"), "joints") : Array[String]),
+  )
+  let results : Array[Json] = get(evaluation, "per_clip")
+  assert_eq(results.length(), 40)
+  let reference_bytes = @fs.read_file(results_dir + "/references.json").binary()
+  assert_eq(
+    digest(reference_bytes),
+    (get(evaluation, "references_sha256") : String),
+  )
+  let references : Array[Json] = get(
+    @json.parse(@utf8.decode(reference_bytes)),
+    "clips",
+  )
+  let clips : Array[Json] = []
+  let folder = if retrained {
+    mode
+  } else if anatomical {
+    "panel-7000-anatomical"
+  } else {
+    "panel-7000"
+  }
+  let dir = assets + "/" + folder
+  if !@fs.exists(dir) {
+    @fs.mkdir(dir)
+  }
+  let picks = if retrained {
+    // The translated titles below follow this panel's published order.
+    assert_eq(
+      (get(@json.parse(@utf8.decode(reference_bytes)), "panel_sha256") : String),
+      "981ab14c4ff2758aa5fdaf9d1aeb9a7d3f24c0b7ced056c637381b3c879c2d41",
+    )
+    let titles = [
+      "愤怒手势", "左右张望", "侧向起跑（一）", "侧向起跑（二）",
+      "侧走停步", "放松双腿", "重心回正", "惊讶手势", "抬头张望",
+      "伸展身体", "向右俯身", "克拉科维亚克舞步", "自信手势",
+      "莫霍克转体", "单手庆祝", "祈祷", "原地转身", "屈膝坐姿",
+      "慢跑（一）", "向前跳跃（一）", "受伤慢跑", "向前走", "慢跑（二）",
+      "走动停步", "向右移步", "操作冰箱", "马步舞", "嘻哈摇摆",
+      "舞步转身", "高跳", "持铲站立", "舞蹈组合", "观察物体", "向前跳跃（二）",
+      "手势表演", "挥手起跑", "双手持物转身", "单手向后取物",
+      "双手前举", "点烟动作",
+    ]
+    assert_eq(titles.length(), references.length())
+    Array::makei(titles.length(), i => {
+      (i, mode + "-" + i.to_string(), titles[i])
+    })
+  } else if anatomical {
+    [
+      (10, "7k-stoop-calibrated", "向右俯身"),
+      (26, "7k-horse-step-calibrated", "马步舞"),
+      (28, "7k-turn-calibrated", "舞步转身"),
+      (38, "7k-lift-calibrated", "双手前举"),
+    ]
+  } else {
+    [
+      (28, "7k-turn", "舞步转身"),
+      (10, "7k-stoop", "向右俯身"),
+      (38, "7k-lift", "双手前举"),
+    ]
+  }
+  for pick in picks {
+    let (index, id, title) = pick
+    let trace = read_json(trace_dir + "/trace-\{index}.json")
+    assert_eq(hash, (get(trace, track + "_actor") : String))
+    assert_eq(joints, (get(trace, "joints") : Array[String]))
+    let source : String = get(trace, "clip_id")
+    let entry = results[index]
+    assert_eq(source, (get(entry, "clip_id") : String))
+    let reference = references[index]
+    assert_eq(source, (get(reference, "id") : String))
+    let reference_hash : String = get(reference, "reference_sha256")
+    assert_eq(reference_hash, (get(trace, "reference_sha256") : String))
+    if anatomical {
+      assert_eq(
+        (get(reference, "source_bind") : String),
+        "g1-elbows-pi-over-two",
+      )
+    }
+    let completed : Bool = get(entry, "completed_full_duration")
+    if !anatomical {
+      assert_true(completed)
+    }
+    let rows : Array[Json] = get(trace, track)
+    assert_eq(rows.length(), (get(entry, "executed_steps") : Int32))
+    let words = []
+    let mut previous : Array[Double] = get(rows[0], "state_before")
+    append_pose(words, previous)
+    for i, row in rows {
+      assert_eq(i + 1, (get(row, "frame") : Int32))
+      assert_eq(
+        !completed && i == rows.length() - 1,
+        (get(row, "terminated") : Bool),
+      )
+      assert_eq(previous, (get(row, "state_before") : Array[Double]))
+      previous = get(row, "state_after")
+      append_pose(words, previous)
+    }
+    let total : Double = get(rows[rows.length() - 1], "cumulative_reward")
+    assert_true(
+      (total - (get(entry, "undiscounted_return") : Double)).abs() < 1.0e-8,
+    )
+    let bytes = Bytes::makei(words.length() * 4, i => {
+      (words[i / 4] >> (i % 4 * 8)).to_byte()
+    })
+    @fs.write_file(dir + "/" + id + ".f32", bytes, create_mode=CreateOrTruncate)
+    let clip : Json = {
+      "id": id,
+      "title": title,
+      "kind": "policy-rollout",
+      "checkpoint": iteration,
+      "file": folder + "/" + id + ".f32",
+      "sha256": digest(bytes),
+      "width": 30,
+      "frames": rows.length() + 1,
+      "fps": 50,
+      "clip_id": source,
+      "normalized_return": (get(entry, "normalized_return") : Double),
+    }
+    if anatomical && clip is Object(fields) {
+      if retrained {
+        fields["panel_index"] = Json(index)
+      }
+      fields["reference_sha256"] = Json(reference_hash)
+      fields["completed"] = Json(completed)
+      fields["expected_steps"] = Json((get(entry, "expected_steps") : Int32))
+    }
+    clips.push(clip)
+  }
+  let manifest : Json = {
+    "actor_sha256": hash,
+    "source_checkpoint_sha256": (get(model, "source_checkpoint_sha256") : String),
+    "clips": clips,
+  }
+  @fs.write_file(
+    dir + "/manifest.json",
+    @utf8.encode(manifest.stringify(indent=2)),
+    create_mode=CreateOrTruncate,
+  )
+}

@@ -1,0 +1,59 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+/// Registration seals existing files only. It never starts MuJoCo, evaluates a
+/// policy, runs tests, or edits the original experiment or recording.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 8 else {
+    fail(
+      "usage: register_learning_replay.mbtx REPO MOONDATA_ROOT EXPERIMENT_ID REPLAY_JSON ASSET_DIR NOW_MS OUTPUT_JSON",
+    )
+  }
+  guard !@fs.exists(args[7]) else {
+    fail("OUTPUT_JSON already exists; choose a new receipt path")
+  }
+  let (status, out, err) = @process.collect_output("moon", [
+    "-C",
+    args[1],
+    "run",
+    "--quiet",
+    "--target",
+    "native",
+    "cmd/learning_replay_register",
+    "--",
+    args[2],
+    args[3],
+    args[4],
+    args[5],
+    args[6],
+  ])
+  guard status == 0 else {
+    fail("replay registration failed: " + err.text() + out.text())
+  }
+  let recording = @json.parse(out.text())
+  guard recording is { "format": "moonrobo.pose-replay.v1", .. } else {
+    fail("registration did not return a pose replay")
+  }
+  let receipt : Json = {
+    "format": "moonrobo.learning-replay-registration.v1",
+    "experiment_id": Json(args[3]),
+    "replay_path": Json(args[4]),
+    "asset_root": Json(args[5]),
+    "api_path": Json(
+      "/api/moondata/learning-experiments/" + args[3] + "/replay",
+    ),
+    "physical_execution_allowed": false,
+    "simulation_steps": 0,
+    "tests_executed": false,
+  }
+  @fs.write_file(args[7], receipt.stringify(indent=2), create_mode=CreateNew)
+  println(receipt.stringify(indent=2))
+}

@@ -1,0 +1,111 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+async fn bounded(r : &@io.Reader) -> String {
+  let bytes = FixedArray::make(1048577, b'\x00')
+  let mut n = 0
+  for ;; {
+    let k = r.read(bytes, offset=n, max_len=bytes.length() - n)
+    if k == 0 {
+      break
+    }
+    n += k
+    guard n <= 1048576 else { fail("1MiB metadata bound") }
+  }
+  @utf8.decode(Bytes::from_array(bytes[:n]))
+}
+
+///|
+async fn query(db : String, sql : String) -> Json {
+  @async.with_timeout(600000, () => {
+    let (r, out) = @process.read_from_process()
+    let (e, err) = @process.read_from_process()
+    @async.with_task_group() <| g => {
+      let child = g.spawn(() => {
+        @process.run(
+          "sqlite3",
+          ["-batch", "-json", "-readonly", db, sql],
+          stdout=out,
+          stderr=err,
+        )
+      })
+      let stdout = g.spawn(() => {
+        defer r.close()
+        bounded(r)
+      })
+      let stderr = g.spawn(() => {
+        defer e.close()
+        bounded(e)
+      })
+      let code = child.wait()
+      let result = stdout.wait()
+      let error = stderr.wait()
+      guard code == 0 else { fail(error) }
+      if result.trim() == "" {
+        Json([])
+      } else {
+        @json.parse(result)
+      }
+    }
+  })
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, label] &&
+    ["worldtracef-native", "worldtraced-smc-compiled"].contains(label) else {
+    fail("explicit completed world export")
+  }
+  let root = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/trace41-phase-" +
+    label +
+    "-export"
+  let db = root + "/trace.sqlite"
+  let path = root + "/sync-attribution.json"
+  guard @fs.realpath(db) == db && !@fs.exists(path) else {
+    fail("canonical database and fresh output required")
+  }
+  let report = query(
+    db,
+    (
+      #|WITH scopes AS (
+      #| SELECT n.start,n.end,n.globalTid,CASE WHEN INSTR(COALESCE(n.text,s.value),', op_id')>0
+      #| THEN SUBSTR(COALESCE(n.text,s.value),1,INSTR(COALESCE(n.text,s.value),', op_id')-1)
+      #| ELSE COALESCE(n.text,s.value) END AS label
+      #| FROM NVTX_EVENTS n LEFT JOIN StringIds s ON n.textId=s.id
+      #|), sync AS (
+      #| SELECT r.rowid,r.start,r.end,r.globalTid,s.value AS api FROM CUPTI_ACTIVITY_KIND_RUNTIME r
+      #| JOIN StringIds s ON r.nameId=s.id WHERE s.value LIKE '%Synchronize%'
+      #|)
+      #|SELECT n.label,c.api,COUNT(*) AS calls,CAST(SUM(c.end-c.start) AS TEXT) AS api_wall_ns
+      #|FROM scopes n JOIN sync c ON n.globalTid=c.globalTid AND c.start>=n.start AND c.end<=n.end
+      #|WHERE n.label IN ('diag.profile.world.sample_prepare_upload','diag.profile.world.forward',
+      #|'diag.profile.world.backward','diag.profile.world.adam','diag.world.metrics_readback',
+      #|'diag.world.sample_prepare_upload','diag.world.compiled_rollout','diag.world.compiled_error',
+      #|'diag.world.backward','diag.world.clip_norm','diag.world.adam','diag.world.metrics','diag.world.zero_grad')
+      #|GROUP BY n.label,c.api ORDER BY SUM(c.end-c.start) DESC LIMIT 128;
+    ),
+  )
+  @fs.write_file(
+    path,
+    Json({
+      "format": Json("moonrobo.world-sync-attribution.v1"),
+      "database": Json(db),
+      "sibling_scope_sync_api": report,
+      "scope": Json(
+        "CPU synchronizing API call wall time within explicit sibling stages; overlaps outstanding GPU work and is not optimizer compute or independent overhead",
+      ),
+    }).stringify(indent=2) +
+    "\n",
+    create_mode=CreateNew,
+  )
+  println(path)
+}

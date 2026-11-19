@@ -1,0 +1,10 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-primitives-20261028"
+  let s=@fs.read_file(dir+"/advise_primitives_b.mbtx").text()
+  let s=s.replace_all(old="[_, label] && component(label)",new="[_, label, run_name] && component(label) && component(run_name) && run_name.has_prefix(\"primitives-\")")
+  let s=s.split("\n").map(l=>if l.trim().has_prefix("let labels =") {"  let labels = [run_name]"} else {l.to_owned()}).collect().join("\n")
+  let path=dir+"/advise_primitives_single.mbtx"
+  @fs.write_file(path,s,create_mode=CreateNew)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",path,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/advise_primitives_single.mbtx"])==0 else {fail("scp")}
+}

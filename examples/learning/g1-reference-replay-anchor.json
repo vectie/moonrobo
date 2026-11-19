@@ -1,0 +1,106 @@
+{
+  "format": "moonrobo.g1-reference-replay-anchor-charter.v1",
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "methods": [
+    "replay-prefix-extended",
+    "replay-prefix-anchor"
+  ],
+  "incoming_actor_sha256": "799850fb2ee31bdd3a3267ac42742e17e6137c5f20bbabb5881543f26124f94e",
+  "reference_manifest_sha256": "8b310f2a6ab44e8a997aaba92f62a23ec13ceb0fa79ddeb0e0eaf5299bf569b5",
+  "cycles": 6,
+  "collection_origins_s": [
+    0,
+    10,
+    20
+  ],
+  "raw_action_std": 0.03,
+  "noise_seed_base": 810000,
+  "gamma": 0.99,
+  "gae_lambda": 0.95,
+  "actor_learning_rate": 0.0003,
+  "maximum_actor_steps_per_cycle": 12,
+  "actor_batch_size": 64,
+  "ppo_minibatch_size": 256,
+  "ppo_epochs": 3,
+  "ppo_clip": 0.2,
+  "ppo_target_kl": 0.02,
+  "critic_updates_per_cycle": 128,
+  "critic_batch_size": 256,
+  "critic_learning_rate": 0.001,
+  "model_updates_per_cycle": 900,
+  "model_batch_size": 64,
+  "model_window": 8,
+  "model_width": 128,
+  "model_learning_rate": 0.001,
+  "model_replay_windows": 20000,
+  "model_normalization_floor": 0.05,
+  "imagination_horizon": 32,
+  "model_diagnostic_clip_indices": [
+    0,
+    3,
+    6
+  ],
+  "cpu_threads": 2,
+  "maximum_feature_alignment_error": 0.00002,
+  "maximum_action_alignment_error_rad": 0.00008,
+  "reward": "dt * [exp(-mean_body_squared_distance/0.05^2) + 0.5*exp(-root_squared_distance/0.05^2) + 0.5*exp(-4*(1-quaternion_dot^2)/0.1^2) + exp(-mean_joint_squared_error/0.03^2) - 0.01*mean(((action-previous)/0.1)^2)]",
+  "termination": "Actual and imagined fall at root height <0.35m or upright Z<0.5. Reference end is finite-task terminal with zero tail; score terminal-step reward once. Model fall mask is hard and not differentiated.",
+  "common_prior": "One identical pre-supervision zero-output checkpoint for all methods and training seeds. It includes previously fitted balance slopes, static kinematics and normalization from reference-source observations; no claim of training from scratch or a prior-free mocap method. Independently seeded collection/optimization defines the three new training runs.",
+  "data_access": "Reuse the independently verified six-cycle recent-FIFO baseline, its initial/common/diagnostic data and final evaluations. Rebuild only cycles 1-3 from archived physical batches, checking actor/model/value weights against the corresponding baseline checkpoints at every cycle. All later anchor-arm collection and final evaluations are new. No source-control fitting labels or diagnostic-window fitting.",
+  "critic": "Keep the original physical-return critic and 128 fitting steps each cycle. Neither actor objective uses its critic; it is reconstructed, fitted and stored without changing the training recipe.",
+  "actor_objective": "Continue the existing no-tail H32 discounted-reward objective with uniform current-cycle physical-transition origins, exact causal H10 history/EMA and planned reference phase. Keep the 12 Adam steps/cycle, learning rate and 0.005 local logit RMS cap. Longer surviving episodes receive more origin weight.",
+  "budget_and_selection": "Three seeds and six cycles in both arms, 27 collection episodes/cycle, 900 model/128 value fitting updates and 12 H32 no-tail actor steps/cycle, with the same 0.005 local logit RMS cap. Reuse the complete frozen FIFO results; train only the anchor arm. Reconstruct original first-three-cycle optimizer/replay/RNG state by repeating fitting operations, then intervene only in model replay composition from cycle 4. Evaluate all final actors against the unchanged 27-cell gate with no intermediate quality checks, early stopping, checkpoint or seed selection.",
+  "costs": "603 physical records are inherited, 324 new (243 later collection +81 evaluation). New local CPU wall time includes reconstruction fitting. Standalone costs retain original collection timings. Episode/update budgets match but survival can change actual transition counts. This isolates a replay recipe within the MBRL learner; it is not a successful matched model/PPO efficiency result or GPU speedup.",
+  "scope": "Controlled model-replay retention comparison after six-cycle training regressed in one seed. Known reference coverage only; no generalization, skill release, hardware or complete phase acceptance claim.",
+  "physical_execution_allowed": false,
+  "protocol_revision_reason": "Keep the six-cycle recipe fixed and test one response to increasing held-out model error: preserve initial training windows rather than dropping them under recent FIFO. The intervention changes model fitting distribution, not actor-origin sampling, reward, supervision, update budget or qualification limits.",
+  "collection_origins_per_cycle_s": [
+    [
+      0,
+      10,
+      20
+    ],
+    [
+      0,
+      10,
+      20
+    ],
+    [
+      0,
+      10,
+      20
+    ],
+    [
+      0,
+      10,
+      20
+    ],
+    [
+      0,
+      10,
+      20
+    ],
+    [
+      0,
+      10,
+      20
+    ]
+  ],
+  "noise_seed_origin_stride": 17,
+  "actor_logit_rms_cap": 0.005,
+  "actor_calibration_batch_size": 256,
+  "expected_physical_records": 927,
+  "reused_source_report_sha256": "15fea5c25740ef2d68703301f489502d067dee90bb53c7c27098bbecb2c26200",
+  "expected_reused_physical_records": 603,
+  "expected_new_physical_records": 324,
+  "gradient_probe_offset_steps": 50,
+  "baseline_cycles": 6,
+  "reused_baseline_method": "replay-prefix-extended",
+  "reconstruction_cycles": 3,
+  "model_initial_anchor_after_cycle": 3,
+  "model_replay": "Both arms fit at most 20,000 eight-step windows. Baseline keeps the newest windows. New arm behaves identically for cycles 1-3, then retains every window from its shared first collection as a permanent initial anchor. Remaining capacity keeps the newest windows from collections 2 onward; anchor windows cannot also enter that recent pool. Uniform fitting draws over the combined pool keep original minibatch/update budgets and model normalization. Full first-collection window count varies by seed. No anchor-ratio search, extra model updates, actor-history replay or change to the current-cycle actor-origin pool."
+}

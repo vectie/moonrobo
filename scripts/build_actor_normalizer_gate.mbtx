@@ -1,0 +1,53 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env" }
+///|
+async fn main {
+  guard @env.args() is [_,mode]&&["prepare","build","run"].contains(mode) else {fail("prepare/build/run")}
+  let out="output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host="wlc004s@192.168.2.179"
+  if mode=="prepare" {
+    let prefix=@fs.read_file(out+"/build_actor_boundary_a.mbtx").text().split("async fn main {").to_array()[0].to_owned()
+    let builder=prefix+(
+      #|async fn main {
+      #|  require_idle()
+      #|  let ws=base+"/workspace/moonrobo-actor-normalizer-a"
+      #|  guard !@fs.exists(ws) else {fail("fresh candidate workspace")}
+      #|  run("actor-normalizer-copy-a","cp",["-a","--reflink=auto",base+"/workspace/moonrobo-actor-boundary-a",ws])
+      #|  run("actor-normalizer-overlay-a","tar",["-xzf",base+"/actor-normalizer-overlay-a.tar.gz","-C",ws])
+      #|  run("actor-normalizer-fixture-a","cp",[base+"/actor_normalizer_fixture_a.mbt",ws+"/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"])
+      #|  container("actor-normalizer-build-a","/toolchain/bin/moon",["test","--build-only","--release","--target","native","-j","2","--frozen","src/learning_aligned_gpu/cmd","src/learning_aligned_gpu"],workdir="/workspace/moonrobo-actor-normalizer-a")
+      #|  container("actor-normalizer-cpu-tests-a",ws.replace_all(old=base+"/workspace",new="/workspace")+"/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/learning_aligned_gpu.whitebox_test.exe",["actor_norm_snapshot_wbtest.mbt:0-1"])
+      #|  run("actor-normalizer-binary-a","cp",[ws+"/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/cmd/cmd.whitebox_test.exe",base+"/actor-normalizer-gate-a"])
+      #|}
+    )
+    @fs.write_file(out+"/build_actor_normalizer_a.mbtx",builder,create_mode=CreateNew)
+    let fixture=@fs.read_file(out+"/actor_fixture_a.mbt").text().replace_all(old="  let rows : Array[Json] = []",new=(
+      #|  let package="/workspace/moonrobo/runs/hotspot-mlp-actor-normalizer-export-a"
+      #|  learner.policy.goal_norm.compiled_bf16_input=Some(backend.load_compiled_block(package+"/goal",cuda_device=0))
+      #|  learner.policy.obs_norm.compiled_bf16_input=Some(backend.load_compiled_block(package+"/observation",cuda_device=0))
+      #|  let rows : Array[Json] = []
+    ))
+    @fs.write_file(out+"/actor_normalizer_fixture_a.mbt",fixture,create_mode=CreateNew)
+    assert_eq(@process.run("tar",["--disable-copyfile","-czf",out+"/actor-normalizer-overlay-a.tar.gz","src/learning_aligned_gpu/networks.mbt","src/learning_aligned_gpu/actor_norm_snapshot.mbt","src/learning_aligned_gpu/microbatch_gate_wbtest.mbt","src/learning_aligned_gpu/actor_norm_snapshot_wbtest.mbt"]),0)
+    let runner=@fs.read_file(out+"/run_actor_boundary_b.mbtx").text().replace_all(old="run_actor_boundary_b.mbtx",new="run_actor_normalizer_gate_a.mbtx").replace_all(old="actor-boundary-gate-a",new="actor-normalizer-gate-a")
+      .replace_all(old="  let passed = guarded(side, root, false)",new=(
+        #|  let packages:Map[String,Json]={}
+        #|  let package="/home/wlc004s/moonrobo/runs/hotspot-mlp-actor-normalizer-export-a"
+        #|  guard field(read_json(package+"/completion.json"),"passed")==Json(true) else {fail("incomplete export")}
+        #|  for part in ["goal","observation"] {for name in @fs.readdir(package+"/"+part) {if name.has_suffix(".so")||name.has_suffix(".cubin")||name=="native.spec"||name=="manifest.json" {let path=package+"/"+part+"/"+name;packages[path]=Json(hash_file(path))}}}
+        #|  write_json(root+"/compiled-packages.json",Json(packages))
+        #|  let passed = guarded(side, root, false)
+        #|  for path,digest in packages {assert_eq(Json(hash_file(path)),digest)}
+      ))
+    @fs.write_file(out+"/run_actor_normalizer_gate_a.mbtx",runner,create_mode=CreateNew)
+    for name in ["build_actor_normalizer_a.mbtx","actor_normalizer_fixture_a.mbt","actor-normalizer-overlay-a.tar.gz","run_actor_normalizer_gate_a.mbtx"] {
+      assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",out+"/"+name,host+":"+base+"/"+name]),0)
+    };return
+  }
+  let folder=out+"/normalizer-"+mode+"-a";@fs.mkdir(folder)
+  let command=if mode=="build" {"build_actor_normalizer_a.mbtx"} else {"run_actor_normalizer_gate_a.mbtx -- actor native off 1 actor-normalizer-native-a bf16-full"}
+  let code=@process.run("ssh",["-S","/tmp/moonrobo-operator-179.sock",host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/"+command],stdout=@process.redirect_to_file(folder+"/controller.stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(folder+"/controller.stderr.log",create_mode=CreateNew))
+  if mode=="run" {for name in ["result.json","boundaries.json","completion.json","training-guard.json","training-docker-final.json","training.stdout.log","training.stderr.log","protocol.json","compiled-packages.json"] {
+    ignore(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",host+":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-normalizer-native-a/"+name,folder+"/"+name]))
+  }};assert_eq(code,0)
+}

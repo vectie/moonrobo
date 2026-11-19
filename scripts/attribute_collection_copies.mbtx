@@ -1,0 +1,130 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+async fn bounded(r : &@io.Reader) -> String {
+  let bytes = FixedArray::make(1048577, b'\x00')
+  let mut n = 0
+  for ;; {
+    let k = r.read(bytes, offset=n, max_len=bytes.length() - n)
+    if k == 0 {
+      break
+    }
+    n += k
+    guard n <= 1048576 else { fail("1MiB SQL metadata output bound") }
+  }
+  @utf8.decode(Bytes::from_array(bytes[:n]))
+}
+
+///|
+async fn query(db : String, sql : String) -> Json {
+  @async.with_timeout(600000, () => {
+    let (r, out) = @process.read_from_process()
+    let (e, err) = @process.read_from_process()
+    @async.with_task_group() <| g => {
+      let child = g.spawn(() => {
+        @process.run(
+          "sqlite3",
+          ["-batch", "-json", "-readonly", db, sql],
+          stdout=out,
+          stderr=err,
+        )
+      })
+      let stdout = g.spawn(() => {
+        defer r.close()
+        bounded(r)
+      })
+      let stderr = g.spawn(() => {
+        defer e.close()
+        bounded(e)
+      })
+      let code = child.wait()
+      let result = stdout.wait()
+      let error = stderr.wait()
+      guard code == 0 else { fail("readonly SQLite query: " + error) }
+      if result.trim() == "" {
+        Json([])
+      } else {
+        @json.parse(result)
+      }
+    }
+  })
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, label] &&
+    ["collectnativea-native", "collecttrace-smc-compiled"].contains(label) else {
+    fail("one explicit completed collection export")
+  }
+  let root = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/trace41-phase-" +
+    label +
+    "-export"
+  let db = root + "/trace.sqlite"
+  let output = root + "/copy-attribution.json"
+  guard @fs.realpath(db) == db && !@fs.exists(output) else {
+    fail("canonical source and fresh report")
+  }
+  // The schema and content provenance remain bound by the existing reviewed
+  // export receipt and discovery. The caller must retain external4GiB/600s.
+  let overview = query(
+    db,
+    (
+      #|SELECT e.label AS direction,m.bytes,COUNT(*) AS count,
+      #|CAST(SUM(m.end-m.start) AS TEXT) AS gpu_sum_ns,
+      #|SUM(CASE WHEN COALESCE(m.graphNodeId,0)!=0 THEN 1 ELSE 0 END) AS graph_records
+      #|FROM CUPTI_ACTIVITY_KIND_MEMCPY m JOIN ENUM_CUDA_MEMCPY_OPER e ON m.copyKind=e.id
+      #|GROUP BY m.copyKind,m.bytes ORDER BY count DESC LIMIT 128;
+    ),
+  )
+  let stages = query(
+    db,
+    (
+      #|WITH scopes AS (
+      #| SELECT n.start,n.end,n.globalTid,COALESCE(n.text,s.value) AS label
+      #| FROM NVTX_EVENTS n LEFT JOIN StringIds s ON n.textId=s.id
+      #| WHERE COALESCE(n.text,s.value) LIKE 'diag.collection.%'
+      #|), copies AS (
+      #| SELECT r.rowid AS api_row,r.start,r.end,r.globalTid,s.value AS api,
+      #| COUNT(m.rowid) AS copy_records,COALESCE(SUM(m.bytes),0) AS bytes,
+      #| MIN(m.bytes) AS minimum_copy_bytes,MAX(m.bytes) AS maximum_copy_bytes
+      #| FROM CUPTI_ACTIVITY_KIND_RUNTIME r JOIN StringIds s ON r.nameId=s.id
+      #| LEFT JOIN CUPTI_ACTIVITY_KIND_MEMCPY m ON r.correlationId=m.correlationId
+      #| AND m.globalPid=(r.globalTid & -16777216)
+      #| WHERE s.value LIKE '%Memcpy%'
+      #| GROUP BY r.rowid
+      #|)
+      #|SELECT n.label,c.api,COUNT(*) AS api_calls,CAST(SUM(c.end-c.start) AS TEXT) AS api_wall_ns,
+      #| SUM(c.copy_records) AS matched_copy_records,CAST(SUM(c.bytes) AS TEXT) AS bytes,
+      #| SUM(CASE WHEN c.copy_records!=1 THEN 1 ELSE 0 END) AS non_unique_copy_matches,
+      #| SUM(CASE WHEN c.copy_records=1 AND c.minimum_copy_bytes=4 AND c.maximum_copy_bytes=4 THEN 1 ELSE 0 END) AS four_byte_calls
+      #|FROM scopes n JOIN copies c ON n.globalTid=c.globalTid AND c.start>=n.start AND c.end<=n.end
+      #|GROUP BY n.label,c.api ORDER BY n.label,api_calls DESC LIMIT 128;
+    ),
+  )
+  let report : Json = {
+    "format": "moonrobo.collection-copy-attribution.v1",
+    "database": db,
+    "export_receipt": root + "/export-receipt.json",
+    "schema": root + "/schema.json",
+    "copy_size_direction": overview,
+    "api_by_collection_stage": stages,
+    "method": "CPU copy APIs contained in same-thread explicit sibling collection scopes; GPU-copy association by process+correlation. Non-unique associations are counted explicitly. GPU graph copy records do not necessarily have one standalone memcpy API.",
+    "interpretation": "API host time and GPU copy time overlap and must not be added. Instrumented window only; not an unprofiled speedup estimate.",
+    "training_throughput_claim": false,
+  }
+  @fs.write_file(
+    output,
+    report.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+  )
+  println(output)
+}

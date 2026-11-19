@@ -1,0 +1,16 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-algebra-20261028"
+  for (label,args) in [
+    ("moon-info-tensor",["info","--target","native","src/learning_tensor"]),
+    ("moon-info-gpu",["info","--target","native","src/learning_aligned_gpu"]),
+    ("moon-info-geometry",["info","--target","native","src/learning_aligned_gpu/geometry"]),
+    ("moon-info-cmd",["info","--target","native","src/learning_aligned_gpu/cmd"]),
+    ("moon-fmt",["fmt","src/learning_tensor","src/learning_aligned_gpu","src/learning_aligned_gpu/geometry","src/learning_aligned_gpu/cmd","src/learning_aligned_gpu/inference"]),
+    ("moon-check",["check","--target","native","--warn-list","-a","src/learning_tensor","src/learning_aligned_gpu","src/learning_aligned_gpu/geometry","src/learning_aligned_gpu/cmd","src/learning_aligned_gpu/inference"]),
+  ] {
+    let code=@process.run("moon",args,stdout=@process.redirect_to_file(root+"/"+label+".stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(root+"/"+label+".stderr.log",create_mode=CreateNew))
+    guard code==0 else {fail(label)}
+    println(label+" passed")
+  }
+}

@@ -1,0 +1,18 @@
+import {"moonbitlang/async@0.20.2","moonbitlang/async@0.20.2/fs","moonbitlang/async@0.20.2/process"}
+///|
+async fn main {
+ let out="output/spark-runtime-20261024/geometry-math-20261029-a"
+ let old=@fs.read_file("providers/motion_learning/export_actor_reference_backward.py").text()
+ let pure=old[old.find("RENAMES=").unwrap():].to_owned().split("def main():").to_array()[0].to_owned()
+ .replace_all(old="def graph_from_original(original,native):",new="def graph_from_original(original,native,renames=None):")
+ .replace_all(old="RENAMES.get(a.arg,a.arg)",new="(RENAMES if renames is None else renames).get(a.arg,a.arg)")
+ @fs.write_file(out+"/geometry_actor_graph_b.py","import ast\nimport torch\n\n"+pure,create_mode=CreateNew)
+ assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-math-179.sock",out+"/geometry_actor_graph_b.py","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/geometry_actor_graph_b.py"]),0)
+ let launcher=@fs.read_file("scripts/audit_geometry_world.mbtx").text()
+ .replace_all(old="geometry_world_boundary_audit.py",new="export_geometry_actor_graphs_b.py")
+ .replace_all(old="providers/motion_learning/export_geometry_actor_graphs_b.py",new="providers/motion_learning/export_geometry_actor_graphs.py")
+ .replace_all(old="run_geometry_world_boundary_audit.mbtx",new="run_geometry_actor_graphs_b.mbtx")
+ .replace_all(old="boundary-audit-a",new="actor-graphs-export-b")
+ @fs.write_file(out+"/export_actor_graphs_b.mbtx",launcher,create_mode=CreateNew)
+ assert_eq(@process.run("moon",["run","--target","native",out+"/export_actor_graphs_b.mbtx"]),0)
+}

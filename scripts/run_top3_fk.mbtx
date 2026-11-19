@@ -1,0 +1,90 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+
+///|
+let runs = "/home/wlc004s/moonrobo/runs/hotspot-shared-"
+
+///|
+async fn run(script : String, args : Array[String], label : String) -> Unit {
+  println("Starting " + label)
+  guard @process.run(
+      "/home/wlc004s/moonrobo/toolchain/bin/moon",
+      ["run", "--target", "native", base + "/" + script + ".mbtx", "--", ..args],
+      stdout=@process.redirect_to_file(
+        base + "/" + label + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        base + "/" + label + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    ) ==
+    0 else {
+    fail(label + " failed; retained evidence")
+  }
+  println("Completed " + label)
+}
+
+///|
+async fn main {
+  run("advise_top3_a", ["top3-before-fk-a"], "top3-before-fk-cache-a")
+  run(
+    "run_top3_shared_b",
+    ["actor", "native", "off", "1", "top3-sparse-axis-gate-b", "sparse-axis"],
+    "top3-sparse-axis-gate-b",
+  )
+  let report = base + "/top3-sparse-axis-gate-b.numeric.json"
+  run(
+    "compare_top3_snapshots",
+    [
+      runs + "latest-ln-actor-native-events-a",
+      runs + "top3-sparse-axis-gate-b",
+      report,
+    ],
+    "top3-sparse-axis-gate-b-compare",
+  )
+  let passed = @json.parse(@fs.read_file(report).text())
+    is { "passed": True, .. }
+  if passed {
+    for i, choice in ["baseline", "sparse-axis", "sparse-axis", "baseline"] {
+      let label = "top3-sparse-axis-off-" + i.to_string()
+      run(
+        "run_top3_shared_b",
+        ["actor", "native", "off", "13", label, choice],
+        label,
+      )
+    }
+  }
+  // Low-overhead phase intervals locate which side of the world update changed;
+  // no-profiler ABBA above remains the performance decision criterion.
+  for
+    (phase, variant) in (if passed {
+      [("world", "world-batched"), ("actor", "sparse-axis")]
+    } else {
+      [("world", "world-batched")]
+    }) {
+    for i, choice in ["baseline", variant] {
+      let label = "top3-" + variant + "-events-" + i.to_string()
+      run(
+        "run_top3_shared_b",
+        [phase, "native", "events", "13", label, choice],
+        label,
+      )
+    }
+  }
+  @fs.write_file(
+    base + "/top3-fk-completed.json",
+    Json({ "sparse_axis_numeric_passed": Json(passed), "complete": true }).stringify(
+      indent=2,
+    ),
+    create_mode=CreateNew,
+  )
+}

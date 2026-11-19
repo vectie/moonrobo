@@ -1,0 +1,144 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+/// Source transformation only. No native workload is invoked.
+fn find_from(source : String, needle : String, start : Int32) -> Int32? {
+  source[start:].find(needle).map(fn(n) { n + start })
+}
+
+///|
+/// Locate the end of one expression in a function argument list. Handles
+/// multiline arrays/calls, quoted strings and escaped characters literally.
+fn expression_end(source : String, start : Int32) -> Int32 raise {
+  let units = source.code_units()
+  let mut depth = 0
+  let mut quoted = false
+  let mut escaped = false
+  for i = start; i < units.length(); i = i + 1 {
+    let c = units[i].to_int()
+    if quoted {
+      if escaped {
+        escaped = false
+      } else if c == 92 {
+        escaped = true
+      } else if c == 34 {
+        quoted = false
+      }
+    } else if c == 34 {
+      quoted = true
+    } else if c == 91 || c == 40 || c == 123 {
+      depth += 1
+    } else if c == 93 || c == 41 || c == 125 {
+      if depth == 0 {
+        return i
+      }
+      depth -= 1
+    } else if c == 44 && depth == 0 {
+      return i
+    }
+  }
+  fail("unterminated argument in source")
+}
+
+///|
+fn transform(source : String) -> (String, Int32) raise {
+  let needle = "root + \"/target/learning-venv/bin/python\""
+  let mut result = ""
+  let mut cursor = 0
+  let mut count = 0
+  while find_from(source, needle, cursor) is Some(at) {
+    let comma = at + needle.length()
+    let mut start = comma
+    while source.get(start) is Some(c) && c.to_int() != 44 {
+      start += 1
+    }
+    guard source.get(start) is Some(_) else {
+      fail("Python invocation missing arguments")
+    }
+    start += 1
+    while source.get(start) is Some(c) && [32, 10, 13, 9].contains(c.to_int()) {
+      start += 1
+    }
+    let end = expression_end(source, start)
+    result += source[cursor:at].to_owned() +
+      "\"moon\"," +
+      source[comma + 1:start].to_owned() +
+      "native_args(root, " +
+      source[start:end].to_owned() +
+      ")"
+    cursor = end
+    count += 1
+  }
+  result += source[cursor:].to_owned()
+  (result, count)
+}
+
+///|
+async fn main {
+  if @fs.exists("docs/PYTHON_DEPENDENCIES.json") {
+    fail(
+      "One-off source migration is already audited; do not rerun its rewrite recipe",
+    )
+  }
+  let folder = "scripts/python_reference"
+  let replay = "probe_g1_replay_directions.mbtx"
+  if !@fs.exists(folder + "/" + replay) {
+    let bytes = @fs.read_file("scripts/" + replay).binary()
+    @fs.write_file(folder + "/" + replay, bytes, create_mode=CreateOrTruncate)
+    let sha = @crypto.bytes_to_hex_string(@crypto.sha256(bytes))
+    @fs.write_file(
+      folder + "/replay-directions-source.json",
+      ({ "script": replay.to_json(), "sha256": sha.to_json() } : Json).stringify(
+        indent=2,
+      ),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let manifest : Json = @json.parse(
+    @fs.read_file(folder + "/temporal-balance-sources.json").text(),
+  )
+  guard manifest is Array(rows) else { fail("source list required") }
+  let names = rows.map(fn(row) {
+    guard row is Object(fields) && fields.get("script") is Some(String(name)) else {
+      fail("invalid source row")
+    }
+    name
+  })
+  names.push(replay)
+  let helper = @fs.read_file("scripts/temporal_balance_launcher_template.txt").text()
+  let changed : Array[Json] = []
+  for name in names {
+    if name == "export_g1_learned_balance.mbtx" ||
+      name == "export_g1_sustained_balance.mbtx" {
+      continue
+    }
+    let path = "scripts/" + name
+    let source = @fs.read_file(path).text()
+    // Idempotent source migration; historical bytes are never overwritten.
+    if source.contains("fn native_args(") {
+      continue
+    }
+    let (updated, count) = transform(source)
+    if count > 0 {
+      @fs.write_file(path, updated + helper, create_mode=CreateOrTruncate)
+      changed.push({
+        "script": name.to_json(),
+        "native_invocations": count.to_json(),
+      })
+    }
+  }
+  @fs.write_file(
+    folder + "/temporal-balance-native-routing.json",
+    changed.to_json().stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "Rewrote \{changed.length()} launcher source files; no workload executed",
+  )
+}

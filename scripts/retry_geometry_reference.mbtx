@@ -1,0 +1,56 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let put = async fn(name : String, content : String) {
+    @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-math-179.sock",
+        out + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  put(
+    "geometry_training_reference_i.py",
+    @fs.read_file("providers/motion_learning/geometry_training_reference.py").text(),
+  )
+  put(
+    "run_geometry_math_gate_i.mbtx",
+    @fs.read_file(out + "/run_geometry_math_gate_h.mbtx")
+    .text()
+    .replace_all(
+      old="run_geometry_math_gate_h.mbtx",
+      new="run_geometry_math_gate_i.mbtx",
+    )
+    .replace_all(
+      old="geometry_training_reference_g.py",
+      new="geometry_training_reference_i.py",
+    ),
+  )
+  @fs.write_file(
+    out + "/run_geometry_reference_i.mbtx",
+    @fs.read_file(out + "/run_geometry_retry.mbtx")
+    .text()
+    .replace_all(
+      old="run_geometry_math_gate_h.mbtx",
+      new="run_geometry_math_gate_i.mbtx",
+    )
+    .replace_all(
+      old="geometry-math-reference-gate-h",
+      new="geometry-math-reference-gate-i",
+    ),
+    create_mode=CreateNew,
+  )
+}

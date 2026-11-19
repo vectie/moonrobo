@@ -1,0 +1,156 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_] else {
+    fail("fixed completed trace series required")
+  }
+  let base = "/home/wlc004s/moonrobo/private/hotspot-smc4096-20261026-a"
+  let old = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+  let moon = "/home/wlc004s/moonrobo/toolchain/bin/moon"
+  for (kind, prefix) in [("native", "n"), ("smc-compiled", "s")] {
+    for phase in ["actor", "world", "collect"] {
+      for mode in ["off", "trace"] {
+        let suffix = if prefix == "n" && phase == "world" && mode == "trace" {
+          "tracec"
+        } else {
+          mode
+        }
+        let path = "/home/wlc004s/moonrobo/runs/operator-trace41-20261025-phase-combo26-" +
+          prefix +
+          "-" +
+          phase +
+          "-" +
+          suffix +
+          "-" +
+          kind +
+          "/outer-result.json"
+        guard @json.parse(@fs.read_file(path).text()) is { "passed": True, .. } else {
+          fail("all twelve completed observer windows required")
+        }
+      }
+    }
+  }
+  async fn call(
+    name : String,
+    script : String,
+    args : Array[String],
+    bounded : Bool,
+  ) -> Unit {
+    println("Starting " + name)
+    let program = if bounded { "prlimit" } else { moon }
+    let prefix = if bounded {
+      ["--as=4294967296", "--cpu=600", "--", moon]
+    } else {
+      []
+    }
+    let status = @async.with_timeout(660000, () => {
+      @process.run(
+        program,
+        prefix + ["run", "--target", "native", script, "--", ..args],
+        stdout=@process.redirect_to_file(
+          base + "/" + name + ".stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          base + "/" + name + ".stderr.log",
+          create_mode=CreateNew,
+        ),
+      )
+    })
+    guard status == 0 else {
+      fail(name + " failed; retained original evidence")
+    }
+    println("Completed " + name)
+  }
+  for (kind, prefix) in [("native", "n"), ("smc-compiled", "s")] {
+    for phase in ["actor", "world", "collect"] {
+      let label = "combo26-" +
+        prefix +
+        "-" +
+        phase +
+        (if prefix == "n" && phase == "world" { "-tracec" } else { "-trace" })
+      call(
+        label + "-export",
+        old + "/export_phase_trace.mbtx",
+        ["--export", kind, label],
+        false,
+      )
+      let exported = old + "/trace41-phase-" + label + "-" + kind + "-export"
+      call(
+        label + "-discover",
+        old + "/discover_sqlite.mbtx",
+        ["--discover", exported + "/trace.sqlite", exported + "/schema.json"],
+        true,
+      )
+      let mode = if kind == "native" {
+        "native-" + (if phase == "collect" { "collection" } else { phase })
+      } else if phase == "actor" {
+        "smc-actor-chunk"
+      } else {
+        "smc-" + (if phase == "collect" { "collection" } else { phase })
+      }
+      let reference = old +
+        (if kind == "native" {
+          "/trace41-solo-j-native-export/schema.json"
+        } else {
+          "/trace41-solo-e-smc-compiled-export/schema.json"
+        })
+      call(
+        label + "-attribution",
+        old + "/analyze_phase_trace_d.mbtx",
+        [
+          "--sqlite",
+          exported + "/trace.sqlite",
+          exported + "/schema.json",
+          reference,
+          mode,
+          "-",
+          exported + "/phase-attribution.json",
+        ],
+        true,
+      )
+    }
+  }
+  for
+    (source, target, replacements) in [
+      (
+        "attribute_world_sync_a.mbtx",
+        "attribute_combo_world_sync.mbtx",
+        [
+          ("worldtracef-native", "combo26-n-world-tracec-native"),
+          ("worldtraced-smc-compiled", "combo26-s-world-trace-smc-compiled"),
+        ],
+      ),
+      (
+        "attribute_collection_copies.mbtx",
+        "attribute_combo_collection_copies.mbtx",
+        [
+          ("collectnativea-native", "combo26-n-collect-trace-native"),
+          ("collecttrace-smc-compiled", "combo26-s-collect-trace-smc-compiled"),
+        ],
+      ),
+    ] {
+    let mut code = @fs.read_file(old + "/" + source).text()
+    for (before, after) in replacements {
+      guard code.contains(before) else {
+        fail("exact query source anchor absent")
+      }
+      code = code.replace_all(old=before, new=after)
+    }
+    @fs.write_file(base + "/" + target, code, create_mode=CreateNew)
+    for (_, label) in replacements {
+      call(label + "-details", base + "/" + target, [label], true)
+    }
+  }
+  println(
+    "Six trace exports and bounded attribution reports completed; no GPU work",
+  )
+}

@@ -1,0 +1,284 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn option(args : Array[String], name : String) -> String? raise {
+  for i, arg in args {
+    if arg == name {
+      guard i + 1 < args.length() else { fail("missing value for " + name) }
+      return Some(args[i + 1])
+    }
+  }
+  None
+}
+
+///|
+fn absolute(path : String) -> String {
+  if path.has_prefix("/") {
+    path
+  } else {
+    @env.current_dir().unwrap_or("") + "/" + path
+  }
+}
+
+///|
+fn field(value : Json, name : String) -> Json raise {
+  guard value is Object(fields) && fields.get(name) is Some(value) else {
+    fail("missing export field: " + name)
+  }
+  value
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+async fn copy(source : String, target : String) -> Unit {
+  @fs.write_file(
+    target,
+    @fs.read_file(source).binary(),
+    create_mode=CreateOrTruncate,
+  )
+}
+
+///|
+async fn link(source : String, target : String) -> Unit {
+  guard @fs.exists(source) && !@fs.exists(target) else {
+    fail("missing source or existing export link: " + target)
+  }
+  assert_eq(@process.run("/bin/ln", [source, target]), 0)
+}
+
+///|
+/// Freeze actual source bytes with their real language extensions. The same
+/// hashes are checked after export to reject source changes during the work.
+async fn snapshot(
+  root : String,
+  relative : String,
+  output : String,
+  entries : Array[Json],
+) -> Unit {
+  @fs.mkdir(output + "/native-sources/" + relative, recursive=true)
+  for name in @fs.readdir(root + "/" + relative, sort=true) {
+    if ["_build", "target", "node_modules", ".git", ".mooncakes"].contains(name) {
+      continue
+    }
+    let path = relative + "/" + name
+    if @fs.kind(root + "/" + path) is Directory {
+      snapshot(root, path, output, entries)
+    } else if name.has_suffix(".mbt") ||
+      name.has_suffix(".c") ||
+      name.has_suffix(".cpp") ||
+      name.has_suffix(".cu") ||
+      name.has_suffix(".h") ||
+      name == "moon.pkg" ||
+      name == "moon.mod" ||
+      name == "CMakeLists.txt" {
+      let target = "native-sources/" +
+        path +
+        (if name == "moon.pkg" || name == "moon.mod" { ".source" } else { "" })
+      copy(root + "/" + path, output + "/" + target)
+      entries.push({
+        "source": Json(root + "/" + path),
+        "snapshot": Json(target),
+        "sha256": Json(digest(root + "/" + path)),
+      })
+    }
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() >= 5 else {
+    fail(
+      "usage: export_g1_learned_balance.mbtx REPO FIT_STUDY LONG_STUDY OUTPUT [--library MUJOCO_LIBRARY] [--scene SCENE]",
+    )
+  }
+  let seen = []
+  for i = 5; i < args.length(); i = i + 2 {
+    guard i + 1 < args.length() &&
+      ["--library", "--scene"].contains(args[i]) &&
+      !seen.contains(args[i]) else {
+      fail("unknown, duplicate or incomplete native export option")
+    }
+    seen.push(args[i])
+  }
+  let root = absolute(args[1])
+  let fit = absolute(args[2])
+  let long = absolute(args[3])
+  let output = absolute(args[4])
+  let configured_library = match option(args, "--library") {
+    Some(path) => Some(path)
+    None => @env.get_env_var("MOONROBO_MUJOCO_LIBRARY")
+  }
+  let library = match configured_library {
+    Some(path) => absolute(path)
+    None =>
+      fail(
+        "set MOONROBO_MUJOCO_LIBRARY or pass --library; no interpreter-based library discovery",
+      )
+  }
+  let scene = absolute(
+    option(args, "--scene").unwrap_or(
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+    ),
+  )
+  guard !@fs.exists(output) else { fail("choose a fresh export directory") }
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  if @fs.exists(fit + "/provider-sources") {
+    @fs.mkdir(output + "/incoming-provider-sources", recursive=true)
+    for name in @fs.readdir(fit + "/provider-sources", sort=true) {
+      if @fs.kind(fit + "/provider-sources/" + name) is Regular {
+        copy(
+          fit + "/provider-sources/" + name,
+          output + "/incoming-provider-sources/" + name,
+        )
+      }
+    }
+  }
+  copy(
+    root + "/providers/motion_learning/learned_balance_export.py",
+    output + "/provider-sources/learned_balance_export.py",
+  )
+  let sources = []
+  for
+    package in [
+      "learning_registry", "learning_studies", "learning_balance", "learning_temporal",
+      "learning_training", "learning_numeric", "learning_artifacts", "learning_physics",
+    ] {
+    snapshot(root, "src/" + package, output, sources)
+  }
+  for shared in ["moonnum", "moonphys"] {
+    if @fs.exists(root + "/../" + shared + "/moon.mod") {
+      snapshot(root + "/..", shared, output, sources)
+    }
+  }
+  for name in ["moon.mod", "moon.work"] {
+    if @fs.exists(root + "/" + name) {
+      copy(root + "/" + name, output + "/native-sources/" + name + ".source")
+      sources.push({
+        "source": Json(root + "/" + name),
+        "snapshot": Json("native-sources/" + name + ".source"),
+        "sha256": Json(digest(root + "/" + name)),
+      })
+    }
+  }
+  @fs.write_file(
+    output + "/native-sources.json",
+    (
+      {
+        "format": "moonrobo.native-export-source-manifest.v1",
+        "source_language": "moonbit",
+        "executes_python": false,
+        "sources": Json(sources),
+        "mujoco_library": Json(library),
+        "mujoco_library_sha256": Json(digest(library)),
+        "scene": Json(scene),
+        "scene_sha256": Json(digest(scene)),
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-balance-export-charter.v1",
+        "fit_study": Json(fit),
+        "long_study": Json(long),
+        "source_language": "moonbit",
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let code = @process.run(
+    "moon",
+    [
+      "run",
+      root + "/scripts/run_native_learning.mbtx",
+      root,
+      "src/learning_registry/learned/cmd",
+      "--study",
+      fit,
+      "--long",
+      long,
+      "--library",
+      library,
+      "--scene",
+      scene,
+      "--output",
+      output,
+    ],
+    cwd=root,
+    stdout=@process.redirect_to_file(
+      output + "/export.log",
+      create_mode=CreateOrTruncate,
+    ),
+    stderr=@process.redirect_to_file(
+      output + "/stderr.log",
+      create_mode=CreateOrTruncate,
+    ),
+  )
+  guard code == 0 else {
+    fail("native learned export failed; inspect export.log/stderr.log")
+  }
+  for row in sources {
+    guard field(row, "source") is String(path) &&
+      field(row, "sha256") == Json(digest(path)) else {
+      fail("native source changed during export")
+    }
+  }
+  for (scope, study) in [("ten-second", fit), ("thirty-second", long)] {
+    for mode in ["h10", "full"] {
+      let run = output + "/" + scope + "-" + mode
+      @fs.mkdir(run + "/collection", recursive=true)
+      for name in ["dataset.json.gz", "balance-training.jsonl.gz"] {
+        link(output + "/common/" + name, run + "/collection/" + name)
+      }
+      link(
+        fit + "/training-sources.json",
+        run + "/collection/training-sources.json",
+      )
+      link(
+        output + "/common/" + scope + "-study.json",
+        run + "/policy/balance-study.json",
+      )
+      link(
+        study + "/evaluation-physics.jsonl.gz",
+        run + "/policy/balance-evaluation.jsonl.gz",
+      )
+      let policy = @json.parse(
+        @fs.read_file(run + "/policy/report.json").text(),
+      )
+      guard field(policy, "runs") is Array(runs) else {
+        fail("missing exported policy runs")
+      }
+      for row in runs {
+        guard field(row, "checkpoint") is String(name) &&
+          !name.contains("/") &&
+          !name.contains("\\") &&
+          name != "." &&
+          name != ".." else {
+          fail("invalid checkpoint basename")
+        }
+        let source = fit + "/policy/" + name
+        guard field(row, "checkpoint_sha256") == Json(digest(source)) else {
+          fail("selected checkpoint bytes changed")
+        }
+        link(source, run + "/policy/" + name)
+      }
+    }
+  }
+  println(
+    "Materialized four native balance registry runs with original model filenames and strict six-head refit proof.",
+  )
+}

@@ -1,0 +1,157 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=stderr.text() + stdout.text())
+  stdout.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: ablate_g1_policy_horizon.mbtx REPO DATA_RUN WARM_POLICY OUTPUT",
+  )
+  let root = args[1]
+  let output = args[4]
+  @fs.mkdir(output, recursive=true)
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for name in ["policy.py", "dynamics.py", "cpu_physics.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let configurations : Array[Json] = []
+  // Freeze all four configurations before running any cell.
+  for horizon in [8, 32] {
+    for bootstrap in [false, true] {
+      let label = "h\{horizon}-bootstrap-" +
+        (if bootstrap { "on" } else { "off" })
+      let cell = output + "/" + label
+      @fs.mkdir(cell, recursive=true)
+      let config = @json.parse(
+        @fs.read_file(root + "/examples/learning/g1-policy-long-fit.json").text(),
+      )
+      guard config is Object(fields) else { fail("expected policy config") }
+      fields.set("horizon", horizon.to_json())
+      fields.set("actor_critic_bootstrap", bootstrap.to_json())
+      fields.set("test_seeds", [740, 741, 742])
+      fields.set(
+        "ablation_scope", "Actor terminal critic bootstrap only. Critic fitting and GAE unchanged in every cell; equal update/batch counts, different imagined transition counts with horizon.",
+      )
+      @fs.write_file(
+        cell + "/config.json",
+        config.stringify(indent=2),
+        create_mode=CreateOrTruncate,
+      )
+      configurations.push({ "label": label.to_json(), "config": config })
+    }
+  }
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-horizon-bootstrap-charter.v1",
+        "cells": configurations.to_json(),
+        "physical_execution_allowed": false,
+        "selection": "Within-cell validation physics only, including update zero; do not choose a release from final test results.",
+        "budget": "Three seeds per cell, 200 updates, batch 64. This is a quality ablation, not matched wall-clock/sample-efficiency evidence.",
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let cells : Array[Json] = []
+  for entry in configurations {
+    guard field(entry, "label") is String(label) else { fail("missing label") }
+    let cell = output + "/" + label
+    @fs.mkdir(cell + "/fit", recursive=true)
+    @fs.mkdir(cell + "/collection", recursive=true)
+    // The copied inputs remain byte-identical and deduplicate when registered.
+    ignore(
+      run("/bin/cp", [
+        args[2] + "/collection/dataset.json",
+        cell + "/collection/dataset.json",
+      ]),
+    )
+    for
+      name in [
+        "report.json", "dynamics-seed-0.pt", "dynamics-seed-1.pt", "dynamics-seed-2.pt",
+      ] {
+      ignore(run("/bin/cp", [args[2] + "/fit/" + name, cell + "/fit/" + name]))
+    }
+    @fs.write_file(
+      cell + "/policy.log",
+      run(root + "/target/learning-venv/bin/python", [
+        root + "/providers/motion_learning/policy.py",
+        "fit",
+        "--train",
+        args[2] + "/train-batch.json",
+        "--dynamics",
+        args[2] + "/fit/dynamics-seed-0.pt",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--config",
+        cell + "/config.json",
+        "--experiment",
+        root + "/examples/learning/g1-long-experiment.json",
+        "--warm-start-policy",
+        args[3],
+        "--output",
+        cell + "/policy",
+      ]),
+      create_mode=CreateOrTruncate,
+    )
+    let report = @json.parse(@fs.read_file(cell + "/policy/report.json").text())
+    guard field(report, "runs") is Array(runs) else { fail("missing runs") }
+    assert_eq(runs.length(), 3)
+    let results : Array[Json] = []
+    for run in runs {
+      assert_eq(field(run, "dynamics_unchanged"), true.to_json())
+      assert_eq(field(run, "reload_matches"), true.to_json())
+      results.push({
+        "seed": field(run, "seed"),
+        "selected_update": field(run, "selected_update"),
+        "training_seconds": field(run, "training_seconds"),
+        "candidate": field(run, "candidate"),
+        "qualifies": field(run, "qualifies"),
+        "history": field(run, "history"),
+      })
+    }
+    let result : Json = {
+      "label": label.to_json(),
+      "config": field(entry, "config"),
+      "runs": results.to_json(),
+    }
+    cells.push(result)
+    println(result.stringify())
+  }
+  @fs.write_file(
+    output + "/summary.json",
+    (
+      {
+        "format": "moonrobo.g1-horizon-bootstrap-ablation.v1",
+        "cells": cells.to_json(),
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

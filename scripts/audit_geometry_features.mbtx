@@ -1,0 +1,83 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-math-179.sock"
+  let code = @fs.read_file(out + "/run_geometry_math_export_b.mbtx")
+    .text()
+    .replace_all(
+      old="export_geometry_math_b.py",
+      new="geometry_features_audit.py",
+    )
+    .replace_all(
+      old="run_geometry_math_export_b.mbtx",
+      new="run_geometry_features_audit.mbtx",
+    )
+  for
+    (name, text) in [
+      ("run_geometry_features_audit.mbtx", code),
+      (
+        "geometry_features_audit.py",
+        @fs.read_file("providers/motion_learning/geometry_features_audit.py").text(),
+      ),
+    ] {
+    @fs.write_file(out + "/" + name, text, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        out + "/" + name,
+        host + ":" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  let folder = out + "/features-audit-a"
+  @fs.mkdir(folder)
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      socket,
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/run_geometry_features_audit.mbtx -- heads geometry-features-audit-a",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "training.stdout.log", "training.stderr.log", "training-guard.json",
+      "completion.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-mlp-geometry-features-audit-a/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(status, 0)
+}

@@ -1,0 +1,65 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    7,
+    msg="usage: probe_g1_dynamic_refit.mbtx REPO REFIT STUDY_PROBE SUPERVISED INITIAL_FIT OUTPUT",
+  )
+  let root = args[1]
+  let output = args[6]
+  assert_true(!@fs.exists(output), msg="choose a fresh comparison directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "dynamic_refit_probe.py", "temporal_probe.py", "temporal_actor.py", "actor_update_probe.py",
+      "critic_probe.py", "cpu_physics.py", "policy.py", "dynamics.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  assert_eq(
+    @process.run(
+      root + "/target/learning-venv/bin/python",
+      [
+        output + "/provider-sources/dynamic_refit_probe.py",
+        "--study",
+        args[2],
+        "--probe",
+        args[3],
+        "--policies",
+        args[4],
+        "--initial",
+        args[5] + "/dynamics-seed-0.pt",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--output",
+        output,
+      ],
+      stdout=@process.redirect_to_file(
+        output + "/probe.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  assert_true(
+    @fs.exists(output + "/summary.json"),
+    msg="missing comparison evidence",
+  )
+}

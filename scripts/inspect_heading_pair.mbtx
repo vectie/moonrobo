@@ -1,0 +1,12 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/core/env", "moonbitlang/core/json" }
+fn field(j : Json,k : String) -> Json raise {guard j is Object(m)&&m.get(k) is Some(v)else{fail(k)};v}
+fn num(j : Json) -> Double raise {guard j is Number(n,..)else{fail("number")};n}
+fn median(a : Array[Double]) -> Double raise {assert_eq(a.length(),10);let b=a.copy();b.sort();(b[4]+b[5])/2.0}
+async fn main {
+  guard @env.args() is [_,path] else{fail("result.json")}
+  let r=@json.parse(@fs.read_file(path).text())
+  guard field(r,"observer")==Json("off")&&field(r,"rows") is Array(rows)&&rows.length()==52 else{fail("complete no-profiler ABBA required")}
+  let blocks=Array::makei(4,i=>median(rows.filter(r=>field(r,"steady")==Json(true)&&field(r,"abba_block")==Json(i)).map(r=>num(field(r,"wall_ms")))))
+  let a=(blocks[0]+blocks[3])/2.0;let b=(blocks[1]+blocks[2])/2.0
+  println(({"baseline_ms":Json(a),"candidate_ms":Json(b),"saved_ms":Json(a-b),"forward_saved_ms":Json(blocks[0]-blocks[1]),"reverse_saved_ms":Json(blocks[3]-blocks[2]),"blocks":Json(blocks)}:Json).stringify())
+}

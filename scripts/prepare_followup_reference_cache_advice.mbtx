@@ -1,0 +1,54 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let source = @fs.read_file(
+    repo + "/scripts/advise_hotspot_numeric_cache.mbtx",
+  ).text()
+  let prefix = source.split("async fn main {").to_array()[0].to_owned()
+  let body =
+    #|async fn main {
+    #|  idle()
+    #|  let report = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/cache-followup-derived-reference-20261026-a.json"
+    #|  guard !@fs.exists(report) else { fail("fresh receipt required") }
+    #|  let run = "/home/wlc004s/moonrobo/runs/native-hotspot-vs-smc512-20261026-b/run-0"
+    #|  guard field(read_json(run + "/result.json"), "passed") == Json(true) else { fail("passed closed training owner required") }
+    #|  guard read_json(run + "/training-docker-final.json") is Array([saved]) && field(saved,"Id") is String(id) else { fail("owner receipt") }
+    #|  guard @json.parse(command("docker", ["--host","unix:///var/run/docker.sock","inspect","--format","{{json .State}}",id])) == field(saved,"State") && closed(field(saved,"State")) else { fail("same closed owner") }
+    #|  let source = "/home/wlc004s/moonrobo/private/native-paper-tf32-reference-cache-20261024-a"
+    #|  guard field(saved,"Mounts") is Array(mounts) && mounts.any(m => field(m,"Source") == Json(source) && field(m,"Destination") == Json("/motion-cache")) else { fail("derived cache ownership") }
+    #|  let files : Array[(String,String)] = []
+    #|  scan(source, 0, files)
+    #|  guard files.length() == 40 else { fail("exact forty-motion derived cache expected") }
+    #|  let fincore = "/home/wlc004s/moonrobo/private/fincore-official-20261024-a/root/usr/bin/fincore"
+    #|  let rows : Array[Json] = []
+    #|  let before_mem = command("cat", ["/proc/meminfo"])
+    #|  for (path, identity) in files {
+    #|    idle()
+    #|    guard path.has_suffix(".f64") && command("stat", ["--format=%u %h %s %d %i %Y %Z", "--", path]) == identity else { fail("derived payload changed") }
+    #|    let before = @json.parse(command(fincore,["--json","--bytes","--output","FILE,SIZE,RES,PAGES",path]))
+    #|    ignore(command("sync", ["--data", "--", path]))
+    #|    ignore(command("dd",["if=" + path,"of=/dev/null","count=0","iflag=nocache,nofollow","status=none"]))
+    #|    guard command("stat", ["--format=%u %h %s %d %i %Y %Z", "--", path]) == identity else { fail("derived payload modified") }
+    #|    let after = @json.parse(command(fincore,["--json","--bytes","--output","FILE,SIZE,RES,PAGES",path]))
+    #|    rows.push({"path":Json(path),"before":before,"after":after})
+    #|  }
+    #|  @fs.write_file(report, ({"passed":true,"owner":Json(id),"scope":"Only forty derived motion-cache files of verified closed task; source dataset and file contents retained. Cold-start reference loading precedes steady41-60 measurement; same input files on both sides.","rows":Json(rows),"host_before":Json(before_mem),"host_after":Json(command("cat",["/proc/meminfo"])),"guards_changed":false,"files_deleted":0}:Json).stringify(indent=2),create_mode=CreateNew)
+    #|  println(report)
+    #|}
+  let path = repo +
+    "/output/spark-runtime-20261024/world-ln-fk-20261026/advise_followup_reference_cache.mbtx"
+  @fs.write_file(path, prefix + body, create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o", "ControlPath=/tmp/moonrobo-operator-179.sock", path, "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_followup_reference_cache.mbtx",
+    ]) ==
+    0 else {
+    fail("copy")
+  }
+}

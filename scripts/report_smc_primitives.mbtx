@@ -1,0 +1,83 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env", "moonbitlang/core/json", "moonbitlang/core/string" }
+let out="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-primitives-20261028"
+fn field(j : Json,k : String) -> Json raise {guard j is Object(m) && m.get(k) is Some(v) else {fail(k)};v}
+fn number(j : Json) -> Double raise {match j {Number(n,..)=>n;String(s)=>@string.parse_double(s);_=>fail("number")}}
+fn median(a : Array[Double]) -> Double raise {guard !a.is_empty() else {fail("empty")};let b=a.copy();b.sort();(b[(b.length()-1)/2]+b[b.length()/2])/2.0}
+async fn fetch(remote : String,path : String) -> Json {
+  if !@fs.exists(path) {guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/"+remote,path])==0 else {fail(remote)}}
+  @json.parse(@fs.read_file(path).text())
+}
+async fn result(label : String) -> Json {
+  let dir=out+"/"+label;if !@fs.exists(dir) {@fs.mkdir(dir,recursive=true)}
+  let prefix="runs/hotspot-shared-"+label+"/"
+  let j=fetch(prefix+"result.json",dir+"/result.json")
+  let guard_json=fetch(prefix+"training-guard.json",dir+"/training-guard.json")
+  let state=fetch(prefix+"training-docker-final.json",dir+"/training-docker-final.json")
+  ignore(fetch(prefix+"protocol.json",dir+"/protocol.json"))
+  ignore(fetch(prefix+"completion.json",dir+"/completion.json"))
+  guard field(guard_json,"reason")==Json("completed") && field(guard_json,"error")==Json::null() && state is [{"State":{"OOMKilled":False,"Running":False,..},..}] else {fail("guard failed "+label)}
+  j
+}
+async fn main {
+  guard @env.args() is [_,mode] else {fail("gates|report")}
+  let cpu=fetch("private/shared-compute-20261026-a/primitives-cpu-gates.json",out+"/cpu-gates.json")
+  let cpu_c=fetch("private/shared-compute-20261026-a/primitives-cpu-gates-c.json",out+"/cpu-gates-c.json")
+  let gates=[]
+  let passed : Map[String,Bool]=Map([])
+  for (phase,variants) in [("world",["snapshot","constants","both","safe"]),("actor",["cross","constants","both","preserve","safe"])] {
+    for variant in variants {
+      let label="primitives-"+variant+"-"+phase+"-gate-a"
+      let g=fetch("private/shared-compute-20261026-a/"+label+".numeric.json",out+"/"+label+".numeric.json")
+      passed[phase+"-"+variant]=field(g,"passed")==Json(true)
+      gates.push({"phase":Json(phase),"variant":Json(variant),"passed":field(g,"passed"),"values":field(g,"values"),"mismatches":field(g,"mismatches"),"metadata_mismatches":field(g,"metadata_mismatches"),"metric_mismatches":field(g,"metric_mismatches")})
+    }
+  }
+  if mode=="gates" {println(Json(gates).stringify(indent=2));return}
+  guard mode=="report" else {fail("unknown")}
+  let pairs : Array[Json]=[];let all_runs : Array[Json]=[]
+  let mut reserved=0.0;let mut cgroup=0.0;let mut available=1.0e30
+  for (phase,variants) in [("actor",["preserve","constants","safe"]),("world",["snapshot","constants","safe"])] {
+    for variant in variants {
+      if !passed[phase+"-"+variant] {continue}
+      let times=[]
+      let label="primitives-"+variant+"-"+phase+"-abba-a"
+      let r=result(label)
+      let validation=fetch("private/shared-compute-20261026-a/"+label+".block-validation.json",out+"/"+label+"/block-validation.json")
+      assert_eq(field(validation,"passed"),Json(true))
+      guard field(r,"observer")==Json("off") && field(r,"rows") is Array(rows) && rows.length()==52 else {fail("profile off or row count")}
+      for i in 0..<4 {
+        let ts=rows.filter(r=>field(r,"steady")==Json(true) && field(r,"abba_block")==Json(i)).map(r=>number(field(r,"wall_ms")));assert_eq(ts.length(),10)
+        let ms=median(ts);times.push(ms)
+        let memory=field(r,"memory");reserved=reserved.max(number(field(memory,"reserved_peak_bytes")))
+        let g=@json.parse(@fs.read_file(out+"/"+label+"/training-guard.json").text())
+        guard field(g,"samples") is Array(samples) else {fail("guard samples")}
+        for sample in samples {
+          cgroup=cgroup.max(number(field(sample,"cgroup_peak_bytes")))
+          available=available.min(number(field(sample,"host_available_kib"))*1024.0)
+          assert_eq(number(field(sample,"cgroup_swap_bytes")),0.0)
+        }
+        all_runs.push({"label":Json(label),"block":Json(i),"median_ms":Json(ms),"steady_ms":Json(ts),"memory":memory})
+      }
+      let a=(times[0]+times[3])/2.0;let b=(times[1]+times[2])/2.0
+      pairs.push({"phase":Json(phase),"variant":Json(variant),"baseline_ms":Json(a),"candidate_ms":Json(b),"saved_ms":Json(a-b),"saved_percent":Json((a-b)/a*100.0),"forward_pair_saved_ms":Json(times[0]-times[1]),"reverse_pair_saved_ms":Json(times[3]-times[2]),"run_medians_ms":Json(times)})
+    }
+  }
+  let targets=[]
+  for phase in ["world","actor"] {
+    let r=result("primitives-smc-"+phase+"-off-a")
+    guard field(r,"observer")==Json("off") && field(r,"rows") is Array(rows) else {fail("smc")}
+    let times=rows.filter(r=>field(r,"steady")==Json(true)).map(r=>number(field(r,"wall_ms")));assert_eq(times.length(),10)
+    let ms=median(times)
+    let candidates=pairs.filter(p=>field(p,"phase")==Json(phase))
+    targets.push({"phase":Json(phase),"compiled_ms":Json(ms),"numerical_comparison":field(r,"numerical_comparison"),"gaps":Json(candidates.map(p=>{"variant":field(p,"variant"),"candidate_ms":field(p,"candidate_ms"),"remaining_ms":Json(number(field(p,"candidate_ms"))-ms),"ratio":Json(number(field(p,"candidate_ms"))/ms)}))})
+  }
+  let report : Json={
+    "scope":"Fixed iteration60 weights, Adam, normalizers and tensors restored before each sample. Actor4096=8x512 H32 with20 critic updates; world one2048x8 update. No sampling/reset/upload/export in reported time. Not full round timing.",
+    "method":"Single agent; serial GPU; each native factor ABBA inside one process, four blocks each with three warmups and ten measured repeats; all52 restored metrics and selected execution flags checked. No profiler. SMC compiled freshly measured after native factors, three warmups and ten samples per phase, single-order performance reference with separately reported unresolved numerical discrepancies.",
+    "correctness":{"atol":0.000002,"rtol":0.0002,"cpu_direct_cross":cpu,"cpu_preserve_forward":cpu_c,"full_native_gates":Json(gates),"default_changed":false},
+    "pairs":Json(pairs),"smc":Json(targets),"runs":Json(all_runs),
+    "memory":{"guards_unchanged":true,"scope":"native ABBA runs","max_torch_reserved_bytes":Json(reserved),"max_cgroup_peak_bytes":Json(cgroup),"min_host_available_bytes":Json(available),"oom":false,"container_swap_bytes":0,"counters_overlap_on_UMA":true}
+  }
+  @fs.write_file(out+"/results.json",report.stringify(indent=2),create_mode=CreateNew)
+  println(Json(pairs).stringify(indent=2));println(field(report,"memory").stringify(indent=2))
+}

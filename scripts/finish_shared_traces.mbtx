@@ -1,0 +1,50 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let moon = "/home/wlc004s/moonrobo/toolchain/bin/moon"
+  guard @process.run(moon, [
+      "run",
+      "--target",
+      "native",
+      base + "/run_shared_diagnostic_campaign_e.mbtx",
+      "--",
+      "actor",
+      "backward-captures",
+    ]) ==
+    0 else {
+    fail("capture campaign did not complete")
+  }
+  // CPU exports run only after all GPU jobs end, never alongside timed work.
+  for i in 0..<4 {
+    guard @process.run(
+        moon,
+        [
+          "run",
+          "--target",
+          "native",
+          base + "/analyze_shared_trace_c.mbtx",
+          "--",
+          "actor",
+          i.to_string(),
+        ],
+        stdout=@process.redirect_to_file(
+          base + "/analyze-actor-" + i.to_string() + ".stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          base + "/analyze-actor-" + i.to_string() + ".stderr.log",
+          create_mode=CreateNew,
+        ),
+      ) ==
+      0 else {
+      fail("bounded CPU trace export/analysis failed")
+    }
+    println("Finished actor trace " + i.to_string())
+  }
+}

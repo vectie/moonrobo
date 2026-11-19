@@ -1,0 +1,37 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/json", "moonbitlang/core/env" }
+let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+async fn run(script : String,args : Array[String],label : String) -> Unit {
+  println("Starting "+label)
+  let code=@process.run("/home/wlc004s/moonrobo/toolchain/bin/moon",["run","--target","native",base+"/"+script+".mbtx","--",..args],stdout=@process.redirect_to_file(base+"/"+label+".stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(base+"/"+label+".stderr.log",create_mode=CreateNew))
+  @fs.write_file(base+"/"+label+".exit.json",({"exit_code":Json(code)}:Json).stringify(),create_mode=CreateNew)
+  guard code==0 else {fail(label)}
+  println("Completed "+label)
+}
+async fn main {
+  guard @env.args() is [_, mode] && ["gates","pairs"].contains(mode) else {fail("gates|pairs")}
+  for (label,expected) in [("primitive",3),("geometry",1),("pivot",1),("config",4),("resume",1),("inference",1)] {
+    let text=@fs.read_file(base+"/smc-algebra-"+label+"-cpu-b.stdout.log").text()
+    guard !text.contains("SKIP") else {fail("skipped "+label)}
+    let mut count=0
+    for line in text.split("\n") {
+      if line.has_prefix("{\"type\":\"result\"") {guard @json.parse(line.to_owned()) is {"message":"",..} else {fail("test failed "+label)}; count+=1}
+    }
+    assert_eq(count,expected)
+  }
+  let tasks=if mode=="gates" {
+    [("world","native","1","algebra-all-world-gate-a","all"),("actor","native","1","algebra-all-actor-gate-a","all"),("world","smc-eager","1","algebra-smc-eager-world-a","all"),("actor","smc-eager","1","algebra-smc-eager-actor-a","all")]
+  } else {
+    [("world","native","13","algebra-world-baseline-a","baseline"),("world","native","13","algebra-world-rotation-a","world"),("world","native","13","algebra-world-xi-a","xi"),("world","native","13","algebra-world-all-a","all"),("world","smc","13","algebra-world-smc-a","all"),("actor","native","13","algebra-actor-baseline-a","baseline"),("actor","native","13","algebra-actor-xi-a","xi"),("actor","native","13","algebra-actor-return-a","return"),("actor","native","13","algebra-actor-all-a","all"),("actor","smc","13","algebra-actor-smc-a","all")]
+  }
+  for i,(phase,implementation,reps,label,variant) in tasks {
+    if i%2==0 {run("advise_algebra_a",["algebra-cache-"+mode+"-"+i.to_string()],"algebra-cache-"+mode+"-"+i.to_string())}
+    run("invoke_algebra_b",[phase,implementation,"off",reps,label,variant],"algebra-wrapper-"+label)
+    let root="/home/wlc004s/moonrobo/runs/hotspot-shared-"+label
+    let j=@json.parse(@fs.read_file(root+"/result.json").text())
+    guard j is {"rows":Array(rows),..} && rows.length()==(if reps=="1" {1}else{13}) else {fail("incomplete "+label)}
+    guard @json.parse(@fs.read_file(root+"/training-docker-final.json").text()) is [{"State":{"OOMKilled":False,"Running":False,..},..}] else {fail("OOM/running "+label)}
+    guard @json.parse(@fs.read_file(root+"/training-guard.json").text()) is {"reason":"completed",..} else {fail("guard "+label)}
+    if implementation=="native" {guard @json.parse(@fs.read_file(base+"/"+label+".exit.json").text()) is {"exit_code":Number(0,..),..} else {fail("native exit "+label)}}
+    println("Verified complete "+label)
+  }
+}

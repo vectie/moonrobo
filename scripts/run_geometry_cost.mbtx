@@ -1,0 +1,87 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, kind, observer, label] else {
+    fail("kind observer label")
+  }
+  let root = "output/spark-runtime-20261024/geometry-cost-20261030-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-cost-179.sock"
+  let folder = root + "/" + label
+  let runner = @env.get_env_var("GEOMETRY_COST_RUNNER").unwrap_or("a")
+  let repetitions = @env.get_env_var("GEOMETRY_COST_REPETITIONS").unwrap_or(
+    "13",
+  )
+  guard ["a", "b", "c"].contains(runner) && ["1", "13"].contains(repetitions) else {
+    fail("bounded runner/repeats")
+  }
+  @fs.mkdir(folder)
+  let command = "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+    base +
+    "/"
+  let run = if kind == "build" {
+    command + "build_geometry_cost_" + runner + ".mbtx"
+  } else {
+    command +
+    "run_geometry_cost_" +
+    runner +
+    ".mbtx -- train " +
+    kind +
+    " " +
+    observer +
+    " " +
+    repetitions +
+    " " +
+    label +
+    " bf16-full"
+  }
+  let code = @process.run(
+    "ssh",
+    ["-S", socket, host, run],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  if kind != "build" {
+    for
+      name in [
+        "result.json", "final.json", "completion.json", "training-guard.json", "training-docker-final.json",
+        "training.stdout.log", "training.stderr.log", "protocol.json", "compiled-packages.json",
+        "compilation-audit.json", "frozen-decisions.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=" + socket,
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-" +
+          label +
+          "/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+  }
+  @fs.write_file(
+    folder + "/controller.receipt.json",
+    Json({ "exit_code": code }).stringify(),
+    create_mode=CreateNew,
+  )
+  assert_eq(code, 0)
+}

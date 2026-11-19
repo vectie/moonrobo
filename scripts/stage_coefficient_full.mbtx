@@ -1,0 +1,30 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env" }
+async fn run(p : String,a : Array[String]) -> Unit {guard @process.run(p,a)==0else{fail(p)}}
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo"
+  let old=root+"/output/spark-runtime-20261024/encoder-batch-20261028"
+  let dir=root+"/output/spark-runtime-20261024/coefficient-full-20261028"
+  let b="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host="wlc004s@192.168.2.179";let sock="/tmp/moonrobo-operator-179.sock"
+  guard @env.args() is [_,mode]else{fail("prepare|stage|cuda|plugin|build|config")}
+  if mode=="prepare" {
+    @fs.mkdir(dir)
+    let mut f=@fs.read_file(old+"/encoder_batch_fixture_a.mbt").text().replace_all(old="batch_actor_encoder",new="fused_so3_coefficients_full")
+    f=f.replace_all(old="fused_so3_coefficients_forward=forward, split_so3_coefficients=split)",new="fused_so3_coefficients_forward=forward, fused_so3_coefficients_full=true, split_so3_coefficients=split)")
+    @fs.write_file(dir+"/coefficient_full_fixture_a.mbt",f,create_mode=CreateNew)
+    for (a,to) in [("build_encoder_batch_a.mbtx","build_coefficient_full_a.mbtx"),("run_encoder_batch_a.mbtx","run_coefficient_full_a.mbtx"),("invoke_encoder_batch_a.mbtx","invoke_coefficient_full_a.mbtx"),("encoder_suite_a.mbtx","coefficient_full_suite_a.mbtx"),("encoder_config_tests_a.mbtx","coefficient_full_config_tests_a.mbtx")] {
+      let s=@fs.read_file(old+"/"+a).text().replace_all(old="encoder-batch",new="coefficient-full").replace_all(old="encoder_batch",new="coefficient_full").replace_all(old="encoder_suite",new="coefficient_full_suite").replace_all(old="batch_actor_encoder",new="fused_so3_coefficients_full").replace_all(old="libmoonrobo_coefficient_assembly_a.so",new="libmoonrobo_coefficient_full_a.so")
+      @fs.write_file(dir+"/"+to,s,create_mode=CreateNew)
+    };return
+  }
+  if mode=="stage" {
+    for f in ["coefficient_full_fixture_a.mbt","build_coefficient_full_a.mbtx","run_coefficient_full_a.mbtx","invoke_coefficient_full_a.mbtx","coefficient_full_suite_a.mbtx","coefficient_full_config_tests_a.mbtx"] {run("scp",["-o","ControlPath="+sock,dir+"/"+f,host+":"+b+"/"+f])}
+    run("ssh",["-S",sock,host,"test ! -e "+b+"/workspace/moonrobo-coefficient-full-a"])
+    run("ssh",["-S",sock,host,"cp -a --reflink=auto "+b+"/workspace/moonrobo-encoder-batch-a "+b+"/workspace/moonrobo-coefficient-full-a"])
+    for f in ["learning_tensor/geometry_vjp.inc","learning_tensor/geometry_vjp.cu","learning_tensor/geometry_vjp.mbt","learning_tensor/geometry_vjp_loader.inc","learning_aligned_gpu/execution_optimizations.mbt","learning_aligned_gpu/learning.mbt","learning_aligned_gpu/microbatch.mbt","learning_aligned_gpu/actor_microbatch.mbt","learning_aligned_gpu/geometry/rotations.mbt","learning_aligned_gpu/geometry/state.mbt","learning_aligned_gpu/cmd/optimizations.mbt","learning_aligned_gpu/cmd/optimizations_wbtest.mbt"] {run("scp",["-o","ControlPath="+sock,root+"/src/"+f,host+":"+b+"/workspace/moonrobo-coefficient-full-a/src/"+f])}
+    run("ssh",["-S",sock,host,"cp "+b+"/coefficient_full_fixture_a.mbt "+b+"/workspace/moonrobo-coefficient-full-a/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"]);return
+  }
+  let m=match mode {"cuda"=>"fused-cuda";"plugin"=>"plugin";"build"=>"gate-build-coefficient-full-a";"config"=>"config";_=>fail("mode")}
+  let script=if mode=="config"{"coefficient_full_config_tests_a.mbtx"}else{"build_coefficient_full_a.mbtx"}
+  run("ssh",["-S",sock,host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+b+"/"+script+" -- "+m])
+}

@@ -1,0 +1,48 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let name = "actor_reward_contract_audit_ah"
+  @fs.write_file(
+    out + "/" + name + ".py",
+    @fs.read_file("providers/motion_learning/actor_reward_contract_audit.py"),
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/" + name + ".py",
+      host + ":" + base + "/" + name + ".py",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run("ssh", [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "python3 " + base + "/" + name + ".py " + base + "/" + name + ".json",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      host + ":" + base + "/" + name + ".json",
+      out + "/" + name + ".json",
+    ]),
+    0,
+  )
+}

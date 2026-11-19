@@ -1,0 +1,10 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="output/spark-runtime-20261024/geometry-tail-20261028/";let remote="wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/"
+  let path=dir+"build_geometry_tail_b.mbtx";let b=@fs.read_file(path).text()
+  if b.contains("moonrobo-geometry-tail-a"){@fs.write_file(path,b.replace_all(old="moonrobo-geometry-tail-a",new="moonrobo-geometry-tail-b"))}
+  for f in ["geometry_tail_fixture_b.mbt","build_geometry_tail_b.mbtx","run_geometry_tail_b.mbtx","invoke_geometry_tail_b.mbtx","scope_suite.mbtx"] {
+    guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+f,remote+f])==0else{fail(f)}
+  }
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock","src/learning_aligned_gpu/actor_microbatch.mbt",remote+"actor_microbatch_scoped_b.mbt"])==0else{fail("source")}
+}

@@ -1,0 +1,17 @@
+{
+  "seeds": [0, 1, 2],
+  "teacher_seeds": [4000, 4001, 4002, 4003],
+  "rounds": 8,
+  "updates_per_round": 750,
+  "batch_size": 128,
+  "actor_learning_rate": 0.0003,
+  "adapter_width": 64,
+  "recent_points": 30000,
+  "sampling_seed": 5100,
+  "collection_seed_base": 4200,
+  "validation_seeds": [30, 31, 32],
+  "test_seeds": [8700, 8701, 8702],
+  "max_mean_joint_rmse_rad": 0.15,
+  "cpu_threads": 2,
+  "scope": "Three common dynamic-data conditions: H1/F0, H10/F0, H10/F10. Same incoming actors, zero-output adapter head, frozen normalization, rounds and supervised updates. Adapter input dimensions and parameter counts differ; no isolated parameter-capacity or matched-time claim. Past observations are causal; future targets are known procedural commands at +1..+10 control steps. No future physical states, critic training or world-model fitting."
+}

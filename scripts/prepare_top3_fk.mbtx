@@ -1,0 +1,142 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn run(cmd : String, args : Array[String]) -> Unit {
+  guard @process.run(cmd, args) == 0 else { fail(cmd + " failed") }
+}
+
+///|
+fn replace(text : String, old : String, next : String) -> String raise {
+  guard text.contains(old) else { fail("missing replacement " + old) }
+  text.replace_all(old~, new=next)
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let output = repo + "/output/spark-runtime-20261024/top3-frequency-20261026"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-operator-179.sock"
+  run("ssh", [
+    "-S",
+    socket,
+    host,
+    "test -e " + base + "/top3-campaign-completed.json",
+  ])
+  let fixture = replace(
+    @fs.read_file(output + "/top3_fixture_a.mbt").text(),
+    "      reuse_geometry: true,",
+    "      sparse_joint_axis: @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") == Some(\"sparse-axis\"),\n      reuse_geometry: true,",
+  )
+  @fs.write_file(output + "/top3_fixture_b.mbt", fixture, create_mode=CreateNew)
+  let mut builder = @fs.read_file(output + "/build_top3_a.mbtx").text()
+  for
+    (old, next) in [
+      ("moonrobo-top3-a", "moonrobo-top3-b"),
+      ("top3-gate-a", "top3-gate-b"),
+      ("top3-tensor-a", "top3-tensor-b"),
+      ("top3-runtime-a", "top3-runtime-b"),
+      ("top3-tests-a", "top3-tests-b"),
+      ("top3-world-cpu-a", "top3-geometry-cpu-b"),
+      ("top3-config-cpu-a", "top3-config-cpu-b"),
+      (
+        "learning_aligned_gpu/learning_aligned_gpu.whitebox_test.exe", "learning_aligned_gpu/geometry/geometry.blackbox_test.exe",
+      ),
+      ("world_error_batched_wbtest.mbt:0-1", "geometry_test.mbt:0-1"),
+    ] {
+    builder = replace(builder, old, next)
+  }
+  builder = replace(
+    builder, "\"src/learning_aligned_gpu/runtime\", \"src/learning_aligned_gpu\",",
+    "\"src/learning_aligned_gpu/runtime\", \"src/learning_aligned_gpu\", \"src/learning_aligned_gpu/geometry\",",
+  )
+  @fs.write_file(output + "/build_top3_b.mbtx", builder, create_mode=CreateNew)
+  let mut driver = @fs.read_file(output + "/run_top3_shared_a.mbtx").text()
+  for
+    (old, next) in [
+      ("top3-gate-a", "top3-gate-b"),
+      ("run_top3_shared_a.mbtx", "run_top3_shared_b.mbtx"),
+      ("top3_fixture_a.mbt", "top3_fixture_b.mbt"),
+      ("build_top3_a.mbtx", "build_top3_b.mbtx"),
+      (
+        "\"world-batched\", \"norm-snapshot\"", "\"world-batched\", \"norm-snapshot\", \"sparse-axis\"",
+      ),
+    ] {
+    driver = replace(driver, old, next)
+  }
+  @fs.write_file(
+    output + "/run_top3_shared_b.mbtx",
+    driver,
+    create_mode=CreateNew,
+  )
+  for
+    name in [
+      "top3_fixture_b.mbt", "build_top3_b.mbtx", "run_top3_shared_b.mbtx",
+    ] {
+    run("scp", [
+      "-o",
+      "ControlPath=" + socket,
+      output + "/" + name,
+      host + ":" + base + "/" + name,
+    ])
+  }
+  run("ssh", [
+    "-S",
+    socket,
+    host,
+    "test ! -e " + base + "/workspace/moonrobo-top3-b",
+  ])
+  run("ssh", [
+    "-S",
+    socket,
+    host,
+    "cp -a --reflink=auto " +
+    base +
+    "/workspace/moonrobo-top3-a " +
+    base +
+    "/workspace/moonrobo-top3-b",
+  ])
+  for
+    path in [
+      "execution_optimizations.mbt", "learning.mbt", "cmd/optimizations.mbt", "cmd/inference.mbt",
+      "geometry/context.mbt", "geometry/geometry_test.mbt",
+    ] {
+    run("scp", [
+      "-o",
+      "ControlPath=" + socket,
+      repo + "/src/learning_aligned_gpu/" + path,
+      host +
+      ":" +
+      base +
+      "/workspace/moonrobo-top3-b/src/learning_aligned_gpu/" +
+      path,
+    ])
+  }
+  run("ssh", [
+    "-S",
+    socket,
+    host,
+    "cp " +
+    base +
+    "/top3_fixture_b.mbt " +
+    base +
+    "/workspace/moonrobo-top3-b/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt",
+  ])
+  for mode in ["gate-build-top3-b", "top3-tests-b"] {
+    run("ssh", [
+      "-S",
+      socket,
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/build_top3_b.mbtx -- " +
+      mode,
+    ])
+  }
+}

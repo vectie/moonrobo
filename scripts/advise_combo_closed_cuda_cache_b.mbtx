@@ -1,0 +1,853 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+let base = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+
+///|
+let fincore = "/home/wlc004s/moonrobo/private/fincore-official-20261024-a/root/usr/bin/fincore"
+
+///|
+let image = "sha256:c76815627562a180052cef8e7e07edb37fe8547d83158eed6182ebd99bb8385d"
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(m) && m.get(k) is Some(v) else { fail("missing " + k) }
+  v
+}
+
+///|
+fn text(j : Json) -> String raise {
+  guard j is String(s) else { fail("string") }
+  s
+}
+
+///|
+fn num(j : Json) -> Int64 raise {
+  guard j is Number(n) && n >= 0.0 && n <= 9007199254740991.0 && n.floor() == n else {
+    fail("integer")
+  }
+  n.to_int64()
+}
+
+///|
+fn component(s : String) -> Bool {
+  s != "" &&
+  s != "." &&
+  s != ".." &&
+  s
+  .iter()
+  .all(c => {
+    (c >= 'a' && c <= 'z') ||
+    (c >= 'A' && c <= 'Z') ||
+    (c >= '0' && c <= '9') ||
+    c == '_' ||
+    c == '-' ||
+    c == '.'
+  })
+}
+
+///|
+async fn read_json(p : String) -> Json {
+  guard @fs.realpath(p) == p && @fs.kind(p, follow_symlink=false) == Regular else {
+    fail("canonical metadata required")
+  }
+  let f = @fs.open(p, mode=ReadOnly)
+  defer f.close()
+  let n = f.size()
+  guard n > 0L && n <= 16777216L else { fail("metadata bound") }
+  @json.parse(@utf8.decode(f.read_exactly_at(n.to_int(), position=0L)))
+}
+
+///|
+async fn bounded(r : &@io.Reader) -> String {
+  let b = FixedArray::make(4194305, b'\x00')
+  let mut n = 0
+  for ;; {
+    let k = r.read(b, offset=n, max_len=b.length() - n)
+    if k == 0 {
+      break
+    }
+    n += k
+    guard n <= 4194304 else { fail("4MiB output bound") }
+  }
+  @utf8.decode(Bytes::from_array(b[:n]))
+}
+
+///|
+async fn command(p : String, a : Array[String]) -> String {
+  @async.with_timeout(60000, () => {
+    let (out, ot) = @process.read_from_process()
+    let (err, et) = @process.read_from_process()
+    @async.with_task_group() <| g => {
+      let proc = g.spawn(() => @process.run(p, a, stdout=ot, stderr=et))
+      let o = g.spawn(() => {
+        defer out.close()
+        bounded(out)
+      })
+      let e = g.spawn(() => {
+        defer err.close()
+        bounded(err)
+      })
+      let code = proc.wait()
+      let value = o.wait()
+      let error = e.wait()
+      guard code == 0 else { fail(p + " failed: " + error) }
+      value
+    }
+  })
+}
+
+///|
+async fn docker(a : Array[String]) -> String {
+  command("docker", ["--host", "unix:///var/run/docker.sock"] + a)
+}
+
+///|
+async fn inspect(id : String) -> Json {
+  guard @json.parse(docker(["inspect", id])) is Array([j]) else {
+    fail("one container required")
+  }
+  j
+}
+
+///|
+fn stopped(j : Json) -> Unit raise {
+  let s = field(j, "State")
+  guard field(s, "Running") == Json(false) &&
+    field(s, "Status") == Json("exited") &&
+    field(s, "Pid") == Json(0) &&
+    field(s, "OOMKilled") == Json(false) &&
+    !text(field(s, "FinishedAt")).has_prefix("0001-") else {
+    fail("container not closed/noOOM")
+  }
+}
+
+///|
+async fn idle(worker : String) -> Unit {
+  guard docker(["ps", "--no-trunc", "--quiet"]).trim() == worker else {
+    fail("unrelated active container")
+  }
+  guard command("nvidia-smi", [
+      "--query-compute-apps=pid", "--format=csv,noheader,nounits",
+    ]).trim() ==
+    "" else {
+    fail("active GPU job")
+  }
+}
+
+///|
+struct Entry {
+  path : String
+  stamp : String
+  size : Int64
+}
+
+///|
+fn inventory(s : String) -> Array[Entry] raise {
+  guard s.has_suffix("\x00") else { fail("truncated inventory") }
+  let entries : Array[Entry] = []
+  let mut bytes = 0L
+  let rows = s.split("\x00").filter(s => s != "").to_array()
+  guard rows.length() <= 32768 else { fail("entry bound") }
+  for row in rows {
+    let c = row.split("\t").to_array()
+    guard c.length() == 9 else { fail("inventory columns") }
+    let path = c[8].to_owned()
+    guard path == "" ||
+      (
+        path.split("/").all(p => component(p.to_owned())) &&
+        path.split("/").count() < 14
+      ) else {
+      fail("unsafe path")
+    }
+    if c[0] == "d" {
+      continue
+    }
+    guard c[0] == "f" && c[2] == "1" && c[3] == "1000" else {
+      fail("nonregular, linked or foreign file")
+    }
+    let size = @string.parse_int64(c[1])
+    bytes += size
+    guard size >= 0L && size <= 4294967296L && bytes <= 17179869184L else {
+      fail("file/total bytes bound")
+    }
+    entries.push({ path, size, stamp: c[:8].map(x => x.to_owned()).join("\t"), })
+  }
+  entries
+}
+
+///|
+async fn residency(worker : String, entries : Array[Entry]) -> Array[Json] {
+  let result : Array[Json] = []
+  for start = 0; start < entries.length(); start = start + 32 {
+    let end = if start + 32 < entries.length() {
+      start + 32
+    } else {
+      entries.length()
+    }
+    let paths = entries[start:end].map(e => "/cache/" + e.path)
+    let j = @json.parse(
+      docker(
+        [
+          "exec", worker, "/fincore", "--json", "--bytes", "--output", "FILE,SIZE,RES,PAGES",
+        ] +
+        paths,
+      ),
+    )
+    guard field(j, "fincore") is Array(rows) && rows.length() == paths.length() else {
+      fail("residency count")
+    }
+    for i, row in rows {
+      guard field(row, "file") == Json(paths[i]) &&
+        num(field(row, "size")) == entries[start + i].size else {
+        fail("file identity changed")
+      }
+      result.push(row)
+    }
+  }
+  result
+}
+
+///|
+async fn cache(
+  id : String,
+  source : String,
+  advise : Bool,
+  records : Array[Json],
+) -> Unit {
+  idle("")
+  stopped(inspect(id))
+  let args = [
+    "create",
+    "--runtime",
+    "runc",
+    "--network",
+    "none",
+    "--read-only",
+    "--user",
+    "1000:1000",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--memory",
+    "268435456",
+    "--memory-swap",
+    "268435456",
+    "--cpus",
+    "1",
+    "--pids-limit",
+    "32",
+    "--env",
+    "NVIDIA_VISIBLE_DEVICES=void",
+    "--env",
+    "NVIDIA_DRIVER_CAPABILITIES=",
+    "--mount",
+    "type=bind,src=" + source + ",dst=/cache,readonly",
+    "--mount",
+    "type=bind,src=" + fincore + ",dst=/fincore,readonly",
+    "--entrypoint",
+    "/usr/bin/sleep",
+    image,
+    "1800",
+  ]
+  let worker = docker(args).trim().to_owned()
+  let record : Json = {
+    "source": source,
+    "owner_container": id,
+    "worker": worker,
+    "worker_argv": args,
+    "passed": false,
+  }
+  records.push(record)
+  guard record is Object(m) else { fail("record") }
+  let success = try {
+    let initial = inspect(worker)
+    m["worker_initial"] = initial
+    let host = field(initial, "HostConfig")
+    guard field(initial, "Image") == Json(image) &&
+      field(host, "Runtime") == Json("runc") &&
+      field(host, "ReadonlyRootfs") == Json(true) &&
+      field(host, "Memory") == Json(268435456) &&
+      field(host, "MemorySwap") == Json(268435456) &&
+      field(host, "NetworkMode") == Json("none") &&
+      field(field(initial, "Config"), "User") == Json("1000:1000") &&
+      field(initial, "Mounts") is Array(mounts) &&
+      mounts.length() == 2 &&
+      mounts.all(x => field(x, "RW") == Json(false)) else {
+      fail("worker confinement")
+    }
+    ignore(docker(["start", worker]))
+    idle(worker)
+    let entries = inventory(
+      docker([
+        "exec", worker, "/usr/bin/find", "-P", "/cache", "-xdev", "-maxdepth", "14",
+        "-printf", "%y\t%s\t%n\t%U\t%D\t%i\t%T@\t%C@\t%P\\0",
+      ]),
+    )
+    let before = residency(worker, entries)
+    m["before"] = Json(before)
+    let done : Array[Json] = []
+    m["advice"] = Json(done)
+    for i, entry in entries {
+      if !advise || num(field(before[i], "res")) == 0L {
+        continue
+      }
+      idle(worker)
+      stopped(inspect(id))
+      let path = "/cache/" + entry.path
+      let now = docker([
+          "exec", worker, "/usr/bin/find", "-P", path, "-maxdepth", "0", "-printf",
+          "%y\t%s\t%n\t%U\t%D\t%i\t%T@\t%C@",
+        ])
+        .trim()
+        .to_owned()
+      guard now == entry.stamp else { fail("file changed before advice") }
+      ignore(
+        docker([
+          "exec",
+          worker,
+          "/usr/bin/dd",
+          "if=" + path,
+          "iflag=nocache,nofollow",
+          "count=0",
+          "status=none",
+        ]),
+      )
+      done.push({
+        "path": entry.path,
+        "size": entry.size,
+        "operation": "POSIX_FADV_DONTNEED via GNU dd count=0; no read/write/delete",
+        "returned_zero": true,
+      })
+    }
+    m["advice"] = Json(done)
+    m["after"] = Json(residency(worker, entries))
+    true
+  } catch {
+    e => {
+      m["error"] = Json(e.to_string())
+      false
+    }
+  }
+  ignore(docker(["stop", "--time", "1", worker]))
+  m["worker_final"] = inspect(worker)
+  m["passed"] = Json(success)
+  stopped(inspect(id))
+  idle("")
+  guard success else { fail("cache operation failed; retained record") }
+}
+
+///|
+async fn main {
+  let a = @env.args()
+  if a is [_, mode, name] &&
+    [
+      "--host-build", "--host-pair", "--host-triton", "--host-warp", "--host-diagnostic-warp",
+      "--host-apic",
+    ].contains(mode) {
+    guard component(name) && !@fs.exists(base + "/" + name) else {
+      fail("fresh report")
+    }
+    idle("")
+    let ownership : Array[Json] = []
+    let self_exe = @fs.realpath("/proc/self/exe")
+    guard self_exe.has_prefix(base + "/_build/") &&
+      self_exe.contains("/native/") else {
+      fail("expected native controller in private build root")
+    }
+    let active_build = self_exe.split("/native/").to_array()[0].to_owned() + "/"
+    let sources = if mode == "--host-apic" {
+      let result : Array[String] = []
+      for
+        (name, root, destination) in [
+          ("moonrobo-apic-export-20261024-h", "apic-export-20261024-h", "/gate"),
+          ("moonrobo-apic-export-20261024-g", "apic-export-20261024-g", "/gate"),
+          ("moonrobo-apic-export-20261024-e", "apic-export-20261024-e", "/gate"),
+          (
+            "moonrobo-apic-paper-n256-export-20261024-b", "apic-paper-n256-20261024-b",
+            "/gate",
+          ),
+          (
+            "moonrobo-apic-paper-n2-export-20261024-c", "apic-paper-n2-20261024-c",
+            "/gate",
+          ),
+          (
+            "moonrobo-apic-n128-export-20261024-a", "apic-n128-20261024-a", "/gate",
+          ),
+          ("moonrobo-apic-n8-export-20261024-a", "apic-n8-20261024-a", "/gate"),
+          ("moonrobo-apic-n4-export-20261024-b", "apic-n4-20261024-b", "/gate"),
+          (
+            "moonrobo-apic-sdk-oracle-20261024-b", "apic-sdk-oracle-20261024-b",
+            "/oracle",
+          ),
+          (
+            "moonrobo-apic-sdk-oracle-20261024-a", "apic-sdk-oracle-20261024-a",
+            "/oracle",
+          ),
+        ] {
+        let actual = inspect(name)
+        stopped(actual)
+        let owned = "/home/wlc004s/moonrobo/runs/" + root
+        guard field(actual, "Name") == Json("/" + name) &&
+          field(actual, "Mounts") is Array(mounts) &&
+          mounts.any(m => {
+            field(m, "Source") == Json(owned) &&
+            field(m, "Destination") == Json(destination) &&
+            field(m, "RW") == Json(true)
+          }) else {
+          fail("APIC cache ownership")
+        }
+        let cache_root = owned + "/warp-cache"
+        ownership.push(actual)
+        if !@fs.exists(cache_root) {
+          ownership.push({ "cache_absent": Json(cache_root), "action": "none" })
+          continue
+        }
+        result.push(cache_root)
+      }
+      result
+    } else if mode == "--host-warp" {
+      let result : Array[String] = []
+      for
+        series in [
+          "smc-compiled-eager4096-pairs-20261024-a", "smc-compiled-eager512-pairs-20261024-b",
+          "smc-native-aligned512-pairs-20261024-e", "smc-native-logical4096-pairs-20261024-e",
+          "native4096-six-smc-confirmation-20261024-g2-a", "smc-native-aligned512-pairs-20261024-b",
+          "smc-native-aligned512-pairs-20261024-d", "smc-compiled-eager512-pairs-20261024-a",
+        ] {
+        for i in 0..<4 {
+          let root = "/home/wlc004s/moonrobo/runs/" +
+            series +
+            "/run-" +
+            i.to_string()
+          if !@fs.exists(root + "/result.json") {
+            continue
+          }
+          let receipt = read_json(root + "/result.json")
+          guard field(receipt, "format") ==
+            Json("moonrobo.smc-native-pairs.run.v1") else {
+            fail("registered pair required; closure checked below")
+          }
+          if field(receipt, "kind") != Json("smc") {
+            continue
+          }
+          let saved = match read_json(root + "/training-docker-final.json") {
+            Array([j]) => j
+            Object(_) as j => j
+            _ => fail("pair inspection")
+          }
+          let actual = inspect(text(field(saved, "Id")))
+          stopped(saved)
+          stopped(actual)
+          for key in ["Id", "Image", "Config", "GraphDriver", "State"] {
+            guard field(saved, key) == field(actual, key) else {
+              fail("pair identity")
+            }
+          }
+          guard field(actual, "Mounts") is Array(mounts) &&
+            mounts.any(m => {
+              field(m, "Source") == Json(root) &&
+              field(m, "Destination") == Json("/pair") &&
+              field(m, "RW") == Json(true)
+            }) else {
+            fail("pair cache ownership")
+          }
+          ownership.push(actual)
+          result.push(root + "/cache/warp")
+        }
+      }
+      result
+    } else if mode == "--host-triton" || mode == "--host-diagnostic-warp" {
+      let result : Array[String] = []
+      for
+        suffix in (if mode == "--host-diagnostic-warp" {
+          [
+            "b-smc-compiled", "solo-c-smc-compiled", "solo-d-smc-compiled", "solo-e-smc-compiled",
+            "solo-f-smc-eager",
+          ]
+        } else {
+          ["solo-c-smc-compiled", "solo-d-smc-compiled", "solo-e-smc-compiled"]
+        }) {
+        let root = "/home/wlc004s/moonrobo/runs/operator-trace41-20261025-" +
+          suffix
+        let receipt = read_json(root + "/outer-result.json")
+        guard field(receipt, "format") ==
+          Json("moonrobo.operator-trace41-outer.v1") else {
+          fail("diagnostic receipt")
+        }
+        let saved = read_json(root + "/docker-final.json")
+        let actual = inspect(text(field(receipt, "container_id")))
+        stopped(saved)
+        stopped(actual)
+        for key in ["Id", "Image", "Config", "GraphDriver", "State"] {
+          guard field(saved, key) == field(actual, key) else {
+            fail("diagnostic container changed")
+          }
+        }
+        guard field(actual, "Mounts") is Array(mounts) &&
+          mounts.any(m => {
+            field(m, "Source") == Json(root + "/pair") &&
+            field(m, "Destination") == Json("/pair") &&
+            field(m, "RW") == Json(true)
+          }) else {
+          fail("diagnostic cache ownership")
+        }
+        ownership.push(actual)
+        result.push(
+          root +
+          (if mode == "--host-diagnostic-warp" {
+            "/pair/cache/warp"
+          } else {
+            "/pair/triton-cache"
+          }),
+        )
+      }
+      result
+    } else if mode == "--host-pair" {
+      let root = "/home/wlc004s/moonrobo/runs/smc-compiled-eager512-pairs-20261024-a/run-0"
+      let result = read_json(root + "/result.json")
+      guard field(result, "format") == Json("moonrobo.smc-native-pairs.run.v1") &&
+        field(result, "spec_sha256") ==
+        Json("9a506a98f8a5dc730147fdb0287d7b7d4e29727c84f344843780fe9360a9b8b4") else {
+        fail("exact historical pair identity")
+      }
+      let saved = match read_json(root + "/training-docker-final.json") {
+        Array([j]) => j
+        Object(_) as j => j
+        _ => fail("saved pair inspection")
+      }
+      let actual = inspect(text(field(saved, "Id")))
+      stopped(saved)
+      stopped(actual)
+      for key in ["Id", "Image", "Config", "GraphDriver", "State"] {
+        guard field(saved, key) == field(actual, key) else {
+          fail("pair container changed")
+        }
+      }
+      guard field(actual, "Mounts") is Array(mounts) &&
+        mounts.any(m => {
+          field(m, "Source") == Json(root) &&
+          field(m, "Destination") == Json("/pair") &&
+          field(m, "RW") == Json(true)
+        }) else {
+        fail("pair cache ownership")
+      }
+      ownership.push(actual)
+      [root + "/inductor-cache", root + "/triton-cache", root + "/cuda-cache"]
+    } else {
+      [
+        base + "/_build",
+        base + "/workspace-clean/moonrobo/_build",
+        base + "/workspace-clean/moonrobo/scripts/_build",
+        base + "/workspace-clean/moonrobo-fixtures/_build",
+        base + "/script-cache",
+        "/home/wlc004s/moonrobo/_build",
+        "/home/wlc004s/moonrobo/scripts/_build",
+        "/home/wlc004s/moonrobo/private/_build",
+        "/home/wlc004s/moonrobo/private/native4096-pair-tools-20261024-g2/_build",
+        "/home/wlc004s/moonrobo/private/native-micro512-256-prepared/_build",
+      ]
+    }
+    let rows : Array[Json] = []
+    let before_mem = command("cat", ["/proc/meminfo"])
+    errdefer {
+      let partial : Json = {
+        "format": "moonrobo.closed-operator-build-cache.v1",
+        "passed": false,
+        "mode": mode,
+        "operations": rows,
+        "meminfo_before": before_mem,
+        "scope": "Interrupted attempt; completed per-file observations only; original failure remains a failure",
+        "files_deleted": 0,
+        "guards_changed": false,
+      }
+      @fs.write_file(
+        base + "/" + name,
+        partial.stringify(indent=2),
+        create_mode=CreateNew,
+      ) catch {
+        _ => ()
+      }
+    }
+    // Explicit completed task build products or closed pair caches only.
+    // Exclude active control scripts; advice preserves all file contents.
+    for source in sources {
+      guard @fs.realpath(source) == source else { fail("canonical build root") }
+      let files = command("find", [
+        source,
+        "-xdev",
+        "-maxdepth",
+        "18",
+        "-type",
+        "f",
+        "-uid",
+        "1000",
+        "-size",
+        if mode == "--host-warp" ||
+          mode == "--host-diagnostic-warp" ||
+          mode == "--host-build" ||
+          mode == "--host-apic" {
+          "+64k"
+        } else {
+          "+1M"
+        },
+        "-printf",
+        "%p\\0",
+      ])
+      let paths = files
+        .split("\x00")
+        .filter(p => p != "" && !p.has_prefix(active_build))
+        .map(p => p.to_owned())
+        .to_array()
+      guard paths.length() <= 4096 else { fail("build metadata file count") }
+      for index, path in paths {
+        guard @fs.realpath(path) == path &&
+          @fs.kind(path, follow_symlink=false) == Regular else {
+          fail("build regular canonical")
+        }
+        let stamp = command("stat", ["--format=%d %i %s %Y %Z %h %u", path])
+          .trim()
+          .to_owned()
+        guard stamp.has_suffix(" 1 1000") else { fail("build owner/hardlink") }
+        let before = @json.parse(
+          command(fincore, [
+            "--json", "--bytes", "--output", "FILE,SIZE,RES,PAGES", path,
+          ]),
+        )
+        guard field(before, "fincore") is Array([b]) else { fail("fincore") }
+        if num(field(b, "res")) == 0L {
+          continue
+        }
+        if index % 32 == 0 {
+          idle("")
+        }
+        ignore(
+          command("dd", [
+            "if=" + path,
+            "iflag=nocache,nofollow",
+            "count=0",
+            "status=none",
+          ]),
+        )
+        guard command("stat", ["--format=%d %i %s %Y %Z %h %u", path]).trim() ==
+          stamp else {
+          fail("build file changed")
+        }
+        let after = @json.parse(
+          command(fincore, [
+            "--json", "--bytes", "--output", "FILE,SIZE,RES,PAGES", path,
+          ]),
+        )
+        rows.push({
+          "path": path,
+          "before": field(before, "fincore"),
+          "after": field(after, "fincore"),
+          "source": source,
+          "passed": true,
+        })
+      }
+    }
+    idle("")
+    let report : Json = {
+      "passed": true,
+      "format": "moonrobo.closed-operator-build-cache.v1",
+      "mode": mode,
+      "verified_ownership": ownership,
+      "operations": rows,
+      "meminfo_before": before_mem,
+      "meminfo_after": command("cat", ["/proc/meminfo"]),
+      "scope": "Explicit completed task build products or verified closed task caches, >64KiB for build/Warp or >1MiB otherwise; currently executing controller build excluded; all Docker/GPU jobs idle; no source/dataset advice; file-specific nocache preserves contents and existing run acceptance",
+      "files_deleted": 0,
+      "guards_changed": false,
+    }
+    @fs.write_file(
+      base + "/" + name,
+      report.stringify(indent=2),
+      create_mode=CreateNew,
+    )
+    println("completed build cache advice: " + name)
+    return
+  }
+  if a is [_, "--self-test"] {
+    assert_true(component("abc-123.pch"))
+    assert_false(component(".."))
+    assert_false(component("a/b"))
+    assert_eq(
+      inventory(
+        "d\t4096\t2\t1000\t1\t1\t0\t0\t\x00f\t4\t1\t1000\t1\t2\t0\t0\tx\x00",
+      ).length(),
+      1,
+    )
+    for
+      invalid in [
+        "l\t4\t1\t1000\t1\t2\t0\t0\tx\x00", "f\t4\t2\t1000\t1\t2\t0\t0\tx\x00", "f\t4\t1\t0\t1\t2\t0\t0\tx\x00",
+        "f\t4\t1\t1000\t1\t2\t0\t0\t../x\x00",
+      ] {
+      let rejected = try {
+        ignore(inventory(invalid))
+        false
+      } catch {
+        _ => true
+      }
+      assert_true(rejected)
+    }
+    println("cache scope parser checks passed; no Docker/GPU")
+    return
+  }
+  guard a.length() >= 5 &&
+    a.length() <= 12 &&
+    ["--plan", "--advise"].contains(a[1]) &&
+    ["tmp", "inductor", "triton", "cuda"].contains(a[3]) &&
+    component(a[2]) else {
+    fail(
+      "usage: --plan|--advise REPORT_BASENAME tmp|inductor|triton|cuda RUN_SUFFIX...",
+    )
+  }
+  let report_path = base + "/" + a[2]
+  guard !@fs.exists(report_path) else { fail("fresh report required") }
+  let records : Array[Json] = []
+  let ownership : Array[Json] = []
+  let before = command("cat", ["/proc/meminfo"])
+  let passed = try {
+    idle("")
+    guard command("sha256sum", [fincore]).has_prefix(
+      "274ba306fe0b05add3a1b8a5fbdc3adba33a985b76686a2b9384860814b63ffb ",
+    ) else {
+      fail("fincore pin")
+    }
+    for suffix in a[4:] {
+      guard [
+        "b-smc-compiled", "solo-c-smc-compiled", "solo-d-smc-compiled", "solo-e-smc-compiled",
+        "solo-f-smc-eager", "tiny-a-math", "tiny-b-math", "tiny-b-external-stop",
+        "tiny-c-external-stop", "tiny-d-guarded-math", "phase-combo26-n-actor-off-native",
+        "phase-combo26-n-actor-trace-native", "phase-combo26-n-world-off-native",
+        "phase-combo26-n-world-tracec-native", "phase-combo26-n-collect-off-native",
+        "phase-combo26-n-collect-trace-native",
+      ].contains(suffix) else {
+        fail("explicit ended diagnostic scope only")
+      }
+      let tiny = suffix.has_prefix("tiny-")
+      guard !tiny || a[3] == "cuda" else {
+        fail("only tiny private CUDA cache supported")
+      }
+      let root = if tiny {
+        "/home/wlc004s/moonrobo/runs/operator-tiny-20261025-" +
+        suffix[5:].to_owned()
+      } else {
+        "/home/wlc004s/moonrobo/runs/operator-trace41-20261025-" + suffix
+      }
+      guard @fs.realpath(root) == root else { fail("canonical root") }
+      let receipt = read_json(root + "/outer-result.json")
+      guard (
+          tiny &&
+          field(receipt, "format") == Json("moonrobo.operator-tiny-outer.v1")
+        ) ||
+        (
+          !tiny &&
+          field(receipt, "format") == Json("moonrobo.operator-trace41-outer.v1") &&
+          field(receipt, "mode") == Json("--run")
+        ) else {
+        fail("diagnostic receipt")
+      }
+      let id = text(field(receipt, "container_id"))
+      let actual = inspect(id)
+      let saved = match read_json(root + "/docker-final.json") {
+        Array([j]) => j
+        Object(_) as j => j
+        _ => fail("saved inspection")
+      }
+      stopped(actual)
+      stopped(saved)
+      for key in ["Id", "Image", "Config", "GraphDriver", "State"] {
+        guard field(actual, key) == field(saved, key) else {
+          fail("closed container identity differs: " + key)
+        }
+      }
+      guard field(actual, "Mounts") is Array(am) &&
+        field(saved, "Mounts") is Array(sm) &&
+        am.length() == sm.length() &&
+        am.all(m => {
+          sm.filter(x => field(x, "Destination") == field(m, "Destination")) ==
+          [m]
+        }) else {
+        fail("mount identities differ")
+      }
+      guard field(actual, "Mounts") is Array(mounts) &&
+        mounts.any(m => {
+          field(m, "Source") == Json(if tiny { root } else { root + "/run" }) &&
+          field(m, "Destination") == Json("/run") &&
+          field(m, "RW") == Json(true)
+        }) else {
+        fail("owned run bind")
+      }
+      ownership.push({
+        "root": root,
+        "result_passed": field(receipt, "passed"),
+        "inspection": actual,
+      })
+      let source = match a[3] {
+        "tmp" => root + "/run/" + text(field(receipt, "kind")) + "/tmp"
+        "inductor" => root + "/pair/inductor-cache"
+        "triton" => root + "/pair/triton-cache"
+        _ => {
+          guard field(field(actual, "GraphDriver"), "Name") == Json("overlay2") else {
+            fail("overlay2 required")
+          }
+          let upper = text(
+            field(field(field(actual, "GraphDriver"), "Data"), "UpperDir"),
+          )
+          guard upper.has_prefix("/var/lib/docker/overlay2/") &&
+            upper.has_suffix("/diff") &&
+            upper.split("/").all(s => s == "" || component(s.to_owned())) else {
+            fail("upper scope")
+          }
+          upper + "/home/isaaclab/.nv/ComputeCache"
+        }
+      }
+      cache(id, source, a[1] == "--advise", records)
+    }
+    true
+  } catch {
+    e => {
+      records.push({ "error": e.to_string() })
+      false
+    }
+  }
+  let report : Json = {
+    "format": "moonrobo.closed-operator-cache-advice.v1",
+    "passed": passed,
+    "mode": a[1],
+    "kind": a[3],
+    "ownership": ownership,
+    "operations": records,
+    "meminfo_before": before,
+    "meminfo_after": command("cat", ["/proc/meminfo"]),
+    "files_deleted": 0,
+    "global_cache_operation": false,
+    "content_read_or_written": false,
+    "guards_changed": false,
+    "reclaim_guaranteed": false,
+    "failed_run_is_not_reclassified_as_passed": true,
+  }
+  @fs.write_file(
+    report_path,
+    report.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+  )
+  let brief : Json = { "passed": passed, "report": report_path }
+  println(brief.stringify())
+  guard passed else {
+    fail("bounded cache operation refused; evidence retained")
+  }
+}

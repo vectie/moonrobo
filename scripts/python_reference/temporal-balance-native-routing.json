@@ -1,0 +1,102 @@
+[
+  {
+    "script": "fit_g1_temporal_ppo.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "fit_g1_teacher_value.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "fit_g1_temporal_value.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "fit_g1_balance_teacher.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "fit_g1_learned_balance.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "fit_g1_temporal_inputs.mbtx",
+    "native_invocations": 2
+  },
+  {
+    "script": "report_g1_temporal_ppo.mbtx",
+    "native_invocations": 2
+  },
+  {
+    "script": "fit_g1_sustained_policy.mbtx",
+    "native_invocations": 2
+  },
+  {
+    "script": "report_g1_teacher_value.mbtx",
+    "native_invocations": 2
+  },
+  {
+    "script": "fit_g1_sustained_balance.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "probe_g1_temporal_inputs.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "refine_g1_temporal_inputs.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "report_g1_temporal_inputs.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "collect_g1_balance_teacher.mbtx",
+    "native_invocations": 2
+  },
+  {
+    "script": "verify_g1_balance_features.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "verify_g1_sustained_policy.mbtx",
+    "native_invocations": 2
+  },
+  {
+    "script": "fit_g1_balance_teacher_long.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "fit_g1_temporal_disturbance.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "report_g1_sustained_balance.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "probe_g1_balance_intervention.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "verify_g1_learned_balance_long.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "calibrate_g1_temporal_ppo_noise.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "report_g1_teacher_initialization.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "probe_g1_balance_long_intervention.mbtx",
+    "native_invocations": 1
+  },
+  {
+    "script": "probe_g1_replay_directions.mbtx",
+    "native_invocations": 1
+  }
+]

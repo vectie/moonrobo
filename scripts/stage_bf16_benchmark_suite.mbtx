@@ -1,0 +1,57 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn run(p : String, a : Array[String]) -> Unit {
+  assert_eq(@process.run(p, a), 0)
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/bf16-original-20261028"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let sock = "/tmp/moonrobo-operator-179.sock"
+  guard @env.args() is [_, mode] else {
+    fail("stage|contracts|gates|world|full|chunk")
+  }
+  if mode == "stage" {
+    let builder = @fs.read_file(dir + "/build_bf16_original_a.mbtx").text()
+    let main =
+      #|async fn main {
+      #|  container("bf16-original-primitive-cpu-a", "/build/bf16-original-tensor-a", ["precision_test.mbt:0-2"])
+      #|  container("bf16-original-network-cpu-a", "/workspace/moonrobo-bf16-original-a/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/learning_aligned_gpu.whitebox_test.exe", ["precision_wbtest.mbt:1-2"])
+      #|}
+    @fs.write_file(
+      dir + "/contracts.mbtx",
+      builder[:builder.find("async fn main").unwrap()].to_owned() + main,
+      create_mode=CreateNew,
+    )
+    for name in ["contracts.mbtx", "benchmark.mbtx"] {
+      run("scp", [
+        "-o",
+        "ControlPath=" + sock,
+        dir + "/" + name,
+        host + ":" + base + "/bf16-original-" + name,
+      ])
+    }
+    return
+  }
+  let file = if mode == "contracts" { "contracts" } else { "benchmark" }
+  run("ssh", [
+    "-S",
+    sock,
+    host,
+    "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+    base +
+    "/bf16-original-" +
+    file +
+    ".mbtx -- " +
+    mode,
+  ])
+}

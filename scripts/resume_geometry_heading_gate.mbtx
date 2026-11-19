@@ -1,0 +1,41 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  // The cleanup stopped on a missing receipt for a later, untouched directory.
+  // Require recorded, successful advice of earlier verified closed outputs.
+  guard @json.parse(@fs.read_file(out + "/measured-pages-advice-a.json").text())
+    is {
+      "reclaimed_resident_bytes": String("3531829248"),
+      "no_deletion": True,
+      "no_global_cache_drop": True,
+      ..
+    } else {
+    fail("completed cache-advice evidence")
+  }
+  @fs.write_file(
+    out + "/run_geometry_heading_training_r2.mbtx",
+    @fs.read_file(out + "/run_geometry_heading_training_r.mbtx")
+    .text()
+    .replace_all(old="gate-r", new="gate-r2"),
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("moon", [
+      "run",
+      "--target",
+      "native",
+      out + "/run_geometry_heading_training_r2.mbtx",
+      "--",
+      "native-gate",
+    ]),
+    0,
+  )
+}

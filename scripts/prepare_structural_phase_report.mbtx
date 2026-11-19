@@ -1,0 +1,19 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn replace(s : String,a : String,b : String) -> String raise {guard s.contains(a) else {fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo"
+  let mut s=@fs.read_file(root+"/scripts/report_primitives_phases.mbtx").text()
+  s=replace(s,"smc-primitives-20261028","smc-structural-20261028")
+  s=replace(s,"\"safe\"","\"structural\"")
+  s=replace(s,"\"primitives-\"+variant+\"-\"+phase+\"-events-\"+(if phase==\"world\" && variant==\"smc\" {\"c\"} else {\"a\"})","\"primitives-struct-\"+variant+\"-\"+phase+\"-events-a\"")
+  s=replace(s,"field(p,\"variant\")==Json(\"structural\")","field(p,\"variant\")==Json(if phase==\"actor\" {\"fk\"}else{\"structural\"})")
+  s=replace(s,"[\"baseline\",\"structural\",\"smc\"]","[\"baseline\",if phase==\"actor\" {\"fk\"}else{\"structural\"},\"smc\"]")
+  s=replace(s,"variant==\"structural\"","variant==\"structural\" || variant==\"fk\"")
+  s=replace(s,"\"primitives-struct-\"+variant+\"-\"+phase+\"-events-a\"","\"primitives-struct-\"+variant+\"-\"+phase+(if phase==\"actor\"&&variant!=\"smc\" {\"-final-events-a\"}else{\"-events-a\"})")
+  s=replace(s,"\"operations\":Json(operations)","\"candidate_recommended\":Json(phase==\"actor\"),\"operations\":Json(operations)")
+  s=replace(s,"for variant in [\"baseline\",if phase==\"actor\" {\"fk\"}else{\"structural\"},\"smc\"]","for variant in (if phase==\"actor\" {[\"baseline\",\"fk\",\"smc\"]}else{[\"baseline\",\"smc\"]})")
+  s=replace(s,"let b=median(measured[1].map(r=>labels(r,array(field(m,\"native_labels\")))))","let b=if phase==\"actor\" {median(measured[1].map(r=>labels(r,array(field(m,\"native_labels\")))))}else{a}")
+  s=replace(s,"let s=median(measured[2].map(r=>labels(r,array(field(m,\"smc_labels\")))))","let s=median(measured[if phase==\"actor\" {2}else{1}].map(r=>labels(r,array(field(m,\"smc_labels\")))))")
+  s=replace(s,"\"candidate_recommended\":Json(phase==\"actor\"),","\"candidate_recommended\":Json(phase==\"actor\"),\"candidate_status\":Json(if phase==\"actor\" {\"axis plus static FK, skew disabled\"}else{\"unchanged baseline; no world candidate promoted; candidate_ms repeats baseline, not an additional measurement\"}),")
+  @fs.write_file(root+"/output/spark-runtime-20261024/smc-structural-20261028/report_structural_phases_final.mbtx",s,create_mode=CreateNew)
+}

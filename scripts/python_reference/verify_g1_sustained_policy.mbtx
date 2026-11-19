@@ -1,0 +1,282 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=err.text() + out.text())
+  out.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    6,
+    msg="usage: verify_g1_sustained_policy.mbtx REPO STUDY INCOMING_POLICIES MOONDATA_ROOT SUMMARY_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let charter = read(study + "/charter.json")
+  guard field(charter, "replay") is String(replay) &&
+    field(charter, "old_data") is String(old_data) else {
+    fail("missing input paths")
+  }
+  @fs.mkdir(study + "/diagnostic-sources", recursive=true)
+  for name in ["compare_dynamics.py", "dynamics.py"] {
+    @fs.write_file(
+      study + "/diagnostic-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  ignore(
+    run(root + "/target/learning-venv/bin/python", [
+      study + "/diagnostic-sources/compare_dynamics.py",
+      "--initial",
+      old_data + "/fit/dynamics-seed-0.pt",
+      "--corrected",
+      study + "/new-fit",
+      "--validation",
+      replay + "/validation-batch.json",
+      "--test",
+      replay + "/test-batch.json",
+      "--output",
+      study + "/common-scale-dynamics.json",
+    ]),
+  )
+  let incoming : Array[Json] = []
+  for seed in 0..<3 {
+    let destination = study + "/incoming-evaluation-seed-\{seed}"
+    ignore(
+      run(root + "/target/learning-venv/bin/python", [
+        study + "/provider-sources/policy.py",
+        "evaluate",
+        "--checkpoint",
+        args[3] + "/actor-seed-\{seed}.pt",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--config",
+        study + "/sustained-new-model/config.json",
+        "--experiment",
+        root + "/examples/learning/g1-long-experiment.json",
+        "--output",
+        destination,
+      ]),
+    )
+    incoming.push(read(destination + "/physics.json"))
+  }
+  let first = read(study + "/sustained-old-model/policy/report.json")
+  let second = read(study + "/sustained-new-model/policy/report.json")
+  assert_eq(
+    field(first, "policy_replay_sha256"),
+    field(second, "policy_replay_sha256"),
+  )
+  let a = array(field(first, "runs"))
+  let b = array(field(second, "runs"))
+  for seed in 0..<3 {
+    assert_eq(
+      field(array(field(a[seed], "history"))[0], "validation"),
+      field(array(field(b[seed], "history"))[0], "validation"),
+    )
+    let x = array(field(field(a[seed], "critic_physics"), "batches"))[0]
+    let y = array(field(field(b[seed], "critic_physics"), "batches"))[0]
+    for
+      key in [
+        "actor_state_sha256", "reset_seed", "episodes", "transitions", "falls", "time_limits",
+        "training_mae_before", "training_mae_after",
+      ] {
+      assert_eq(
+        field(x, key),
+        field(y, key),
+        msg="initial critic collection/calibration differs: " + key,
+      )
+    }
+  }
+  let cells : Array[Json] = []
+  for id in ["sustained-old-model", "sustained-new-model"] {
+    let source = study + "/" + id
+    let policy = read(source + "/policy/report.json")
+    let imported = @json.parse(
+      run(
+        root +
+        "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe",
+        [
+          "import",
+          args[4],
+          source,
+          id,
+          @env.now().reinterpret_as_int64().to_string(),
+        ],
+      ),
+    )
+    assert_eq(field(imported, "physical_execution_allowed"), false)
+    let payloads = array(field(imported, "payloads"))
+    let datasets = payloads.filter(p => {
+      field(p, "relative_path") == ("collection/dataset.json.gz" : Json)
+    })
+    assert_eq(datasets.length(), 1)
+    let provenance = field(field(policy, "config"), "replay_provenance")
+    guard field(provenance, "compressed_dataset_sha256") is String(data_sha) else {
+      fail("missing dataset digest")
+    }
+    assert_eq(
+      field(field(datasets[0], "data_ref"), "checksum"),
+      Json("sha256:" + data_sha),
+    )
+    let rows : Array[Json] = []
+    for result in array(field(policy, "runs")) {
+      guard field(result, "seed") is Number(n, ..) else { fail("missing seed") }
+      let seed = n.to_int()
+      assert_eq(field(result, "dynamics_unchanged"), true)
+      assert_eq(field(result, "reload_matches"), true)
+      let history = array(field(result, "history"))
+      assert_eq(
+        history.map(h => field(h, "update")),
+        ([0, 1, 5, 10, 20, 50, 100, 150, 200] : Array[Json]),
+      )
+      let physics = field(result, "critic_physics")
+      guard field(physics, "sha256") is String(sha) else {
+        fail("missing physical-data digest")
+      }
+      let relative = "policy/critic-physics-seed-\{seed}.jsonl.gz"
+      ignore(run("gzip", ["-t", source + "/" + relative]))
+      let physical_payloads = payloads.filter(p => {
+        field(p, "relative_path") == Json(relative)
+      })
+      assert_eq(physical_payloads.length(), 1)
+      assert_eq(
+        field(field(physical_payloads[0], "data_ref"), "checksum"),
+        Json("sha256:" + sha),
+      )
+      let batches = array(field(physics, "batches"))
+      assert_eq(batches.length(), 10)
+      for i, batch in batches {
+        assert_eq(field(batch, "actor_update"), Json(i * 20))
+        assert_eq(field(batch, "optimizer_steps"), 400)
+        assert_eq(field(batch, "episodes"), 6)
+      }
+      let before = field(incoming[seed], "candidate")
+      if field(result, "selected_update") == (0 : Json) {
+        let current = field(
+          read(source + "/policy/physics-seed-\{seed}.json"),
+          "candidate",
+        )
+        let old_trials = array(field(before, "trials"))
+        let new_trials = array(field(current, "trials"))
+        assert_eq(old_trials.length(), new_trials.length())
+        for i in 0..<old_trials.length() {
+          for
+            key in [
+              "case_id", "seed", "replay", "failed", "simulated_seconds", "joint_rmse_rad",
+            ] {
+            assert_eq(
+              field(old_trials[i], key),
+              field(new_trials[i], key),
+              msg="unchanged actor differs: " + key,
+            )
+          }
+        }
+      }
+      let per_case : Array[Json] = []
+      let current = field(
+        read(source + "/policy/physics-seed-\{seed}.json"),
+        "candidate",
+      )
+      for case_id in ["stand", "sway", "wave"] {
+        let trials = array(field(current, "trials")).filter(t => {
+          field(t, "case_id") == Json(case_id)
+        })
+        per_case.push({
+          "case": Json(case_id),
+          "trials": Json(trials.length()),
+          "falls": Json(
+            trials.filter(t => field(t, "failed") == (true : Json)).length(),
+          ),
+        })
+      }
+      rows.push({
+        "seed": Json(seed),
+        "selected_update": field(result, "selected_update"),
+        "incoming": field(before, "summary"),
+        "candidate": field(result, "candidate"),
+        "qualifies": field(result, "qualifies"),
+        "case_counts": Json(per_case),
+        "validation_history": Json(history),
+        "training_seconds": field(result, "training_seconds"),
+        "physical_training": physics,
+        "physical_payload": physical_payloads[0],
+      })
+      println(
+        id +
+        " seed \{seed}: " +
+        (
+          {
+            "incoming": field(before, "summary"),
+            "selected_update": field(result, "selected_update"),
+            "candidate": field(result, "candidate"),
+            "case_counts": Json(per_case),
+            "qualifies": field(result, "qualifies"),
+          } : Json).stringify(),
+      )
+    }
+    cells.push({
+      "id": Json(id),
+      "config": field(policy, "config"),
+      "runs": Json(rows),
+      "dataset_payload": datasets[0],
+      "dynamics_training_batch_sha256": field(
+        policy, "dynamics_training_batch_sha256",
+      ),
+      "policy_replay_sha256": field(policy, "policy_replay_sha256"),
+    })
+  }
+  let validation = @json.parse(
+    run(root + "/_build/native/debug/build/cmd/moondata/moondata.exe", [
+      "validate",
+      args[4],
+    ]),
+  )
+  assert_eq(field(validation, "status"), "passed")
+  assert_eq(field(validation, "finding_count"), 0)
+  @fs.write_file(
+    args[5],
+    (
+      {
+        "format": "moonrobo.g1-sustained-model-verification.v1",
+        "cells": Json(cells),
+        "initial_critic_collection_and_calibration_identical": true,
+        "dynamics_fit": read(study + "/new-fit/report.json"),
+        "common_scale_dynamics": read(study + "/common-scale-dynamics.json"),
+        "validation": validation,
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

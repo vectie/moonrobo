@@ -1,0 +1,41 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+/// Static source checks only. Never invokes an experiment entrypoint.
+async fn main {
+  guard @json.parse(
+      @fs.read_file("scripts/python_reference/reference-aligned-sources.json").text(),
+    )
+    is Array(entries) else {
+    fail("archive manifest")
+  }
+  let failures : Array[String] = []
+  for entry in entries {
+    guard entry is { "script": String(name), .. } else { fail("archive entry") }
+    let (code, stdout, stderr) = @process.collect_output("moon", [
+      "--target-dir",
+      "scripts/_build/reference-launcher-static",
+      "check",
+      "scripts/" + name,
+      "--warn-list",
+      "-a",
+    ])
+    if code != 0 {
+      println(stdout.text())
+      println(stderr.text())
+      failures.push(name)
+    }
+  }
+  guard failures.is_empty() else {
+    fail("static launcher failures: " + failures.join(", "))
+  }
+  println(
+    "Typechecked \{entries.length()} native launcher sources; no workload invoked",
+  )
+}

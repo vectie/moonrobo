@@ -1,0 +1,11 @@
+{
+  "seeds": [0, 1, 2],
+  "modes": ["student", "h10", "full"],
+  "reset_seeds": [9900, 10000],
+  "repeat_reset_seed": 9900,
+  "duration_s": 30,
+  "fall_height_m": 0.35,
+  "fall_upright_z": 0.5,
+  "cpu_threads": 2,
+  "scope": "Frozen learned ankle checkpoints and unchanged parents, no fitting or selection. Extend the original reset 9900 and add reset 10000 for each stand/sway/wave case. Compare original ten-second prefixes with recorded trajectories, allowing only time-limit truncation flags to change. Thirty-second development evaluation, not independent release or hardware qualification."
+}

@@ -1,0 +1,30 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 else {
+    fail("usage: export_g1_aligned_apic.mbtx REPO CONFIG.json")
+  }
+  assert_eq(
+    @process.run(
+      "moon",
+      [
+        "run",
+        "--target",
+        "native",
+        "cmd/reference_apic_export",
+        "--",
+        "export",
+        args[2],
+      ],
+      cwd=args[1],
+    ),
+    0,
+  )
+}

@@ -1,0 +1,273 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=err.text() + out.text())
+  out.text()
+}
+
+///|
+fn counts(physical : Json) -> Json raise {
+  let result : Array[Json] = []
+  for case_id in ["stand", "sway", "wave"] {
+    let trials = array(field(physical, "trials")).filter(t => {
+      field(t, "case_id") == Json(case_id)
+    })
+    assert_eq(trials.length(), 3)
+    result.push({
+      "case": Json(case_id),
+      "trials": Json(trials.length()),
+      "falls": Json(
+        trials.filter(t => field(t, "failed") == (true : Json)).length(),
+      ),
+    })
+  }
+  Json(result)
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    7,
+    msg="usage: report_g1_temporal_inputs.mbtx REPO SUPERVISED REFINEMENT INCOMING_POLICY_DIR MOONDATA_ROOT OUTPUT_JSON",
+  )
+  let root = args[1]
+  let supervised = args[2]
+  let refinement = args[3]
+  let teacher = read(supervised + "/teacher-data/report.json")
+  assert_eq(field(teacher, "episodes"), 36)
+  assert_eq(field(teacher, "transitions"), 16909)
+  assert_eq(field(teacher, "falls"), 11)
+  let raw_sha = digest(supervised + "/teacher-data/dataset.json")
+  let compressed_sha = digest(refinement + "/dataset.json.gz")
+  ignore(run("gzip", ["-t", refinement + "/dataset.json.gz"]))
+  let incoming : Array[Json] = []
+  for seed in 0..<3 {
+    let destination = supervised + "/incoming-evaluation-seed-\{seed}"
+    ignore(
+      run(root + "/target/learning-venv/bin/python", [
+        supervised + "/provider-sources/policy.py",
+        "evaluate",
+        "--checkpoint",
+        args[4] + "/actor-seed-\{seed}.pt",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--config",
+        supervised + "/frame/config.json",
+        "--experiment",
+        supervised + "/experiment.json",
+        "--output",
+        destination,
+      ]),
+    )
+    incoming.push(field(read(destination + "/physics.json"), "candidate"))
+  }
+  let cells : Array[Json] = []
+  let mut model_sha : Json = ""
+  for (id, h, f) in [("frame", 1, 0), ("history", 10, 0), ("preview", 10, 10)] {
+    let fitted = read(supervised + "/" + id + "/policy/report.json")
+    assert_eq(field(fitted, "format"), "moonrobo.g1-temporal-fit.v1")
+    assert_eq(field(fitted, "data_sha256"), Json(raw_sha))
+    assert_eq(field(field(fitted, "config"), "history_length"), Json(h))
+    assert_eq(field(field(fitted, "config"), "future_length"), Json(f))
+    let source = refinement + "/" + id
+    let improved = read(source + "/policy/report.json")
+    assert_eq(
+      field(improved, "training_kind"),
+      "temporal-finite-horizon-model-refinement",
+    )
+    assert_eq(field(improved, "actor_format"), "moonrobo.g1-temporal-actor.v1")
+    assert_eq(field(improved, "replay_dataset_sha256"), Json(raw_sha))
+    assert_eq(field(field(improved, "config"), "actor_critic_bootstrap"), false)
+    if id == "frame" {
+      model_sha = field(improved, "dynamics_sha256")
+    } else {
+      assert_eq(field(improved, "dynamics_sha256"), model_sha)
+    }
+    assert_eq(digest(source + "/collection/dataset.json.gz"), compressed_sha)
+    assert_eq(Json(digest(source + "/fit/dynamics-seed-0.pt")), model_sha)
+    let imported = @json.parse(
+      run(
+        root +
+        "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe",
+        [
+          "import",
+          args[5],
+          source,
+          "temporal-" + id,
+          @env.now().reinterpret_as_int64().to_string(),
+        ],
+      ),
+    )
+    assert_eq(field(imported, "physical_execution_allowed"), false)
+    let payloads = array(field(imported, "payloads"))
+    let datasets = payloads.filter(p => {
+      field(p, "relative_path") == ("collection/dataset.json.gz" : Json)
+    })
+    assert_eq(datasets.length(), 1)
+    assert_eq(
+      field(field(datasets[0], "data_ref"), "checksum"),
+      Json("sha256:" + compressed_sha),
+    )
+    let rows : Array[Json] = []
+    let first_runs = array(field(fitted, "runs"))
+    let second_runs = array(field(improved, "runs"))
+    assert_eq(first_runs.length(), 3)
+    assert_eq(second_runs.length(), 3)
+    for seed in 0..<3 {
+      let first = first_runs[seed]
+      let second = second_runs[seed]
+      assert_eq(field(first, "seed"), Json(seed))
+      assert_eq(field(second, "seed"), Json(seed))
+      assert_eq(field(first, "initial_matches_legacy"), true)
+      assert_eq(field(first, "reload_matches"), true)
+      assert_eq(field(second, "reload_matches"), true)
+      assert_eq(field(second, "dynamics_unchanged"), true)
+      let history = array(field(first, "history"))
+      assert_eq(history.length(), 9)
+      let mut episodes = 0
+      let mut transitions = 0
+      let mut falls = 0
+      for index in 1..<9 {
+        let row = history[index]
+        assert_eq(field(row, "round"), Json(index))
+        assert_eq(field(row, "episodes"), 18)
+        assert_eq(field(row, "maximum_input_alignment_error"), 0)
+        episodes += 18
+        guard field(row, "transitions") is Number(n, ..) &&
+          field(row, "falls") is Number(k, ..) else {
+          fail("missing collection counts")
+        }
+        transitions += n.to_int()
+        falls += k.to_int()
+      }
+      let student = field(first, "student_physics")
+      guard field(student, "file") is String(filename) else {
+        fail("missing student log")
+      }
+      let path = supervised + "/" + id + "/policy/" + filename
+      ignore(run("gzip", ["-t", path]))
+      assert_eq(field(student, "sha256"), Json(digest(path)))
+      let initial_checkpoint = supervised +
+        "/" +
+        id +
+        "/policy/actor-seed-\{seed}.pt"
+      assert_eq(
+        field(field(second, "initialization"), "sha256"),
+        Json(digest(initial_checkpoint)),
+      )
+      assert_eq(
+        array(field(second, "history")).map(x => field(x, "update")),
+        ([0, 1, 5, 10, 20, 50, 100, 150, 200] : Array[Json]),
+      )
+      let physical_a = field(
+        read(supervised + "/" + id + "/policy/physics-seed-\{seed}.json"),
+        "candidate",
+      )
+      let physical_b = read(source + "/policy/physics-seed-\{seed}.json")
+      let baseline = field(physical_b, "baseline")
+      let candidate = field(physical_b, "candidate")
+      assert_eq(field(physical_a, "summary"), field(first, "candidate"))
+      assert_eq(field(baseline, "summary"), field(second, "baseline"))
+      assert_eq(field(candidate, "summary"), field(second, "candidate"))
+      let row : Json = {
+        "seed": Json(seed),
+        "supervised": first,
+        "incoming_8700": field(incoming[seed], "summary"),
+        "supervised_case_counts": counts(physical_a),
+        "collection": {
+          "episodes": Json(episodes),
+          "transitions": Json(transitions),
+          "falls": Json(falls),
+          "log": student,
+        },
+        "model_refinement": second,
+        "refinement_baseline_case_counts": counts(baseline),
+        "refinement_case_counts": counts(candidate),
+      }
+      rows.push(row)
+      println(
+        (
+          {
+            "method": Json(id),
+            "seed": Json(seed),
+            "supervised": field(first, "candidate"),
+            "refinement": field(second, "candidate"),
+            "refinement_cases": counts(candidate),
+          } : Json).stringify(),
+      )
+    }
+    cells.push({
+      "id": Json(id),
+      "history_length": Json(h),
+      "future_length": Json(f),
+      "supervised_config": field(fitted, "config"),
+      "refinement_config": field(improved, "config"),
+      "runs": Json(rows),
+      "registered": imported,
+      "world_model_training_batch_sha256": field(
+        improved, "dynamics_training_batch_sha256",
+      ),
+    })
+  }
+  let validation = @json.parse(
+    run(root + "/_build/native/debug/build/cmd/moondata/moondata.exe", [
+      "validate",
+      args[5],
+    ]),
+  )
+  assert_eq(field(validation, "status"), "passed")
+  assert_eq(field(validation, "finding_count"), 0)
+  @fs.write_file(
+    args[6],
+    (
+      {
+        "format": "moonrobo.g1-temporal-input-study.v1",
+        "cells": Json(cells),
+        "teacher": teacher,
+        "native_data_check": read(supervised + "/native-check.json"),
+        "replay_dataset_sha256": Json(raw_sha),
+        "compressed_dataset_sha256": Json(compressed_sha),
+        "shared_dynamics_sha256": model_sha,
+        "validation": validation,
+        "scope": "Causal histories and analytic future joint commands; supervised fitting then actual finite-horizon frozen-model updates. Different adapter parameter counts, incoming weights and student trajectories across variants. No isolated history/preview efficacy, matched efficiency, paper reproduction or physical qualification claim.",
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

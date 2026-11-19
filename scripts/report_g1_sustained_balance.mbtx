@@ -1,0 +1,492 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+fn string(value : Json) -> String raise {
+  guard value is String(s) else { fail("expected string") }
+  s
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (code, out, err) = @process.collect_output("/usr/bin/shasum", [
+    "-a", "256", path,
+  ])
+  assert_eq(code, 0, msg=err.text())
+  out.text().split(" ").to_array()[0].to_owned()
+}
+
+///|
+fn check_summary(value : Json, trials : Array[Json]) -> Unit raise {
+  assert_eq(num(field(value, "trials")).to_int(), trials.length())
+  assert_eq(
+    num(field(value, "falls")).to_int(),
+    trials.filter(t => field(t, "failed") == (true : Json)).length(),
+  )
+  let mut survival = 0.0
+  let mut rmse = 0.0
+  for trial in trials {
+    survival += num(field(trial, "simulated_seconds"))
+    rmse += num(field(trial, "joint_rmse_rad"))
+  }
+  assert_true(
+    (num(field(value, "mean_survival_s")) -
+    survival / trials.length().to_double()).abs() <
+    1.0e-12,
+  )
+  assert_true(
+    (num(field(value, "mean_joint_rmse_rad")) -
+    rmse / trials.length().to_double()).abs() <
+    1.0e-12,
+  )
+}
+
+///|
+fn better(a : Json, b : Json) -> Bool raise {
+  let sa = field(a, "summary")
+  let sb = field(b, "summary")
+  let af = num(field(sa, "falls"))
+  let bf = num(field(sb, "falls"))
+  let at = num(field(sa, "mean_survival_s"))
+  let bt = num(field(sb, "mean_survival_s"))
+  let ae = num(field(sa, "mean_joint_rmse_rad"))
+  let be = num(field(sb, "mean_joint_rmse_rad"))
+  af < bf ||
+  (
+    af == bf &&
+    (
+      at > bt ||
+      (
+        at == bt &&
+        (
+          ae < be ||
+          (
+            ae == be &&
+            num(field(a, "active_coefficients")) <
+            num(field(b, "active_coefficients"))
+          )
+        )
+      )
+    )
+  )
+}
+
+///|
+/// Verify the actual native source snapshot or the preserved historical source.
+/// Native reports may not silently fall back to a Python digest.
+async fn source_digest(
+  study : String,
+  report : Json,
+  key : String,
+  legacy : String,
+) -> String {
+  guard report is Object(fields) else { fail("report object required") }
+  match fields.get("native_source_files") {
+    Some(bindings) => {
+      guard bindings is Object(all_bindings) else {
+        fail("native source bindings object required")
+      }
+      for source_key, binding in all_bindings {
+        let original = string(field(binding, "source"))
+        let extension = if original.has_suffix(".mbt") {
+          ".mbt"
+        } else {
+          assert_eq(source_key, "teacher_provider_sha256")
+          assert_true(original.has_suffix(".py"))
+          assert_eq(field(binding, "role"), "passive-parameter-source")
+          ".py"
+        }
+        let saved = string(field(binding, "snapshot"))
+        assert_eq(saved, "provider-sources/" + source_key + extension)
+        let expected = field(binding, "sha256")
+        assert_eq(expected, field(report, source_key))
+        assert_eq(expected, Json(sha(study + "/" + saved)))
+      }
+      let entry = field(bindings, key)
+      let source = string(field(entry, "source"))
+      let snapshot = string(field(entry, "snapshot"))
+      assert_true(source.has_suffix(".mbt"))
+      assert_eq(snapshot, "provider-sources/" + key + ".mbt")
+      let actual = sha(study + "/" + snapshot)
+      assert_eq(field(entry, "sha256"), Json(actual))
+      assert_eq(field(report, "source_language"), "moonbit")
+      actual
+    }
+    None => {
+      assert_false(
+        fields.get("source_language") == Some(("moonbit" : Json)),
+        msg="native report lacks actual source bindings; regenerate report",
+      )
+      sha(study + "/provider-sources/" + legacy)
+    }
+  }
+}
+
+///|
+async fn teacher_digest(
+  root : String,
+  teacher : Json,
+  legacy : String,
+) -> String {
+  guard teacher is Object(fields) else { fail("teacher object required") }
+  if fields.get("source_language") == Some(("moonbit" : Json)) {
+    let path = string(field(teacher, "provider_source"))
+    assert_true(path.has_suffix(".mbt"))
+    sha(if path.has_prefix("/") { path } else { root + "/" + path })
+  } else {
+    sha(legacy)
+  }
+}
+
+///|
+async fn checkpoint_digest(stem : String) -> String {
+  let paths : Array[String] = []
+  for suffix in [".moon.json", ".pt", ".json"] {
+    if @fs.exists(stem + suffix) {
+      paths.push(stem + suffix)
+    }
+  }
+  assert_eq(paths.length(), 1, msg="checkpoint missing or ambiguous: " + stem)
+  sha(paths[0])
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: report_g1_sustained_balance.mbtx REPO STUDY OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let report = read(study + "/report.json")
+  let charter = read(study + "/charter.json")
+  let config = field(report, "config")
+  assert_true(
+    [
+      "moonrobo.g1-sustained-balance-study.v1", "moonrobo.moonbit-sustained-balance-study.v1",
+    ].contains(string(field(report, "format"))),
+  )
+  assert_eq(config, field(charter, "config"))
+  assert_eq(field(report, "release_qualified"), false)
+  assert_eq(field(report, "physical_execution_allowed"), false)
+  assert_eq(field(report, "shared_representation_fits"), 2)
+  assert_eq(field(report, "parent_actors"), 3)
+  for
+    (key, file) in [
+      ("provider_sha256", "sustained_balance_study.py"),
+      ("head_provider_sha256", "sustained_balance.py"),
+      ("feature_provider_sha256", "balance_features.py"),
+    ] {
+    assert_eq(field(report, key), Json(source_digest(study, report, key, file)))
+  }
+  let teacher_study = string(field(charter, "teacher_study"))
+  assert_eq(
+    field(report, "teacher_sha256"),
+    Json(sha(teacher_study + "/teacher.json")),
+  )
+  let original = string(field(charter, "original_balance_study"))
+  let collection = read(original + "/collection.json")
+  let experiment = read(original + "/experiment.json")
+  let train_cases = array(field(collection, "cases")).map(c => field(c, "id"))
+  let canonical_cases = array(field(experiment, "cases")).map(c => {
+    field(c, "id")
+  })
+  let sources = array(read(study + "/training-sources.json"))
+  assert_eq(sources.length(), 18)
+  assert_eq(
+    field(report, "training_sources_sha256"),
+    Json(sha(study + "/training-sources.json")),
+  )
+  let mut training_points = 0
+  for source in sources {
+    assert_eq(field(source, "split"), "train")
+    assert_true(train_cases.contains(field(source, "case_id")))
+    assert_true(
+      array(field(config, "training_reset_seeds")).contains(
+        field(source, "seed"),
+      ),
+    )
+    training_points += num(field(source, "points")).to_int()
+  }
+  assert_eq(num(field(report, "training_points")).to_int(), training_points)
+  let selection = array(field(report, "selection"))
+  let evaluations = array(field(report, "final"))
+  assert_eq(selection.length(), 15)
+  assert_eq(evaluations.length(), 10)
+  let expected : Map[String, Json] = Map([])
+  for row in selection + evaluations {
+    let trials = array(field(row, "trials"))
+    assert_eq(trials.length(), 9)
+    check_summary(field(row, "summary"), trials)
+    for trial in trials {
+      expected[string(field(trial, "episode_id"))] = trial
+    }
+  }
+  let choices = array(field(report, "selection_variants"))
+  assert_eq(choices.length(), 5)
+  let mut best = 0
+  for i, choice in choices {
+    let trials : Array[Json] = []
+    for
+      row in selection.filter(r => field(r, "variant") == field(choice, "name")) {
+      trials.append(array(field(row, "trials")))
+    }
+    assert_eq(trials.length(), 27)
+    check_summary(field(choice, "summary"), trials)
+    if better(choice, choices[best]) {
+      best = i
+    }
+  }
+  assert_eq(field(report, "selected_variant"), choices[best])
+  assert_eq(
+    field(read(study + "/selected.json"), "selected_variant"),
+    choices[best],
+  )
+  assert_eq(
+    field(report, "selected_sha256"),
+    Json(sha(study + "/selected.json")),
+  )
+  let (refit_code, refit_out, refit_err) = @process.collect_output("moon", [
+    "run",
+    root + "/scripts/run_native_learning.mbtx",
+    root,
+    "src/learning_balance/verification/cli",
+    study,
+  ])
+  assert_eq(refit_code, 0, msg=refit_out.text() + refit_err.text())
+  let refit = read(study + "/refit-verification.json")
+  assert_eq(field(refit, "all_tensors_exact"), true)
+  assert_eq(field(refit, "legacy_loaders_reject_v2"), true)
+  assert_eq(array(field(refit, "verified_checkpoints")).length(), 15)
+  assert_eq(field(refit, "training_sha256"), field(report, "training_sha256"))
+  let native : Array[Json] = []
+  let ids : Map[String, Bool] = Map([])
+  for
+    (file, key, count) in [
+      ("teacher-training.jsonl.gz", "training_sha256", 18),
+      ("selection-physics.jsonl.gz", "selection_sha256", 135),
+      ("evaluation-physics.jsonl.gz", "evaluation_sha256", 90),
+    ] {
+    let log = study + "/" + file
+    assert_eq(field(report, key), Json(sha(log)))
+    let mut episodes = 0
+    let mut points = 0
+    @async.with_task_group() <| group => {
+      let (reader, output) = @process.read_from_process()
+      let process = @process.spawn(group, "gzip", ["-cd", log], stdout=output)
+      while reader.read_until("\n") is Some(line) {
+        if line.trim().is_empty() {
+          continue
+        }
+        let record = @json.parse(line)
+        let dataset = field(record, "dataset")
+        let batch = array(field(dataset, "episodes"))
+        let trials = array(field(record, "trials"))
+        assert_eq(batch.length(), 1)
+        assert_eq(trials.length(), 1)
+        let episode = batch[0]
+        let trial = trials[0]
+        let id = string(field(episode, "id"))
+        assert_false(ids.contains(id))
+        ids.set(id, true)
+        assert_eq(field(trial, "episode_id"), Json(id))
+        assert_eq(field(episode, "case_id"), field(trial, "case_id"))
+        let steps = array(field(episode, "steps"))
+        assert_eq(num(field(trial, "steps")).to_int(), steps.length())
+        assert_eq(
+          field(trial, "failed"),
+          field(steps.last().unwrap(), "terminated"),
+        )
+        let role = string(field(record, "role"))
+        if role == "teacher-training" {
+          assert_eq(field(episode, "split"), "train")
+          assert_true(train_cases.contains(field(episode, "case_id")))
+          assert_true(
+            array(field(config, "training_reset_seeds")).contains(
+              field(trial, "seed"),
+            ),
+          )
+          assert_eq(
+            sources.filter(s => field(s, "episode_id") == Json(id)).length(),
+            1,
+          )
+        } else {
+          assert_eq(expected[id], trial)
+          if role == "training-selection" {
+            assert_eq(field(episode, "split"), "train")
+            assert_true(train_cases.contains(field(episode, "case_id")))
+            let seed = num(field(record, "seed")).to_int()
+            assert_eq(
+              field(trial, "seed"),
+              Json(
+                num(field(config, "selection_seed_base")).to_int() +
+                10000 * seed,
+              ),
+            )
+          } else {
+            assert_true(["selected-final", "teacher-reference"].contains(role))
+            if field(record, "scope") == ("canonical-development" : Json) {
+              assert_true(canonical_cases.contains(field(episode, "case_id")))
+              assert_true(
+                array(field(config, "canonical_reset_seeds")).contains(
+                  field(trial, "seed"),
+                ),
+              )
+            } else {
+              assert_eq(field(record, "scope"), "training-family-audit")
+              assert_eq(field(episode, "split"), "train")
+              assert_true(train_cases.contains(field(episode, "case_id")))
+              if role == "selected-final" {
+                assert_eq(
+                  field(trial, "seed"),
+                  Json(
+                    num(field(config, "audit_seed_base")).to_int() +
+                    10000 * num(field(record, "seed")).to_int(),
+                  ),
+                )
+              }
+            }
+          }
+          if role != "teacher-reference" {
+            let alignment = field(record, "alignment")
+            assert_true(
+              num(field(alignment, "feature_error")) <=
+              num(field(config, "maximum_feature_alignment_error")),
+            )
+            assert_true(
+              num(field(alignment, "action_error_rad")) <=
+              num(field(config, "maximum_action_alignment_error_rad")),
+            )
+            assert_eq(field(alignment, "other_channel_error"), Json(0.0))
+          }
+        }
+        let scratch = study + "/native-episode.json"
+        @fs.write_file(
+          scratch,
+          dataset.stringify(),
+          create_mode=CreateOrTruncate,
+        )
+        let (code, out, err) = @process.collect_output(
+          root +
+          "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+          [scratch, string(field(episode, "split")), "1", "1000000"],
+        )
+        assert_eq(code, 0, msg=err.text())
+        assert_eq(field(@json.parse(out.text()), "window_length"), 1)
+        @fs.remove(scratch)
+        episodes += 1
+        points += steps.length()
+        if episodes % 25 == 0 {
+          println("Native checked " + file + ": \{episodes}/\{count}")
+        }
+      }
+      reader.close()
+      assert_eq(process.wait(), 0)
+    }
+    assert_eq(episodes, count)
+    native.push({
+      "file": Json(file),
+      "episodes": Json(episodes),
+      "transitions": Json(points),
+      "all_splits_native_checked": true,
+    })
+    println("Native completed " + file + ": \{episodes} episodes")
+  }
+  assert_eq(ids.length(), 243)
+  for cell in array(field(report, "pooled")) {
+    let trials : Array[Json] = []
+    for
+      row in evaluations.filter(r => {
+        field(r, "role") == field(cell, "role") &&
+        field(r, "scope") == field(cell, "scope")
+      }) {
+      trials.append(array(field(row, "trials")))
+    }
+    check_summary(cell, trials)
+    for case in array(field(cell, "cases")) {
+      check_summary(
+        case,
+        trials.filter(t => field(t, "case_id") == field(case, "case_id")),
+      )
+    }
+  }
+  guard report is Object(fields) else { fail("expected report") }
+  fields.set("native_archives", Json(native))
+  fields.set("refit_verification", refit)
+  fields.set("source_report_sha256", Json(sha(study + "/report.json")))
+  @fs.write_file(
+    args[3],
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    (
+      {
+        "selected_variant": choices[best],
+        "pooled": field(report, "pooled"),
+        "native_episodes": 243,
+      } : Json).stringify(),
+  )
+}
+
+///|
+/// Historical .py names are inert routing descriptors. Each target parses
+/// original flags and calls real native APIs; unknown descriptors fail closed.
+fn native_args(root : String, command : Array[String]) -> Array[String] raise {
+  guard !command.is_empty() else { fail("missing native provider descriptor") }
+  let descriptor = command[0].split("/").last().unwrap_or("").to_owned()
+  let training = [
+    "policy.py", "dynamics.py", "cpu_physics.py", "teacher_step_verification.py",
+  ].contains(descriptor)
+  let package = if training {
+    "src/learning_training/launch/cmd"
+  } else {
+    "src/learning_balance/launch"
+  }
+  [
+    "run",
+    "--quiet",
+    "--warn-list",
+    "-a",
+    root + "/scripts/run_native_learning.mbtx",
+    root,
+    package,
+    ..command,
+    "--repo",
+    root,
+  ]
+}

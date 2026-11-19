@@ -1,0 +1,42 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="output/spark-runtime-20261024/coefficient-full-20261028"
+  let p=dir+"/coefficient_full_suite_a.mbtx"
+  let s=@fs.read_file(p).text()
+  let main=
+    #|async fn main {
+    #|  guard @env.args() is [_,mode]else{fail("gates|pairs|events")}
+    #|  let config=@fs.read_file(base+"/coefficient-full-config-a.stdout.log").text();guard !config.contains("SKIP")else{fail("skipped")};let mut tests=0
+    #|  for l in config.split("\n"){if l.has_prefix("{"){if @json.parse(l) is {"type":"result","message":String(m),..}{assert_eq(m,"");tests+=1}}};assert_eq(tests,9)
+    #|  if mode=="gates" {
+    #|    for phase in ["world","actor"] {for v in ["baseline","both"] {
+    #|      let name=label(phase,v,"gate");invoke(phase,v,"1",name)
+    #|      let from=if v=="baseline"{runs+"coefficient-assembly-forward-"+phase+"-gate-"+(if phase=="world"{"b"}else{"a"})}else{runs+label(phase,"baseline","gate")}
+    #|      guard command(base+"/compare_top3_snapshots.mbtx",[from,runs+name,base+"/"+name+".numeric.json"],name+"-compare")==0else{fail("numeric comparison")}
+    #|      assert_eq(field(read(base+"/"+name+".numeric.json"),"passed"),Json(true));release(name)
+    #|    }};return
+    #|  }
+    #|  for phase in ["world","actor"] {assert_true(passed(phase,"both"))}
+    #|  if mode=="pairs" {
+    #|    for phase in ["world","actor"] {
+    #|      invoke(phase,"baseline","13",label(phase,"smc","off"),implementation="smc")
+    #|      let name=label(phase,"both","abba");invoke(phase,"abba-both","13",name)
+    #|      let r=read(runs+name+"/result.json");assert_eq(field(r,"observer"),Json("off"));guard field(r,"rows") is Array(rs)&&rs.length()==52else{fail("rows")}
+    #|      guard field(read(runs+label(phase,"baseline","gate")+"/result.json"),"rows") is Array([a])&&field(read(runs+label(phase,"both","gate")+"/result.json"),"rows") is Array([b])else{fail("metrics")}
+    #|      for i,row in rs {
+    #|        let active=i/13==1||i/13==2;assert_eq(field(row,"abba_block"),Json(i/13));assert_eq(field(row,"abba_candidate"),Json(active));assert_eq(field(row,"steady"),Json(i%13>=3));assert_true(near(field(if active{b}else{a},"metrics"),field(row,"metrics")))
+    #|        let e=field(row,"execution");assert_eq(field(e,"fused_so3_coefficients_full"),Json(active));assert_eq(field(e,"fused_so3_coefficients_forward"),Json(true));assert_eq(field(e,"split_actor_return"),Json(false));assert_eq(field(e,"batch_actor_encoder"),Json(false));assert_eq(field(e,"split_so3_coefficients"),Json(false));assert_eq(field(e,"fused_cross_vjp"),Json(false))
+    #|      }
+    #|      @fs.write_file(base+"/"+name+".block-validation.json",({"passed":true,"restored_metrics_checked":true,"execution_flags_checked":true,"rows":52}:Json).stringify(),create_mode=CreateNew);release(name)
+    #|      invoke(phase,"baseline","13",label(phase,"smc","off-after"),implementation="smc")
+    #|    };return
+    #|  }
+    #|  guard mode=="events"else{fail("mode")}
+    #|  for phase in ["world","actor"] {for v in ["baseline","both","smc"] {
+    #|    let name=label(phase,v,"events");invoke(phase,if v=="smc"{"baseline"}else{v},"13",name,observer="events",implementation=if v=="smc"{"smc"}else{"native"})
+    #|    if v!="smc" {release(name)}
+    #|  }}
+    #|}
+  @fs.write_file(p,s[:s.find("async fn main").unwrap()].to_owned()+main)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",p,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/coefficient_full_suite_a.mbtx"])==0else{fail("stage")}
+}

@@ -1,0 +1,15 @@
+{
+  "grid": {
+    "residual_bound_rad": [0.3, 0.45],
+    "angle_gain": [0, 1],
+    "rate_gain": [0, 0.25]
+  },
+  "training_reset_seeds": [6700, 6701],
+  "audit_reset_seeds": [6800, 6801, 6802],
+  "canonical_reset_seeds": [10100, 10101, 10102],
+  "duration_s": 30,
+  "fall_height_m": 0.35,
+  "fall_upright_z": 0.5,
+  "max_mean_joint_rmse_rad": 0.15,
+  "scope": "Eight predeclared existing-teacher parameter combinations. Fit/select on nine training-family cases at two new resets only, ranking by fewer falls, longer mean survival, then lower joint RMSE. Preserve every search trial's scalar result and transition counts; search states are not retained as a training corpus. Evaluate the unchanged original and train-selected teacher on separate 27-trial training-family audits and nine new canonical trials each, retaining all evaluation transitions. No actor/world-model fitting, test-based parameter selection, learned-policy qualification or hardware authority."
+}

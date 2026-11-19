@@ -1,0 +1,15 @@
+{
+  "adapter": "/opt/moonrobo/apic-authoring/libmoonrobo_apic_authoring.so",
+  "python": "/opt/isaaclab-venv/bin/python3.12",
+  "site_packages": "/opt/isaaclab-venv/lib/python3.12/site-packages",
+  "isaaclab_root": "/opt/moonrobo/sdk/IsaacLab",
+  "newton_root": "/opt/moonrobo/sdk/newton",
+  "usd": "/workspace/moonrobo/data/g1_usd/g1_29dof/g1_29dof.usda",
+  "usd_variants": {"Physics": "mujoco"},
+  "source_mjcf": "/workspace/moonrobo/data/g1_description/scene-no-self-collision.xml",
+  "output": "/gate/g1-smc-n256-apic",
+  "num_envs": 256,
+  "capacity_profile": "paper-4096",
+  "device_id": 0,
+  "self_collisions": false
+}

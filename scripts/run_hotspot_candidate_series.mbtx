@@ -1,0 +1,67 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, label] &&
+    ["layernorm", "cross", "reference_fk"].contains(mode) &&
+    label.all(c => c is ('a'..<='z' | '0'..<='9' | '-')) else {
+    fail("layernorm|cross|reference_fk LABEL")
+  }
+  let base = "/home/wlc004s/moonrobo/private/hotspot-optimization-20261025-b"
+  let old = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+  let root = "/home/wlc004s/moonrobo/runs/hotspot-" + mode + "-abba-" + label
+  async fn run(name : String, script : String, args : Array[String]) -> Unit {
+    println("Starting " + name)
+    let status = @process.run(
+      "/home/wlc004s/moonrobo/toolchain/bin/moon",
+      ["run", "--target", "native", script, "--", ..args],
+      stdout=@process.redirect_to_file(
+        base + "/" + mode + "-" + label + "-" + name + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        base + "/" + mode + "-" + label + "-" + name + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    guard status == 0 else {
+      fail(name + " failed; stop, no retry or guard change")
+    }
+    println("Completed " + name)
+  }
+  run("prepare", base + "/run_hotspot_pairs_v4.mbtx", [
+    "--prepare",
+    base + "/spec-" + mode + ".json",
+    root,
+  ])
+  for i in 0..<4 {
+    run("run-" + i.to_string(), base + "/run_hotspot_pairs_v4.mbtx", [
+      "--run",
+      root,
+      i.to_string(),
+    ])
+    run("cuda-pages-" + i.to_string(), old + "/advise_hotspot_run_cache.mbtx", [
+      "--advise-caches",
+      old + "/cache-hotspot-" + mode + "-" + label + "-cuda-" + i.to_string() + ".json",
+      root + "/run-" + i.to_string(),
+    ])
+    // Completed own checkpoint pages were already advised by the runner.
+    // This existing audited controller advises only immutable package pages
+    // of the exact previously completed task image; never global drop_caches.
+    run(
+      "image-pages-" + i.to_string(),
+      old + "/advise_closed_smc_image_pages_f.mbtx",
+      [
+        "--advise",
+        "cache-hotspot-" + mode + "-" + label + "-" + i.to_string() + ".json",
+      ],
+    )
+  }
+  println("Complete ABBA; independent summary still required: " + root)
+}

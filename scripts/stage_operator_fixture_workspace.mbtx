@@ -1,0 +1,342 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+// Preparation only: no subprocess, compiler, dependency download, SSH or GPU.
+// The source workspace is read-only. Only the fresh destination is written.
+
+///|
+let cmd_package = "src/learning_aligned_gpu/cmd"
+
+///|
+let admission_package = "src/learning_native_admission"
+
+///|
+let selected_tests = [
+  "src/learning_aligned_gpu/cmd/operator_diagnostics_wbtest.mbt", "src/learning_native_admission/operator_diagnostic_test.mbt",
+  "src/learning_native_admission/operator_diagnostic_wbtest.mbt",
+]
+
+///|
+fn path(value : String) -> Bool {
+  value.has_prefix("/") &&
+  !value.has_suffix("/") &&
+  !value.split("/").any(p => p == "." || p == "..") &&
+  value.all(c => {
+    c is ('a'..<='z' | 'A'..<='Z' | '0'..<='9' | '/' | '_' | '-' | '.')
+  })
+}
+
+///|
+fn sha(bytes : Bytes) -> String {
+  let hash = @crypto.SHA256::new()
+  hash.update(bytes)
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+fn test_source(name : String) -> Bool {
+  name.has_suffix("_test.mbt") ||
+  name.has_suffix("_wbtest.mbt") ||
+  name.has_suffix(".mbt.md")
+}
+
+///|
+fn exclude_test(relative : String) -> Bool {
+  let parts = relative.split("/").map(s => s.to_owned()).to_array()
+  guard parts.pop() is Some(name) else { return false }
+  let package = parts.join("/")
+  (package == cmd_package || package == admission_package) &&
+  test_source(name) &&
+  !selected_tests.contains(relative)
+}
+
+///|
+fn fixture_block(text : String) -> String raise {
+  guard text.has_prefix(
+    "///|\nfn fixture() -> @learning_native_admission.Inputs {\n",
+  ) else {
+    fail("admission helper is not the exact first fixture block")
+  }
+  let blocks = text.split("\n///|\n").map(s => s.to_owned()).to_array()
+  guard blocks.length() >= 2 &&
+    blocks[1].has_prefix("test ") &&
+    blocks[0].trim().has_suffix("\n}") &&
+    !blocks[0].contains("try?") else {
+    fail("admission helper boundary changed")
+  }
+  // Keep the original prefix bytes, including its final separating newline.
+  blocks[0] + "\n"
+}
+
+///|
+fn filter_cmd_manifest(text : String) -> (String, Array[String]) raise {
+  let kept = []
+  let removed = []
+  for line in text.split("\n") {
+    let trimmed = line.trim().to_owned()
+    if trimmed.has_prefix("\"") &&
+      (trimmed.contains("_test.mbt\"") || trimmed.contains("_wbtest.mbt\"")) {
+      let words = trimmed.split("\"").map(s => s.to_owned()).to_array()
+      guard words.length() == 5 &&
+        words[0] == "" &&
+        words[2] == ": [ " &&
+        words[3] == "native" &&
+        words[4] == " ]," &&
+        !words[1].contains("/") &&
+        test_source(words[1]) else {
+        fail("unexpected test target layout; refuse broad manifest rewrite")
+      }
+      if exclude_test(cmd_package + "/" + words[1]) {
+        removed.push(words[1])
+        continue
+      }
+    }
+    kept.push(line.to_owned())
+  }
+  guard removed.length() > 0 &&
+    kept.any(line => line.contains("\"operator_diagnostics_wbtest.mbt\"")) else {
+    fail("cmd target selection did not preserve the diagnostic fixture")
+  }
+  (kept.join("\n"), removed)
+}
+
+///|
+async fn read(path : String) -> Bytes {
+  guard @fs.kind(path, follow_symlink=false) is Regular else {
+    fail("regular non-symlink input required: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size >= 0L && size <= 16777216L else {
+    fail("source file exceeds 16 MiB bound: " + path)
+  }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else { fail("source size changed: " + path) }
+  bytes
+}
+
+///|
+async fn copy_tree(
+  source : String,
+  destination : String,
+  relative : String,
+  depth : Int32,
+  entries : Ref[Int32],
+  total : Ref[Int64],
+  manifest : Array[Json],
+  selected : Map[String, Bool],
+  derived : Array[Json],
+) -> Unit {
+  guard depth <= 20 else { fail("source nesting exceeds bound") }
+  let directory = @fs.opendir(source + "/" + relative)
+  defer directory.close()
+  @fs.mkdir(destination + "/" + relative)
+  while directory.next(include_hidden=true, include_special=false)
+        is Some(entry) {
+    entries.val += 1
+    guard entries.val <= 30000 &&
+      entry.name != "." &&
+      entry.name != ".." &&
+      !entry.name.contains("/") else {
+      fail("source inventory bound/name")
+    }
+    let name = relative + "/" + entry.name
+    match @fs.kind(source + "/" + name, follow_symlink=false) {
+      Directory =>
+        copy_tree(
+          source,
+          destination,
+          name,
+          depth + 1,
+          entries,
+          total,
+          manifest,
+          selected,
+          derived,
+        )
+      Regular => {
+        let bytes = read(source + "/" + name)
+        total.val += bytes.length().to_int64()
+        guard total.val <= 134217728L else {
+          fail("source exceeds 128 MiB inventory bound")
+        }
+        let source_sha = sha(bytes)
+        if exclude_test(name) {
+          manifest.push({
+            "path": Json(name),
+            "sha256": Json(source_sha),
+            "bytes": Json(bytes.length()),
+            "action": "excluded-test-original-retained",
+          })
+          if name == admission_package + "/plan_test.mbt" {
+            let helper = @utf8.encode(fixture_block(@utf8.decode(bytes)))
+            let generated = admission_package +
+              "/operator_diagnostic_fixture_test.mbt"
+            @fs.write_file(
+              destination + "/" + generated,
+              helper,
+              create_mode=CreateNew,
+            )
+            guard read(destination + "/" + generated) == helper else {
+              fail("helper copy verification failed")
+            }
+            derived.push({
+              "path": Json(generated),
+              "sha256": Json(sha(helper)),
+              "source": Json(name),
+              "source_sha256": Json(source_sha),
+              "transformation": "exact first fixture() block, no expression rewrite",
+              "bytes": Json(helper.length()),
+            })
+          }
+          continue
+        }
+        let output = if name == cmd_package + "/moon.pkg" {
+          let (changed, removed) = filter_cmd_manifest(@utf8.decode(bytes))
+          let result = @utf8.encode(changed)
+          derived.push({
+            "path": Json(name),
+            "source_sha256": Json(source_sha),
+            "sha256": Json(sha(result)),
+            "transformation": "remove only excluded native test target lines; retain imports/stubs/all production targets",
+            "removed_test_targets": Json(removed),
+          })
+          result
+        } else {
+          bytes
+        }
+        @fs.write_file(destination + "/" + name, output, create_mode=CreateNew)
+        guard read(destination + "/" + name) == output &&
+          read(source + "/" + name) == bytes else {
+          fail("source/copy verification mismatch: " + name)
+        }
+        if selected_tests.contains(name) {
+          selected[name] = true
+        }
+        manifest.push({
+          "path": Json(name),
+          "sha256": Json(source_sha),
+          "copied_sha256": Json(sha(output)),
+          "bytes": Json(bytes.length()),
+          "action": if name == cmd_package + "/moon.pkg" {
+            "test-manifest-only-derived"
+          } else {
+            "byte-identical-copy"
+          },
+        })
+      }
+      _ => fail("source tree contains symlink/special file: " + name)
+    }
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args is [_, "--self-test"] {
+    assert_true(exclude_test(cmd_package + "/disk_capacity_wbtest.mbt"))
+    assert_false(exclude_test(cmd_package + "/operator_diagnostics_wbtest.mbt"))
+    assert_false(exclude_test(cmd_package + "/operator_diagnostics.mbt"))
+    assert_false(exclude_test("src/another/unchanged_test.mbt"))
+    let helper = "///|\nfn fixture() -> @learning_native_admission.Inputs {\n  value\n}\n"
+    assert_eq(fixture_block(helper + "///|\ntest \"unchanged\" {}\n"), helper)
+    let (changed, removed) = filter_cmd_manifest(
+      "imports unchanged\n  \"disk_capacity_wbtest.mbt\": [ \"native\" ],\n  \"operator_diagnostics_wbtest.mbt\": [ \"native\" ],\n  \"main.mbt\": [ \"native\" ],\n",
+    )
+    assert_eq(removed, ["disk_capacity_wbtest.mbt"])
+    assert_true(
+      changed.contains("imports unchanged") && changed.contains("\"main.mbt\""),
+    )
+    println(
+      "Fixture staging pure selection checks passed; no files or processes created",
+    )
+    return
+  }
+  guard args is [_, "--stage", source, destination] &&
+    path(source) &&
+    path(destination) &&
+    !destination.has_prefix(source + "/") &&
+    !source.has_prefix(destination + "/") &&
+    source != destination else {
+    fail(
+      "usage: --stage CANONICAL_SOURCE_MODULE FRESH_SIBLING_MODULE; or --self-test",
+    )
+  }
+  guard @fs.realpath(source) == source &&
+    @fs.kind(source + "/src", follow_symlink=false) is Directory &&
+    !@fs.exists(destination) else {
+    fail("canonical source / fresh separate destination required")
+  }
+  let parts = destination.split("/").map(s => s.to_owned()).to_array()
+  ignore(parts.pop())
+  let parent = parts.join("/")
+  guard @fs.realpath(parent) == parent else {
+    fail("destination parent must exist and be canonical")
+  }
+  @fs.mkdir(destination)
+  let module_bytes = read(source + "/moon.mod")
+  @fs.write_file(destination + "/moon.mod", module_bytes, create_mode=CreateNew)
+  guard read(destination + "/moon.mod") == module_bytes else {
+    fail("module copy mismatch")
+  }
+  let files : Array[Json] = [
+    {
+      "path": "moon.mod",
+      "sha256": Json(sha(module_bytes)),
+      "copied_sha256": Json(sha(module_bytes)),
+      "action": "byte-identical-copy",
+    },
+  ]
+  let derived : Array[Json] = []
+  let selected : Map[String, Bool] = {}
+  let entries = Ref::new(0)
+  let total = Ref::new(0L)
+  copy_tree(
+    source, destination, "src", 0, entries, total, files, selected, derived,
+  )
+  guard selected.length() == 3 && derived.length() == 2 else {
+    fail("expected three target test files and two narrow derivations")
+  }
+  let manifest : Json = {
+    "format": "moonrobo.operator-fixture-workspace.v1",
+    "source": Json(source),
+    "destination": Json(destination),
+    "source_modified": false,
+    "production_source_byte_identical": true,
+    "selected_test_files": Json(selected_tests),
+    "test_scope": "isolated cmd option fixture1 plus admission projection fixtures4; never full-package-suite evidence",
+    "derived": Json(derived),
+    "files": Json(files),
+    "source_bytes_scanned": Json(total.val),
+    "dependency_cache": {
+      "source": Json(source + "/.mooncakes"),
+      "destination": Json(destination + "/.mooncakes"),
+      "action": "owner must supply existing pinned cache as read-only bind mount; not copied/modified/downloaded by staging",
+      "same_module_versions_required": true,
+    },
+    "build_cache": "fresh destination has no _build/target; owner must use fresh target directory and original compiler version",
+    "commands_after_dependency_mount": [
+      "moon test src/learning_aligned_gpu/cmd/operator_diagnostics_wbtest.mbt --target native",
+      "moon test src/learning_native_admission/operator_diagnostic_test.mbt src/learning_native_admission/operator_diagnostic_wbtest.mbt --target native",
+    ],
+    "compiler_invoked": false,
+    "gpu_invoked": false,
+  }
+  @fs.write_file(
+    destination + "/fixture-staging-manifest.json",
+    manifest.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+  println(
+    "Prepared isolated test source copy; originals retained; dependency mount and CPU test execution remain with owner",
+  )
+}

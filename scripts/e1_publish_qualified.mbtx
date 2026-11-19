@@ -1,0 +1,99 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+async fn sha(path : String) -> String {
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  let h = @crypto.SHA256::new()
+  for offset = 0L; offset < f.size(); {
+    let count = (f.size() - offset).min(262144L).to_int()
+    h.update(f.read_exactly_at(count, position=offset))
+    continue offset + count.to_int64()
+  }
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, root, dataset] &&
+    dataset.has_prefix("data-qualified-") &&
+    !dataset.contains("/") else {
+    fail("job root and dataset basename required")
+  }
+  let (code, host, _) = @process.collect_output("hostname", [])
+  guard code == 0 &&
+    host.text().trim() == "spark-57f5" &&
+    root == "/home/wlc003s/moonrobo/private/e1-native-20261110" else {
+    fail("publication belongs on data host 178")
+  }
+  let directory = root + "/" + dataset
+  let receipt_path = root + "/incoming/" + dataset + "-publication.json"
+  guard !@fs.exists(receipt_path) else { fail("catalog already published") }
+  while !@fs.exists(directory + "/admission.json") {
+    @async.sleep(1000)
+  }
+  let admission = @json.parse(
+    @utf8.decode(@fs.read_file(directory + "/admission.json").binary()),
+  )
+  guard admission
+    is {
+      "passed": True,
+      "candidate_count": Number(44, ..),
+      "accepted": Array(accepted),
+      "rejected": Array(rejected),
+      "dataset_sha256": String(dataset_sha),
+      "model_validation_sha256": String(model_sha),
+      "generator_binary_sha256": String(generator),
+      "training_clips": Number(training, ..),
+      "validation_clips": Number(validation, ..),
+      ..
+    } &&
+    accepted.length() + rejected.length() == 44 &&
+    dataset_sha == sha(directory + "/dataset.json") &&
+    model_sha == sha(directory + "/model-validation.json") else {
+    fail("completed catalog failed admission or candidate accounting")
+  }
+  let archive = root + "/incoming/" + dataset + ".tar.gz"
+  guard !@fs.exists(archive) else { fail("archive must be fresh") }
+  let log = @process.redirect_to_file(
+    root + "/pack-" + dataset + ".log",
+    create_mode=CreateNew,
+  )
+  let status = @process.run(
+    "tar",
+    ["-czf", archive, "-C", root, dataset],
+    stdout=log,
+    stderr=log,
+  )
+  guard status == 0 else { fail("packing failed") }
+  let receipt : Json = {
+    "format": "moonrobo.e1-qualified-publication.v1",
+    "dataset_directory": dataset,
+    "archive_sha256": sha(archive),
+    "dataset_sha256": dataset_sha,
+    "admission_sha256": sha(directory + "/admission.json"),
+    "model_validation_sha256": model_sha,
+    "generator_binary_sha256": generator,
+    "candidate_count": 44,
+    "accepted_clips": accepted.length(),
+    "rejected_clips": rejected.length(),
+    "training_clips": training,
+    "validation_clips": validation,
+    "data_host": 178,
+  }
+  @fs.write_file(
+    receipt_path,
+    @utf8.encode(receipt.stringify(indent=2)),
+    create_mode=CreateNew,
+  )
+  println(receipt.stringify())
+}

@@ -1,0 +1,167 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, rev] &&
+    ["prepare", "build", "run"].contains(mode) &&
+    ["d", "e", "f", "g"].contains(rev) else {
+    fail("prepare/build/run d..g")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  if mode == "prepare" {
+    if rev == "e" {
+      let name = "actor_smc_fk_" + rev + ".mbt"
+      @fs.write_file(
+        out + "/" + name,
+        @fs.read_file("src/learning_aligned_gpu/geometry/context.mbt"),
+        create_mode=CreateNew,
+      )
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    let helper = "compiled_actor_" + rev + ".mbt"
+    @fs.write_file(
+      out + "/" + helper,
+      @fs.read_file("src/learning_aligned_gpu/compiled_actor.mbt"),
+      create_mode=CreateNew,
+    )
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/" + helper,
+        host + ":" + base + "/" + helper,
+      ]),
+      0,
+    )
+    for
+      file in [
+        "actor_step_learning_c.mbt", "actor_step_fixture_c.mbt", "build_actor_step_c.mbtx",
+        "run_actor_step_gate_c.mbtx",
+      ] {
+      let mut code = @fs.read_file(out + "/" + file).text()
+      for
+        stem in [
+          "actor_step_learning_", "actor_step_fixture_", "run_actor_step_gate_",
+        ] {
+        code = code.replace_all(old=stem + "c.", new=stem + rev + ".")
+      }
+      for
+        stem in [
+          "moonrobo-actor-step-", "actor-step-copy-", "actor-step-overlay-", "actor-step-fixture-",
+          "actor-step-source-", "actor-step-build-", "actor-step-cpu-tests-", "actor-step-binary-",
+          "actor-step-gate-",
+        ] {
+        code = code.replace_all(old=stem + "c", new=stem + rev)
+      }
+      if file == "build_actor_step_c.mbtx" {
+        code = code.replace_all(
+          old="  container(\"actor-step-build-" + rev + "\"",
+          new="  run(\"actor-step-helper-" +
+            rev +
+            "\",\"cp\",[base+\"/" +
+            helper +
+            "\",ws+\"/src/learning_aligned_gpu/compiled_actor.mbt\"])\n  container(\"actor-step-build-" +
+            rev +
+            "\"",
+        )
+        if rev == "e" {
+          code = code.replace_all(
+            old="  container(\"actor-step-build-e\"",
+            new="  run(\"actor-step-fk-e\",\"cp\",[base+\"/actor_smc_fk_e.mbt\",ws+\"/src/learning_aligned_gpu/geometry/context.mbt\"])\n  container(\"actor-step-build-e\"",
+          )
+        }
+      }
+      if file == "actor_step_fixture_c.mbt" && rev == "e" {
+        code = code.replace_all(
+          old="  let learner = @gpu.Learner::new(",
+          new="  let context = context.with_smc_fk_layout(true)\n  let learner = @gpu.Learner::new(",
+        )
+      }
+      let target = file.replace_all(old="_c.", new="_" + rev + ".")
+      @fs.write_file(out + "/" + target, code, create_mode=CreateNew)
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + target,
+          host + ":" + base + "/" + target,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/step-" + mode + "-" + rev
+  @fs.mkdir(folder)
+  let command = if mode == "build" {
+    "build_actor_step_" + rev + ".mbtx"
+  } else {
+    "run_actor_step_gate_" +
+    rev +
+    ".mbtx -- actor native off 1 actor-step-native-" +
+    rev +
+    " bf16-full"
+  }
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      command,
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  if mode == "run" {
+    for
+      name in [
+        "result.json", "boundaries.json", "completion.json", "training-guard.json",
+        "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+        "protocol.json", "compiled-packages.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-step-native-" +
+          rev +
+          "/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+  }
+  assert_eq(status, 0)
+}

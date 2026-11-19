@@ -1,0 +1,109 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn number(value : Json) -> Double raise {
+  guard value is Number(value, ..) else { fail("expected number") }
+  value
+}
+
+///|
+fn summarize(trials : Array[Json]) -> Json raise {
+  let chosen = trials.filter(trial => {
+    let case_id = field(trial, "case_id")
+    case_id == "stand".to_json() ||
+    case_id == "sway".to_json() ||
+    case_id == "wave".to_json()
+  })
+  assert_eq(chosen.length(), 9)
+  let mut survival = 0.0
+  let mut rmse = 0.0
+  let mut falls = 0
+  let keys : Array[String] = []
+  for trial in chosen {
+    let key = field(trial, "case_id").stringify() +
+      ":" +
+      field(trial, "seed").stringify()
+    assert_false(keys.contains(key))
+    keys.push(key)
+    assert_true([100.0, 101.0, 102.0].contains(number(field(trial, "seed"))))
+    survival += number(field(trial, "simulated_seconds"))
+    rmse += number(field(trial, "joint_rmse_rad"))
+    if field(trial, "failed") == true.to_json() {
+      falls += 1
+    }
+  }
+  {
+    "trials": 9,
+    "falls": falls.to_json(),
+    "mean_survival_s": (survival / 9.0).to_json(),
+    "mean_joint_rmse_rad": (rmse / 9.0).to_json(),
+    "trial_keys": keys.to_json(),
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(args.length(), 2, msg="usage: score_g1_ppo.mbtx PPO_RUN")
+  let root = args[1]
+  let report = @json.parse(@fs.read_file(root + "/report.json").text())
+  let summaries : Array[Json] = []
+  for run in array(field(report, "runs")) {
+    let seed = number(field(run, "seed")).to_int()
+    let path = root + "/physics-seed-\{seed}.json"
+    let bytes = @fs.read_file(path)
+    let physics = @json.parse(bytes.text())
+    summaries.push({
+      "seed": seed.to_json(),
+      "selected_update": field(run, "selected_update"),
+      "training_steps": field(run, "training_steps"),
+      "training_seconds": field(run, "training_seconds"),
+      "source_path": path.to_json(),
+      "source_sha256": @crypto.bytes_to_hex_string(
+        @crypto.sha256(bytes.binary()),
+      ).to_json(),
+      "source_trials": array(field(field(physics, "candidate"), "trials"))
+      .length()
+      .to_json(),
+      "baseline": summarize(array(field(field(physics, "baseline"), "trials"))),
+      "candidate": summarize(
+        array(field(field(physics, "candidate"), "trials")),
+      ),
+    })
+  }
+  let result : Json = {
+    "format": "moonrobo.g1-ppo-canonical-evaluation.v1",
+    "evaluation_seeds": [100, 101, 102],
+    "case_ids": ["stand", "sway", "wave"],
+    "note": "Canonical nine trials selected by declared case IDs from retained reports; no retraining, ranking or re-simulation. Any additional standing-friction trials remain in the source.",
+    "runs": summaries.to_json(),
+  }
+  let text = result.stringify(indent=2)
+  @fs.write_file(
+    root + "/canonical-evaluation.json",
+    text,
+    create_mode=CreateOrTruncate,
+  )
+  println(text)
+}

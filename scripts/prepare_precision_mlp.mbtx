@@ -1,0 +1,199 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+let dir = "output/spark-runtime-20261024/precision-scaling-20261028-a"
+
+///|
+let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+
+///|
+let host = "wlc004s@192.168.2.179"
+
+///|
+let socket = "/tmp/moonrobo-operator-179.sock"
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] else { fail("prepare|stage-build") }
+  if mode == "prepare" {
+    let native = @fs.read_file(
+        "src/learning_aligned_gpu/cmd/mlp_comparison_wbtest.mbt",
+      )
+      .text()
+      .replace_all(
+        old="backend.cuda_free_bytes(0) > 68719476736L",
+        new="backend.cuda_free_bytes(0) > 25769803776L",
+      )
+      .replace_all(
+        old="MLP requires original 64GiB startup guard",
+        new="MLP requires current 24GiB startup admission",
+      )
+      .replace_all(
+        old="  let norm = mlp_mode()",
+        new="  let amp = @env.get_env_var(\"MOONROBO_SHARED_AMP\").unwrap()\n  guard [\"none\",\"bf16\"].contains(amp) else {fail(\"precision\")}\n  let norm = mlp_mode()",
+      )
+      .replace_all(
+        old="mlp_precision: Fp32,",
+        new="mlp_precision: if amp == \"bf16\" {Bf16}else{Fp32},",
+      )
+      .replace_all(
+        old="    \"mode\": Json(mode),",
+        new="    \"mode\": Json(mode),\n    \"amp\": Json(amp),",
+      )
+    @fs.write_file(
+      dir + "/precision_mlp_fixture_a.mbt",
+      native,
+      create_mode=CreateNew,
+    )
+    let parent = @fs.read_file(
+      "output/spark-runtime-20261024/bf16-original-20261028/build_bf16_original_a.mbtx",
+    ).text()
+    let builder = parent[:parent.find("async fn main {").unwrap()].to_owned() +
+      (
+        #|async fn main {
+        #|  require_idle()
+        #|  let ws=base+"/workspace/moonrobo-precision-mlp-a"
+        #|  guard !@fs.exists(ws) else {fail("fresh workspace required")}
+        #|  run("precision-mlp-copy-a","cp",["-a","--reflink=auto",base+"/workspace/moonrobo-bf16-original-a",ws])
+        #|  run("precision-mlp-fixture-a","cp",[base+"/precision_mlp_fixture_a.mbt",ws+"/src/learning_aligned_gpu/cmd/mlp_comparison_wbtest.mbt"])
+        #|  container("precision-mlp-build-a","/toolchain/bin/moon",["test","--build-only","--release","--target","native","-j","2","--frozen","src/learning_aligned_gpu/cmd"],workdir="/workspace/moonrobo-precision-mlp-a")
+        #|  run("precision-mlp-binary-a","cp",[ws+"/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/cmd/cmd.whitebox_test.exe",base+"/precision-mlp-gate-a"])
+        #|}
+      )
+    @fs.write_file(
+      dir + "/build_precision_mlp_a.mbtx",
+      builder,
+      create_mode=CreateNew,
+    )
+    let runner = @fs.read_file(dir + "/run_precision_scaling_a.mbtx").text()
+    let main = @fs.read_file("scripts/mlp_runner_main.txt")
+      .text()
+      .replace_all(old="observer, label]", new="observer, label, amp]")
+      .replace_all(
+        old="[\"native\", \"ln-only\", \"expanded\", \"smc\", \"compiled\"]",
+        new="[\"native\", \"ln-only\", \"expanded\", \"smc\", \"compiled\", \"per-linear\", \"per-linear-compiled\", \"nocache\"]",
+      )
+      .replace_all(
+        old="  let native =",
+        new="  guard [\"none\",\"bf16\"].contains(amp) else {fail(\"precision\")}\n  let native =",
+      )
+      .replace_all(
+        old="libmoonrobo_mlp_a.so",
+        new="libmoonrobo_coefficient_full_a.so",
+      )
+      .replace_all(old="mlp-gate-a", new="precision-mlp-gate-a")
+      .replace_all(old="mlp_smc_probe_a.py", new="precision_mlp_probe_a.py")
+      .replace_all(
+        old="run_mlp_comparison_a.mbtx",
+        new="run_precision_mlp_a.mbtx",
+      )
+      .replace_all(
+        old="shared_smc_probe_v17.py",
+        new="shared_smc_probe_bf16_original.py",
+      )
+      .replace_all(
+        old="hotspot-mlp-native-gate-a",
+        new="hotspot-mlp-native-gate-c",
+      )
+      .replace_all(
+        old="  e[\"MLP_COMPILED\"]",
+        new="  e[\"MOONROBO_SHARED_AMP\"] = Json(amp)\n  e[\"MLP_ROUTE\"] = Json(implementation)\n  e[\"MLP_COMPILED\"]",
+      )
+      .replace_all(
+        old="implementation == \"compiled\"",
+        new="implementation == \"compiled\" || implementation == \"per-linear-compiled\"",
+      )
+      .replace_all(
+        old="\"scope\": \"isolated trained world",
+        new="\"amp\":Json(amp),\"scope\": \"isolated trained world",
+      )
+    @fs.write_file(
+      dir + "/run_precision_mlp_a.mbtx",
+      runner[:runner.find("async fn main {").unwrap()].to_owned() + main,
+      create_mode=CreateNew,
+    )
+    let py = @fs.read_file("providers/motion_learning/mlp_smc_probe.py")
+      .text()
+      .replace_all(
+        old="from shared_smc_probe_v17 import networks",
+        new="from shared_smc_probe_bf16_original import networks",
+      )
+      .replace_all(old="64 * 1024**3", new="24 * 1024**3")
+      .replace_all(
+        old="    networks.AMP_DTYPE = None",
+        new="    amp = os.environ[\"MOONROBO_SHARED_AMP\"]\n    assert amp in (\"none\", \"bf16\")\n    networks.AMP_DTYPE = torch.bfloat16 if amp == \"bf16\" else None\n    route = os.environ[\"MLP_ROUTE\"]",
+      )
+      .replace_all(
+        old="        forward = torch.compile(net) if compiled else net",
+        new=(
+          #|        def forward_eager(x):
+          #|            if route in ("per-linear", "per-linear-compiled") and amp == "bf16":
+          #|                for layer in net:
+          #|                    if isinstance(layer, nn.Linear):
+          #|                        with torch.autocast("cuda", dtype=torch.bfloat16, cache_enabled=False):
+          #|                            x = layer(x)
+          #|                    elif isinstance(layer, nn.LayerNorm):
+          #|                        x = layer(x.float())
+          #|                    else:
+          #|                        x = layer(x)
+          #|                return x.float()
+          #|            if route == "nocache" and amp == "bf16":
+          #|                with torch.autocast("cuda", dtype=torch.bfloat16, cache_enabled=False):
+          #|                    return net(x).float()
+          #|            return networks.run_mlp(net, x)
+          #|        forward = torch.compile(forward_eager) if compiled else forward_eager
+        ),
+      )
+      .replace_all(
+        old="result = dict(mode=mode, compiled=compiled,",
+        new="result = dict(mode=mode, amp=amp, route=route, compiled=compiled,",
+      )
+    @fs.write_file(dir + "/precision_mlp_probe_a.py", py, create_mode=CreateNew)
+    return
+  }
+  guard mode == "stage-build" else { fail("mode") }
+  for
+    name in [
+      "precision_mlp_fixture_a.mbt", "precision_mlp_probe_a.py", "build_precision_mlp_a.mbtx",
+      "run_precision_mlp_a.mbtx",
+    ] {
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        dir + "/" + name,
+        host + ":" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        socket,
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/build_precision_mlp_a.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        dir + "/build.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        dir + "/build.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+}

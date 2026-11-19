@@ -1,0 +1,49 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn run(p : String,a : Array[String]) -> Unit {guard @process.run(p,a)==0 else{fail(p)}}
+async fn main {
+  let repo="/Users/kq/Workspace/moonrobo";let old=repo+"/output/spark-runtime-20261024/geometry-tail-20261028"
+  let dir=repo+"/output/spark-runtime-20261024/geometry-vjp-20261028"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a";let host="wlc004s@192.168.2.179";let sock="/tmp/moonrobo-operator-179.sock"
+  guard @env.args() is [_,mode]else{fail("prepare|stage|build")}
+  if mode=="prepare" {
+    @fs.mkdir(dir,recursive=true)
+    let mut tests=@fs.read_file(repo+"/src/learning_aligned_gpu/geometry/geometry_tail_wbtest.mbt").text()
+    tests=rep(tests,"SO3 tail forward and full derivative","SO3 coefficient forward and full derivative")
+    tests=rep(tests,"assert_true(backend.has_geometry_tail())","assert_true(backend.has_geometry_vjp())")
+    tests=rep(tests,"fused_so3_tail=true,","fused_so3_coefficients=true,")
+    tests=rep(tests,".fused_cross_forward(",".fused_cross_vjp(")
+    @fs.write_file(repo+"/src/learning_aligned_gpu/geometry/geometry_vjp_wbtest.mbt",tests,create_mode=CreateNew)
+    let mut f=@fs.read_file(old+"/geometry_tail_fixture_b.mbt").text()
+    f=rep(f,"fused_cross_forward: [Some(\"cross\"),Some(\"both\")].contains(@env.get_env_var(\"MOONROBO_TOP3_VARIANT\")),","fused_cross_forward: true,\n      fused_cross_vjp: [Some(\"cross\"),Some(\"both\")].contains(@env.get_env_var(\"MOONROBO_TOP3_VARIANT\")),")
+    f=rep(f,"fused_so3_tail: [Some(\"tail\"),Some(\"both\")].contains(@env.get_env_var(\"MOONROBO_TOP3_VARIANT\")),","fused_so3_tail: true,\n      fused_so3_coefficients: [Some(\"tail\"),Some(\"both\")].contains(@env.get_env_var(\"MOONROBO_TOP3_VARIANT\")),")
+    f=rep(f,"fused_cross_forward: cross, fused_so3_tail: tail,","fused_cross_forward: true, fused_so3_tail: true, fused_cross_vjp: cross, fused_so3_coefficients: tail,")
+    f=rep(f,".with_fused_cross_forward(cross)",".with_fused_cross_forward(true).with_fused_cross_vjp(cross)")
+    @fs.write_file(dir+"/geometry_vjp_fixture_a.mbt",f,create_mode=CreateNew)
+    let mut b=@fs.read_file(old+"/build_geometry_tail_b.mbtx").text()
+    for (a,v) in [("geometry-tail-b","geometry-vjp-a"),("geometry-tail-gate-b","geometry-vjp-gate-a"),("geometry-tail-tensor-a","geometry-vjp-tensor-a"),("geometry-tail-runtime-a","geometry-vjp-runtime-a"),("libmoonrobo_geometry_tail_a.so","libmoonrobo_geometry_vjp_a.so"),("geometry-tail-cuda-build-a","geometry-vjp-cuda-build-a"),("geometry-tail-plugin-a","geometry-vjp-plugin-a"),("geometry-tail-cpu-a","geometry-vjp-cpu-a"),("geometry_tail.cu","geometry_vjp.cu"),("geometry_tail_wbtest.mbt:0-2","geometry_vjp_wbtest.mbt:0-2")] {b=rep(b,a,v)}
+    b=rep(b,"\"-o\",\"/build/geometry_tail_a.o\"","\"-o\",\"/build/geometry_vjp_a.o\"")
+    b=rep(b,"\"/build/geometry_tail_a.o\", \"-o\"","\"/build/geometry_tail_a.o\", \"/build/geometry_vjp_a.o\", \"-o\"")
+    @fs.write_file(dir+"/build_geometry_vjp_a.mbtx",b,create_mode=CreateNew)
+    let mut driver=@fs.read_file(old+"/run_geometry_tail_b.mbtx").text()
+    for (a,v) in [("geometry-tail-gate-b","geometry-vjp-gate-a"),("run_geometry_tail_b.mbtx","run_geometry_vjp_a.mbtx"),("build_geometry_tail_b.mbtx","build_geometry_vjp_a.mbtx"),("geometry_tail_fixture_b.mbt","geometry_vjp_fixture_a.mbt"),("libmoonrobo_geometry_tail_a.so","libmoonrobo_geometry_vjp_a.so")] {driver=rep(driver,a,v)}
+    @fs.write_file(dir+"/run_geometry_vjp_a.mbtx",driver,create_mode=CreateNew)
+    @fs.write_file(dir+"/invoke_geometry_vjp_a.mbtx",rep(@fs.read_file(old+"/invoke_geometry_tail_b.mbtx").text(),"run_geometry_tail_b.mbtx","run_geometry_vjp_a.mbtx"),create_mode=CreateNew)
+    let mut suite=@fs.read_file(old+"/geometry_tail_suite_a.mbtx").text()
+    suite=rep(suite,"geometry-tail-","geometry-vjp-")
+    suite=rep(suite,"geometry_tail_","geometry_vjp_")
+    suite=rep(suite,"assert_eq(field(e,\"fused_cross_forward\"),Json(active&&(v==\"cross\"||v==\"both\")));assert_eq(field(e,\"fused_so3_tail\"),Json(active&&(v==\"tail\"||v==\"both\")))","assert_eq(field(e,\"fused_cross_forward\"),Json(true));assert_eq(field(e,\"fused_so3_tail\"),Json(true));assert_eq(field(e,\"fused_cross_vjp\"),Json(active&&(v==\"cross\"||v==\"both\")));assert_eq(field(e,\"fused_so3_coefficients\"),Json(active&&(v==\"tail\"||v==\"both\")))")
+    @fs.write_file(dir+"/geometry_vjp_suite_a.mbtx",suite,create_mode=CreateNew)
+    return
+  }
+  if mode=="stage" {
+    for f in ["geometry_vjp_fixture_a.mbt","build_geometry_vjp_a.mbtx","run_geometry_vjp_a.mbtx","invoke_geometry_vjp_a.mbtx","geometry_vjp_suite_a.mbtx"] {run("scp",["-o","ControlPath="+sock,dir+"/"+f,host+":"+base+"/"+f])}
+    run("ssh",["-S",sock,host,"test ! -e "+base+"/workspace/moonrobo-geometry-vjp-a"])
+    run("ssh",["-S",sock,host,"cp -a --reflink=auto "+base+"/workspace/moonrobo-geometry-tail-b "+base+"/workspace/moonrobo-geometry-vjp-a"])
+    for f in ["execution_optimizations.mbt","learning.mbt","microbatch.mbt","actor_microbatch.mbt","geometry/state.mbt","geometry/context.mbt","geometry/rotations.mbt","geometry/geometry_vjp.mbt","geometry/geometry_vjp_wbtest.mbt","geometry/moon.pkg","cmd/optimizations.mbt","cmd/optimizations_wbtest.mbt"] {run("scp",["-o","ControlPath="+sock,repo+"/src/learning_aligned_gpu/"+f,host+":"+base+"/workspace/moonrobo-geometry-vjp-a/src/learning_aligned_gpu/"+f])}
+    for f in ["geometry_vjp.inc","geometry_vjp_loader.inc","geometry_vjp.mbt","geometry_vjp.cu","adapter.cpp","loader.c","moon.pkg"] {run("scp",["-o","ControlPath="+sock,repo+"/src/learning_tensor/"+f,host+":"+base+"/workspace/moonrobo-geometry-vjp-a/src/learning_tensor/"+f])}
+    run("ssh",["-S",sock,host,"cp "+base+"/geometry_vjp_fixture_a.mbt "+base+"/workspace/moonrobo-geometry-vjp-a/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"]);return
+  }
+  guard mode=="build"else{fail("mode")}
+  for m in ["fused-cuda","plugin","gate-build-geometry-vjp-a","cpu"] {run("ssh",["-S",sock,host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/build_geometry_vjp_a.mbtx -- "+m])}
+}

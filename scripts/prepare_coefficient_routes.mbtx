@@ -1,0 +1,13 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="output/spark-runtime-20261024/coefficient-assembly-20261028"
+  let mut s=@fs.read_file("output/spark-runtime-20261024/geometry-vjp-20261028/confirm_routes_c.mbtx").text()
+  s=s.replace_all(old="geometry-vjp",new="coefficient-assembly").replace_all(old="invoke_geometry_vjp_a",new="invoke_coefficient_assembly_a").replace_all(old="(\"world\",\"tail\")",new="(\"world\",\"both\")")
+  s=s.replace_all(old="cross_vjp",new="coeff_forward").replace_all(old="if phase==\"actor\"{guard cross>0 else{fail(\"inactive cross VJP\")}}",new="assert_eq(cross,if phase==\"world\"{8}else{256})").replace_all(old="joint_cross_backward_calls",new="coefficient_forward_calls")
+  @fs.write_file(dir+"/routes.mbtx",s,create_mode=CreateNew)
+  let b=@fs.read_file(dir+"/build_coefficient_assembly_a.mbtx").text()
+  @fs.write_file(dir+"/config_tests.mbtx",b.replace_all(old="if mode == \"cpu\" {",new="if mode == \"config\" { container(\"coefficient-assembly-config-a\",\"/build/coefficient-assembly-gate-a\",[\"optimizations_wbtest.mbt:0-9\"]);return }\n  if mode == \"cpu\" {"),create_mode=CreateNew)
+  for (a,b) in [("routes.mbtx","coefficient_routes_a.mbtx"),("config_tests.mbtx","coefficient_config_tests_a.mbtx")] {
+    guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+"/"+a,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/"+b])==0else{fail("stage")}
+  }
+}

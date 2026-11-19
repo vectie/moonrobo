@@ -1,0 +1,89 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let files = [
+    (
+      "export_geometry_math_b.py",
+      @fs.read_file("providers/motion_learning/export_geometry_math.py").text(),
+    ),
+    (
+      "run_geometry_math_export_b.mbtx",
+      @fs.read_file(out + "/run_geometry_math_export.mbtx")
+      .text()
+      .replace_all(
+        old="run_geometry_math_export.mbtx",
+        new="run_geometry_math_export_b.mbtx",
+      )
+      .replace_all(
+        old="export_geometry_math.py",
+        new="export_geometry_math_b.py",
+      ),
+    ),
+    (
+      "geometry_math_fixture_b.mbt",
+      @fs.read_file(out + "/geometry_math_fixture.mbt")
+      .text()
+      .replace_all(old="geometry-math-heads-a", new="geometry-math-heads-b"),
+    ),
+    (
+      "build_geometry_math_b.mbtx",
+      @fs.read_file(out + "/build_geometry_math.mbtx")
+      .text()
+      .replace_all(old="geometry-math-a", new="geometry-math-b")
+      .replace_all(
+        old="geometry_math_fixture.mbt",
+        new="geometry_math_fixture_b.mbt",
+      )
+      .replace_all(old="copy-geometry-math-", new="copy-geometry-math-b-"),
+    ),
+    (
+      "run_geometry_math_training_b.mbtx",
+      @fs.read_file(out + "/run_geometry_math_training.mbtx")
+      .text()
+      .replace_all(
+        old="run_geometry_math_training.mbtx",
+        new="run_geometry_math_training_b.mbtx",
+      )
+      .replace_all(old="geometry-math-heads-a", new="geometry-math-heads-b")
+      .replace_all(
+        old="actor-step-gate-geometry-math-a",
+        new="actor-step-gate-geometry-math-b",
+      ),
+    ),
+    (
+      "run_geometry_math_gate_b.mbtx",
+      @fs.read_file(out + "/run_geometry_math_gate.mbtx")
+      .text()
+      .replace_all(
+        old="run_geometry_math_gate.mbtx",
+        new="run_geometry_math_gate_b.mbtx",
+      )
+      .replace_all(old="geometry-math-heads-a", new="geometry-math-heads-b")
+      .replace_all(
+        old="actor-step-gate-geometry-math-a",
+        new="actor-step-gate-geometry-math-b",
+      ),
+    ),
+  ]
+  for (name, content) in files {
+    @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-math-179.sock",
+        out + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+}

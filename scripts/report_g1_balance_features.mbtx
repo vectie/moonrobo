@@ -1,0 +1,419 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+fn string(value : Json) -> String raise {
+  guard value is String(s) else { fail("expected string") }
+  s
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=out.text() + err.text())
+  out.text()
+}
+
+///|
+fn error_pool(values : Array[Json]) -> Json raise {
+  let mut count = 0.0
+  let mut squared = 0.0
+  let mut maximum = 0.0
+  for value in values {
+    count += num(field(value, "count"))
+    squared += num(field(value, "squared_error"))
+    maximum = maximum.max(num(field(value, "maximum_error")))
+  }
+  assert_true(count > 0.0)
+  {
+    "count": Json(count.to_int()),
+    "rmse": Json((squared / count).sqrt()),
+    "maximum_error": Json(maximum),
+  }
+}
+
+///|
+/// Verify the actual native source snapshot or the preserved historical source.
+/// Native reports may not silently fall back to a Python digest.
+async fn source_digest(
+  study : String,
+  report : Json,
+  key : String,
+  legacy : String,
+) -> String {
+  guard report is Object(fields) else { fail("report object required") }
+  match fields.get("native_source_files") {
+    Some(bindings) => {
+      guard bindings is Object(all_bindings) else {
+        fail("native source bindings object required")
+      }
+      for source_key, binding in all_bindings {
+        let original = string(field(binding, "source"))
+        let extension = if original.has_suffix(".mbt") {
+          ".mbt"
+        } else {
+          assert_eq(source_key, "teacher_provider_sha256")
+          assert_true(original.has_suffix(".py"))
+          assert_eq(field(binding, "role"), "passive-parameter-source")
+          ".py"
+        }
+        let saved = string(field(binding, "snapshot"))
+        assert_eq(saved, "provider-sources/" + source_key + extension)
+        let expected = field(binding, "sha256")
+        assert_eq(expected, field(report, source_key))
+        assert_eq(expected, Json(digest(study + "/" + saved)))
+      }
+      let entry = field(bindings, key)
+      let source = string(field(entry, "source"))
+      let snapshot = string(field(entry, "snapshot"))
+      assert_true(source.has_suffix(".mbt"))
+      assert_eq(snapshot, "provider-sources/" + key + ".mbt")
+      let actual = digest(study + "/" + snapshot)
+      assert_eq(field(entry, "sha256"), Json(actual))
+      assert_eq(field(report, "source_language"), "moonbit")
+      actual
+    }
+    None => {
+      assert_false(
+        fields.get("source_language") == Some(("moonbit" : Json)),
+        msg="native report lacks actual source bindings; regenerate report",
+      )
+      digest(study + "/provider-sources/" + legacy)
+    }
+  }
+}
+
+///|
+async fn teacher_digest(
+  root : String,
+  teacher : Json,
+  legacy : String,
+) -> String {
+  guard teacher is Object(fields) else { fail("teacher object required") }
+  if fields.get("source_language") == Some(("moonbit" : Json)) {
+    let path = string(field(teacher, "provider_source"))
+    assert_true(path.has_suffix(".mbt"))
+    digest(if path.has_prefix("/") { path } else { root + "/" + path })
+  } else {
+    digest(legacy)
+  }
+}
+
+///|
+async fn checkpoint_digest(stem : String) -> String {
+  let paths : Array[String] = []
+  for suffix in [".moon.json", ".pt", ".json"] {
+    if @fs.exists(stem + suffix) {
+      paths.push(stem + suffix)
+    }
+  }
+  assert_eq(paths.length(), 1, msg="checkpoint missing or ambiguous: " + stem)
+  digest(paths[0])
+}
+
+///|
+fn source_metadata(report : Json) -> Json raise {
+  guard report is Object(fields) else { fail("report object required") }
+  {
+    "source_language": fields
+    .get("source_language")
+    .unwrap_or(("python-reference" : Json)),
+    "native_source_files": fields
+    .get("native_source_files")
+    .unwrap_or(Json::null()),
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: report_g1_balance_features.mbtx REPO STUDY OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let report = read(study + "/report.json")
+  let config = field(report, "config")
+  let charter = read(study + "/charter.json")
+  assert_eq(config, field(charter, "config"))
+  assert_eq(field(report, "physical_execution_allowed"), false)
+  assert_eq(field(report, "learned_policy_qualified"), false)
+  assert_eq(
+    field(report, "provider_sha256"),
+    Json(
+      source_digest(
+        study, report, "provider_sha256", "balance_feature_study.py",
+      ),
+    ),
+  )
+  assert_eq(
+    field(report, "feature_provider_sha256"),
+    Json(
+      source_digest(
+        study, report, "feature_provider_sha256", "balance_features.py",
+      ),
+    ),
+  )
+  assert_eq(
+    field(report, "kinematics_sha256"),
+    Json(digest(study + "/kinematics.json")),
+  )
+  assert_eq(
+    field(report, "verification_sha256"),
+    Json(digest(study + "/feature-verification.json")),
+  )
+  let source = string(field(charter, "source_intervention"))
+  assert_eq(
+    field(report, "input_log_sha256"),
+    field(read(source + "/report.json"), "physics_log_sha256"),
+  )
+  let spec = read(study + "/kinematics.json")
+  assert_eq(field(spec, "format"), "moonrobo.balance-kinematics.v1")
+  assert_eq(array(field(spec, "joint_names")).length(), 29)
+  let verified = array(
+    field(read(study + "/feature-verification.json"), "rows"),
+  )
+  assert_eq(verified.length(), 90)
+  assert_eq(field(report, "verified_episodes"), 90)
+  let mut points = 0
+  for row in verified {
+    assert_true(
+      ["student", "teacher"].contains(string(field(row, "source_mode"))),
+    )
+    points += num(field(row, "points")).to_int()
+    assert_true(num(field(field(row, "geometry"), "maximum_error")) < 1.0e-10)
+    assert_true(
+      num(field(field(row, "exact_feedback"), "maximum_error")) < 1.0e-10,
+    )
+    for oracle in array(field(row, "oracle_transport")) {
+      assert_true(num(field(oracle, "maximum_error")) < 1.0e-9)
+    }
+  }
+  assert_eq(num(field(report, "verified_points")).to_int(), points)
+  let estimates : Array[Json] = []
+  for scope in ["train", "canonical-development"] {
+    let selected = verified.filter(r => field(r, "scope") == Json(scope))
+    for dtype in ["float64", "float32"] {
+      for transport_kind in ["body_difference", "gyro", "gravity_gyro"] {
+        for window in [(10 : Json), ("full" : Json)] {
+          let velocity : Array[Json] = []
+          let action : Array[Json] = []
+          for row in selected {
+            let chosen = array(field(row, "estimates")).filter(e => {
+              field(e, "dtype") == Json(dtype) &&
+              field(e, "method") == Json(transport_kind) &&
+              field(e, "window") == window
+            })
+            assert_eq(chosen.length(), 1)
+            velocity.push(field(chosen[0], "velocity"))
+            action.push(field(chosen[0], "ankle_action"))
+          }
+          estimates.push({
+            "scope": Json(scope),
+            "dtype": Json(dtype),
+            "method": Json(transport_kind),
+            "window": window,
+            "velocity_m_s": error_pool(velocity),
+            "ankle_setpoint_rad": error_pool(action),
+          })
+        }
+      }
+    }
+  }
+  let control = array(field(report, "control"))
+  assert_eq(control.length(), 9)
+  let chunks : Array[Json] = []
+  let ids : Map[String, Bool] = Map([])
+  let log = study + "/feature-feedback-physics.jsonl.gz"
+  assert_eq(field(report, "control_log_sha256"), Json(digest(log)))
+  @async.with_task_group() <| group => {
+    let (reader, child_output) = @process.read_from_process()
+    let process = @process.spawn(
+      group,
+      "gzip",
+      ["-cd", log],
+      stdout=child_output,
+    )
+    while reader.read_until("\n") is Some(line) {
+      if line.trim().is_empty() {
+        continue
+      }
+      let record = @json.parse(line)
+      let row = control[chunks.length()]
+      let seed = num(field(row, "seed")).to_int()
+      assert_eq(field(row, "mode"), field(record, "mode"))
+      assert_eq(field(record, "seed"), Json(seed))
+      let policies = string(field(charter, "incoming_policies"))
+      assert_eq(
+        field(row, "actor_sha256"),
+        Json(checkpoint_digest(policies + "/actor-seed-\{seed}")),
+      )
+      let dataset = field(record, "dataset")
+      let episodes = array(field(dataset, "episodes"))
+      let trials = array(field(record, "trials"))
+      assert_eq(episodes.length(), 9)
+      assert_eq(trials, array(field(row, "trials")))
+      let mut transitions = 0
+      for index, episode in episodes {
+        let id = string(field(episode, "id"))
+        assert_false(ids.contains(id))
+        ids.set(id, true)
+        assert_eq(field(trials[index], "episode_id"), Json(id))
+        assert_eq(field(episode, "case_id"), field(trials[index], "case_id"))
+        let steps = array(field(episode, "steps"))
+        assert_eq(num(field(trials[index], "steps")).to_int(), steps.length())
+        assert_eq(
+          field(trials[index], "failed"),
+          field(steps.last().unwrap(), "terminated"),
+        )
+        transitions += steps.length()
+      }
+      assert_eq(num(field(row, "transitions")).to_int(), transitions)
+      let temporary = study + "/native-chunk.json"
+      @fs.write_file(
+        temporary,
+        dataset.stringify(),
+        create_mode=CreateOrTruncate,
+      )
+      let checked = @json.parse(
+        run(
+          root +
+          "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+          [temporary, "train", "1", "1000000"],
+        ),
+      )
+      assert_eq(field(checked, "window_length"), 1)
+      @fs.remove(temporary)
+      chunks.push({
+        "seed": Json(seed),
+        "mode": field(row, "mode"),
+        "episodes": 9,
+        "transitions": Json(transitions),
+        "native_checked_all_splits": true,
+      })
+      println("Native checked feature-feedback cell \{chunks.length()}/9")
+    }
+    reader.close()
+    assert_eq(process.wait(), 0)
+  }
+  assert_eq(chunks.length(), 9)
+  assert_eq(ids.length(), 81)
+  let modes : Array[Json] = []
+  for mode in ["student", "oracle_h10_ankle", "derived_h10_ankle"] {
+    let selected = control.filter(r => field(r, "mode") == Json(mode))
+    assert_eq(selected.length(), 3)
+    let mut falls = 0
+    let mut survival = 0.0
+    let mut rmse = 0.0
+    let cases : Array[Json] = []
+    for row in selected {
+      falls += num(field(field(row, "summary"), "falls")).to_int()
+      survival += num(field(field(row, "summary"), "mean_survival_s"))
+      rmse += num(field(field(row, "summary"), "mean_joint_rmse_rad"))
+    }
+    for case_id in ["stand", "sway", "wave"] {
+      let mut case_falls = 0
+      for row in selected {
+        let trials = array(field(row, "trials")).filter(t => {
+          field(t, "case_id") == Json(case_id)
+        })
+        assert_eq(
+          trials.map(t => field(t, "seed")),
+          array(field(config, "control_reset_seeds")),
+        )
+        case_falls += trials
+          .filter(t => field(t, "failed") == (true : Json))
+          .length()
+      }
+      cases.push({
+        "case": Json(case_id),
+        "actor_condition_cells": 9,
+        "falls": Json(case_falls),
+      })
+    }
+    modes.push({
+      "mode": Json(mode),
+      "actor_condition_cells": 27,
+      "falls": Json(falls),
+      "mean_survival_s": Json(survival / 3.0),
+      "mean_joint_rmse_rad": Json(rmse / 3.0),
+      "cases": Json(cases),
+    })
+  }
+  @fs.write_file(
+    args[3],
+    (
+      {
+        "format": "moonrobo.g1-observation-balance-feature-study.v1",
+        "config": config,
+        "random_pose_geometry": field(report, "random_pose_geometry"),
+        "verified_episodes": 90,
+        "verified_points": Json(points),
+        "geometry_float64": error_pool(verified.map(r => field(r, "geometry"))),
+        "exact_feedback": error_pool(
+          verified.map(r => field(r, "exact_feedback")),
+        ),
+        "estimates": Json(estimates),
+        "control": Json(modes),
+        "per_seed_control": Json(control),
+        "native_chunks": Json(chunks),
+        "source_report_sha256": Json(digest(study + "/report.json")),
+        "source_provenance": source_metadata(report),
+        "kinematics_sha256": field(report, "kinematics_sha256"),
+        "verification_sha256": field(report, "verification_sha256"),
+        "control_log_sha256": field(report, "control_log_sha256"),
+        "scope": field(report, "scope"),
+        "learned_policy_qualified": false,
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    (
+      {
+        "control": Json(modes),
+        "geometry": error_pool(verified.map(r => field(r, "geometry"))),
+        "verified_points": Json(points),
+      } : Json).stringify(),
+  )
+}

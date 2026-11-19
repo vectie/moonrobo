@@ -1,0 +1,94 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn link(source : String, target : String) -> Unit {
+  assert_eq(@process.run("/bin/ln", [source, target]), 0)
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: export_g1_sustained_balance.mbtx REPO STUDY OUTPUT",
+  )
+  let root = args[1]
+  let source = args[2]
+  let output = args[3]
+  assert_false(@fs.exists(output))
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "learned_balance.py", "learned_balance_study.py", "balance_features.py", "balance_feature_study.py",
+      "balance_intervention.py", "temporal_actor.py", "temporal_training.py", "policy.py",
+      "dynamics.py", "cpu_physics.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(source + "/provider-sources/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  for name in ["sustained_balance_export.py", "learned_balance_export.py"] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  assert_eq(
+    @process.run(
+      root + "/target/learning-venv/bin/python",
+      [
+        output + "/provider-sources/sustained_balance_export.py",
+        "--study",
+        source,
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--output",
+        output,
+      ],
+      stdout=@process.redirect_to_file(
+        output + "/export.log",
+        create_mode=CreateOrTruncate,
+      ),
+      stderr=@process.redirect_to_file(
+        output + "/stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    ),
+    0,
+  )
+  for
+    (original, target) in [
+      ("teacher-training.jsonl.gz", "collection/balance-training.jsonl.gz"),
+      ("training-sources.json", "collection/training-sources.json"),
+      ("selection-physics.jsonl.gz", "policy/balance-selection.jsonl.gz"),
+      ("evaluation-physics.jsonl.gz", "policy/balance-evaluation.jsonl.gz"),
+    ] {
+    link(source + "/" + original, output + "/" + target)
+  }
+  link(
+    root + "/output/research/g1-sustained-balance-study.json",
+    output + "/policy/balance-study.json",
+  )
+  let policy = @json.parse(@fs.read_file(output + "/policy/report.json").text())
+  guard policy is { "runs": Array(runs), .. } else { fail("missing runs") }
+  for run in runs {
+    guard run is { "checkpoint": String(name), .. } else {
+      fail("missing checkpoint")
+    }
+    link(source + "/policy/" + name, output + "/policy/" + name)
+  }
+  println(
+    "Prepared selected v2 policies with complete fitting, selection and evaluation archives.",
+  )
+}

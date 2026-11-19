@@ -1,0 +1,35 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_,mode] && ["prepare","run"].contains(mode) else {fail("prepare/run")}
+  let out="output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host="wlc004s@192.168.2.179"
+  let runner="run_original_actor_fx_b.mbtx"
+  if mode=="prepare" {
+    let code=@fs.read_file(out+"/run_actor_reward_c.mbtx").text()
+      .replace_all(old="run_actor_reward_c.mbtx",new=runner)
+      .replace_all(old="actor_reward_boundary_c.py",new="actor_original_fx_b.py")
+      .replace_all(old="e[\"ACTOR_NATIVE_BOUNDARIES\"]=\"/workspace/moonrobo/runs/hotspot-shared-actor-boundary-native-b\"",new="e[\"ACTOR_NATIVE_BOUNDARIES\"]=\"/workspace/moonrobo/runs/hotspot-shared-actor-boundary-smc-b\"")
+      .replace_all(old="  let pins : Map[String, Json] = {}",new="  let pins : Map[String, Json] = {}\n  pins[base+\"/actor_boundary_probe_a.py\"]=Json(hash_file(base+\"/actor_boundary_probe_a.py\"))")
+    for (name,content) in [(runner,code),("actor_original_fx_b.py",@fs.read_file("providers/motion_learning/actor_original_fx_probe.py").text())] {
+      @fs.write_file(out+"/"+name,content,create_mode=CreateNew)
+      assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",out+"/"+name,host+":"+base+"/"+name]),0)
+    }
+    return
+  }
+  let folder=out+"/original-fx-b"
+  @fs.mkdir(folder)
+  let status=@process.run("ssh",["-S","/tmp/moonrobo-operator-179.sock",host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/"+runner+" -- actor smc off 1 original-actor-fx-b bf16-full"],stdout=@process.redirect_to_file(folder+"/controller.stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(folder+"/controller.stderr.log",create_mode=CreateNew))
+  for name in ["result.json","boundaries.json","completion.json","training-guard.json","training-docker-final.json","training.stdout.log","training.stderr.log","protocol.json","compilation-audit.json"] {
+    ignore(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",host+":/home/wlc004s/moonrobo/runs/hotspot-shared-original-actor-fx-b/"+name,folder+"/"+name]))
+  }
+  assert_eq(status,0)
+}

@@ -1,0 +1,94 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env", "moonbitlang/core/json" }
+let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+let prior="/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+let runs="/home/wlc004s/moonrobo/runs/hotspot-shared-"
+let moon="/home/wlc004s/moonrobo/toolchain/bin/moon"
+fn field(j : Json,k : String) -> Json raise {guard j is Object(m)&&m.get(k) is Some(v)else{fail(k)};v}
+async fn read(p : String) -> Json {@json.parse(@fs.read_file(p).text())}
+fn label(phase : String,v : String,kind : String) -> String {"heading-body-"+v+"-"+phase+"-"+kind+(if phase=="world"&&v=="baseline"&&kind=="gate"{"-b"}else{"-a"})}
+async fn command(script : String,args : Array[String],log : String) -> Int {
+  @process.run(moon,["run","--target","native",script,"--",..args],stdout=@process.redirect_to_file(base+"/"+log+".stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(base+"/"+log+".stderr.log",create_mode=CreateNew))
+}
+async fn image_pages(name : String) -> Unit {
+  guard command(prior+"/advise_structural_runtime_image.mbtx",["--advise",name+"-native.json"],name+"-native-image")==0 else{fail("closed native image advice")}
+  guard command(prior+"/advise_structural_smc_large.mbtx",["--advise",name+"-smc.json"],name+"-smc-image")==0 else{fail("closed SMC image advice")}
+}
+async fn release(name : String) -> Unit {
+  guard command(base+"/advise_primitives_compiler.mbtx",[name+"-release",name],name+"-cache")==0 else{fail("closed output cache advice")}
+  image_pages(name)
+}
+fn near(a : Json,b : Json) -> Bool {
+  match (a,b) {
+    (Number(x,..),Number(y,..)) => x==x && y==y && (x-y).abs()<=2.0e-6+2.0e-4*x.abs()
+    (Array(a),Array(b)) => {if a.length()!=b.length(){return false};for i in 0..<a.length(){if !near(a[i],b[i]){return false}};true}
+    _ => a==b
+  }
+}
+async fn invoke(phase : String,v : String,reps : String,name : String,observer~ : String="off",implementation~ : String="native") -> Unit {
+  guard @process.run(moon,["run","--target","native",base+"/invoke_heading_body_a.mbtx","--",phase,implementation,observer,reps,name,v])==0 else{fail(name)}
+  let code=field(read(base+"/"+name+".exit.json"),"exit_code")
+  guard @fs.exists(runs+name+"/result.json")else{fail("no completed samples: "+name)}
+  let g=read(runs+name+"/training-guard.json")
+  guard field(g,"reason")==Json("completed") && field(g,"error")==Json::null() else{fail("resource guard")}
+  guard read(runs+name+"/training-docker-final.json") is [{"State":{"OOMKilled":False,"Running":False,..},..}]else{fail("container unsafe")}
+  if implementation=="smc" && code==Json(1) {
+    guard field(read(runs+name+"/result.json"),"rows") is Array(rows)&&rows.length()==13 && field(field(read(runs+name+"/result.json"),"numerical_comparison"),"passed")==Json(false) && @fs.read_file(runs+name+"/training.stderr.log").text().contains("AssertionError: fixed cross-language numerical limits failed; evidence retained")else{fail("incomplete failed SMC reference")}
+    println("SMC timing only; original numerical rejection retained: "+name);return
+  }
+  guard code==Json(0)&&field(read(runs+name+"/completion.json"),"passed")==Json(true)else{fail("failed "+name)}
+}
+async fn main {
+  guard @env.args() is [_,mode]else{fail("cpu|gates|pairs|smc")}
+  if mode=="all" {for m in ["cpu","gates","pairs","smc"]{guard @process.run(moon,["run","--target","native",base+"/heading_body_suite.mbtx","--",m])==0 else{fail(m)}};return}
+  if mode=="resume" {for m in ["gates","pairs","smc"]{guard @process.run(moon,["run","--target","native",base+"/heading_body_suite.mbtx","--",m])==0 else{fail(m)}};return}
+  if mode=="cpu" {
+    let results=[];let mut bodies_passed=true
+    for (suite,n) in [("primitive",1),("geometry",1),("pivot",1),("constants",1),("config",9),("resume",1),("inference",1)] {
+      let name="smc-primitives-"+suite+"-heading-body-cpu-a"
+      guard field(read(base+"/"+name+".receipt.json"),"exit_code")==Json(0)else{fail(name)}
+      let log=@fs.read_file(base+"/"+name+".stdout.log").text();guard !log.contains("SKIP")else{fail("skipped")};let mut found=0
+      for line in log.split("\n"){if line.has_prefix("{"){let j=@json.parse(line);if j is {"type":"result","message":String(message),..}{if message!="" {guard suite=="pivot"else{fail(message)};bodies_passed=false;println("REJECTED body error candidate: "+message)};found+=1}}}
+      guard found==n else{fail("CPU count "+name)};results.push({"suite":Json(suite),"passed_count":Json(n)})
+    }
+    @fs.write_file(base+"/heading-body-cpu.json",({"suites":Json(results),"heading_passed":true,"body_errors_passed":Json(bodies_passed)}:Json).stringify(indent=2),create_mode=CreateNew);println("CPU checks executed; individual candidate outcomes retained");return
+  }
+  guard @fs.exists(base+"/heading-body-cpu.json")else{fail("CPU required")}
+  if mode=="gates" {
+    image_pages("heading-body-preflight-b")
+    for (phase,variants) in [("world",["baseline","heading"]),("actor",["baseline","heading","bodies","combined"])] {
+      for v in variants {
+        if (v=="bodies"||v=="combined") && field(read(base+"/heading-body-cpu.json"),"body_errors_passed")!=Json(true){println("NOT RUN CPU-rejected "+v);continue}
+        let name=label(phase,v,"gate");invoke(phase,v,"1",name)
+        if v!="baseline" {
+          let report=base+"/"+name+".numeric.json"
+          ignore(command(base+"/compare_top3_snapshots.mbtx",[runs+label(phase,"baseline","gate"),runs+name,report],name+"-compare"))
+          let r=read(report);println("GATE "+phase+" "+v+" passed="+field(r,"passed").stringify()+" mismatches="+field(r,"mismatches").stringify())
+        }
+        release(name)
+      }
+    };return
+  }
+  if mode=="pairs" {
+    for (phase,v) in [("world","heading"),("actor","heading"),("actor","bodies"),("actor","combined")] {
+      if (v=="bodies"||v=="combined") && field(read(base+"/heading-body-cpu.json"),"body_errors_passed")!=Json(true){continue}
+      if field(read(base+"/"+label(phase,v,"gate")+".numeric.json"),"passed")!=Json(true){println("NOT BENCHMARKED failed gate "+phase+" "+v);continue}
+      let name=label(phase,v,"abba");invoke(phase,"abba-"+v,"13",name)
+      let r=read(runs+name+"/result.json")
+      guard field(r,"observer")==Json("off")&&field(r,"rows") is Array(rows)&&rows.length()==52 else{fail("ABBA incomplete")}
+      guard field(read(runs+label(phase,"baseline","gate")+"/result.json"),"rows") is Array([a]) && field(read(runs+label(phase,v,"gate")+"/result.json"),"rows") is Array([b])else{fail("gate metrics")}
+      for i,row in rows {
+        let block=i/13;let active=block==1||block==2;let e=field(row,"execution")
+        assert_eq(field(row,"abba_block"),Json(block));assert_eq(field(row,"abba_candidate"),Json(active));assert_eq(field(row,"steady"),Json(i%13>=3))
+        guard near(field(if active{b}else{a},"metrics"),field(row,"metrics"))else{fail("restored metrics")}
+        assert_eq(field(e,"compact_axis_rotation"),Json(true));assert_eq(field(e,"static_fk_pruning"),Json(true));assert_eq(field(e,"compact_skew"),Json(false))
+        assert_eq(field(e,"compact_heading"),Json(active&&(v=="heading"||v=="combined")));assert_eq(field(e,"body_errors_batched"),Json(active&&(v=="bodies"||v=="combined")))
+      }
+      @fs.write_file(base+"/"+name+".block-validation.json",({"passed":true,"rows":52,"restored_metrics_checked":true,"execution_flags_checked":true}:Json).stringify(),create_mode=CreateNew)
+      release(name)
+    };return
+  }
+  if mode=="smc" {
+    for phase in ["world","actor"] {let name=label(phase,"smc","off");invoke(phase,"baseline","13",name,implementation="smc");release(name)};return
+  }
+  fail("mode")
+}

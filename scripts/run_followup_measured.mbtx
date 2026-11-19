@@ -1,0 +1,140 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x/crypto",
+}
+
+///|
+let control = "/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a"
+
+///|
+async fn sha(path : String) -> String {
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  let h = @crypto.SHA256::new()
+  let size = f.size()
+  for offset = 0L; offset < size; {
+    let count = (size - offset).min(1048576L).to_int()
+    h.update(f.read_exactly_at(count, position=offset))
+    continue offset + count.to_int64()
+  }
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+async fn run(label : String, script : String, args : Array[String]) -> Unit {
+  println("Starting " + label)
+  guard @process.run(
+      "/home/wlc004s/moonrobo/toolchain/bin/moon",
+      ["run", "--target", "native", script, "--", ..args],
+      stdout=@process.redirect_to_file(
+        control + "/measured-" + label + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        control + "/measured-" + label + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    ) ==
+    0 else {
+    fail(label + " failed; full group retained, no guard or tolerance changes")
+  }
+  println("Completed " + label)
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, candidate] &&
+    ["world", "ln", "fk"].contains(candidate) else {
+    fail("world|ln|fk")
+  }
+  let base = "/home/wlc004s/moonrobo/private/hotspot-followup-" +
+    candidate +
+    "-20261026-" +
+    (if candidate == "ln" { "b" } else { "a" })
+  if candidate != "world" {
+    run(
+      candidate + "-spec-pair",
+      base + "/prepare_followup_" + candidate + "_spec.mbtx",
+      ["pair"],
+    )
+  }
+  guard @json.parse(@fs.read_file(base + "/spec-pair.json").text())
+    is Object(spec) &&
+    spec.get("pins") is Some(Array(pins)) else {
+    fail("spec required")
+  }
+  let tools = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+  for
+    path in [
+      control + "/run_followup_measured.mbtx",
+      control + "/summarize_followup_pairs.mbtx",
+      tools + "/advise_followup_owned_image.mbtx",
+      tools + "/advise_followup_remaining_cache.mbtx",
+      tools + "/cache-followup-combo-traces-20261026-a.json",
+      tools + "/cache-followup-smc-cuda-20261026-a.json",
+      tools + "/cache-followup-warp-20261026-a.json",
+      tools + "/cache-followup-sdk-build-20261026-a.json",
+    ] {
+    pins.push({
+      "path": Json(path),
+      "sha256": Json(sha(path)),
+      "role": "fresh-followup-measurement-controller-and-recovery",
+    })
+  }
+  spec["measurement_scope"] = Json(
+    "Fresh native/native one-factor ABBA,60 iterations per process, steady41-60, no profiler. No old timing rows. Failed world startup groups excluded. LN revision b retains ATen SiLU forward and backward; larger failed fusion excluded. Guards unchanged; no GPU/CPU build overlap.",
+  )
+  let final_spec = base + "/spec-measured.json"
+  @fs.write_file(
+    final_spec,
+    Json(spec).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  let root = "/home/wlc004s/moonrobo/runs/hotspot-followup-measured-" +
+    candidate +
+    "-20261026-a"
+  let runner = base + "/run_followup_pairs.mbtx"
+  run(candidate + "-prepare", runner, ["--prepare", final_spec, root])
+  for i in 0..<4 {
+    run(candidate + "-run-" + i.to_string(), runner, [
+      "--run",
+      root,
+      i.to_string(),
+    ])
+    run(
+      candidate + "-cache-" + i.to_string(),
+      tools + "/advise_hotspot_run_cache.mbtx",
+      [
+        "--advise-caches",
+        tools +
+        "/cache-followup-measured-" +
+        candidate +
+        "-" +
+        i.to_string() +
+        ".json",
+        root + "/run-" + i.to_string(),
+      ],
+    )
+    run(
+      candidate + "-image-" + i.to_string(),
+      tools + "/advise_followup_owned_image.mbtx",
+      [
+        "--advise",
+        "cache-followup-measured-" +
+        candidate +
+        "-image-" +
+        i.to_string() +
+        ".json",
+      ],
+    )
+  }
+  run(candidate + "-summary", control + "/summarize_followup_pairs.mbtx", [
+    root,
+    root + "/summary.json",
+  ])
+}

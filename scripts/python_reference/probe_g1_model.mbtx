@@ -1,0 +1,70 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    6,
+    msg="usage: probe_g1_model.mbtx REPO INITIAL_DYNAMICS CORRECTED_DYNAMICS POLICY_RUN OUTPUT",
+  )
+  let root = args[1]
+  let output = args[5]
+  for mode in ["position", "policy"] {
+    let report_path = output + "/" + mode + "-report.json"
+    let command = [
+      root + "/providers/motion_learning/model_probe.py",
+      "--initial",
+      args[2] + "/fit/dynamics-seed-0.pt",
+      "--corrected",
+      args[3] + "/fit/dynamics-seed-0.pt",
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--config",
+      root + "/examples/learning/g1-model-probe.json",
+      "--experiment",
+      root + "/examples/learning/g1-cpu-experiment.json",
+      "--output",
+      report_path,
+    ]
+    if mode == "policy" {
+      command.append(["--actor", args[4] + "/policy/latest-actor-seed-0.pt"])
+    }
+    let (code, stdout, stderr) = @process.collect_output(
+      root + "/target/learning-venv/bin/python",
+      command,
+    )
+    assert_eq(code, 0, msg=stderr.text())
+    let report = @json.parse(@fs.read_file(report_path).text())
+    guard field(report, "maximum_restore_error") is Number(error, ..) else {
+      fail("missing restore error")
+    }
+    assert_true(error <= 1.0e-8)
+    guard field(report, "summaries") is Array(summaries) else {
+      fail("missing summaries")
+    }
+    assert_eq(summaries.length(), 6)
+    for summary in summaries {
+      guard field(summary, "snapshots") is Number(count, ..) else {
+        fail("missing snapshot count")
+      }
+      assert_true(count > 0)
+    }
+    println(stdout.text())
+  }
+}

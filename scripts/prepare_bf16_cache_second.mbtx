@@ -1,0 +1,42 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/bf16-original-20261028"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let old = @fs.read_file(dir + "/reclaim_closed_outputs.mbtx").text()
+  let next = old
+    .replace_all(
+      old="  for name in dirs {",
+      new="  guard field(read(\"" +
+        base +
+        "/bf16-original-closed-output-reclaim-a.json\"),\"records\") is Array(prior) else { fail(\"prior advice receipt\") }\n  let visited=prior.map(x=>field(x,\"directory\"))\n  for name in dirs {\n    if visited.contains(Json(root+\"/\"+name)) { continue }",
+    )
+    .replace_all(
+      old="@fs.write_file(\"" +
+        base +
+        "/bf16-original-closed-output-reclaim-a.json\"",
+      new="@fs.write_file(\"" +
+        base +
+        "/bf16-original-closed-output-reclaim-b.json\"",
+    )
+  @fs.write_file(
+    dir + "/reclaim_closed_outputs_b.mbtx",
+    next,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      dir + "/reclaim_closed_outputs_b.mbtx",
+      "wlc004s@192.168.2.179:" + base + "/bf16-original-reclaim-b.mbtx",
+    ]),
+    0,
+  )
+}

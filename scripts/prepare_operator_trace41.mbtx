@@ -1,0 +1,576 @@
+///|
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+// Pure preparation only. The sole remote owner must verify actual artifacts,
+// admission, idle GPU and outer guards before launching any generated member.
+
+///|
+struct Artifact {
+  path : String
+  sha256 : String
+} derive(FromJson, ToJson)
+
+///|
+struct BuildPins {
+  nsys : Artifact
+  trainer : Artifact
+  tensor : Artifact
+  runner : Artifact
+  cuda_guard : Artifact
+  guard_runner : Artifact
+  python : Artifact
+  bundle_host : String
+  bundle_container : String
+  nsys_root_host : String
+  nsys_root_container : String
+  smc_source_host : String
+} derive(FromJson, ToJson)
+
+///|
+fn object(j : Json) -> Map[String, Json] raise {
+  guard j is Object(o) else { fail("expected JSON object") }
+  o
+}
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard object(j).get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn text(j : Json) -> String raise {
+  guard j is String(v) else { fail("expected string") }
+  v
+}
+
+///|
+fn array(j : Json) -> Array[Json] raise {
+  guard j is Array(a) else { fail("expected array") }
+  a
+}
+
+///|
+fn strings(j : Json) -> Array[String] raise {
+  array(j).map(v => text(v))
+}
+
+///|
+fn set(j : Json, key : String, value : Json) -> Json raise {
+  let out = object(j).copy()
+  out[key] = value
+  Json(out)
+}
+
+///|
+fn safe_path(s : String) -> Bool {
+  s.has_prefix("/") &&
+  !s.contains("..") &&
+  s.all(c => c is ('a'..<='z' | 'A'..<='Z' | '0'..<='9' | '_' | '-' | '.' | '/'))
+}
+
+///|
+fn digest(s : String) -> Bool {
+  s.length() == 64 && s.all(c => c is ('a'..<='f' | '0'..<='9'))
+}
+
+///|
+fn sha(data : Bytes) -> String {
+  let h = @crypto.SHA256::new()
+  h.update(data)
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+fn require_value(j : Json, key : String, expected : Json) -> Unit raise {
+  guard field(j, key) == expected else { fail("parent mismatch: " + key) }
+}
+
+///|
+fn replace_arg(
+  args : Array[String],
+  key : String,
+  before : String,
+  after : String,
+) -> Array[String] raise {
+  let result = args.copy()
+  let mut count = 0
+  for i, arg in args {
+    if arg == key {
+      guard i + 1 < args.length() && args[i + 1] == before else {
+        fail("unexpected original argument " + key)
+      }
+      result[i + 1] = after
+      count += 1
+    }
+  }
+  guard count == 1 else { fail("missing/duplicate original argument " + key) }
+  result
+}
+
+///|
+fn only_changes(
+  before : Json,
+  after : Json,
+  permitted : Array[String],
+) -> Unit raise {
+  let a = object(before)
+  let b = object(after)
+  guard a.length() == b.length() else {
+    fail("unexpected config key addition/removal")
+  }
+  for key, value in a {
+    if !permitted.contains(key) {
+      guard b.get(key) == Some(value) else {
+        fail("unapproved config change: " + key)
+      }
+    }
+  }
+}
+
+///|
+fn validate_pins(pins : BuildPins) -> Unit raise {
+  for
+    artifact in [
+      pins.nsys,
+      pins.trainer,
+      pins.tensor,
+      pins.runner,
+      pins.python,
+      pins.cuda_guard,
+      pins.guard_runner,
+    ] {
+    guard safe_path(artifact.path) && digest(artifact.sha256) else {
+      fail("actual artifact path/SHA required")
+    }
+  }
+  for
+    path in [
+      pins.bundle_host,
+      pins.bundle_container,
+      pins.nsys_root_host,
+      pins.nsys_root_container,
+      pins.smc_source_host,
+    ] {
+    guard safe_path(path) && !path.has_suffix("/") else {
+      fail("invalid mount root")
+    }
+  }
+  guard pins.bundle_host.has_prefix(
+      "/home/wlc004s/moonrobo/private/operator-diagnostic-",
+    ) &&
+    pins.bundle_container.has_prefix(
+      "/workspace/moonrobo/private/operator-diagnostic-",
+    ) &&
+    pins.smc_source_host.has_prefix("/home/wlc004s/moonrobo/") &&
+    pins.nsys.path.has_prefix(pins.nsys_root_container + "/") else {
+    fail("unexpected independent bundle/tool/source roots")
+  }
+  for
+    artifact in [
+      pins.trainer,
+      pins.tensor,
+      pins.runner,
+      pins.cuda_guard,
+      pins.guard_runner,
+    ] {
+    guard artifact.path.has_prefix(pins.bundle_container + "/") else {
+      fail("new executable must reside in independent diagnostic bundle")
+    }
+  }
+}
+
+///|
+fn mount(source : String, target : String) -> Json {
+  { "source": Json(source), "target": Json(target), "readonly": true }
+}
+
+///|
+fn build_specs(
+  parent : Json,
+  provenance : Json,
+  pins : BuildPins,
+) -> Map[String, Json] raise {
+  validate_pins(pins)
+  require_value(parent, "format", "moonrobo.smc-native-pairs.spec.v1")
+  require_value(parent, "native_g2_confirmation", "six")
+  require_value(
+    provenance, "format", "moonrobo.smc-trace41-window-preparation.v1",
+  )
+  require_value(
+    provenance, "diagnostic_train_sha256", "329f721080a98f0139e8f3d560e877f03bb39e2709fdadcc12500569ebd12b20",
+  )
+  require_value(provenance, "record_shapes", false)
+  let native = field(parent, "a")
+  let smc = field(parent, "b")
+  require_value(native, "kind", "native")
+  require_value(smc, "kind", "smc")
+  let native_config = field(native, "expected_config")
+  let smc_config = field(smc, "expected_config")
+  for config in [native_config, smc_config] {
+    for
+      (key, value) in [
+        ("iterations", Json(60)),
+        ("lr_decay_iters", Json(250000)),
+        ("pi_batch", Json(4096)),
+        ("horizon", Json(32)),
+        ("num_envs", Json(256)),
+        ("critic_epochs", Json(5)),
+        ("critic_minibatches", Json(4)),
+        ("amp", Json("none")),
+      ] {
+      require_value(config, key, value)
+    }
+  }
+  for
+    (key, value) in [
+      ("pi_microbatch", Json(512)),
+      ("layer_norm_mode", Json("expanded")),
+      ("critic_cuda_graph", Json(false)),
+      ("noise_staging_batch", Json(false)),
+      ("actor_norm_snapshot", Json(false)),
+      ("max_motion_sampler_bins", Json(9000)),
+      ("memory_admission_percent", Json(80)),
+      ("allow_tf32", Json(true)),
+    ] {
+    require_value(native_config, key, value)
+  }
+  for
+    key in [
+      "reuse_geometry", "body_orientation_batched", "resident_reference_cache", "adam_checked_norm",
+      "defer_scalar_metrics", "world_staging_batch",
+    ] {
+    require_value(native_config, key, true)
+  }
+  let new_native_config = set(native_config, "iterations", Json(41))
+  let new_smc_config = set(smc_config, "iterations", Json(41))
+  only_changes(native_config, new_native_config, ["iterations"])
+  only_changes(smc_config, new_smc_config, ["iterations"])
+  let source_files = array(field(provenance, "files"))
+  guard source_files.length() == 11 else {
+    fail("expected complete 11-file SMC source/license manifest")
+  }
+  let smc_pins : Map[String, Json] = {}
+  let added_host_pins : Array[Json] = []
+  for entry in source_files {
+    let relative = text(field(entry, "path"))
+    let hash = text(field(entry, "diagnostic_sha256"))
+    guard !relative.has_prefix("/") && safe_path("/" + relative) && digest(hash) else {
+      fail("invalid SMC provenance file")
+    }
+    let target = "/workspace/supermimic/" + relative
+    guard !smc_pins.contains(target) else { fail("duplicate source pin") }
+    smc_pins[target] = Json(hash)
+    added_host_pins.push({
+      "path": Json(pins.smc_source_host + "/" + relative),
+      "sha256": Json(hash),
+      "role": "diagnostic-smc-source",
+    })
+  }
+  for
+    artifact in [
+      pins.trainer,
+      pins.tensor,
+      pins.runner,
+      pins.cuda_guard,
+      pins.guard_runner,
+    ] {
+    added_host_pins.push({
+      "path": Json(
+        pins.bundle_host +
+        artifact.path.substring(start=pins.bundle_container.length()),
+      ),
+      "sha256": Json(artifact.sha256),
+      "role": "diagnostic-native-bundle",
+    })
+  }
+  let files : Map[String, Json] = { "native-config.json": new_native_config }
+  for
+    (kind, original, config) in [
+      ("native", native, new_native_config),
+      ("smc-compiled", smc, new_smc_config),
+      ("smc-eager", smc, new_smc_config),
+    ] {
+    let is_native = kind == "native"
+    let protocol = kind + "-prefix41"
+    let program = if is_native { pins.trainer } else { pins.python }
+    let mut args = strings(field(original, "argv"))
+    let environment = object(field(original, "env")).copy()
+    let inner_env : Map[String, Json] = {}
+    for key in ["OMP_NUM_THREADS", "MKL_NUM_THREADS"] {
+      inner_env[key] = field(field(original, "env"), key)
+    }
+    let mounts = array(field(original, "mounts")).copy()
+    let pin_map : Map[String, Json] = if is_native {
+      {}
+    } else {
+      smc_pins.copy()
+    }
+    if is_native {
+      guard args.get(0) == Some("train") else {
+        fail("native original command mismatch")
+      }
+      args[0] = "diagnose-operators"
+      guard !args.contains("--iterations") else {
+        fail("unexpected existing native iterations override")
+      }
+      args.append(["--iterations", "41"])
+      args = replace_arg(
+        args,
+        "--tensor-library",
+        "/workspace/moonrobo/private/smc-native-aligned-20261024-g2/libmoonrobo_learning_tensor.so",
+        pins.tensor.path,
+      )
+      pin_map[pins.tensor.path] = Json(pins.tensor.sha256)
+      let config_bytes = @utf8.encode(config.stringify(indent=2) + "\n")
+      pin_map["/pair/native-config.json"] = Json(sha(config_bytes))
+      // All existing physical/data argv and output paths remain byte-for-byte.
+      require_value(original, "workdir", "/workspace/moonrobo")
+    } else {
+      args = replace_arg(args, "--iterations", "60", "41")
+      // The profiler owns TMPDIR. Inductor otherwise creates its many cache
+      // entries inside the bounded trace tree (observed in solo-c). Keep its
+      // fresh per-run cache beside the existing Triton cache instead.
+      environment["TORCHINDUCTOR_CACHE_DIR"] = Json("/pair/inductor-cache")
+      require_value(smc_config, "resume", Json::null())
+      guard !args.contains("--resume") else { fail("resume prohibited") }
+      let disabled = if kind == "smc-eager" { "1" } else { "0" }
+      for
+        (key, value) in [
+          ("MOONROBO_TRACE_ITERATION", "41"),
+          ("SM_PROFILE", "0"),
+          ("TORCHDYNAMO_DISABLE", disabled),
+          ("TORCH_COMPILE_DISABLE", disabled),
+        ] {
+        environment[key] = Json(value)
+        inner_env[key] = Json(value)
+      }
+      guard mounts.length() == 3 else { fail("unexpected SMC mount shape") }
+      require_value(mounts[0], "target", "/workspace/supermimic")
+      require_value(mounts[0], "readonly", true)
+      mounts[0] = set(mounts[0], "source", Json(pins.smc_source_host))
+      // Preserve data/offline assets at original paths required by robot.py.
+      mounts.push(mount(pins.bundle_host, pins.bundle_container))
+    }
+    mounts.push(mount(pins.nsys_root_host, pins.nsys_root_container))
+    let launch : Json = {
+      "format": "moonrobo.operator-timeline-launch.v1",
+      "protocol": Json(protocol),
+      "nsys": Json(pins.nsys.path),
+      "nsys_sha256": Json(pins.nsys.sha256),
+      "program": Json(program.path),
+      "program_sha256": Json(program.sha256),
+      "args": Json(args),
+      "cwd": field(original, "workdir"),
+      "output_directory": Json("/run/" + kind),
+      "session": Json("moonrobo-op-41-20261025-a-" + kind),
+      "environment": Json(inner_env),
+      "pinned_files": Json(pin_map),
+    }
+    files[kind + "-timeline.json"] = launch
+    let outer = object(original).copy()
+    outer["label"] = Json("diagnostic-only-" + kind + "-prefix41")
+    outer["entrypoint"] = Json(pins.guard_runner.path)
+    outer["argv"] = Json([
+      "--execute",
+      pins.cuda_guard.path,
+      pins.cuda_guard.sha256,
+      pins.runner.path,
+      pins.runner.sha256,
+      "/pair/timeline.json",
+      "/run/" + kind + "-cuda-guard",
+    ])
+    outer["env"] = Json(environment)
+    outer["mounts"] = Json(mounts)
+    outer["expected_config"] = config
+    files[kind + "-member.json"] = Json(outer)
+  }
+  files["review.json"] = {
+    "format": "moonrobo.operator-trace41-preparation.v1",
+    "gpu_execution_authorized_by_this_file": false,
+    "source_spec_sha256": "40ae4d4a3f6959876ab18ee82cd9a30e055b0927848c0c07dc5fcc7be9ff0b1c",
+    "smc_provenance_sha256": "ad577cac8307ff5e2ca0eb996a39514b766c43caf3c68804976e3b77a0a01164",
+    "artifact_pins": pins.to_json(),
+    "original_pins_unchanged": field(parent, "pins"),
+    "additional_host_pins": Json(added_host_pins),
+    "original_protocol_unchanged_except_executed_iterations": field(
+      parent, "protocol",
+    ),
+    "iterations_executed": 41,
+    "checkpoint_created": false,
+    "continuation_supported": false,
+    "use_for_throughput_comparison": false,
+    "capture_iteration": 41,
+    "capture_scope": "one complete actor/critic update including preparation; native8x512/SMC4096;20critic fits",
+    "capture_marker": "moonrobo.actor_critic.capture",
+    "record_shapes": false,
+    "compiler_cache_directory": "/pair/inductor-cache; fresh per member, separate from Nsight TMPDIR; no cache is reused",
+    "native_expected_counts": {
+      "iterations": 41,
+      "physical_transitions": 42496,
+      "extra_readiness_transitions": "retain evidence but reject matched-workload comparison; never silently accept additional steps",
+      "model_updates": 410,
+      "actor_updates": 21,
+      "critic_updates": 420,
+      "imagined_transitions": 2752512,
+      "model_fit_transition_slots": 6717440,
+    },
+    "smc_expected_counts": field(provenance, "expected_exit_counts"),
+    "outer_requirements": {
+      "container_memory_bytes": "107374182400",
+      "swap_bytes": "0",
+      "guard_cgroup_bytes": "90194313216",
+      "guard_host_mem_available_bytes": "25769803776",
+      "guard_cuda_free_bytes": "17179869184",
+      "native_instrumentation_reserve_bytes": "4294967296",
+      "continuous_cuda_guard": "same-cgroup driver-only helper ready before target/preflight;250ms samples;2second freshness;16GiB failure stops owned target;context cleanup only after target and Nsight exit",
+      "admission_percent": 80,
+      "guard_until": "target exit, Nsight finalization, SDK teardown and exact container exit",
+      "required_fresh_writable_mounts": [
+        "per-member /pair with matching timeline.json and native-config.json", "per-member /run with initially absent trace directory",
+      ],
+      "mount_policy": "inherit original member mounts; only SMC source root changes; added tools readonly; networknone; singleGPU",
+      "native_preflight": "same member target args plus --preflight-only in a separate process; never profile preflight; actual initial and post-catalog guards remain mandatory",
+      "cpu_export": "separate noGPU container4GiB,zeroSwap,600s,readonly trace input,fresh output",
+    },
+    "interpretation": [
+      "Full41 GPU execution requires tiny math/external-stop evidence and root approval; this file launches nothing.",
+      "Instrumentation throughput is not a formal benchmark result; original60-round binaries/specs/data remain intact.",
+      "SMC compiled/eager argv/source/config match exactly; only two compile-disable variables differ.",
+      "Record any observer-induced Dynamo/Inductor recompile separately; do not label it steady-state or allocate a fused kernel duration across fictitious original ops.",
+      "Same seed does not establish same weights/random streams/trajectories across native and SMC.",
+    ],
+  }
+  files
+}
+
+///|
+async fn read(path : String, max_bytes : Int64) -> Bytes {
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  let size = f.size()
+  guard size > 0L && size <= max_bytes else { fail("input size bound") }
+  f.read_exactly_at(size.to_int(), position=0L)
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args is [_, mode, parent_path, provenance_path, ..] &&
+    ["--self-test", "--derive"].contains(mode) else {
+    fail(
+      "usage: --derive FROZEN_PARENT.json SMC_PROVENANCE.json ACTUAL_BUILD_PINS.json FRESH_DIR; or --self-test FROZEN_PARENT.json SMC_PROVENANCE.json",
+    )
+  }
+  let parent_bytes = read(parent_path, 2097152L)
+  let provenance_bytes = read(provenance_path, 65536L)
+  guard sha(parent_bytes) ==
+    "40ae4d4a3f6959876ab18ee82cd9a30e055b0927848c0c07dc5fcc7be9ff0b1c" &&
+    sha(provenance_bytes) ==
+    "ad577cac8307ff5e2ca0eb996a39514b766c43caf3c68804976e3b77a0a01164" else {
+    fail("frozen source spec/provenance hash mismatch")
+  }
+  let parent = @json.parse(@utf8.decode(parent_bytes))
+  let provenance = @json.parse(@utf8.decode(provenance_bytes))
+  if mode == "--self-test" {
+    guard args.length() == 4 else { fail("self-test arity") }
+    let hash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    let bundle = "/workspace/moonrobo/private/operator-diagnostic-fixture"
+    let pins : BuildPins = {
+      nsys: { path: "/opt/nsys/target/nsys", sha256: hash, },
+      trainer: { path: bundle + "/trainer", sha256: hash, },
+      tensor: { path: bundle + "/tensor.so", sha256: hash, },
+      runner: { path: bundle + "/runner", sha256: hash, },
+      cuda_guard: { path: bundle + "/cuda-guard", sha256: hash, },
+      guard_runner: { path: bundle + "/guard-runner", sha256: hash, },
+      python: { path: "/opt/venv/bin/python", sha256: hash, },
+      bundle_host: "/home/wlc004s/moonrobo/private/operator-diagnostic-fixture",
+      bundle_container: bundle,
+      nsys_root_host: "/opt/nsys",
+      nsys_root_container: "/opt/nsys",
+      smc_source_host: "/home/wlc004s/moonrobo/private/smc-fixture",
+    }
+    let result = build_specs(parent, provenance, pins)
+    assert_eq(result.length(), 8)
+    for kind in ["smc-compiled", "smc-eager"] {
+      assert_eq(
+        field(
+          field(result[kind + "-member.json"], "env"),
+          "TORCHINDUCTOR_CACHE_DIR",
+        ),
+        Json("/pair/inductor-cache"),
+      )
+    }
+    assert_eq(
+      field(result["native-config.json"], "lr_decay_iters"),
+      Json(250000),
+    )
+    assert_eq(
+      field(result["smc-compiled-timeline.json"], "args"),
+      field(result["smc-eager-timeline.json"], "args"),
+    )
+    only_changes(
+      field(result["smc-compiled-member.json"], "env"),
+      field(result["smc-eager-member.json"], "env"),
+      ["TORCHDYNAMO_DISABLE", "TORCH_COMPILE_DISABLE"],
+    )
+    let invalid_parent = set(
+      parent,
+      "a",
+      set(
+        field(parent, "a"),
+        "expected_config",
+        set(
+          field(field(parent, "a"), "expected_config"),
+          "lr_decay_iters",
+          Json(41),
+        ),
+      ),
+    )
+    try build_specs(invalid_parent, provenance, pins) catch {
+      _ => ()
+    } noraise {
+      _ => fail("altered training schedule accepted")
+    }
+    try
+      replace_arg(
+        ["--iterations", "60", "--iterations", "60"],
+        "--iterations",
+        "60",
+        "41",
+      )
+    catch {
+      _ => ()
+    } noraise {
+      _ => fail("duplicate argument accepted")
+    }
+    println(
+      "trace41 exact-parent derivation self-test passed; no files/GPU/process launched",
+    )
+    return
+  }
+  guard args is [_, _, _, _, pins_path, directory] else { fail("derive arity") }
+  let pins : BuildPins = @json.from_json(
+    @json.parse(@utf8.decode(read(pins_path, 65536L))),
+  )
+  let files = build_specs(parent, provenance, pins)
+  guard !@fs.exists(directory) else { fail("output directory must be fresh") }
+  @fs.mkdir(directory, recursive=true)
+  for name, value in files {
+    @fs.write_file(
+      directory + "/" + name,
+      value.stringify(indent=2) + "\n",
+      create_mode=CreateNew,
+    )
+  }
+  println(
+    "Prepared three diagnostic-only members; owner must verify artifacts/guards; no GPU launched",
+  )
+}

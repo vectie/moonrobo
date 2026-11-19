@@ -1,0 +1,57 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn run(p : String,a : Array[String]) -> Unit {guard @process.run(p,a)==0else{fail(p)}}
+async fn main {
+  let repo="/Users/kq/Workspace/moonrobo";let old=repo+"/output/spark-runtime-20261024/geometry-vjp-20261028";let dir=repo+"/output/spark-runtime-20261024/coefficient-assembly-20261028"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a";let host="wlc004s@192.168.2.179";let sock="/tmp/moonrobo-operator-179.sock"
+  guard @env.args() is [_,mode]else{fail("prepare|stage|build")}
+  if mode=="prepare" {
+    @fs.mkdir(dir,recursive=true)
+    let pkg=repo+"/src/learning_aligned_gpu/geometry/moon.pkg"
+    @fs.write_file(pkg,rep(@fs.read_file(pkg).text(),"\"geometry_vjp_wbtest.mbt\": [ \"native\" ],","\"geometry_vjp_wbtest.mbt\": [ \"native\" ],\n    \"coefficient_assembly_wbtest.mbt\": [ \"native\" ],"))
+    let mut f=@fs.read_file(old+"/geometry_vjp_fixture_a.mbt").text()
+    f=rep(f,"fused_cross_vjp: [Some(\"cross\"),Some(\"both\")].contains(@env.get_env_var(\"MOONROBO_TOP3_VARIANT\")),","fused_cross_vjp: false,\n      split_so3_coefficients: [Some(\"split\"),Some(\"both\")].contains(@env.get_env_var(\"MOONROBO_TOP3_VARIANT\")),")
+    f=rep(f,"fused_so3_coefficients: [Some(\"tail\"),Some(\"both\")].contains(@env.get_env_var(\"MOONROBO_TOP3_VARIANT\")),","fused_so3_coefficients: true,\n      fused_so3_coefficients_forward: [Some(\"forward\"),Some(\"both\")].contains(@env.get_env_var(\"MOONROBO_TOP3_VARIANT\")),")
+    f=rep(f,"let cross = factor == \"tail-on-cross\" || (enabled && (factor == \"cross\" || factor == \"both\"))","let split = enabled && (factor == \"split\" || factor == \"both\")")
+    f=rep(f,"let tail = enabled && (factor == \"tail\" || factor == \"both\" || factor == \"tail-on-cross\")","let forward = enabled && (factor == \"forward\" || factor == \"both\")")
+    f=rep(f,"fused_cross_vjp: cross, fused_so3_coefficients: tail,","fused_cross_vjp: false, fused_so3_coefficients: true, split_so3_coefficients: split, fused_so3_coefficients_forward: forward,")
+    f=rep(f,".with_fused_cross_vjp(cross)",".with_fused_cross_vjp(false)")
+    let edges=@fs.read_file(repo+"/src/learning_aligned_gpu/geometry/coefficient_assembly_wbtest.mbt").text()
+    let helper=edges[:edges.find("///|\ntest").unwrap()].to_owned().replace_all(old="so3_exp(",new="@geometry.so3_exp(")
+    f=helper+f
+    f=rep(f,"  let model = @sim.Runtime::open(","  coefficient_edges(backend, 0)\n  println(\"COEFFICIENT_CUDA_EDGES_PASSED float32 float64 forward split both\")\n  let model = @sim.Runtime::open(")
+    @fs.write_file(dir+"/coefficient_assembly_fixture_a.mbt",f,create_mode=CreateNew)
+    for source in ["build_geometry_vjp_a.mbtx","run_geometry_vjp_a.mbtx","invoke_geometry_vjp_a.mbtx","geometry_vjp_suite_a.mbtx","report.mbtx"] {
+      let mut s=@fs.read_file(old+"/"+source).text()
+      s=s.replace_all(old="geometry-vjp",new="coefficient-assembly").replace_all(old="geometry_vjp_a",new="coefficient_assembly_a").replace_all(old="geometry_vjp_fixture_a",new="coefficient_assembly_fixture_a").replace_all(old="geometry_vjp_suite_a",new="coefficient_assembly_suite_a")
+      if source.has_prefix("build") {s=rep(s,"geometry_vjp_wbtest.mbt:0-2","coefficient_assembly_wbtest.mbt:0-1")}
+      if source.has_prefix("run") {s=rep(s,"[\"abba-tail-on-cross\",","[\"forward\", \"abba-forward\", ")}
+      if source.has_prefix("geometry_vjp_suite") {
+        s=rep(s,"assert_eq(n,2)","assert_eq(n,1)");s=rep(s,"\"tests\":2","\"tests\":1")
+        s=s.replace_all(old="\"tail\"",new="\"forward\"").replace_all(old="\"cross\"",new="\"split\"")
+        s=rep(s,"(\"world\",[\"baseline\",\"forward\"])","(\"world\",[\"baseline\",\"split\",\"forward\",\"both\"])")
+        s=rep(s,"[(\"world\",\"forward\"),(\"actor\",\"split\"),(\"actor\",\"forward\"),(\"actor\",\"both\")]","[(\"world\",\"split\"),(\"world\",\"forward\"),(\"world\",\"both\"),(\"actor\",\"split\"),(\"actor\",\"forward\"),(\"actor\",\"both\")]")
+        s=rep(s,"assert_eq(field(e,\"fused_cross_vjp\"),Json(active&&(v==\"split\"||v==\"both\")));assert_eq(field(e,\"fused_so3_coefficients\"),Json(active&&(v==\"forward\"||v==\"both\")))","assert_eq(field(e,\"fused_cross_vjp\"),Json(false));assert_eq(field(e,\"fused_so3_coefficients\"),Json(true));assert_eq(field(e,\"split_so3_coefficients\"),Json(active&&(v==\"split\"||v==\"both\")));assert_eq(field(e,\"fused_so3_coefficients_forward\"),Json(active&&(v==\"forward\"||v==\"both\")))")
+        s=rep(s,"let best=if phase==\"world\"{\"forward\"}else if passed(phase,\"both\"){\"both\"}else{\"split\"}","let best=if passed(phase,\"both\"){\"both\"}else{\"forward\"}")
+        s=rep(s,"println(\"Startup admission revised by user: CUDA24GiB,host available32GiB/free24GiB; runtime guards unchanged\")","println(\"All previous startup and runtime memory guards retained unchanged\")")
+      }
+      if source=="report.mbtx" {
+        s=s.replace_all(old="\"tail\"",new="\"forward\"").replace_all(old="\"cross\"",new="\"split\"")
+        s=rep(s,"[(\"world\",\"forward\"),(\"actor\",\"split\"),(\"actor\",\"forward\"),(\"actor\",\"both\")]","[(\"world\",\"split\"),(\"world\",\"forward\"),(\"world\",\"both\"),(\"actor\",\"split\"),(\"actor\",\"forward\"),(\"actor\",\"both\")]")
+        s=rep(s,"[(\"world\",\"forward\"),(\"actor\",\"both\")]","[(\"world\",\"both\"),(\"actor\",\"both\")]")
+      }
+      let name=source.replace_all(old="geometry_vjp_a",new="coefficient_assembly_a").replace_all(old="geometry_vjp_suite_a",new="coefficient_assembly_suite_a")
+      @fs.write_file(dir+"/"+name,s,create_mode=CreateNew)
+    };return
+  }
+  if mode=="stage" {
+    for f in ["coefficient_assembly_fixture_a.mbt","build_coefficient_assembly_a.mbtx","run_coefficient_assembly_a.mbtx","invoke_coefficient_assembly_a.mbtx","coefficient_assembly_suite_a.mbtx"] {run("scp",["-o","ControlPath="+sock,dir+"/"+f,host+":"+base+"/"+f])}
+    run("ssh",["-S",sock,host,"test ! -e "+base+"/workspace/moonrobo-coefficient-assembly-a"])
+    run("ssh",["-S",sock,host,"cp -a --reflink=auto "+base+"/workspace/moonrobo-geometry-vjp-a "+base+"/workspace/moonrobo-coefficient-assembly-a"])
+    for f in ["execution_optimizations.mbt","learning.mbt","microbatch.mbt","actor_microbatch.mbt","geometry/state.mbt","geometry/rotations.mbt","geometry/coefficient_assembly_wbtest.mbt","geometry/moon.pkg","cmd/optimizations.mbt","cmd/optimizations_wbtest.mbt"] {run("scp",["-o","ControlPath="+sock,repo+"/src/learning_aligned_gpu/"+f,host+":"+base+"/workspace/moonrobo-coefficient-assembly-a/src/learning_aligned_gpu/"+f])}
+    for f in ["geometry_vjp.inc","geometry_vjp_loader.inc","geometry_vjp.mbt","geometry_vjp.cu"] {run("scp",["-o","ControlPath="+sock,repo+"/src/learning_tensor/"+f,host+":"+base+"/workspace/moonrobo-coefficient-assembly-a/src/learning_tensor/"+f])}
+    run("ssh",["-S",sock,host,"cp "+base+"/coefficient_assembly_fixture_a.mbt "+base+"/workspace/moonrobo-coefficient-assembly-a/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"]);return
+  }
+  guard mode=="build"else{fail("mode")}
+  for m in ["fused-cuda","plugin","gate-build-coefficient-assembly-a","cpu"] {run("ssh",["-S",sock,host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/build_coefficient_assembly_a.mbtx -- "+m])}
+}

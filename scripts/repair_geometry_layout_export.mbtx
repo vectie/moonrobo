@@ -1,0 +1,67 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-cost-20261030-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let helper = @fs.read_file(
+    "providers/motion_learning/export_actor_backward_padding.py",
+  ).text()
+  let begin = helper.find("def graph_from_code(code):").unwrap()
+  let end = helper.find("def main():").unwrap()
+  @fs.write_file(
+    out + "/actor_layout_graph_parser_a.py",
+    "import ast\nimport torch\n\n" + helper[begin:end].to_owned(),
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-cost-179.sock",
+      out + "/actor_layout_graph_parser_a.py",
+      "wlc004s@192.168.2.179:" + base + "/actor_layout_graph_parser_a.py",
+    ]),
+    0,
+  )
+  for name in ["geometry_cost_fixture_b.mbt", "run_geometry_cost_b.mbtx"] {
+    let text = @fs.read_file(out + "/" + name).text()
+    guard text.contains("geometry-actor-layouts-a") else {
+      fail("not yet revised")
+    }
+    @fs.write_file(
+      out + "/" + name,
+      text.replace_all(
+        old="geometry-actor-layouts-a",
+        new="geometry-actor-layouts-b",
+      ),
+    )
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-cost-179.sock",
+        out + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  let runner = @fs.read_file("scripts/export_geometry_layouts.mbtx")
+    .text()
+    .replace_all(
+      old="export_geometry_actor_layouts_a.py",
+      new="export_geometry_actor_layouts_b.py",
+    )
+    .replace_all(
+      old="run_geometry_actor_layouts_a.mbtx",
+      new="run_geometry_actor_layouts_b.mbtx",
+    )
+    .replace_all(old="actor-layouts-a", new="actor-layouts-b")
+  @fs.write_file(out + "/export_layouts_b.mbtx", runner, create_mode=CreateNew)
+}

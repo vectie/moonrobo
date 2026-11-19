@@ -1,0 +1,139 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+async fn main {
+  if @fs.exists("docs/PYTHON_DEPENDENCIES.json") {
+    fail(
+      "One-off source migration is already audited; do not rerun its rewrite recipe",
+    )
+  }
+  let helper =
+    #|
+    #|///| Hash the archived native implementation; Python copies are historical evidence.
+    #|fn native_source(study : String, original : String) -> String raise {
+    #|  let path = match original {
+    #|    "reference_initialization.py" => "src/learning_reference/reference_initialization_study.mbt"
+    #|    "reference_actor.py" => "src/learning_reference/reference_actor.mbt"
+    #|    "reference_learning.py" => "src/learning_reference/reference_learning.mbt"
+    #|    "reference_task.py" => "src/learning_reference/reference_task.mbt"
+    #|    "reference_learning_study.py" => "src/learning_reference/reference_learning_study.mbt"
+    #|    "full_body_reference.py" => "src/learning_balance/physics/reference.mbt"
+    #|    "full_body_reference_study.py" => "src/learning_balance/reference_study/run.mbt"
+    #|    "reference_root_integration.py" => "src/learning_reference_roots/integration.mbt"
+    #|    "reference_tail_directions.py" => "src/learning_reference_routes/tail.mbt"
+    #|    "reference_initialization_export.py" => "src/learning_reference/reference_initialization_export.mbt"
+    #|    "reference_learning_export.py" | "reference_learning_export-final-verify.py" => "src/learning_reference/reference_learning_export.mbt"
+    #|    "reference_feedback_response_export.py" => "src/learning_reference_directions/export.mbt"
+    #|    "reference_root_export.py" => "src/learning_reference_roots/export.mbt"
+    #|    _ => fail("no native provider mapping: " + original)
+    #|  }
+    #|  study + "/native-provider-sources/" + path
+    #|}
+    #|
+  for
+    name in [
+      "report_g1_full_body_reference.mbtx", "report_g1_reference_initialization.mbtx",
+      "report_g1_reference_learning.mbtx", "report_g1_reference_root.mbtx", "report_g1_reference_feedback_response.mbtx",
+      "report_g1_reference_final_route.mbtx",
+    ] {
+    let path = "scripts/" + name
+    let mut text = @fs.read_file(path).text()
+    text = text.replace(
+      old="sha(study + \"/provider-sources/\" + name)",
+      new="sha(native_source(study, name))",
+    )
+    text = text.replace(
+      old="sha(study + \"/provider-sources/\" + provider_name)",
+      new="sha(native_source(study, provider_name))",
+    )
+    for
+      original in [
+        "reference_learning_export.py", "reference_feedback_response_export.py",
+        "reference_root_export.py",
+      ] {
+      text = text.replace(
+        old="sha(study + \"/provider-sources/" + original + "\")",
+        new="sha(native_source(study, \"" + original + "\"))",
+      )
+    }
+    text = text.replace(
+      old="sha(export_provider)",
+      new="sha(native_source(study, \"reference_initialization_export.py\"))",
+    )
+    text = text.replace(
+      old="sha(verifier)",
+      new="sha(native_source(study, \"reference_learning_export.py\"))",
+    )
+    if !text.contains("fn native_source(") {
+      text += helper
+    }
+    @fs.write_file(path, text, create_mode=CreateOrTruncate)
+  }
+  // Original archives and native collections deliberately retain their real
+  // storage dtype; reconstruction thresholds are unchanged.
+  for
+    name in [
+      "report_g1_reference_learning.mbtx", "report_g1_reference_last_cycle.mbtx",
+      "report_g1_reference_gradient_route.mbtx", "report_g1_reference_final_route.mbtx",
+    ] {
+    let path = "scripts/" + name
+    let text = @fs.read_file(path)
+      .text()
+      .replace(
+        old="assert_true(field(proof, \"storage_dtype\") == Json(\"float32\") || field(proof, \"storage_dtype\") == Json(\"float64\"))",
+        new="assert_eq(field(proof, \"storage_dtype\"), if record is { \"storage_dtype\": String(dtype), .. } { Json(dtype) } else { Json(\"float32\") })",
+      )
+    @fs.write_file(path, text, create_mode=CreateOrTruncate)
+  }
+  // Baseline checkpoint format comes from the native initializer, never from a
+  // renamed Torch archive. All other fit files are report-relative paths.
+  let path = "scripts/export_g1_reference_registry.mbtx"
+  let text = @fs.read_file(path)
+    .text()
+    .replace(
+      old="policy/actor-zero-output.pt",
+      new="policy/actor-zero-output.json",
+    )
+  @fs.write_file(path, text, create_mode=CreateOrTruncate)
+  for
+    (name, config) in [
+      ("probe_g1_reference_root.mbtx", "g1-reference-root-integration.json"),
+      ("probe_g1_reference_tail.mbtx", "g1-reference-tail-directions.json"),
+      ("probe_g1_reference_last_cycle.mbtx", "g1-reference-last-cycle.json"),
+      (
+        "probe_g1_reference_action_response.mbtx", "g1-reference-action-response.json",
+      ),
+      (
+        "probe_g1_reference_feedback_response.mbtx", "g1-reference-feedback-response.json",
+      ),
+      (
+        "probe_g1_reference_gradient_route.mbtx", "g1-reference-gradient-route.json",
+      ),
+      (
+        "fit_g1_reference_final_route.mbtx", "g1-reference-final-route-training.json",
+      ),
+    ] {
+    let path = "scripts/" + name
+    let mut text = @fs.read_file(path).text()
+    if !text.contains("[CONFIG_JSON]") {
+      text = text.replace(
+        old="assert_eq(\n    args.length(),\n    4,",
+        new="assert_true(\n    args.length() == 4 || args.length() == 5,",
+      )
+      text = text.replace(old="OUTPUT\",", new="OUTPUT [CONFIG_JSON]\",")
+      let original = "root + \"/examples/learning/" + config + "\""
+      text = text.replace(
+        old=original,
+        new="if args.length() == 5 { args[4] } else { " + original + " }",
+      )
+      @fs.write_file(path, text, create_mode=CreateOrTruncate)
+    }
+  }
+  println(
+    "Updated source identity and native checkpoint contracts; no workload executed",
+  )
+}

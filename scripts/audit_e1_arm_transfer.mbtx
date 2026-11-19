@@ -1,0 +1,142 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/math",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+priv struct Capture {
+  id : String
+  sha256 : String
+  published : String
+  source : Array[Array[Array[Double]]]
+  target : Array[Array[Array[Double]]]
+  actor : Array[Array[Array[Double]]]
+  hand_angle : Double
+  screen : Json
+} derive(FromJson)
+
+///|
+async fn read(path : String) -> Capture {
+  @json.from_json(@json.parse(@utf8.decode(@fs.read_file(path).binary())))
+}
+
+///|
+fn axis(
+  frame : Array[Array[Double]],
+  first : Int32,
+  last : Int32,
+) -> Array[Double] {
+  let v = Array::makei(3, i => frame[last][i] - frame[first][i])
+  let norm = v.fold(init=0.0, (s, x) => s + x * x).sqrt()
+  guard norm > 1.0e-6 else { abort("degenerate body segment") }
+  v.map(x => x / norm)
+}
+
+///|
+fn degrees(rad : Double) -> Double {
+  rad * 180.0 / 3.141592653589793
+}
+
+///|
+fn angle(a : Array[Double], b : Array[Double]) -> Double {
+  let dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+  degrees(@math.acos(dot.max(-1.0).min(1.0)))
+}
+
+///|
+fn mean(values : Array[Double]) -> Double {
+  values.fold(init=0.0, (a, x) => a + x) / values.length().to_double()
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, base, alternative, intervention, out] else {
+    fail("BASE_CAPTURE ALTERNATIVE_CAPTURE INTERVENTION OUTPUT")
+  }
+  let summaries : Array[Json] = []
+  let series : Array[String] = [
+    "panel_index,frame,seconds,arm,g1_source,e1_reference,e1_rollout_7k,e1_candidate",
+  ]
+  for index in [10, 28, 38] {
+    let file = "/clip-" + index.to_string() + ".json"
+    let old = read(base + file)
+    let alt = read(alternative + file)
+    assert_eq(old.sha256, old.published)
+    assert_eq(old.id, alt.id)
+    assert_eq(old.source, alt.source)
+    assert_eq(old.actor, alt.actor)
+    assert_eq(old.target.length(), old.actor.length())
+    assert_eq(old.target.length(), alt.target.length())
+    let bend_errors = [[], [], []]
+    let axis_errors = [[], [], []]
+    let frame_zero : Array[Json] = []
+    let frames = old.source.length()
+    for f in 0..<frames {
+      for side, shoulder in [8, 11] {
+        let poses = [old.source[f], old.target[f], old.actor[f], alt.target[f]]
+        let axes = poses.map(p => axis(p, shoulder + 1, shoulder + 2))
+        let bends = Array::makei(4, i => {
+          angle(axis(poses[i], shoulder, shoulder + 1), axes[i])
+        })
+        for i, pair in [(0, 1), (1, 2), (0, 3)] {
+          let (a, b) = pair
+          bend_errors[i].push((bends[a] - bends[b]).abs())
+          axis_errors[i].push(angle(axes[a], axes[b]))
+        }
+        let name = if side == 0 { "left" } else { "right" }
+        if f == 0 {
+          frame_zero.push({ "arm": name, "source_ref_actor_candidate": bends })
+        }
+        let record = [
+          index.to_string(),
+          f.to_string(),
+          (f.to_double() / 50.0).to_string(),
+          name,
+        ]
+        record.append(bends.map(x => x.to_string()))
+        series.push(record.join(","))
+      }
+    }
+    summaries.push({
+      "panel_index": index,
+      "clip": old.id,
+      "frames": frames,
+      "verified_reference_sha256": old.sha256,
+      "candidate_reference_sha256": alt.sha256,
+      "mean_absolute_bend_error_deg": bend_errors.map(mean),
+      "mean_forearm_direction_error_deg": axis_errors.map(mean),
+      "frame_zero_bend_deg": frame_zero,
+      "max_terminal_link_goal_rotation_error_deg": [
+        degrees(old.hand_angle),
+        degrees(alt.hand_angle),
+      ],
+      "baseline_screen": old.screen,
+      "candidate_screen": alt.screen,
+    })
+  }
+  let obj : Json = {
+    "pair_order": [
+      "G1 source → original E1 reference", "original E1 reference → 7k rollout",
+      "G1 source → candidate E1 reference",
+    ],
+    "bend_definition": "Angle between shoulder-to-elbow and elbow-to-distal tracked joint vectors; straight is zero. Mean absolute pair difference across both arms and every frame. Invariant to root translation and orientation.",
+    "forearm_direction_definition": "Angle between unit elbow-to-distal vectors in world coordinates.",
+    "intervention": intervention,
+    "clips": summaries,
+  }
+  @fs.write_file(
+    out + "/summary.json",
+    @utf8.encode(obj.stringify(indent=2)),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    out + "/arm-bend.csv",
+    @utf8.encode(series.join("\n") + "\n"),
+    create_mode=CreateOrTruncate,
+  )
+}

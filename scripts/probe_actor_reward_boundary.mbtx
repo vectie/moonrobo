@@ -1,0 +1,91 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, rev] && ["prepare", "run"].contains(mode) && ["b", "c", "d", "e"].contains(rev) else {
+    fail("prepare/run fresh revision b..e")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  if mode == "prepare" {
+    let code = @fs.read_file(out + "/run_actor_first_step_e.mbtx")
+      .text()
+      .replace_all(
+        old="run_actor_first_step_e.mbtx",
+        new="run_actor_reward_\{rev}.mbtx",
+      )
+      .replace_all(
+        old="actor_first_step_detail_e.py",
+        new="actor_reward_boundary_\{rev}.py",
+      )
+    @fs.write_file(
+      out + "/run_actor_reward_\{rev}.mbtx",
+      code,
+      create_mode=CreateNew,
+    )
+    @fs.write_file(
+      out + "/actor_reward_boundary_\{rev}.py",
+      @fs.read_file("providers/motion_learning/actor_reward_boundary_probe.py"),
+      create_mode=CreateNew,
+    )
+    for name in ["run_actor_reward_\{rev}.mbtx", "actor_reward_boundary_\{rev}.py"] {
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/reward-boundary-\{rev}"
+  @fs.mkdir(folder)
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/run_actor_reward_\{rev}.mbtx -- actor smc off 1 actor-reward-boundary-\{rev} bf16-full",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "completion.json", "training-guard.json", "training-docker-final.json",
+      "training.stdout.log", "training.stderr.log", "protocol.json", "compilation-audit.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-reward-boundary-\{rev}/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(code, 0)
+}

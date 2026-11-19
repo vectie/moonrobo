@@ -1,0 +1,79 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-math-179.sock"
+  let old = "(run_name.has_prefix(\"heading-body-\") || [\"trained-export-b\",\"heading-smc-actor-off-a\",\"latest-ln-actor-smc-events-a\",\"trained-smc-compiled-actor-gate-a\",\"fix-actor-smc-0\",\"algebra-actor-smc-a\"].contains(run_name))"
+  let names = [
+    "geometry-math-native-gate-b", "geometry-math-reference-gate-a", "training-bench-native-ap-a",
+    "training-bench-native-ap-b",
+  ]
+  let allowed = names.map(n => "\"" + n + "\"").join(",")
+  let text = @fs.read_file(out + "/advise_heading_inputs_source.mbtx").text()
+  assert_true(text.contains(old))
+  let script = text.replace_all(
+    old~,
+    new="[" + allowed + "].contains(run_name)",
+  )
+  @fs.write_file(
+    out + "/advise_geometry_closed_a.mbtx",
+    script,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=" + socket,
+      out + "/advise_geometry_closed_a.mbtx",
+      host + ":" + base + "/advise_geometry_closed_a.mbtx",
+    ]),
+    0,
+  )
+  for i, name in names {
+    let label = "geometry-closed-a-" + i.to_string()
+    assert_eq(
+      @process.run(
+        "ssh",
+        [
+          "-S",
+          socket,
+          host,
+          "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+          base +
+          "/advise_geometry_closed_a.mbtx -- " +
+          label +
+          " " +
+          name,
+        ],
+        stdout=@process.redirect_to_file(
+          out + "/cache-" + label + ".stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          out + "/cache-" + label + ".stderr.log",
+          create_mode=CreateNew,
+        ),
+      ),
+      0,
+    )
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=" + socket,
+        host + ":" + base + "/full-ln-cache-" + label + ".json",
+        out + "/cache-" + label + ".json",
+      ]),
+      0,
+    )
+  }
+}

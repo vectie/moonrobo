@@ -1,0 +1,16 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let dir="output/spark-runtime-20261024/fused-rotation-20261028/"
+  let mut f=@fs.read_file(dir+"fused_rotation_fixture_b.mbt").text()
+  f=rep(f,"actor_microbatch=if @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") == Some(\"actor1024\") { 1024 } else { 512 },","actor_microbatch=match @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") { Some(\"capacity1024\") => 1024; Some(\"capacity2048\") => 2048; Some(\"capacity4096\") => 4096; _ => 512 },")
+  f=rep(f,"[Some(\"axis\"),Some(\"both\")]","[Some(\"axis\"),Some(\"both\"),Some(\"capacity1024\"),Some(\"capacity2048\"),Some(\"capacity4096\")]")
+  f=rep(f,"[Some(\"skew\"),Some(\"both\")]","[Some(\"skew\"),Some(\"both\"),Some(\"capacity1024\"),Some(\"capacity2048\"),Some(\"capacity4096\")]")
+  f=rep(f,"\"execution\": Json(learner.optimizations),","\"execution\": Json(learner.optimizations),\n      \"actor_microbatch\": Json(learner.execution.actor_microbatch),")
+  @fs.write_file(dir+"/fused_capacity_fixture_a.mbt",f,create_mode=CreateNew)
+  let mut r=@fs.read_file(dir+"run_fused_rotation_b.mbtx").text()
+  for (a,b) in [("run_fused_rotation_b.mbtx","run_fused_capacity_a.mbtx"),("fused_rotation_fixture_b.mbt","fused_capacity_fixture_a.mbt"),("build_fused_rotation_b.mbtx","build_fused_capacity_a.mbtx"),("fused-rotation-gate-b","fused-capacity-gate-a"),("\"baseline\", \"actor1024\"","\"capacity1024\", \"capacity2048\", \"capacity4096\", \"baseline\", \"actor1024\""),("\"trained_checkpoint_fixed_input_microbenchmark\": true","\"trained_checkpoint_fixed_input_microbenchmark\": true, \"separate_microbatch_capacity_ablation\": true, \"actor_microbatch\": Json(match variant { \"capacity1024\" => 1024; \"capacity2048\" => 2048; \"capacity4096\" => 4096; _ => 512 })")] {r=rep(r,a,b)}
+  @fs.write_file(dir+"run_fused_capacity_a.mbtx",r,create_mode=CreateNew)
+  @fs.write_file(dir+"invoke_fused_capacity_a.mbtx",rep(@fs.read_file(dir+"invoke_fused_rotation_b.mbtx").text(),"run_fused_rotation_b.mbtx","run_fused_capacity_a.mbtx"),create_mode=CreateNew)
+  @fs.write_file(dir+"build_fused_capacity_a.mbtx",rep(@fs.read_file(dir+"build_fused_rotation_b.mbtx").text(),"fused-rotation-gate-b","fused-capacity-gate-a"),create_mode=CreateNew)
+}

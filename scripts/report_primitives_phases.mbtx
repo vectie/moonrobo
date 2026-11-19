@@ -1,0 +1,59 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/json" }
+fn field(j : Json,k : String) -> Json raise {guard j is Object(m) && m.get(k) is Some(v) else {fail(k)};v}
+fn num(j : Json) -> Double raise {guard j is Number(n,..) else {fail("number")};n}
+fn array(j : Json) -> Array[Json] raise {guard j is Array(a) else {fail("array")};a}
+fn median(xs : Array[Double]) -> Double raise {guard !xs.is_empty() else {fail("empty")};let a=xs.copy();a.sort();(a[(a.length()-1)/2]+a[a.length()/2])/2.0}
+fn labels(row : Json,names : Array[Json]) -> Double raise {
+  let spans=match field(row,"profile") {
+    {"spans":Array(s),"dropped_spans":Number(0,..),"open_spans":Number(0,..),..}=>s
+    Array(s)=>s
+    _=>fail("incomplete profile")
+  }
+  let seen : Map[String,Bool]=Map([]);let mut total=0.0
+  for s in spans {
+    if names.contains(field(s,"label")) {
+      guard field(s,"label") is String(name) else {fail("label")};seen[name]=true
+      total+=match s { {"gpu_elapsed_ms":Number(n,..),"gpu_status":"complete",..}=>n;{"stream_elapsed_ms":Number(n,..),..}=>n;_=>fail("unfinished CUDA event") }
+    }
+  }
+  guard seen.length()==names.length() else {fail("missing label")};total
+}
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-primitives-20261028"
+  let mapping=@json.parse(@fs.read_file("/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/shared-compute-20261026/reconciliation.json").text())
+  let off=@json.parse(@fs.read_file(root+"/results.json").text())
+  let phases : Array[Json]=[]
+  for phase in ["world","actor"] {
+    let measured : Array[Array[Json]]=[];let observations : Array[Json]=[]
+    let pair=array(field(off,"pairs")).filter(p=>field(p,"phase")==Json(phase) && field(p,"variant")==Json("safe"))[0]
+    let target=array(field(off,"smc")).filter(p=>field(p,"phase")==Json(phase))[0]
+    for variant in ["baseline","safe","smc"] {
+      let label="primitives-"+variant+"-"+phase+"-events-"+(if phase=="world" && variant=="smc" {"c"} else {"a"});let dir=root+"/"+label;@fs.mkdir(dir,recursive=true)
+      for file in ["result.json","protocol.json","training-guard.json","training-docker-final.json","completion.json"] {
+        if !@fs.exists(dir+"/"+file) {guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/runs/hotspot-shared-"+label+"/"+file,dir+"/"+file])==0 else {fail(label)}}
+      }
+      let result=@json.parse(@fs.read_file(dir+"/result.json").text())
+      let rows=array(field(result,"rows")).filter(r=>field(r,"steady")==Json(true))
+      guard rows.length()==10 && rows.all(r=>field(r,"observer_active")==Json(true)) else {fail("ten event samples")}
+      let g=@json.parse(@fs.read_file(dir+"/training-guard.json").text())
+      guard field(g,"reason")==Json("completed") && field(g,"error")==Json::null() else {fail("resource guard")}
+      guard @json.parse(@fs.read_file(dir+"/training-docker-final.json").text()) is [{"State":{"Running":False,"OOMKilled":False,..},..}] else {fail("unsafe completion")}
+      measured.push(rows)
+      let wall=median(rows.map(r=>num(field(r,"wall_ms"))))
+      let without=if variant=="baseline" {num(field(pair,"baseline_ms"))} else if variant=="safe" {num(field(pair,"candidate_ms"))} else {num(field(target,"compiled_ms"))}
+      observations.push({"variant":Json(variant),"event_wall_ms":Json(wall),"no_profiler_reference_ms":Json(without),"observed_difference_ms":Json(wall-without),"observed_difference_percent":Json((wall-without)/without*100.0)})
+    }
+    let p=array(field(mapping,"phases")).filter(p=>field(p,"phase")==Json(phase))[0]
+    let operations : Array[Json]=[]
+    for m in array(field(p,"stream_interval_comparison")) {
+      let a=median(measured[0].map(r=>labels(r,array(field(m,"native_labels")))))
+      let b=median(measured[1].map(r=>labels(r,array(field(m,"native_labels")))))
+      let s=median(measured[2].map(r=>labels(r,array(field(m,"smc_labels")))))
+      operations.push({"name":field(m,"name"),"native_baseline_ms":Json(a),"native_candidate_ms":Json(b),"native_observed_saved_ms":Json(a-b),"smc_ms":Json(s),"candidate_minus_smc_ms":Json(b-s),"scope":field(m,"scope"),"native_labels":field(m,"native_labels"),"smc_labels":field(m,"smc_labels")})
+    }
+    phases.push({"phase":Json(phase),"operations":Json(operations),"observer_comparison":Json(observations)})
+  }
+  let report : Json={"method":"Only CUDA stage events; no Nsight/ATen/NVTX observer. Three warmups and ten measured samples per process, fixed restoration. Same stage groups for native before/after; cross-language grouping limitations retained.","limits":"Event intervals include queue gaps and overlap CPU; not kernel-active-only. Stage comparison is single order, not ABBA. Observer differences use separate processes and include drift; no fixed correction factor. SMC compiled numerical rejection persists; performance reference only. No complete-round throughput claim.","phases":Json(phases)}
+  @fs.write_file(root+"/phase-results.json",report.stringify(indent=2),create_mode=CreateNew)
+  println(Json(phases).stringify(indent=2))
+}

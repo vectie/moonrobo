@@ -1,0 +1,10 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+fn replace(s : String,a : String,b : String) -> String raise {guard s.contains(a) else {fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let dir="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-primitives-20261028"
+  let mut s=@fs.read_file(dir+"/suite_primitives_b.mbtx").text()
+  for (a,b) in [("invoke_primitives_b.mbtx","invoke_primitives_c.mbtx"),("-cpu-b","-cpu-c"),("primitives-cpu-gates.json","primitives-cpu-gates-c.json"),("[(\"actor\",\"cross\"),(\"world\",\"snapshot\"),(\"world\",\"constants\"),(\"actor\",\"constants\"),(\"actor\",\"both\"),(\"world\",\"both\")]","[(\"actor\",\"preserve\"),(\"world\",\"snapshot\"),(\"world\",\"constants\"),(\"actor\",\"constants\"),(\"actor\",\"safe\"),(\"world\",\"safe\")]")] {s=replace(s,a,b)}
+  s=replace(s,"    invoke(\"world\",\"baseline\",\"1\",\"primitives-baseline-world-gate-a\")\n    gate(\"world\",\"snapshot\")\n    gate(\"world\",\"constants\")\n    invoke(\"actor\",\"baseline\",\"1\",\"primitives-baseline-actor-gate-a\")\n    gate(\"actor\",\"cross\")\n    gate(\"actor\",\"constants\")\n    for phase in [\"world\",\"actor\"] {gate(phase,\"both\")}","    gate(\"actor\",\"preserve\")\n    gate(\"actor\",\"safe\")\n    gate(\"world\",\"safe\")")
+  let p=dir+"/suite_primitives_c.mbtx";@fs.write_file(p,s,create_mode=CreateNew)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",p,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/suite_primitives_c.mbtx"])==0 else {fail("scp")}
+}

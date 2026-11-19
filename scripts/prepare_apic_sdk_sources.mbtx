@@ -1,0 +1,159 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+async fn git(args : Array[String]) -> String {
+  let result = @shell.Cmd("git", args, env={
+    "GIT_ALLOW_PROTOCOL": "file",
+    "GIT_NO_LAZY_FETCH": "1",
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_CONFIG_GLOBAL": "/dev/null",
+  }).output(timeout_ms=60000, max_output_bytes=2097152)
+  result.check()
+  result.stdout().trim().to_owned()
+}
+
+///|
+async fn sha256(path : String) -> String {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let hash = @crypto.SHA256::new()
+  let size = file.size()
+  for offset = 0L; offset < size; {
+    let count = (size - offset).min(65536L).to_int()
+    hash.update(file.read_exactly_at(count, position=offset))
+    continue offset + count.to_int64()
+  }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+/// Local repository transport only: authentic Git objects and shallow boundary
+/// records are copied by Git itself. Never constructs a fake HEAD or commit.
+/// Archives real .git metadata because the earlier source-only tar lacks it.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 4 else {
+    fail(
+      "usage: prepare_apic_sdk_sources.mbtx ISAACLAB_CHECKOUT NEWTON_BARE_MIRROR FRESH_ABSOLUTE_OUTPUT",
+    )
+  }
+  let output = args[3]
+  for path in args[1:] {
+    guard path.has_prefix("/") &&
+      !path.contains("\u{0000}") &&
+      !path.contains("\n") else {
+      fail("all paths must be absolute and contain no NUL/newline")
+    }
+  }
+  guard !@fs.exists(output) else {
+    fail("output exists; retain it and choose a fresh directory")
+  }
+  @fs.mkdir(output)
+  @fs.mkdir(output + "/sdk")
+  let provenance : Array[Json] = []
+  for
+    (name, source, upstream, revision, tree) in [
+      (
+        "IsaacLab",
+        args[1],
+        "https://github.com/isaac-sim/IsaacLab.git",
+        "46d6cc3d7b115906fad12efd372fbf69f4e3d3ed",
+        "09dbeafdd81fe301d8dfbafd8206cc8e3c4ff0df",
+      ),
+      (
+        "newton",
+        args[2],
+        "https://github.com/newton-physics/newton.git",
+        "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+        "ad1a81948b2a9e80c1a318c83f915a40ccd72860",
+      ),
+    ] {
+    let source = @fs.realpath(source)
+    guard git(["-C", source, "rev-parse", "HEAD"]) == revision &&
+      git(["-C", source, "rev-parse", "HEAD^{tree}"]) == tree else {
+      fail("local repository is not the pinned commit/tree: " + name)
+    }
+    let destination = output + "/sdk/" + name
+    println("Copying exact Git checkout: " + name)
+    ignore(
+      git([
+        "clone",
+        "--quiet",
+        "--template=",
+        "--no-hardlinks",
+        "--no-tags",
+        "--depth=1",
+        "--no-checkout",
+        "file://" + source,
+        destination,
+      ]),
+    )
+    ignore(
+      git(["-C", destination, "checkout", "--quiet", "--detach", revision]),
+    )
+    guard git(["-C", destination, "rev-parse", "HEAD"]) == revision &&
+      git(["-C", destination, "rev-parse", "HEAD^{tree}"]) == tree else {
+      fail("copied commit/tree mismatch")
+    }
+    ignore(git(["-C", destination, "fsck", "--full", "--no-dangling"]))
+    ignore(git(["-C", destination, "diff", "--exit-code", "HEAD", "--"]))
+    guard git([
+        "-C", destination, "status", "--porcelain=v1", "--untracked-files=all",
+      ]) ==
+      "" else {
+      fail("copied checkout is not clean")
+    }
+    let entries = git(["-C", destination, "ls-tree", "-r", "HEAD"])
+    guard !entries.split("\n").any(line => line.has_prefix("160000 ")) else {
+      fail("submodule requires an independently pinned source checkout")
+    }
+    // Record the real upstream as the future origin; this does not fetch it.
+    ignore(git(["-C", destination, "remote", "set-url", "origin", upstream]))
+    provenance.push({
+      "name": Json(name),
+      "upstream": Json(upstream),
+      "local_transport_source": Json(source),
+      "commit": Json(revision),
+      "tree": Json(tree),
+      "shallow": Json(
+        git(["-C", destination, "rev-parse", "--is-shallow-repository"]) ==
+        "true",
+      ),
+      "clean_tracked_and_untracked": true,
+      "git_fsck_passed": true,
+    })
+  }
+  guard sha256(output + "/sdk/IsaacLab/uv.lock") ==
+    "44534d4d3c84575686e1f31f192a5ab3c21612c6f8db6da43fa1b56a2b79535e" else {
+    fail("copied IsaacLab lock differs")
+  }
+  let archive = output + "/sdk-checkouts.tar.gz"
+  @shell.Cmd("tar", ["-czf", archive, "-C", output, "sdk"], env={
+    "COPYFILE_DISABLE": "1",
+  }).run(timeout_ms=60000)
+  let digest = sha256(archive)
+  let record : Json = {
+    "format": "moonrobo.apic-sdk-checkouts.v1",
+    "repositories": Json(provenance),
+    "archive": "sdk-checkouts.tar.gz",
+    "archive_sha256": Json(digest),
+    "isaaclab_uv_lock_sha256": "44534d4d3c84575686e1f31f192a5ab3c21612c6f8db6da43fa1b56a2b79535e",
+    "network_fetch": false,
+    "sdk_imported": false,
+    "gpu_used": false,
+  }
+  @fs.write_file(
+    output + "/provenance.json",
+    record.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println("Prepared genuine SDK checkouts; archive SHA256 " + digest)
+}

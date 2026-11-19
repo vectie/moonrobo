@@ -1,0 +1,18 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+fn replace(s : String,a : String,b : String) -> String raise {guard s.contains(a) else {fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let dir="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-primitives-20261028";let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let mut driver=@fs.read_file(dir+"/run_primitives_d.mbtx").text()
+  driver=replace(driver,"async fn advise_checkpoint(folder : String)","async fn advise_checkpoint(folder : String, receipt : String)")
+  driver=replace(driver,"advise_checkpoint(folder)","advise_checkpoint(folder, folder + \"/checkpoint-page-advice.json\")")
+  driver=replace(driver,"write_json(folder + \"/checkpoint-page-advice.json\",","write_json(receipt,")
+  driver=replace(driver,"run_primitives_d.mbtx","run_primitives_e.mbtx")
+  driver=replace(driver,"  write_json(root + \"/protocol.json\", { \"phase\":", "  // Hash validation faults unused source replay into host page cache. The\n  // fixture uses the separate frozen export, not these original replay files.\n  // Reclaim only exact committed payloads of the verified closed training job,\n  // after pinning and before any GPU work; preserve all guard thresholds.\n  advise_checkpoint(\"/home/wlc004s/moonrobo/runs/hotspot-followup-measured-world-20261026-c/run-0\", base + \"/primitives-source-advice-\" + label + \".json\")\n  write_json(root + \"/protocol.json\", { \"phase\":")
+  @fs.write_file(dir+"/run_primitives_e.mbtx",driver,create_mode=CreateNew)
+  @fs.write_file(dir+"/invoke_primitives_e.mbtx",replace(@fs.read_file(dir+"/invoke_primitives_d.mbtx").text(),"run_primitives_d.mbtx","run_primitives_e.mbtx"),create_mode=CreateNew)
+  let suite=replace(@fs.read_file(dir+"/suite_primitives_d.mbtx").text(),"invoke_primitives_d.mbtx","invoke_primitives_e.mbtx")
+  @fs.write_file(dir+"/suite_primitives_e.mbtx",suite,create_mode=CreateNew)
+  for f in ["run_primitives_e.mbtx","invoke_primitives_e.mbtx","suite_primitives_e.mbtx"] {
+    guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+"/"+f,"wlc004s@192.168.2.179:"+base+"/"+f])==0 else {fail(f)}
+  }
+}

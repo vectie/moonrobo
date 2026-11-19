@@ -1,0 +1,119 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["prepare", "native", "smc"].contains(mode) else {
+    fail("prepare/native/smc")
+  }
+  let out = "output/spark-runtime-20261024/world-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  if mode == "prepare" {
+    let prior = @fs.read_file(
+      "output/spark-runtime-20261024/compiled-vjp-detail-20261029-a/run_frozen_compilation_b.mbtx",
+    ).text()
+    let helper = "async fn clone_compilation_tree" +
+      prior.split("async fn clone_compilation_tree").to_array()[1]
+      .to_owned()
+      .split("async fn main {")
+      .to_array()[0].to_owned()
+    let freeze =
+      #|  if implementation=="smc" {
+      #|    let source="/home/wlc004s/moonrobo/runs/hotspot-mlp-world-boundary-f"
+      #|    let records:Array[Json]=[]
+      #|    for name in ["inductor-cache","triton-cache"] {if @fs.exists(source+"/"+name){clone_compilation_tree(source+"/"+name,root+"/"+name,records)}}
+      #|    write_json(root+"/compilation-snapshot.json",{"source":Json(source),"files":Json(records),"original_smc_unchanged":true})
+      #|  }
+      #|  let pins : Map[String, Json] = Map([])
+    let code = @fs.read_file(
+        "output/spark-runtime-20261024/compiled-mlp-20261028-a/run_compiled_window_q.mbtx",
+      )
+      .text()
+      .replace_all(old="async fn main {", new=helper + "\nasync fn main {")
+      .replace_all(
+        old="run_compiled_window_q.mbtx",
+        new="run_world_reference_gate_f.mbtx",
+      )
+      .replace_all(
+        old="hotspot-mlp-aoti-window-export-\"+amp+\"-g",
+        new="hotspot-mlp-world-reference-export-k",
+      )
+      .replace_all(
+        old="hotspot-shared-aoti-window-native-\"+amp+\"-gate-h",
+        new="hotspot-shared-world-reference-native-gate-f",
+      )
+      .replace_all(
+        old="if implementation == \"smc\" && @fs.exists(cache_source + \"/inductor-cache\") {",
+        new="if false {",
+      )
+      .replace_all(old="let pins : Map[String, Json] = Map([])", new=freeze)
+    @fs.write_file(
+      out + "/run_world_reference_gate_f.mbtx",
+      code,
+      create_mode=CreateNew,
+    )
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/run_world_reference_gate_f.mbtx",
+        host + ":" + base + "/run_world_reference_gate_f.mbtx",
+      ]),
+      0,
+    )
+    return
+  }
+  let label = "world-reference-" + mode + "-gate-f"
+  let folder = out + "/" + label
+  @fs.mkdir(folder)
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/run_world_reference_gate_f.mbtx -- world " +
+      mode +
+      " off 1 " +
+      label +
+      " bf16-chunk",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "final.json", "completion.json", "training-guard.json", "training-docker-final.json",
+      "training.stdout.log", "training.stderr.log", "protocol.json", "compilation-snapshot.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-shared-" +
+        label +
+        "/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(code, 0)
+}

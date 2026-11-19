@@ -1,0 +1,834 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/math",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+// Frozen-evidence CPU reader. No process, tensor, simulator, network or write API.
+struct Blob {
+  file : String
+  dtype : String
+  shape : Array[Int32]
+  count : Int64
+  byte_length : Int64
+  sha256 : String
+} derive(FromJson)
+
+///|
+struct Record {
+  name : String
+  source_dtype : String
+  blob : Blob
+} derive(FromJson)
+
+///|
+struct Snapshot {
+  format : String
+  phase : String
+  optimizer_metadata : Array[Json]
+  normalizer_counts : Array[Double]
+  records : Array[Record]
+} derive(FromJson)
+
+///|
+struct Compared {
+  name : String
+  shape : Array[Int32]
+  values : Int64
+  mismatches : Int64
+  worst_index : Int64
+  worst_full : Double
+  worst_split : Double
+  max_absolute_difference : Double
+  max_tolerance_ratio : Double
+} derive(FromJson)
+
+///|
+struct ComparedPhase {
+  phase : String
+  optimizer_metadata_exact : Bool
+  normalizer_counts_exact : Bool
+  records : Array[Compared]
+} derive(FromJson)
+
+///|
+struct Comparison {
+  format : String
+  passed : Bool
+  profile : String
+  absolute_tolerance : Double
+  relative_tolerance : Double
+  reference : String
+  values_compared : Int64
+  mismatches : Int64
+  records_verified_by_sha256 : Bool
+  input_and_initial_state_identity_exact : Bool
+  phases : Array[ComparedPhase]
+} derive(FromJson)
+
+///|
+struct Mismatch {
+  index : Int32
+  row : Int32
+  column : Int32
+  feature : String
+  full : Double
+  split : Double
+  absolute_difference : Double
+  tolerance_ratio : Double
+} derive(ToJson)
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(result) else {
+    fail("missing evidence field: " + key)
+  }
+  result
+}
+
+///|
+fn finite(x : Double) -> Bool {
+  !x.is_nan() && !x.is_inf()
+}
+
+///|
+fn sha_valid(s : String) -> Bool {
+  s.length() == 64 &&
+  s.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+async fn json_file(path : String) -> (Json, String) {
+  guard @fs.realpath(path) == path &&
+    @fs.kind(path, follow_symlink=false) is Regular else {
+    fail("evidence JSON must be canonical regular file")
+  }
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  let size = f.size()
+  guard size > 0L && size <= 1048576L else {
+    fail("evidence JSON exceeds 1MiB")
+  }
+  let bytes = f.read_exactly_at(size.to_int(), position=0L)
+  guard f.size() == size else { fail("evidence JSON changed size") }
+  let hash = @crypto.SHA256::new()
+  hash.update(bytes)
+  (
+    @json.parse(@utf8.decode(bytes)),
+    @crypto.bytes_to_hex_string(hash.finalize()),
+  )
+}
+
+///|
+fn number(bytes : Bytes, i : Int32) -> Double {
+  let mut bits = 0L
+  for j in 0..<8 {
+    bits = bits | (bytes[i * 8 + j].to_int().to_int64() << (j * 8))
+  }
+  bits.reinterpret_as_double()
+}
+
+///|
+fn feature(column : Int32) -> String {
+  if column == 0 {
+    "root-height"
+  } else if column < 7 {
+    "heading-relative-rotation6d[\{column - 1}]"
+  } else if column < 10 {
+    "local-linear-velocity[\{column - 7}]"
+  } else if column < 13 {
+    "local-angular-velocity[\{column - 10}]"
+  } else if column < 42 {
+    "joint-position[\{column - 13}]"
+  } else if column < 71 {
+    "joint-velocity[\{column - 42}]"
+  } else if column < 100 {
+    "reference-joint-error[\{column - 71}]"
+  } else if column < 142 {
+    "body-position-error[\{(column - 100) / 3},\{(column - 100) % 3}]"
+  } else if column < 145 {
+    "reference-root-position-error[\{column - 142}]"
+  } else if column < 151 {
+    "reference-relative-rotation6d[\{column - 145}]"
+  } else if column < 184 {
+    "normalized-context-xi[\{column - 151}]"
+  } else {
+    "preview-goal[\{(column - 184) / 73},\{(column - 184) % 73}]"
+  }
+}
+
+///|
+fn validate_record(r : Record, shape : Array[Int32]) -> Unit raise {
+  guard r.name.length() > 0 &&
+    r.name.length() <= 128 &&
+    r.name
+    .iter()
+    .all(c => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') &&
+    r.source_dtype == "float32" &&
+    r.blob.dtype == "f64le" &&
+    r.blob.file == r.name + ".f64" &&
+    r.blob.shape == shape &&
+    sha_valid(r.blob.sha256) else {
+    fail("record identity/shape/dtype differs: " + r.name)
+  }
+  let mut count = 1L
+  for d in shape {
+    guard d > 0 && count <= 233984L / d.to_int64() else {
+      fail("diagnostic record exceeds critic first-layer bound")
+    }
+    count *= d.to_int64()
+  }
+  guard count == r.blob.count && count * 8L == r.blob.byte_length else {
+    fail("record length differs")
+  }
+}
+
+///|
+fn record(s : Snapshot, name : String, shape : Array[Int32]) -> Record raise {
+  let found = s.records.filter(r => r.name == name)
+  guard found.length() == 1 else {
+    fail("missing/duplicate evidence record: " + name)
+  }
+  validate_record(found[0], shape)
+  found[0]
+}
+
+///|
+async fn snapshot(
+  root : String,
+  phase : String,
+  identities : Map[String, String],
+) -> Snapshot {
+  let path = root + "/" + phase + "/snapshot.json"
+  let (value, sha) = json_file(path)
+  identities[path] = sha
+  let s : Snapshot = @json.from_json(value)
+  guard s.format == "moonrobo.microbatch-numerical-snapshot.v1" &&
+    s.phase == phase &&
+    s.records.length() > 0 &&
+    s.records.length() <= 512 else {
+    fail("unsupported snapshot metadata")
+  }
+  s
+}
+
+///|
+// Stream whole selected member for length/SHA integrity, retaining only selected
+// scalar indices. A caller cannot infer untouched archive verification from this.
+async fn selected(
+  root : String,
+  r : Record,
+  indices : Array[Int32],
+  verified : Map[String, String],
+) -> Array[Double] {
+  guard indices.length() <= 8448 &&
+    indices.all(i => i >= 0 && i.to_int64() < r.blob.count) else {
+    fail("selected scalar count/index exceeds diagnostic bound")
+  }
+  let positions : Map[Int32, Int32] = Map([])
+  for i, index in indices {
+    guard !positions.contains(index) else { fail("duplicate selected index") }
+    positions[index] = i
+  }
+  let path = root + "/" + r.blob.file
+  guard @fs.realpath(path) == path &&
+    @fs.kind(path, follow_symlink=false) is Regular else {
+    fail("sidecar must be canonical regular file")
+  }
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  guard f.size() == r.blob.byte_length else { fail("sidecar length mismatch") }
+  let out = Array::make(indices.length(), 0.0)
+  let hash = @crypto.SHA256::new()
+  let mut hits = 0
+  for off = 0L; off < r.blob.count; {
+    let n = (r.blob.count - off).min(8192L).to_int()
+    let bytes = f.read_exactly_at(n * 8, position=off * 8L)
+    hash.update(bytes)
+    for j in 0..<n {
+      let x = number(bytes, j)
+      guard finite(x) else { fail("nonfinite sidecar value") }
+      if positions.get(off.to_int() + j) is Some(i) {
+        out[i] = x
+        hits += 1
+      }
+    }
+    continue off + n.to_int64()
+  }
+  guard f.size() == r.blob.byte_length &&
+    hits == indices.length() &&
+    @crypto.bytes_to_hex_string(hash.finalize()) == r.blob.sha256 else {
+    fail("sidecar SHA/length differs")
+  }
+  verified[path] = r.blob.sha256
+  out
+}
+
+///|
+async fn find_mismatches(
+  a_root : String,
+  b_root : String,
+  a : Record,
+  b : Record,
+  expected : Compared,
+  verified : Map[String, String],
+) -> Array[Mismatch] {
+  let left_path = a_root + "/" + a.blob.file
+  let right_path = b_root + "/" + b.blob.file
+  for path in [left_path, right_path] {
+    guard @fs.realpath(path) == path &&
+      @fs.kind(path, follow_symlink=false) is Regular else {
+      fail("weight sidecar must be canonical regular file")
+    }
+  }
+  let left = @fs.open(left_path, mode=ReadOnly)
+  defer left.close()
+  let right = @fs.open(right_path, mode=ReadOnly)
+  defer right.close()
+  guard left.size() == a.blob.byte_length && right.size() == b.blob.byte_length else {
+    fail("weight lengths differ")
+  }
+  let lh = @crypto.SHA256::new()
+  let rh = @crypto.SHA256::new()
+  let mismatches : Array[Mismatch] = []
+  let mut worst_index = 0L
+  let mut max_ratio = 0.0
+  let mut max_abs = 0.0
+  let mut worst_full = 0.0
+  let mut worst_split = 0.0
+  for off = 0L; off < a.blob.count; {
+    let n = (a.blob.count - off).min(8192L).to_int()
+    let x = left.read_exactly_at(n * 8, position=off * 8L)
+    let y = right.read_exactly_at(n * 8, position=off * 8L)
+    lh.update(x)
+    rh.update(y)
+    for j in 0..<n {
+      let full = number(x, j)
+      let split = number(y, j)
+      guard finite(full) && finite(split) else {
+        fail("nonfinite critic weight")
+      }
+      let delta = (full - split).abs()
+      let ratio = delta / (0.000002 + 0.0002 * full.abs())
+      let index = off.to_int() + j
+      if ratio > max_ratio {
+        max_ratio = ratio
+        worst_index = index.to_int64()
+        worst_full = full
+        worst_split = split
+      }
+      max_abs = max_abs.max(delta)
+      if ratio > 1.0 {
+        guard mismatches.length() < 64 else {
+          fail(
+            "more than 64 mismatch coordinates; refusing unbounded diagnostic",
+          )
+        }
+        mismatches.push({
+          index,
+          row: index / 914,
+          column: index % 914,
+          feature: feature(index % 914),
+          full,
+          split,
+          absolute_difference: delta,
+          tolerance_ratio: ratio,
+        })
+      }
+    }
+    continue off + n.to_int64()
+  }
+  guard left.size() == a.blob.byte_length &&
+    right.size() == b.blob.byte_length &&
+    @crypto.bytes_to_hex_string(lh.finalize()) == a.blob.sha256 &&
+    @crypto.bytes_to_hex_string(rh.finalize()) == b.blob.sha256 else {
+    fail("critic weight SHA/length differs")
+  }
+  guard mismatches.length().to_int64() == expected.mismatches &&
+    worst_index == expected.worst_index &&
+    worst_full == expected.worst_full &&
+    worst_split == expected.worst_split &&
+    max_abs == expected.max_absolute_difference &&
+    (max_ratio - expected.max_tolerance_ratio).abs() <= 1.0e-12 else {
+    fail("recomputed selected tensor statistics differ from frozen comparison")
+  }
+  verified[left_path] = a.blob.sha256
+  verified[right_path] = b.blob.sha256
+  mismatches
+}
+
+///|
+fn summary(a : Array[Double], b : Array[Double]) -> Json raise {
+  guard a.length() == b.length() && !a.is_empty() else {
+    fail("invalid selected summary")
+  }
+  let mut max_abs = 0.0
+  let mut worst = 0
+  let mut signs = 0
+  for i in 0..<a.length() {
+    let d = (a[i] - b[i]).abs()
+    if d > max_abs {
+      max_abs = d
+      worst = i
+    }
+    if a[i] * b[i] < 0.0 {
+      signs += 1
+    }
+  }
+  {
+    "values": Json(a.length()),
+    "max_absolute_difference": Json(max_abs),
+    "worst_row": Json(worst),
+    "worst_full": Json(a[worst]),
+    "worst_split": Json(b[worst]),
+    "sign_changes": Json(signs),
+  }
+}
+
+///|
+fn reconstructed_normalized(
+  values : Array[Double],
+  mean : Double,
+  variance : Double,
+) -> Array[Double] raise {
+  guard variance >= 0.0 else { fail("negative norm variance") }
+  let std = (variance + 0.0001).sqrt()
+  values.map(x => (x - mean) / std)
+}
+
+///|
+fn adam_options(snapshot : Snapshot, expected_step : Int32) -> Json raise {
+  guard snapshot.optimizer_metadata.length() == 3 else {
+    fail("optimizer metadata absent")
+  }
+  let metadata = snapshot.optimizer_metadata[2]
+  let states : Array[Json] = @json.from_json(field(metadata, "states"))
+  let groups : Array[Json] = @json.from_json(field(metadata, "groups"))
+  guard field(metadata, "parameter_count") == 6 &&
+    states.length() == 6 &&
+    groups.length() == 1 else {
+    fail("unexpected critic optimizer layout")
+  }
+  for state in states {
+    let step : Int64 = @json.from_json(field(state, "step"))
+    guard field(state, "present") == true && step == expected_step.to_int64() else {
+      fail("critic optimizer step differs")
+    }
+  }
+  let g = groups[0]
+  guard field(g, "learning_rate") == 0.0002 &&
+    field(g, "beta1") == 0.9 &&
+    field(g, "beta2") == 0.999 &&
+    field(g, "eps") == 0.00000001 &&
+    field(g, "weight_decay") == 0 &&
+    field(g, "amsgrad") == false else {
+    fail("unexpected Adam options")
+  }
+  g
+}
+
+///|
+fn adam_diagnostic(
+  m : Double,
+  v : Double,
+  gradient : Double,
+  step : Int32,
+) -> Json raise {
+  guard v >= 0.0 else { fail("negative Adam second moment") }
+  let first = m / (1.0 - @math.pow(0.9, step.to_double()))
+  let rms = (v / (1.0 - @math.pow(0.999, step.to_double()))).sqrt()
+  {
+    "m": Json(m),
+    "v": Json(v),
+    "last_post_clip_gradient": Json(gradient),
+    "bias_corrected_rms": Json(rms),
+    "rms_divided_by_adam_epsilon": Json(rms / 0.00000001),
+    "reconstructed_last_update_f64": Json(0.0002 * first / (rms + 0.00000001)),
+  }
+}
+
+///|
+fn verify_report(
+  report : Comparison,
+  full : Json,
+  split : Json,
+) -> Array[Compared] raise {
+  let phases = [
+    "world-1", "world-2", "actor-1-probe", "actor-1", "actor-2-probe", "actor-2",
+  ]
+  guard report.format == "moonrobo.microbatch-numerical-comparison.v1" &&
+    !report.passed &&
+    report.profile == "paper-cuda" &&
+    report.absolute_tolerance == 0.000002 &&
+    report.relative_tolerance == 0.0002 &&
+    report.reference == "full" &&
+    report.mismatches > 0L &&
+    report.mismatches <= 128L &&
+    report.records_verified_by_sha256 &&
+    report.input_and_initial_state_identity_exact &&
+    report.phases.map(p => p.phase) == phases else {
+    fail("unsupported frozen comparison; original failure must remain visible")
+  }
+  for
+    key in [
+      "format", "profile", "cuda_device", "precision", "seed", "logical_batch", "config",
+      "input_identity", "initial_shared_state", "phases", "plugin_sha256", "binary_sha256",
+      "absolute_tolerance", "relative_tolerance", "critic_optimizer_updates",
+    ] {
+    guard field(full, key) == field(split, key) else {
+      fail("run identity differs: " + key)
+    }
+  }
+  guard field(full, "format") == "moonrobo.microbatch-numerical-run.v1" &&
+    field(full, "profile") == "paper-cuda" &&
+    field(full, "completed") == true &&
+    field(split, "completed") == true &&
+    field(full, "mode") == "full" &&
+    field(split, "mode") == "split" &&
+    field(full, "logical_batch") == 4 &&
+    field(full, "phases") == Json(phases) &&
+    field(full, "absolute_tolerance") == 0.000002 &&
+    field(full, "relative_tolerance") == 0.0002 &&
+    field(full, "critic_optimizer_updates") == 40 &&
+    field(full, "execution") ==
+    Json({ "world_microbatch": 0, "actor_microbatch": 0 }) &&
+    field(split, "execution") ==
+    Json({ "world_microbatch": 2, "actor_microbatch": 2 }) else {
+    fail("not the frozen full/split CUDA gate")
+  }
+  let targets = []
+  let mut values = 0L
+  let mut mismatches = 0L
+  for phase in report.phases {
+    guard phase.optimizer_metadata_exact &&
+      phase.normalizer_counts_exact &&
+      phase.records.length() > 0 &&
+      phase.records.length() <= 512 else {
+      fail("phase metadata inconsistent")
+    }
+    let names : Map[String, Bool] = Map([])
+    for r in phase.records {
+      guard !names.contains(r.name) else {
+        fail("duplicate frozen comparison record")
+      }
+      names[r.name] = true
+      guard r.values >= 0L &&
+        r.values <= 16777216L &&
+        r.mismatches >= 0L &&
+        r.mismatches <= r.values else {
+        fail("invalid comparison counts")
+      }
+      values += r.values
+      mismatches += r.mismatches
+      if r.mismatches > 0L {
+        guard (phase.phase == "actor-1" || phase.phase == "actor-2") &&
+          r.name == "critic-0-kind0" else {
+          fail("failure extends beyond this bounded critic diagnostic")
+        }
+      }
+      if (phase.phase == "actor-1" || phase.phase == "actor-2") &&
+        r.name == "critic-0-kind0" {
+        guard r.shape == [256, 914] && r.values == 233984L else {
+          fail("critic first-layer comparison shape differs")
+        }
+        targets.push(r)
+      }
+    }
+  }
+  guard targets.length() == 2 &&
+    values == report.values_compared &&
+    mismatches == report.mismatches else {
+    fail("comparison aggregate mismatch")
+  }
+  targets
+}
+
+///|
+async fn diagnose(root : String, metadata_only : Bool) -> Json {
+  guard root.has_prefix("/") &&
+    @fs.realpath(root) == root &&
+    @fs.kind(root) is Directory else {
+    fail("ROOT must be canonical absolute directory")
+  }
+  let identities : Map[String, String] = Map([])
+  let verified : Map[String, String] = Map([])
+  let (raw_report, sha) = json_file(root + "/comparison.json")
+  identities[root + "/comparison.json"] = sha
+  let report : Comparison = @json.from_json(raw_report)
+  let (full, full_sha) = json_file(root + "/full/run.json")
+  let (split, split_sha) = json_file(root + "/split/run.json")
+  identities[root + "/full/run.json"] = full_sha
+  identities[root + "/split/run.json"] = split_sha
+  let expected = verify_report(report, full, split)
+  if metadata_only {
+    return {
+      "format": "moonrobo.microbatch-critic-diagnostic-metadata.v1",
+      "original_passed": false,
+      "original_mismatches": Json(report.mismatches),
+      "metadata_identities": Json(identities),
+      "sidecars_read": false,
+    }
+  }
+  let phases : Array[Json] = []
+  let mut observed = 0
+  for iteration in 1..<=2 {
+    let phase = "actor-\{iteration}"
+    let a = snapshot(root + "/full", phase, identities)
+    let b = snapshot(root + "/split", phase, identities)
+    guard a.optimizer_metadata == b.optimizer_metadata &&
+      a.normalizer_counts == b.normalizer_counts else {
+      fail("actual snapshot optimizer/norm metadata differs")
+    }
+    let options = adam_options(a, 20 * iteration)
+    ignore(adam_options(b, 20 * iteration))
+    let ar = root + "/full/" + phase
+    let br = root + "/split/" + phase
+    let failures = find_mismatches(
+      ar,
+      br,
+      record(a, "critic-0-kind0", [256, 914]),
+      record(b, "critic-0-kind0", [256, 914]),
+      expected[iteration - 1],
+      verified,
+    )
+    observed += failures.length()
+    let indices = failures.map(f => f.index)
+    let columns : Array[Int32] = []
+    for f in failures {
+      if !columns.contains(f.column) {
+        columns.push(f.column)
+      }
+    }
+    columns.sort()
+    let moments = []
+    for name in ["critic-0-kind1", "critic-0-kind2", "critic-0-gradient"] {
+      moments.push(
+        (
+          selected(ar, record(a, name, [256, 914]), indices, verified),
+          selected(br, record(b, name, [256, 914]), indices, verified),
+        ),
+      )
+    }
+    let weights : Array[Json] = Array::makei(failures.length(), i => {
+      "failure": Json(failures[i]),
+      "full_adam": adam_diagnostic(
+        moments[0].0[i],
+        moments[1].0[i],
+        moments[2].0[i],
+        20 * iteration,
+      ),
+      "split_adam": adam_diagnostic(
+        moments[0].1[i],
+        moments[1].1[i],
+        moments[2].1[i],
+        20 * iteration,
+      ),
+    })
+    let probe = phase + "-probe"
+    let ap = snapshot(root + "/full", probe, identities)
+    let bp = snapshot(root + "/split", probe, identities)
+    let apr = root + "/full/" + probe
+    let bpr = root + "/split/" + probe
+    let selected_indices = Array::makei(132 * columns.length(), i => {
+      i / columns.length() * 914 + columns[i % columns.length()]
+    })
+    let ai = selected(
+      apr,
+      record(ap, "critic-input", [132, 914]),
+      selected_indices,
+      verified,
+    )
+    let bi = selected(
+      bpr,
+      record(bp, "critic-input", [132, 914]),
+      selected_indices,
+      verified,
+    )
+    let am = selected(
+      apr,
+      record(ap, "updated-critic-mean", [914]),
+      columns,
+      verified,
+    )
+    let bm = selected(
+      bpr,
+      record(bp, "updated-critic-mean", [914]),
+      columns,
+      verified,
+    )
+    let av = selected(
+      apr,
+      record(ap, "updated-critic-variance", [914]),
+      columns,
+      verified,
+    )
+    let bv = selected(
+      bpr,
+      record(bp, "updated-critic-variance", [914]),
+      columns,
+      verified,
+    )
+    let am_actual = selected(
+      ar,
+      record(a, "norm-4-mean", [914]),
+      columns,
+      verified,
+    )
+    let bm_actual = selected(
+      br,
+      record(b, "norm-4-mean", [914]),
+      columns,
+      verified,
+    )
+    let av_actual = selected(
+      ar,
+      record(a, "norm-4-variance", [914]),
+      columns,
+      verified,
+    )
+    let bv_actual = selected(
+      br,
+      record(b, "norm-4-variance", [914]),
+      columns,
+      verified,
+    )
+    let column_reports : Array[Json] = []
+    for j, col in columns {
+      let af = Array::makei(132, i => ai[i * columns.length() + j])
+      let bf = Array::makei(132, i => bi[i * columns.length() + j])
+      let an = reconstructed_normalized(af, am[j], av[j])
+      let bn = reconstructed_normalized(bf, bm[j], bv[j])
+      let mut worst = 0
+      for i in 0..<132 {
+        if (an[i] - bn[i]).abs() > (an[worst] - bn[worst]).abs() {
+          worst = i
+        }
+      }
+      let rows = Array::makei(8, i => i)
+      if !rows.contains(worst) {
+        rows.push(worst)
+      }
+      let samples = rows.map(i => {
+        (
+          {
+            "flat_row": Json(i),
+            "time": Json(i / 4),
+            "sample": Json(i % 4),
+            "full": Json(af[i]),
+            "split": Json(bf[i]),
+            "normalized_f64_full": Json(an[i]),
+            "normalized_f64_split": Json(bn[i]),
+          } : Json)
+      })
+      column_reports.push({
+        "column": Json(col),
+        "feature": Json(feature(col)),
+        "raw": summary(af, bf),
+        "normalized_f64_reconstruction": summary(an, bn),
+        "samples_first_two_times_and_worst": Json(samples),
+        "full_probe_mean": Json(am[j]),
+        "split_probe_mean": Json(bm[j]),
+        "full_probe_variance": Json(av[j]),
+        "split_probe_variance": Json(bv[j]),
+        "full_production_mean": Json(am_actual[j]),
+        "split_production_mean": Json(bm_actual[j]),
+        "full_production_variance": Json(av_actual[j]),
+        "split_production_variance": Json(bv_actual[j]),
+        "full_std": Json((av[j] + 0.0001).sqrt()),
+        "split_std": Json((bv[j] + 0.0001).sqrt()),
+      })
+    }
+    let trajectories : Array[Json] = []
+    for
+      (name, shape) in [
+        ("gae", [32, 4]),
+        ("values", [33, 4]),
+        ("rewards", [32, 4]),
+        ("failures", [32, 4]),
+      ] {
+      let count = shape[0] * shape[1]
+      let idx = Array::makei(count, i => i)
+      let x = selected(apr, record(ap, name, shape), idx, verified)
+      let y = selected(bpr, record(bp, name, shape), idx, verified)
+      trajectories.push({ "name": Json(name), "summary": summary(x, y) })
+    }
+    phases.push({
+      "phase": Json(phase),
+      "mismatches": Json(failures.length()),
+      "adam_options": options,
+      "coordinates": Json(weights),
+      "input_columns": Json(column_reports),
+      "probe_trajectories": Json(trajectories),
+    })
+  }
+  guard observed.to_int64() == report.mismatches else {
+    fail("did not account for every original mismatch")
+  }
+  {
+    "format": "moonrobo.microbatch-critic-diagnostic.v1",
+    "scope": "read-only frozen selected critic evidence; no GPU, training or tolerance change",
+    "original_passed": false,
+    "original_mismatches": Json(report.mismatches),
+    "original_values_compared": Json(report.values_compared),
+    "absolute_tolerance": 0.000002,
+    "relative_tolerance": 0.0002,
+    "all_original_mismatch_coordinates_verified": true,
+    "full_comparison_rerun": false,
+    "metadata_identities": Json(identities),
+    "selected_sidecars_sha256": Json(verified),
+    "read_chunk_bytes": 65536,
+    "max_selected_values_per_member": 8448,
+    "phases": Json(phases),
+    "reconstruction_scope": "normalized inputs and final Adam update use CPU Float64 on exported Float32 values; they are diagnostics, not exact reproductions of Float32 kernels",
+    "limits": [
+      "GAE trajectories are the retained extra probes, not captured critic inputs at every optimizer step",
+      "only final post-clip critic gradients and moments were retained; earlier 19 steps per actor update cannot be reconstructed",
+      "SHA verification covers listed selected sidecars only; original full comparison remains failed",
+      "near-constant-feature amplification and Adam sensitivity remain hypotheses until evidence is examined",
+    ],
+  }
+}
+
+///|
+fn self_test() -> Unit raise {
+  assert_eq(139074 / 914, 152)
+  assert_eq(feature(139074 % 914), "reference-relative-rotation6d[1]")
+  assert_eq(feature(202141 % 914), "reference-relative-rotation6d[2]")
+  assert_eq(feature(184), "preview-goal[0,0]")
+  assert_eq(reconstructed_normalized([1.0], 1.0, 0.0), [0.0])
+  assert_eq(field(summary([0.0, 2.0], [0.0, 1.0]), "worst_row"), 1)
+  let state = adam_diagnostic(0.0, 0.0, 0.0, 20)
+  assert_eq(field(state, "reconstructed_last_update_f64"), 0.0)
+  let negative = try {
+    ignore(adam_diagnostic(0.0, -1.0, 0.0, 20))
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(negative)
+  assert_true(
+    (0.0012809251202270389 - 0.001284209662117064).abs() >
+    0.000002 + 0.0002 * 0.0012809251202270389,
+  )
+  println("critic diagnostic CPU arithmetic self-test passed; no files or GPU")
+}
+
+///|
+async fn main {
+  match @env.args() {
+    [_, "--self-test"] => self_test()
+    [_, "--metadata-only", root] =>
+      println(diagnose(root, true).stringify(indent=2))
+    [_, root] => println(diagnose(root, false).stringify(indent=2))
+    _ =>
+      fail(
+        "usage: diagnose_native_microbatch_critic.mbtx ABS_MICROBATCH_ROOT | --metadata-only ABS_ROOT | --self-test; stdout only",
+      )
+  }
+}

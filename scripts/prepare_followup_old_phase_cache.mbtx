@@ -1,0 +1,37 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/world-ln-fk-20261026"
+  let source = @fs.read_file(root + "/advise_followup_legacy_cuda_v2.mbtx")
+    .text()
+    .replace_all(
+      old="sha256:c76815627562a180052cef8e7e07edb37fe8547d83158eed6182ebd99bb8385d",
+      new="sha256:e84e3c0d2b553e29ffa04fb6d738a3b635afa66e3d23824bfc6c6304e198ad46",
+    )
+    .replace_all(
+      old="[\"dffbda56fb78\", \"e305d0063ccf\", \"f81f943a3994\", \"b3cd72281818\", \"f299a049bb76\", \"d4a34f1a0155\", \"da79185eca0c\", \"a3897c7e3e6c\", \"f77e67751dca\", \"6e5171b27093\", \"92a92c900e99\", \"d55b4a886252\"]",
+      new="[\"2ce003af94de\", \"6a1e0bad9f42\", \"39b56123aac4\", \"b2c1b51e8ee7\", \"2c4aedde4c3f\", \"ace550ed242a\", \"b40b887a8754\", \"d175abf1cc11\", \"56d521b17f06\", \"1b416893e21d\", \"53294e0abb78\", \"5d1a8df7d9b2\"]",
+    )
+    .replace_all(
+      old="cache-followup-ended-parity-cuda-20261026-b.json",
+      new="cache-followup-ended-old-phase-cuda-20261026-a.json",
+    )
+    .replace_all(
+      old="parity and paper-batch",
+      new="prior SMC phase-trace and microbatch numerical",
+    )
+  let path = root + "/advise_followup_old_phase_cuda.mbtx"
+  @fs.write_file(path, source, create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o", "ControlPath=/tmp/moonrobo-operator-179.sock", path, "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_followup_old_phase_cuda.mbtx",
+    ]) ==
+    0 else {
+    fail("copy")
+  }
+}

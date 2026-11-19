@@ -1,0 +1,237 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+///|
+fn fields(value : Json) -> Map[String, Json] raise {
+  guard value is Object(values) else { fail("object required") }
+  values
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard fields(value).get(key) is Some(value) else { fail("missing " + key) }
+  value
+}
+
+///|
+fn digest(value : String) -> String {
+  let hash = @crypto.SHA256::new()
+  hash.update(@utf8.encode(value))
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+fn g_spec(source : Json) -> Json raise {
+  let spec = @json.parse(source.stringify())
+  guard field(spec, "format") == Json("moonrobo.smc-native-pairs.spec.v1") &&
+    field(field(spec, "protocol"), "pi_batch") == Json(512) &&
+    field(spec, "abba_blocks") == Json(1) else {
+    fail("exact F shared512 ABBA source required")
+  }
+  guard field(spec, "pins") is Array(pins) else { fail("pins required") }
+  for
+    (role, suffix, sha) in [
+      (
+        "native-trainer", "trainer", "58739d902a28e65b1a7d71594ea98f78246a74d10fcdf5fa9e6bef4dcee4ab8d",
+      ),
+      (
+        "native-tensor-plugin", "libmoonrobo_learning_tensor.so", "c3cfbe79777db5bcc1f4e6ee1437f597ddae49f80758ccae9ce4f227d1f42804",
+      ),
+      (
+        "frozen-native-source-archive", "source.tar.gz", "ffb66f8b83e1edda92ad9a4fcb9672728281fa466074d51108bebe2764eb2637",
+      ),
+    ] {
+    let matches = pins.filter(pin => field(pin, "role") == Json(role))
+    guard matches.length() == 1 &&
+      field(matches[0], "path") ==
+      Json(
+        "/home/wlc004s/moonrobo/private/smc-native-aligned-20261024-f/" + suffix,
+      ) &&
+      field(matches[0], "sha256") == Json(sha) else {
+      fail("frozen F identity differs: " + role)
+    }
+  }
+  let toggles = [
+    "reuse_geometry", "body_orientation_batched", "resident_reference_cache", "adam_checked_norm",
+    "defer_scalar_metrics", "world_staging_batch",
+  ]
+  for key in ["a", "b"] {
+    let side = field(spec, key)
+    guard field(side, "kind") == Json("native") else {
+      fail("native/native pair required")
+    }
+    let config = field(side, "expected_config")
+    for toggle in toggles {
+      guard field(config, toggle) == Json(key == "b") else {
+        fail("six F optimization switches required")
+      }
+    }
+    for
+      (name, value) in [
+        ("num_envs", Json(256)),
+        ("iterations", Json(60)),
+        ("wm_only_iters", Json(20)),
+        ("warmup_steps", Json(64)),
+        ("wm_batch", Json(2048)),
+        ("wm_window", Json(8)),
+        ("horizon", Json(32)),
+        ("pi_batch", Json(512)),
+        ("pi_microbatch", Json(0)),
+        ("wm_microbatch", Json(0)),
+        ("memory_admission_percent", Json(80)),
+        ("telemetry_max_samples", Json(512)),
+        ("resident_reference_max_mib", Json(1376)),
+        ("world_staging_max_mib", Json(128)),
+        ("serial_optimizer_save_workspace", Json(true)),
+        ("amp", Json("none")),
+        ("precision", Json("float32")),
+        ("allow_tf32", Json(true)),
+        ("critic_cuda_graph", Json(false)),
+        ("layer_norm_mode", Json("expanded")),
+      ] {
+      guard field(config, name) == value else {
+        fail("F source configuration differs: " + name)
+      }
+    }
+    fields(config)["pi_batch"] = Json(4096)
+    fields(config)["pi_microbatch"] = Json(512)
+    fields(config)["profile"] = Json(
+      "native-smc99-n256-fp32-logical4096-micro512-F-six-optimization-short",
+    )
+    fields(config)["scope"] = Json(
+      "G native/native six-optimization ABBA using frozen F binaries; logical4096/micro512 on both sides; not numerical equivalence or convergence",
+    )
+    fields(side)["label"] = Json(
+      if key == "a" {
+        "native-F-original-logical4096-micro512"
+      } else {
+        "native-F-six-optimizations-logical4096-micro512"
+      },
+    )
+  }
+  fields(field(spec, "protocol"))["pi_batch"] = Json(4096)
+  fields(spec)["name"] = Json(
+    "native-G-F-binaries-logical4096-micro512-six-optimizations-abba",
+  )
+  fields(spec)["batch_layout"] = {
+    "logical_actor_batch": 4096,
+    "baseline_actor_physical_batch": 512,
+    "candidate_actor_physical_batch": 512,
+    "actor_chunks_both_sides": 8,
+    "physical_chunking_matches": true,
+  }
+  guard field(spec, "known_differences") is Array(notes) else {
+    fail("notes required")
+  }
+  notes.push(
+    Json(
+      "G changes the workload from shared512/full to logical4096 with micro512 on BOTH native sides, using the exact same F trainer/plugin/source archive. Both sides accumulate eight actor chunks per logical policy update; no full4096-memory claim is made. This is a separate ABBA and cannot be merged with F512 or E cross-runtime samples.",
+    ),
+  )
+  notes.push(
+    Json(
+      "All 60 rounds are retained; throughput uses rounds41–60, excluding rounds1–20 world-only and21–40 actor warmup. Independent execution-profile diagnostics are excluded. Workload counters must be physical54784, world600, modelslots9830400, actor40, imagined5242880 and critic800.",
+    ),
+  )
+  notes.push(
+    Json(
+      "Larger logical actor/critic storage requires fresh preflight and runtime admission. Existing80-percent utilization/16GiB reserve and100GiB zero-swap12CPU guards remain unchanged; no batch shrink, cap growth, memory-pressure workaround or selected-successful-run summary is allowed.",
+    ),
+  )
+  let a = fields(field(field(spec, "a"), "expected_config"))
+  let b = fields(field(field(spec, "b"), "expected_config"))
+  guard a.length() == b.length() else { fail("config shapes differ") }
+  let differences = [ for key, value in a if b.get(key) != Some(value) => key ]
+  guard differences.length() == 6 &&
+    differences.iter().all(key => toggles.contains(key)) else {
+    fail("only six bool differences allowed")
+  }
+  guard field(spec, "pins") == field(source, "pins") else {
+    fail("G must preserve every F pin")
+  }
+  spec
+}
+
+///|
+async fn prepare(source_path : String, target : String) -> Unit {
+  guard @fs.kind(source_path, follow_symlink=false) == Regular else {
+    fail("regular F spec required")
+  }
+  let file = @fs.open(source_path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 2097152L else {
+    fail("F spec exceeds 2 MiB bound")
+  }
+  let original = @utf8.decode(file.read_exactly_at(size.to_int(), position=0L))
+  guard digest(original) ==
+    "597e455aeae9208159f1568141a1cc3f2727ea2f463fdb03168fc4f06ad828a7" else {
+    fail("exact frozen F source SHA required")
+  }
+  let spec = g_spec(@json.parse(original))
+  guard target ==
+    "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-native-aligned-20261024-g" &&
+    !@fs.exists(target) else {
+    fail("fresh scoped G output directory required")
+  }
+  let serialized = spec.stringify(indent=2) + "\n"
+  @fs.mkdir(target)
+  for
+    (name, content) in [
+      ("spec-native-optimized4096-micro512.json", serialized),
+      (
+        "native-baseline-config.json",
+        field(field(spec, "a"), "expected_config").stringify(indent=2) + "\n",
+      ),
+      (
+        "native-candidate-config.json",
+        field(field(spec, "b"), "expected_config").stringify(indent=2) + "\n",
+      ),
+      (
+        "derivation.json",
+        (
+          {
+            "format": "moonrobo.native4096-six-optimization-derivation.v1",
+            "source_spec_path": Json(source_path),
+            "source_spec_sha256": Json(digest(original)),
+            "spec_sha256": Json(digest(serialized)),
+            "frozen_build": "F",
+            "new_binary_created": false,
+            "six_bool_differences_only": true,
+            "actor_logical_batch_both_sides": 4096,
+            "actor_microbatch_both_sides": 512,
+            "memory_guards_unchanged": true,
+            "preflight_passed": false,
+            "training_run": false,
+            "performance_claim": false,
+            "old_evidence_preserved": true,
+          } : Json).stringify(indent=2) +
+        "\n",
+      ),
+    ] {
+    @fs.write_file(
+      target + "/" + name,
+      content,
+      create_mode=CreateNew,
+      sync=Full,
+    )
+  }
+  println(
+    "Prepared G logical4096/micro512 ABBA with unchanged F pins; no remote or GPU actions",
+  )
+}
+
+///|
+async fn main {
+  match @env.args()[1:].to_owned() {
+    ["--prepare", source, target] => prepare(source, target)
+    _ => fail("usage: --prepare F_SPEC FRESH_G_OUTPUT_DIRECTORY")
+  }
+}

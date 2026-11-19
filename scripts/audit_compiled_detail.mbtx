@@ -1,0 +1,81 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/compiled-vjp-detail-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let original = @fs.read_file(out + "/run_frozen_compilation_b.mbtx").text()
+  let parts = original.split("async fn main {").to_array()
+  assert_eq(parts.length(), 2)
+  let main_code =
+    #|async fn main {
+    #|  let result:Array[Json]=[]
+    #|  for suffix in ["a","b"] {
+    #|    let root="/home/wlc004s/moonrobo/runs/hotspot-mlp-frozen2-smc-bf16-"+suffix
+    #|    guard field(read_json(root+"/completion.json"),"passed")==Json(true) && field(read_json(root+"/result.json"),"passed")==Json(true) else {fail("incomplete numeric gate")}
+    #|    guard field(read_json(root+"/compilation-snapshot.json"),"files") is Array(files) else {fail("cache list")}
+    #|    let changes:Array[Json]=[]
+    #|    for entry in files {
+    #|      let target=text(field(entry,"target"))
+    #|      guard target.has_prefix(root+"/") && @fs.realpath(target)==target else {fail("audit path")}
+    #|      let actual=hash_file(target)
+    #|      if Json(actual)!=field(entry,"sha256") {changes.push({"target":Json(target),"before":field(entry,"sha256"),"after":Json(actual)})}
+    #|    }
+    #|    result.push({"run":Json(root),"files":Json(files.length()),"changes":Json(changes)})
+    #|  }
+    #|  write_json("/home/wlc004s/moonrobo/private/shared-compute-20261026-a/frozen-compilation-audit-a.json",{"runs":Json(result)})
+    #|  println("cache audit complete")
+    #|}
+  @fs.write_file(
+    out + "/audit_frozen_compilation_a.mbtx",
+    parts[0].to_owned() + main_code,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/audit_frozen_compilation_a.mbtx",
+      "wlc004s@192.168.2.179:" + base + "/audit_frozen_compilation_a.mbtx",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179",
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/audit_frozen_compilation_a.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/cache-audit.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/cache-audit.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179:" + base + "/frozen-compilation-audit-a.json",
+      out + "/cache-audit.json",
+    ]),
+    0,
+  )
+}

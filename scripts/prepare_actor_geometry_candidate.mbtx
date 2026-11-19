@@ -1,0 +1,438 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, rev] &&
+    ["prepare", "build", "run"].contains(mode) &&
+    (
+      ["b", "c", "d", "e", "f", "g", "h", "i", "j"].contains(rev) ||
+      (mode == "run" && rev == "c2")
+    ) else {
+    fail("prepare/build/run b/c; run c2 reuses c binary")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let stem = "actor_geometry_" + (if rev == "c2" { "c" } else { rev })
+  let label = "geometry-native-" + rev
+  if mode == "prepare" {
+    let fixture = @fs.read_file(out + "/actor_reward_reference_fixture_a.mbt")
+      .text()
+      .replace_all(
+        old="context.pack_reference_bodies",
+        new="context.with_native_cross(true).pack_reference_bodies",
+      )
+    let fixture = if ["c", "d", "e", "f", "g", "h", "i", "j"].contains(rev) {
+      fixture.replace_all(
+        old="context.with_smc_fk_layout(true)",
+        new="context.with_smc_critic_layout(true).with_smc_fk_layout(true)",
+      )
+    } else {
+      fixture
+    }
+    let fixture = if ["d", "e", "f", "g", "h", "i", "j"].contains(rev) {
+      fixture.replace_all(
+        old="  let upload =",
+        new="  learner.critic.norm.smc_statistics=true\n  let upload =",
+      )
+    } else {
+      fixture
+    }
+    let fixture = if ["h", "i", "j"].contains(rev) {
+      fixture.replace_all(
+        old="  let rows : Array[Json] = []",
+        new=(
+          #|  let features_root="/workspace/moonrobo/runs/hotspot-mlp-actor-critic-features-a/features"
+          #|  let features_manifest : Map[String,Json] = @json.from_json(@json.parse(@fs.read_file(features_root+"/manifest.json").text()))
+          #|  assert_eq(features_manifest["model_contract"],manifest["model_contract"])
+          #|  learner.compiled_critic_features=Some(backend.load_compiled_block(features_root,cuda_device=0))
+          #|  let rows : Array[Json] = []
+        ),
+      )
+    } else {
+      fixture
+    }
+    let fixture = if ["i", "j"].contains(rev) {
+      fixture.replace_all(
+        old="  let rows : Array[Json] = []",
+        new="  learner.smc_gae_order=true\n  let rows : Array[Json] = []",
+      )
+    } else {
+      fixture
+    }
+    let fixture = if rev == "j" {
+      fixture.replace_all(
+        old="  let rows : Array[Json] = []",
+        new=(
+          #|  learner.smc_adam=true
+          #|  let safety_p=backend.from_values([2],[1.0,2.0],cuda_device=0,requires_grad=true,dtype=Float32)
+          #|  let safety_opt=backend.adam([safety_p])
+          #|  let safety_before=safety_opt.audit_metadata()
+          #|  safety_p.mul(backend.from_values([2],[0.0,0.0],cuda_device=0,requires_grad=false,dtype=Float32).div(backend.from_values([2],[0.0,0.0],cuda_device=0,requires_grad=false,dtype=Float32))).sum().backward()
+          #|  let rejected=try {safety_opt.step_smc();false} catch {_=>true}
+          #|  assert_true(rejected)
+          #|  assert_eq(safety_p.values(),[1.0,2.0])
+          #|  assert_eq(safety_opt.audit_metadata(),safety_before)
+          #|  let block=backend.load_compiled_block(features_root,cuda_device=0)
+          #|  let grad_r=backend.from_values([135168,3,3],Array::make(135168*9,0.0),cuda_device=0,requires_grad=true,dtype=Float32)
+          #|  let rejected=try {ignore(block.forward(Array::make(16,grad_r)));false} catch {_=>true}
+          #|  assert_true(rejected)
+          #|  let rows : Array[Json] = []
+        ),
+      )
+    } else {
+      fixture
+    }
+    let mut build = @fs.read_file(out + "/build_actor_reward_reference_a.mbtx")
+      .text()
+      .replace_all(old="reward-reference-native-a", new=label)
+      .replace_all(
+        old="actor_reward_reference_fixture_a.mbt",
+        new=stem + "_fixture.mbt",
+      )
+      .replace_all(
+        old="actor_context_reward_reference_a.mbt",
+        new=stem + "_context.mbt",
+      )
+    let mut runner = @fs.read_file(
+        out + "/run_actor_reward_reference_native_a.mbtx",
+      )
+      .text()
+      .replace_all(
+        old="run_actor_reward_reference_native_a.mbtx",
+        new="run_" + stem + ".mbtx",
+      )
+      .replace_all(
+        old="actor-step-gate-reward-reference-native-a",
+        new="actor-step-gate-" + label,
+      )
+      .replace_all(
+        old="actor_reward_reference_fixture_a.mbt",
+        new=stem + "_fixture.mbt",
+      )
+    if ["d", "e", "f", "g", "h", "i", "j"].contains(rev) {
+      let copies : Array[String] = []
+      for
+        (name, path) in [
+          (
+            "actor_numeric_networks_d.mbt", "src/learning_aligned_gpu/networks.mbt",
+          ),
+          (
+            "actor_numeric_microbatch_test_d.mbt", "src/learning_aligned_gpu/microbatch_gate_wbtest.mbt",
+          ),
+          ("actor_numeric_tensor_d.mbt", "src/learning_tensor/batched.mbt"),
+          (
+            "actor_numeric_tensor_test_d.mbt", "src/learning_tensor/tensor_test.mbt",
+          ),
+          (
+            "actor_numeric_geometry_test_d.mbt", "src/learning_aligned_gpu/geometry/geometry_test.mbt",
+          ),
+        ] {
+        let name = name.replace_all(old="_d.mbt", new="_" + rev + ".mbt")
+        @fs.write_file(
+          out + "/" + name,
+          @fs.read_file(path),
+          create_mode=CreateNew,
+        )
+        assert_eq(
+          @process.run("scp", [
+            "-q",
+            "-o",
+            "ControlPath=/tmp/moonrobo-operator-179.sock",
+            out + "/" + name,
+            host + ":" + base + "/" + name,
+          ]),
+          0,
+        )
+        copies.push(
+          "  run(\"copy-" +
+          name +
+          "\",\"cp\",[base+\"/" +
+          name +
+          "\",ws+\"/" +
+          path +
+          "\"])\n",
+        )
+      }
+      build = build
+        .replace_all(
+          old="  container(\"actor-step-build-" + label + "\"",
+          new=copies.join("") + "  container(\"actor-step-build-" + label + "\"",
+        )
+        .replace_all(
+          old="libmoonrobo_coefficient_full_a.so",
+          new="libmoonrobo_actor_numeric_a.so",
+        )
+        .replace_all(
+          old="\"src/learning_aligned_gpu/cmd\",\"src/learning_aligned_gpu\"]",
+          new="\"src/learning_aligned_gpu/cmd\",\"src/learning_aligned_gpu\",\"src/learning_tensor\",\"src/learning_aligned_gpu/geometry\"]",
+        )
+        .replace_all(
+          old="  run(\"actor-step-binary-" + label + "\"",
+          new=(
+              #|  container("actor-geometry-regression-d",ws.replace_all(old=base+"/workspace",new="/workspace")+"/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/geometry/geometry.blackbox_test.exe",["geometry_test.mbt:0-1"])
+              #|  container("actor-variance-regression-d",ws.replace_all(old=base+"/workspace",new="/workspace")+"/_build/native/release/test/vectie/moonrobo/src/learning_tensor/learning_tensor.blackbox_test.exe",["tensor_test.mbt:5-6"])
+              #|  for name in ["actor-geometry-regression-d","actor-variance-regression-d"] {let r=@fs.read_file(base+"/"+name+".stdout.log").text();guard r.contains("\"message\":\"\"")&&!r.contains("SKIP") else {fail("regression failed")}}
+            ) +
+            "\n  run(\"actor-step-binary-" +
+            label +
+            "\"",
+        )
+      runner = runner
+        .replace_all(
+          old="libmoonrobo_compiled_window_e.so",
+          new="libmoonrobo_actor_numeric_a.so",
+        )
+        .replace_all(
+          old="  e[\"ACTOR_NATIVE_BOUNDARIES\"]",
+          new="  e[\"MOONROBO_AOTI_ADJOINTS\"]=\"/pair\"\n  e[\"ACTOR_NATIVE_BOUNDARIES\"]",
+        )
+      build = build.replace_all(old="regression-d", new="regression-" + rev)
+    }
+    if ["h", "i", "j"].contains(rev) {
+      let mut learning = @fs.read_file(
+          out + "/actor_reward_reference_learning_a.mbt",
+        )
+        .text()
+        .replace_all(
+          old="  mut compiled_actor_reward :",
+          new="  mut compiled_critic_features : @tensor.CompiledBlock?\n  mut compiled_actor_reward :",
+        )
+        .replace_all(
+          old="    compiled_actor_reward: None,",
+          new="    compiled_critic_features: None,\n    compiled_actor_reward: None,",
+        )
+        .replace_all(
+          old="    let input = self.backend",
+          new="    let input = match self.run_compiled_critic_features(states,batch,xi_n) {Some(input)=>input\n    None=> self.backend",
+        )
+        .replace_all(
+          old="      .stop_gradient()\n    let norm_range",
+          new="      .stop_gradient()\n    }\n    let norm_range",
+        )
+      if ["i", "j"].contains(rev) {
+        let current = @fs.read_file("src/learning_aligned_gpu/learning.mbt").text()
+        let gae = "pub fn lambda_returns(" +
+          current.split("pub fn lambda_returns(").to_array()[1]
+          .to_owned()
+          .split("///|")
+          .to_array()[0].to_owned()
+        let old = "pub fn lambda_returns(" +
+          learning.split("pub fn lambda_returns(").to_array()[1]
+          .to_owned()
+          .split("///|")
+          .to_array()[0].to_owned()
+        learning = learning
+          .replace_all(old~, new=gae)
+          .replace_all(
+            old="  mut compiled_critic_features :",
+            new="  mut smc_gae_order : Bool\n  mut compiled_critic_features :",
+          )
+          .replace_all(
+            old="    compiled_critic_features: None,",
+            new="    smc_gae_order: false,\n    compiled_critic_features: None,",
+          )
+          .replace_all(
+            old="        lam=c.lam,",
+            new="        lam=c.lam,\n        smc_order=self.smc_gae_order,",
+          )
+      }
+      if rev == "j" {
+        learning = learning
+          .replace_all(
+            old="  mut smc_gae_order :",
+            new="  mut smc_adam : Bool\n  mut smc_gae_order :",
+          )
+          .replace_all(
+            old="    smc_gae_order: false,",
+            new="    smc_adam: false,\n    smc_gae_order: false,",
+          )
+      }
+      for
+        (name, content) in [
+          (stem + "_learning.mbt", learning),
+          (
+            stem + "_helper.mbt",
+            @fs.read_file("src/learning_aligned_gpu/compiled_actor.mbt").text(),
+          ),
+        ] {
+        @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+        assert_eq(
+          @process.run("scp", [
+            "-q",
+            "-o",
+            "ControlPath=/tmp/moonrobo-operator-179.sock",
+            out + "/" + name,
+            host + ":" + base + "/" + name,
+          ]),
+          0,
+        )
+      }
+      build = build
+        .replace_all(
+          old="actor_reward_reference_learning_a.mbt",
+          new=stem + "_learning.mbt",
+        )
+        .replace_all(
+          old="compiled_actor_reward_reference_a.mbt",
+          new=stem + "_helper.mbt",
+        )
+        .replace_all(
+          old="libmoonrobo_actor_numeric_a.so",
+          new="libmoonrobo_actor_numeric_b.so",
+        )
+      runner = runner
+        .replace_all(
+          old="libmoonrobo_actor_numeric_a.so",
+          new="libmoonrobo_actor_numeric_b.so",
+        )
+        .replace_all(
+          old="  write_json(root + \"/protocol.json\"",
+          new=(
+            #|  let feature_dir="/home/wlc004s/moonrobo/runs/hotspot-mlp-actor-critic-features-a/features"
+            #|  for name in @fs.readdir(feature_dir) {if name.has_suffix(".so")||name.has_suffix(".cubin")||name=="native.spec"||name=="manifest.json" {let path=feature_dir+"/"+name;pins[path]=Json(hash_file(path))}}
+            #|  write_json(root + "/protocol.json"
+          ),
+        )
+    }
+    if rev == "j" {
+      let copies : Array[String] = []
+      for
+        (name, path) in [
+          (
+            "actor_j_optimizer.mbt", "src/learning_aligned_gpu/optimizer_execution.mbt",
+          ),
+          ("actor_j_adam.mbt", "src/learning_tensor/adam_smc.mbt"),
+          ("actor_j_loader.c", "src/learning_tensor/loader.c"),
+          ("actor_j_adam_loader.inc", "src/learning_tensor/adam_smc_loader.inc"),
+          ("actor_j_tensor.pkg", "src/learning_tensor/moon.pkg"),
+          (
+            "actor_j_compiled_test.mbt", "src/learning_tensor/compiled_block_test.mbt",
+          ),
+        ] {
+        @fs.write_file(
+          out + "/" + name,
+          @fs.read_file(path),
+          create_mode=CreateNew,
+        )
+        assert_eq(
+          @process.run("scp", [
+            "-q",
+            "-o",
+            "ControlPath=/tmp/moonrobo-operator-179.sock",
+            out + "/" + name,
+            host + ":" + base + "/" + name,
+          ]),
+          0,
+        )
+        copies.push(
+          "  run(\"copy-" +
+          name +
+          "\",\"cp\",[base+\"/" +
+          name +
+          "\",ws+\"/" +
+          path +
+          "\"])\n",
+        )
+      }
+      build = build
+        .replace_all(
+          old="  container(\"actor-step-build-" + label + "\"",
+          new=copies.join("") + "  container(\"actor-step-build-" + label + "\"",
+        )
+        .replace_all(
+          old="libmoonrobo_actor_numeric_b.so",
+          new="libmoonrobo_actor_numeric_c.so",
+        )
+      runner = runner.replace_all(
+        old="libmoonrobo_actor_numeric_b.so",
+        new="libmoonrobo_actor_numeric_c.so",
+      )
+    }
+    for
+      (name, content) in [
+        (stem + "_fixture.mbt", fixture),
+        (
+          stem + "_context.mbt",
+          @fs.read_file("src/learning_aligned_gpu/geometry/context.mbt").text(),
+        ),
+        ("build_" + stem + ".mbtx", build),
+        ("run_" + stem + ".mbtx", runner),
+      ] {
+      @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+      if name.has_suffix(".mbtx") {
+        assert_eq(
+          @process.run("moon", ["check", "--target", "native", out + "/" + name]),
+          0,
+        )
+      }
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/geometry-" + mode + "-" + rev
+  @fs.mkdir(folder)
+  let command = if mode == "build" {
+    "build_" + stem + ".mbtx"
+  } else {
+    "run_" + stem + ".mbtx -- actor native off 1 actor-" + label + " bf16-full"
+  }
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      command,
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  if mode == "run" {
+    for
+      name in [
+        "result.json", "final.json", "boundaries.json", "completion.json", "training-guard.json",
+        "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+        "protocol.json", "compiled-packages.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-" +
+          label +
+          "/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+  }
+  assert_eq(code, 0)
+}

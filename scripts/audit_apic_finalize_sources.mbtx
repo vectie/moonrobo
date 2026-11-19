@@ -1,0 +1,254 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+struct Source {
+  project : String
+  path : String
+  cached : String
+  sha : String
+  symbols : Array[String]
+}
+
+///|
+fn digest(bytes : Bytes) -> String {
+  let mut result = ""
+  for byte in @crypto.sha256(bytes) {
+    result += byte.to_hex()
+  }
+  result
+}
+
+///|
+/// Passive byte hashes and lexical anchors only. No process/native library,
+/// Python import, model/kernel compilation, numerical work or test execution.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 || (args.length() == 4 && args[3] == "--verify") else {
+    fail("usage: audit_apic_finalize_sources.mbtx REPO CACHE [--verify]")
+  }
+  let root = args[1]
+  let cache = args[2]
+  let prior_bytes = @fs.read_file(
+    root + "/docs/APIC_PHYSICS_SOURCE_EVIDENCE.json",
+  ).binary()
+  let prior = @json.parse(@utf8.decode(prior_bytes))
+  guard prior
+    is {
+      "sources": Array(previous),
+      "mujoco_warp_archive_sha256": String(archive_sha),
+      ..
+    } else {
+    fail("prior pinned physics evidence required")
+  }
+  guard digest(
+      @fs.read_file(cache + "/apic-audit-mujoco_warp-3.15.0.tar.gz").binary(),
+    ) ==
+    archive_sha else {
+    fail(
+      "source archive differs from previously verified official PyPI distribution",
+    )
+  }
+  let sources : Array[Source] = [
+    {
+      project: "Newton",
+      path: "newton/_src/sim/builder.py",
+      cached: "moonrobo-apic-source-review-20261023/builder.py",
+      sha: "",
+      symbols: ["def finalize("],
+    },
+    {
+      project: "Newton",
+      path: "newton/_src/sim/model.py",
+      cached: "moonrobo-pinned-newton-model.py",
+      sha: "1b4fbd7282f3e58ae0e8acfefab1e00faec699ac3946b466803f371ce097207c",
+      symbols: ["def joint_target_q_start(", "def state(", "def control("],
+    },
+    {
+      project: "Newton",
+      path: "newton/_src/sim/state.py",
+      cached: "moonrobo-pinned-newton-state.py",
+      sha: "66c9ec0e29236c924bf1bdd4a8667994c1392dd0e5aa91175d79ffe30ea57359",
+      symbols: ["class State:"],
+    },
+    {
+      project: "Newton",
+      path: "newton/_src/sim/control.py",
+      cached: "moonrobo-pinned-newton-control.py",
+      sha: "8eec6ceee7673bbd98d8fe5c5d711797821aeca84adf0fc5adb31b8d7b4074b8",
+      symbols: ["class Control:"],
+    },
+    {
+      project: "Newton",
+      path: "newton/_src/sim/enums.py",
+      cached: "moonrobo-pinned-newton-enums.py",
+      sha: "",
+      symbols: ["class JointTargetMode", "class BodyFlags"],
+    },
+    {
+      project: "Newton",
+      path: "newton/_src/core/types.py",
+      cached: "moonrobo-pinned-newton-core-types.py",
+      sha: "66e4c36cab0cdd8efc8cc27cd804db344e5ab20cce72e731642b5b84b84e6713",
+      symbols: ["MAXVAL"],
+    },
+  ]
+  for
+    (name, sha, symbols) in [
+      (
+        "collision_primitive.py",
+        "",
+        [
+          "def plane_sphere_wrapper(", "def plane_box_wrapper(", "def sphere_box_wrapper(",
+        ],
+      ),
+      (
+        "collision_primitive_core.py",
+        "4638635965216a19e52a910bccb4a92ad955036eb0525acf7b0ab78dc9f93f5b",
+        [
+          "def plane_sphere(", "def sphere_sphere(", "def sphere_capsule(", "def plane_capsule(",
+          "def plane_box(", "def sphere_box(",
+        ],
+      ),
+      (
+        "collision_core.py",
+        "55bfdc244254624d61c228d70d4fd4dc0d2d6af60af40c6e8ed16e47315e2ea6",
+        [
+          "def write_contact(", "def contact_margin_gap(", "def contact_material_params(",
+          "def contact_params(",
+        ],
+      ),
+      (
+        "math.py",
+        "d08e978993c3d3b5d3f16cb96af94beff519a60a5ea827134b388f30c3a6756c",
+        ["def safe_div("],
+      ),
+      (
+        "types.py",
+        "5ff63b8186bafba2e2d51d5aae84875fb289411d9984f4e06b51813ea088491b",
+        ["class OverflowType"],
+      ),
+      ("collision_driver.py", "", ["def _narrowphase("]),
+      (
+        "smooth.py",
+        "",
+        ["def _qLD_acc(", "def _qLDiag_div(", "def _solve_LD_sparse_fused("],
+      ),
+      (
+        "block_cholesky.py",
+        "",
+        ["def create_blocked_cholesky_factorize_solve_func("],
+      ),
+      (
+        "solver.py",
+        "",
+        ["def _linesearch_iterative_kernel(", "def _solver_iteration("],
+      ),
+      (
+        "set_const.py",
+        "",
+        [
+          "def set_const_fixed(", "def set_const_0(", "def _finalize_dof_invweight0(",
+          "def _finalize_body_invweight0(",
+        ],
+      ),
+      ("io.py", "", ["def put_model("]),
+    ] {
+    let path = "mujoco_warp/_src/" + name
+    sources.push({
+      project: "MuJoCo-Warp",
+      path,
+      cached: "mujoco_warp-3.15.0/" + path,
+      sha,
+      symbols,
+    })
+  }
+  let rows : Array[Json] = []
+  for source in sources {
+    let bytes = @fs.read_file(cache + "/" + source.cached).binary()
+    let expected = if source.sha != "" {
+      source.sha
+    } else {
+      guard previous.find_index(row => {
+          row is { "source_path": String(path), .. } && path == source.path
+        })
+        is Some(index) &&
+        previous[index] is { "sha256": String(sha), .. } else {
+        fail(
+          "source identity missing from prior pinned evidence: " + source.path,
+        )
+      }
+      sha
+    }
+    guard digest(bytes) == expected else {
+      fail("pinned source bytes changed: " + source.path)
+    }
+    let lines = @utf8.decode(bytes).split("\n").collect()
+    let anchors : Array[Json] = []
+    for symbol in source.symbols {
+      guard lines.find_index(line => line.contains(symbol)) is Some(index) else {
+        fail("source symbol missing: " + source.path + ":" + symbol)
+      }
+      anchors.push({ "symbol": symbol.to_json(), "line": (index + 1).to_json() })
+    }
+    let pin = if source.project == "Newton" {
+      "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3"
+    } else {
+      "3.15.0"
+    }
+    let url = if source.project == "Newton" {
+      "https://github.com/newton-physics/newton/blob/" + pin + "/" + source.path
+    } else {
+      "https://pypi.org/pypi/mujoco-warp/3.15.0/json"
+    }
+    rows.push({
+      "project": source.project.to_json(),
+      "pin": pin.to_json(),
+      "source_path": source.path.to_json(),
+      "source_url": url.to_json(),
+      "sha256": expected.to_json(),
+      "bytes": bytes.length().to_json(),
+      "anchors": anchors.to_json(),
+    })
+  }
+  let result : Json = {
+    "format": "moonrobo.finalize-solver-source-evidence.v1",
+    "sources": rows.to_json(),
+    "prior_evidence_sha256": digest(prior_bytes).to_json(),
+    "mujoco_warp_archive_sha256": archive_sha.to_json(),
+    "upstream_code_executed": false,
+    "tests_executed": false,
+    "sdk_initialized": false,
+    "gpu_initialized": false,
+    "model_compiled": false,
+    "kernel_compiled": false,
+    "apic_exported": false,
+    "full_native_solver_closure_verified": false,
+  }
+  let output = root + "/docs/APIC_FINALIZE_SOLVER_SOURCE_EVIDENCE.json"
+  if args.length() == 4 {
+    guard @json.parse(@fs.read_file(output).text()) == result else {
+      fail(
+        "finalize/solver source evidence changed; inspect identities before refreshing",
+      )
+    }
+  } else {
+    @fs.write_file(
+      output,
+      result.stringify(indent=2) + "\n",
+      create_mode=CreateOrTruncate,
+    )
+  }
+  println(
+    "Verified " +
+    rows.length().to_string() +
+    " finalize/solver source identities; no upstream execution",
+  )
+}

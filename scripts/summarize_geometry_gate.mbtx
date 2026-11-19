@@ -1,0 +1,24 @@
+import {"moonbitlang/async@0.20.2","moonbitlang/async@0.20.2/fs","moonbitlang/core/json"}
+///|
+async fn main {
+ let root="output/spark-runtime-20261024/geometry-math-20261029-a"
+ let j=@json.parse(@fs.read_file(root+"/geometry-math-reference-gate-a/result.json").text())
+ guard j is {"comparison":{"tensors":Array(rows),..},..} else {fail("rows")}
+ let results:Array[Json]=[]
+ for model in ["world","policy","critic"] {
+  for kind in ["parameter","gradient","moment1","moment2"] {
+   let mut err=0.0;let mut norm=0.0;let mut violations=0;let mut elements=0;let mut worst=0.0
+   for row in rows {
+    guard row is {"name":String(name),..} else {continue}
+    if name.has_prefix(model+"-")&&name.has_suffix("-"+kind) {
+     guard row is {"l2_error":Number(e),"smc_l2":Number(n),"violations":Number(v),"elements":Number(count),"max_abs":Number(m),..} else {fail("numeric")}
+     err+=e*e;norm+=n*n;violations+=v.to_int();elements+=count.to_int();worst=worst.max(m)
+    }
+   }
+   results.push({"model":Json(model),"field":Json(kind),"relative_l2":Json((err/norm).sqrt()),"violations":Json(violations),"elements":Json(elements),"max_abs":Json(worst)})
+  }
+ }
+ let result:Json={"diagnostic_only":true,"strict_full_update_passed":false,"groups":Json(results)}
+ @fs.write_file(root+"/full-update-discrepancies.json",result.stringify(indent=2),create_mode=CreateNew)
+ println(result.stringify(indent=2))
+}

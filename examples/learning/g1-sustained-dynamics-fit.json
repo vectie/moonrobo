@@ -1,0 +1,14 @@
+{
+  "seeds": [0, 1, 2],
+  "updates": 1000,
+  "batch_size": 128,
+  "hidden_width": 128,
+  "learning_rate": 0.001,
+  "normalization_floor": 0.1,
+  "evaluate_every": 100,
+  "cpu_threads": 2,
+  "late_window_fraction": 0.5,
+  "late_validation_weight": 0.5,
+  "horizontal_translation_invariant": true,
+  "acceptance": "All actual sustained teacher/student transitions, eight-step train windows with stride eight and terminal-tail retention; old held-out arrays unchanged. Fresh from-scratch fit with new train-only normalization; no isolated data-only effect, common normalized-scale or matched-cost claim. Prediction/gradient checks remain distinct from control qualification."
+}

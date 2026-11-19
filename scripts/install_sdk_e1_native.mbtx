@@ -1,0 +1,42 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+/// Build/install only. This never launches the resulting CLI or loads the SDK.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 else {
+    fail("usage: install_sdk_e1_native.mbtx REPO INSTALL_PREFIX")
+  }
+  let root = @fs.realpath(args[1])
+  assert_eq(
+    @process.run(
+      "moon",
+      ["build", "cmd/sdk_e1_native", "--target", "native"],
+      cwd=root,
+    ),
+    0,
+  )
+  if !@fs.exists(args[2] + "/bin") {
+    @fs.mkdir(args[2] + "/bin", recursive=true)
+  }
+  let target = args[2] + "/bin/moonrobo-sdk-e1-native"
+  @fs.write_file(
+    target,
+    @fs.read_file(
+      root + "/_build/native/debug/build/cmd/sdk_e1_native/sdk_e1_native.exe",
+    ).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.chmod(target, 493)
+  println(
+    "Installed " +
+    @fs.realpath(target) +
+    "; SDK adapter is built/configured separately. No SDK was initialized.",
+  )
+}

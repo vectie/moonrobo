@@ -1,0 +1,44 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let root = repo + "/output/spark-runtime-20261024/world-ln-fk-20261026"
+  let source = @fs.read_file(root + "/advise_followup_closed_trace.mbtx")
+    .text()
+    .replace_all(
+      old="\"smc-compiled-eager4096-pairs-20261024-a\",",
+      new="\"native-hotspot-vs-smc512-20261026-a\", \"native-hotspot-vs-smc512-20261026-b\", \"smc-compiled-eager4096-pairs-20261024-a\",",
+    )
+    .replace_all(
+      old="trace_root + \"/run/native\",",
+      new=(
+        #|trace_root + "/run/native",
+        #|        "/home/wlc004s/moonrobo/private/apic-authoring-build-20261024-a/sdk",
+        #|        "/home/wlc004s/moonrobo/private/apic-authoring-build-20261024-b/sdk",
+        #|        "/home/wlc004s/moonrobo/private/apic-authoring-build-20261024-d/sdk",
+        #|        "/home/wlc004s/moonrobo/private/apic-authoring-build-20261024-e/sdk",
+        #|        "/home/wlc004s/moonrobo/private/apic-authoring-build-20261024-f/sdk",
+        #|        "/home/wlc004s/moonrobo/private/hotspot-followup-ln-20261026-b/workspace/moonrobo/_build",
+        #|        "/home/wlc004s/moonrobo/private/hotspot-followup-ln-20261026-b/workspace/moonrobo-fixtures/_build",
+        #|        "/home/wlc004s/moonrobo/private/hotspot-followup-ln-20261026-b/_build",
+      ),
+    )
+    .replace_all(
+      old="no source/dataset advice",
+      new="only isolated completed APIC SDK build checkouts; no working repository or dataset advice",
+    )
+  let path = root + "/advise_followup_remaining_cache.mbtx"
+  @fs.write_file(path, source, create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o", "ControlPath=/tmp/moonrobo-operator-179.sock", path, "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_followup_remaining_cache.mbtx",
+    ]) ==
+    0 else {
+    fail("copy")
+  }
+}

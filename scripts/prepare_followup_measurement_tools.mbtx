@@ -1,0 +1,37 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let out = repo +
+    "/output/spark-runtime-20261024/world-ln-fk-20261026/summarize_followup_pairs.mbtx"
+  let source = @fs.read_file(repo + "/scripts/summarize_hotspot_pairs.mbtx")
+    .text()
+    .replace_all(
+      old="\"reuse_pre_step_state\", \"geometry_submitted_cross\", \"reference_fk_cache\",",
+      new="\"reuse_pre_step_state\", \"geometry_submitted_cross\", \"reference_fk_cache\", \"world_packed_replay\", \"geometry_submitted_axis\",",
+    )
+    .replace_all(
+      old="value == Json(\"expanded\") ||",
+      new="value == Json(\"fused_tail\") || value == Json(\"expanded\") ||",
+    )
+  @fs.write_file(out, source, create_mode=CreateNew)
+  for path in [out, repo + "/scripts/run_followup_measured.mbtx"] {
+    let name = path.split("/").to_array().last().unwrap().to_owned()
+    guard @process.run("scp", [
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        path,
+        "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a/" +
+        name,
+      ]) ==
+      0 else {
+      fail("copy")
+    }
+  }
+}

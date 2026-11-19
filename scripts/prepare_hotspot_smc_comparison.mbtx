@@ -1,0 +1,156 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+fn obj(j : Json) -> Map[String, Json] raise {
+  guard j is Object(o) else { fail("object required") }
+  o
+}
+
+///|
+fn get(j : Json, key : String) -> Json raise {
+  guard obj(j).get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn arr(j : Json) -> Array[Json] raise {
+  guard j is Array(a) else { fail("array required") }
+  a
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (reader, redirect) = @process.read_from_process()
+  defer reader.close()
+  @async.with_task_group() <| group => {
+    let child = group.spawn(() => {
+      @process.run("sha256sum", [path], stdout=redirect)
+    })
+    let bytes = FixedArray::make(4096, b'\x00')
+    let n = reader.read(bytes)
+    guard n >= 64 && n < 4096 && child.wait() == 0 else { fail("sha failed") }
+    @utf8.decode(Bytes::from_array(bytes[:64]))
+  }
+}
+
+///|
+async fn pinned(path : String, digest : String) -> Json {
+  guard sha(path) == digest else { fail("frozen parent differs: " + path) }
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, base] &&
+    base == "/home/wlc004s/moonrobo/private/hotspot-smc4096-20261026-a" else {
+    fail("explicit fresh campaign directory required")
+  }
+  let npath = "/home/wlc004s/moonrobo/runs/hotspot-reference_fk-abba-20261026-c/spec.json"
+  let spath = "/home/wlc004s/moonrobo/runs/smc-microbatch4096-abba-20261025-b/spec.json"
+  let native = pinned(
+    npath, "775152398be717741200e685355678eae11ce0a1eadd2b17e89a0638660e4542",
+  )
+  let smc = pinned(
+    spath, "cec266945da53af1fde66fee3aad107e7c2df8eaa71aaad3ea81ddae60deeffc",
+  )
+  let original = pinned(
+    "/home/wlc004s/moonrobo/private/smc-native-g2-confirmation-prepared/spec-six-vs-smc4096.json",
+    "40ae4d4a3f6959876ab18ee82cd9a30e055b0927848c0c07dc5fcc7be9ff0b1c",
+  )
+  let spec = @json.parse(original.stringify())
+  guard get(native, "protocol") == get(smc, "protocol") &&
+    get(native, "protocol") == get(original, "protocol") else {
+    fail("protocol differs")
+  }
+  let a = get(native, "b")
+  let b = get(smc, "b")
+  guard get(get(a, "env"), "MOONROBO_APIC_IO") == Json("bulk") &&
+    get(get(a, "expected_config"), "reference_fk_cache") == Json(true) &&
+    get(get(a, "expected_config"), "pi_batch") == Json(4096) &&
+    get(get(a, "expected_config"), "pi_microbatch") == Json(512) &&
+    get(get(b, "env"), "SMC_ACTOR_MICROBATCH") == Json("512") else {
+    fail("measured composition or batch differs")
+  }
+  obj(spec)["name"] = Json("native-apic-bulk-reference-fk-vs-smc-eight512-4096")
+  obj(spec)["a"] = a
+  obj(spec)["b"] = b
+  obj(spec).remove("native_g2_confirmation") |> ignore
+  let pins : Array[Json] = []
+  let seen : Map[String, Json] = Map([])
+  for parent in [original, native, smc] {
+    for pin in arr(get(parent, "pins")) {
+      guard get(pin, "path") is String(path) else { fail("pin path required") }
+      let digest = get(pin, "sha256")
+      match seen.get(path) {
+        Some(previous) => {
+          guard previous == digest else {
+            fail("conflicting parent pin: " + path)
+          }
+        }
+        None => {
+          seen[path] = digest
+          pins.push(pin)
+        }
+      }
+    }
+  }
+  let diagnostic = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+  for
+    path in [
+      npath,
+      spath,
+      diagnostic + "/run_smc_microbatch_pairs.mbtx",
+      diagnostic + "/summarize_smc_microbatch_pairs.mbtx",
+      diagnostic + "/advise_hotspot_run_cache.mbtx",
+      diagnostic + "/advise_closed_smc_image_pages_f.mbtx",
+      base + "/prepare_hotspot_smc_comparison.mbtx",
+      base + "/run_hotspot_smc_comparison.mbtx",
+      "/home/wlc004s/moonrobo/runs/hotspot-reference_fk-abba-20261026-c/summary.json",
+    ] {
+    if !seen.contains(path) {
+      pins.push({
+        "path": Json(path),
+        "sha256": Json(sha(path)),
+        "role": "comparison-parent-or-controller",
+      })
+    }
+  }
+  obj(spec)["pins"] = Json(pins)
+  obj(spec)["known_differences"] = Json([
+    "A is copied exactly from the numerically gated APIC bulk plus reference FK cache winner. B is copied exactly from the preserved SMC microbatch scheduling experiment. Both logical4096/eight512, one actor Adam and20critic Adam per actor iteration; full60 iterations, steady41-60, native/SMC/SMC/native on the same node.",
+    "SMC uses torch.compile; native uses eager LibTorch. Same seed does not imply identical initial weights, RNG streams, trajectory or learning quality. Cross-runtime numerical equivalence is not established.",
+    "SMC chunking retains paper objective/GAE and full-logical critic normalization and features. Its high-precision algorithm gate passed, but the strict FP32 critic-parameter equivalence gate failed; this remains an explicit scheduling comparison, not an approved numerical replacement for original SMC.",
+    "Original SMC scalar/logging synchronization boundaries and native synchronized phase-sum timings are retained. Independent traces and observer-off controls separate submission/device-drain/profiler setup and teardown; trace wall times are never used as steady throughput.",
+    "Original cross-stack mathematical/physics/reset-sampling/runtime differences remain documented in the pinned parent; they are not attributed solely to language. No independent optimization percentages are compounded.",
+    "Original source implementations, binary pins and complete failed groups are retained. No global cache clearing, data deletion, batch reduction or protection-threshold reduction. Cache advice selects only explicit completed task files while idle.",
+  ])
+  obj(spec)["comparison_provenance"] = {
+    "native_parent": Json(npath),
+    "native_side": "b",
+    "smc_parent": Json(spath),
+    "smc_side": "b",
+    "original_cross_stack_differences": get(original, "known_differences"),
+    "smc_microbatch_limitations": get(smc, "known_differences"),
+    "single_agent": true,
+    "one_gpu_job_at_a_time": true,
+  }
+  @fs.write_file(
+    base + "/spec.json",
+    spec.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+  )
+  println(
+    "Prepared exact-side composition with " +
+    pins.length().to_string() +
+    " immutable pins; no GPU launched",
+  )
+}

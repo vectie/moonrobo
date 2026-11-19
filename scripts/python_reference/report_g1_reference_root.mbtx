@@ -1,0 +1,274 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) else { fail("expected object") }
+  fields[key]
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn str(value : Json) -> String raise {
+  guard value is String(s) else { fail("expected string") }
+  s
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (code, out, err) = @process.collect_output("/usr/bin/shasum", [
+    "-a", "256", path,
+  ])
+  assert_eq(code, 0, msg=err.text())
+  out.text().split(" ").to_array()[0].to_owned()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: report_g1_reference_root.mbtx REPO STUDY OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let report = read(study + "/report.json")
+  let is_tail = field(report, "format") ==
+    Json("moonrobo.g1-reference-tail-directions.v1")
+  if !is_tail {
+    assert_eq(
+      field(report, "format"),
+      "moonrobo.g1-reference-root-integration.v1",
+    )
+  }
+  let expected_runs = if is_tail { 12 } else { 6 }
+  let expected_records = if is_tail { 147 } else { 75 }
+  let provider_name = if is_tail {
+    "reference_tail_directions.py"
+  } else {
+    "reference_root_integration.py"
+  }
+  let config = field(report, "config")
+  assert_eq(config, field(read(study + "/charter.json"), "config"))
+  let source = str(field(report, "source_study"))
+  assert_eq(
+    field(config, "source_report_sha256"),
+    Json(sha(source + "/report.json")),
+  )
+  assert_eq(field(report, "physical_execution_allowed"), false)
+  assert_eq(field(report, "release_qualified"), false)
+  let reused : Map[String, Json] = Map([])
+  if is_tail {
+    let models = str(field(report, "model_source_study"))
+    assert_eq(
+      field(config, "model_source_report_sha256"),
+      Json(sha(models + "/report.json")),
+    )
+    for
+      record in array(field(read(models + "/report.json"), "physical_records")) {
+      reused[str(field(record, "episode_id"))] = record
+    }
+    assert_eq(reused.length(), 75)
+    assert_eq(field(report, "reused_physical_records"), 75)
+    assert_eq(field(report, "new_physical_records"), 72)
+  }
+  assert_eq(
+    field(report, "provider_sha256"),
+    Json(sha(study + "/provider-sources/" + provider_name)),
+  )
+  let runs = array(field(report, "runs"))
+  assert_eq(runs.length(), expected_runs)
+  let pairs : Map[String, Json] = Map([])
+  let run_cells : Map[String, Bool] = Map([])
+  let summary : Array[Json] = []
+  for run in runs {
+    let seed = field(run, "seed")
+    let tail_mode = if is_tail {
+      field(run, "tail_mode")
+    } else {
+      Json("with-tail")
+    }
+    assert_true([Json(0), Json(1), Json(2)].contains(seed))
+    assert_true(
+      [Json("free"), Json("root-integrated")].contains(field(run, "variant")),
+    )
+    assert_true([Json("with-tail"), Json("prefix-only")].contains(tail_mode))
+    let run_key = seed.stringify() +
+      ":" +
+      str(field(run, "variant")) +
+      ":" +
+      str(tail_mode)
+    assert_false(run_cells.contains(run_key))
+    run_cells[run_key] = true
+    let key = seed.stringify()
+    let initial = field(run, "initial_model_state_sha256")
+    if pairs.get(key) is Some(previous) {
+      assert_eq(initial, previous)
+    } else {
+      pairs[key] = initial
+    }
+    assert_eq(
+      field(field(run, "fit"), "updates"),
+      field(config, "model_updates"),
+    )
+    let outcomes = array(field(run, "outcomes"))
+    assert_eq(outcomes.length(), 4)
+    let cells : Map[String, Bool] = Map([])
+    let changes : Array[Json] = []
+    for outcome in outcomes {
+      let amplitude = field(outcome, "logit_rms_target")
+      let sign = field(outcome, "sign")
+      assert_true(array(field(config, "logit_rms_steps")).contains(amplitude))
+      assert_true(array(field(config, "probe_signs")).contains(sign))
+      let cell = amplitude.stringify() + ":" + sign.stringify()
+      assert_false(cells.contains(cell))
+      cells[cell] = true
+      assert_eq(array(field(outcome, "trials")).length(), 3)
+      changes.push({
+        "amplitude": amplitude,
+        "sign": sign,
+        "predicted": field(outcome, "predicted_change"),
+        "prefix": field(outcome, "prefix_change_mean"),
+        "full": field(outcome, "full_change_mean"),
+      })
+    }
+    summary.push({
+      "seed": seed,
+      "variant": field(run, "variant"),
+      "tail_mode": tail_mode,
+      "diagnostics": field(run, "diagnostics"),
+      "changes": Json(changes),
+    })
+  }
+  assert_eq(pairs.length(), 3)
+  let records = array(field(report, "physical_records"))
+  assert_eq(records.length(), expected_records)
+  let by_id : Map[String, Json] = Map([])
+  for record in records {
+    let id = str(field(record, "episode_id"))
+    assert_false(by_id.contains(id))
+    by_id[id] = record
+    if reused.get(id) is Some(original) {
+      assert_eq(field(record, "sha256"), field(original, "sha256"))
+      assert_eq(field(record, "steps"), field(original, "steps"))
+    }
+  }
+  @fs.write_file(
+    study + "/provider-sources/reference_root_export.py",
+    @fs.read_file(root + "/providers/motion_learning/reference_root_export.py").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let maxima : Map[String, Double] = Map([])
+  let seen : Map[String, Bool] = Map([])
+  let mut transitions = 0
+  let mut new_transitions = 0
+  let mut reused_count = 0
+  @async.with_task_group() <| group => {
+    let (reader, out) = @process.read_from_process()
+    let child = @process.spawn(
+      group,
+      root + "/target/learning-venv/bin/python",
+      [
+        study + "/provider-sources/reference_root_export.py",
+        "--study",
+        study,
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      ],
+      stdout=out,
+      stderr=@process.redirect_to_file(
+        study + "/verification-stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    )
+    while reader.read_until("\n") is Some(line) {
+      let entry = @json.parse(line)
+      let record = field(entry, "record")
+      let id = str(field(record, "episode_id"))
+      assert_false(seen.contains(id))
+      assert_eq(record, by_id[id])
+      seen[id] = true
+      let dataset = field(entry, "dataset")
+      let episodes = array(field(dataset, "episodes"))
+      assert_eq(episodes.length(), 1)
+      let steps = array(field(episodes[0], "steps"))
+      assert_eq(steps.length(), num(field(record, "steps")).to_int())
+      guard field(entry, "maxima") is Object(errors) else {
+        fail("expected errors")
+      }
+      for key, value in errors {
+        maxima[key] = maxima.get(key).unwrap_or(0.0).max(num(value))
+      }
+      let scratch = study + "/native-episode.json"
+      @fs.write_file(scratch, dataset.stringify(), create_mode=CreateOrTruncate)
+      let (code, bytes, err) = @process.collect_output(
+        root +
+        "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+        [scratch, "train", "1", "1000000"],
+      )
+      assert_eq(code, 0, msg=err.text())
+      assert_eq(field(@json.parse(bytes.text()), "window_length"), 1)
+      @fs.remove(scratch)
+      transitions += steps.length()
+      if reused.contains(id) {
+        reused_count += 1
+      } else {
+        new_transitions += steps.length()
+      }
+      if seen.length() % 15 == 0 {
+        println("Verified \{seen.length()}/\{expected_records} physics probes")
+      }
+    }
+    reader.close()
+    assert_eq(child.wait(), 0)
+  }
+  assert_eq(seen.length(), expected_records)
+  if is_tail {
+    assert_eq(reused_count, 75)
+  }
+  guard report is Object(fields) else { fail("expected report object") }
+  fields["native_verification"] = {
+    "episodes": Json(expected_records),
+    "transitions": Json(transitions),
+    "new_episodes": Json(expected_records - reused_count),
+    "new_transitions": Json(new_transitions),
+    "reused_episodes": Json(reused_count),
+    "all_records_validated": true,
+    "maxima": Json(maxima),
+    "archive_dtype": "float32; original physical quality scalars float64",
+  }
+  fields["source_report_sha256"] = Json(sha(study + "/report.json"))
+  fields["verification_provider_sha256"] = Json(
+    sha(study + "/provider-sources/reference_root_export.py"),
+  )
+  @fs.write_file(
+    args[3],
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(Json(summary).stringify())
+}

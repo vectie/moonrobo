@@ -1,0 +1,93 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/bf16-original-20261028"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179:" + base + "/"
+  let scp = ["-o", "ControlPath=/tmp/moonrobo-operator-179.sock"]
+  let s = @fs.read_file("/tmp/moonrobo-closed-output-reclaim-source.mbtx")
+    .text()
+    .replace_all(
+      old="s.has_prefix(\"hotspot-shared-geometry-vjp-\")||s.has_prefix(\"hotspot-shared-geometry-tail-\")||s.has_prefix(\"hotspot-shared-fused-rotation-\")",
+      new="s.has_prefix(\"hotspot-shared-coefficient-\")||s.has_prefix(\"hotspot-shared-return-split-\")||s.has_prefix(\"hotspot-shared-heading-body-\")",
+    )
+    .replace_all(old="33554432.0", new="47185920.0")
+    .replace_all(
+      old="coefficient-full-bounded-output-reclaim-a.json",
+      new="bf16-original-closed-output-reclaim-a.json",
+    )
+  @fs.write_file(dir + "/reclaim_closed_outputs.mbtx", s, create_mode=CreateNew)
+  assert_eq(
+    @process.run(
+      "scp",
+      [
+        ..scp,
+        dir + "/reclaim_closed_outputs.mbtx",
+        host + "bf16-original-reclaim.mbtx",
+      ],
+    ),
+    0,
+  )
+  let runner = @fs.read_file(dir + "/run_bf16_original_a.mbtx")
+    .text()
+    .replace_all(
+      old="phase + \"-\" + variant + \"-gate-a\")",
+      new="phase + \"-\" + variant + (if phase == \"actor\" && variant == \"bf16-full\" {\"-gate-b\"}else{\"-gate-a\"}))",
+    )
+    .replace_all(old="run_bf16_original_a.mbtx", new="run_bf16_original_b.mbtx")
+  @fs.write_file(
+    dir + "/run_bf16_original_b.mbtx",
+    runner,
+    create_mode=CreateNew,
+  )
+  let invoker = @fs.read_file(dir + "/invoke_bf16_original_a.mbtx")
+    .text()
+    .replace_all(old="run_bf16_original_a.mbtx", new="run_bf16_original_b.mbtx")
+  @fs.write_file(
+    dir + "/invoke_bf16_original_b.mbtx",
+    invoker,
+    create_mode=CreateNew,
+  )
+  let suite = @fs.read_file(dir + "/benchmark.mbtx")
+    .text()
+    .replace_all(
+      old="invoke_bf16_original_a.mbtx",
+      new="invoke_bf16_original_b.mbtx",
+    )
+    .replace_all(
+      old="[(\"world\",\"bf16-full\"),(\"actor\",\"bf16-full\"),(\"actor\",\"bf16-chunk\")]",
+      new="[(\"actor\",\"bf16-full\"),(\"actor\",\"bf16-chunk\")]",
+    )
+    .replace_all(
+      old="invoke(phase,\"native\",variant,\"gate-a\",\"1\")",
+      new="invoke(phase,\"native\",variant,if variant==\"bf16-full\"{\"gate-b\"}else{\"gate-a\"},\"1\")",
+    )
+  @fs.write_file(dir + "/benchmark_b.mbtx", suite, create_mode=CreateNew)
+  for
+    name in [
+      "run_bf16_original_b.mbtx", "invoke_bf16_original_b.mbtx", "benchmark_b.mbtx",
+    ] {
+    assert_eq(
+      @process.run(
+        "scp",
+        [
+          ..scp,
+          dir + "/" + name,
+          host +
+          (if name == "benchmark_b.mbtx" {
+            "bf16-original-benchmark.mbtx"
+          } else {
+            name
+          }),
+        ],
+      ),
+      0,
+    )
+  }
+}

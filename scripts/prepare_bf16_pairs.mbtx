@@ -1,0 +1,59 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/bf16-original-20261028"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let s = @fs.read_file(dir + "/run_bf16_original_b.mbtx")
+    .text()
+    .replace_all(old="run_bf16_original_b.mbtx", new="run_bf16_original_c.mbtx")
+    .replace_all(
+      old="    let completed=\"/home/wlc004s/moonrobo/runs/hotspot-shared-heading-body-fused-smc-\"+phase+\"-off-after-a\"",
+      new="    let fresh=\"/home/wlc004s/moonrobo/runs/hotspot-shared-bf16-smc-\"+phase+\"-\"+variant+\"-a\"\n    let completed=if @fs.exists(fresh+\"/result.json\"){fresh}else{\"/home/wlc004s/moonrobo/runs/hotspot-shared-heading-body-fused-smc-\"+phase+\"-off-after-a\"}",
+    )
+  assert_true(s.contains("let fresh="))
+  @fs.write_file(dir + "/run_bf16_original_c.mbtx", s, create_mode=CreateNew)
+  @fs.write_file(
+    dir + "/invoke_bf16_original_c.mbtx",
+    @fs.read_file(dir + "/invoke_bf16_original_b.mbtx")
+    .text()
+    .replace_all(old="run_bf16_original_b.mbtx", new="run_bf16_original_c.mbtx"),
+    create_mode=CreateNew,
+  )
+  @fs.write_file(
+    dir + "/benchmark_c.mbtx",
+    @fs.read_file(dir + "/benchmark_b.mbtx")
+    .text()
+    .replace_all(
+      old="invoke_bf16_original_b.mbtx",
+      new="invoke_bf16_original_c.mbtx",
+    ),
+    create_mode=CreateNew,
+  )
+  for
+    name in [
+      "run_bf16_original_c.mbtx", "invoke_bf16_original_c.mbtx", "benchmark_c.mbtx",
+    ] {
+    assert_eq(
+      @process.run("scp", [
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        dir + "/" + name,
+        "wlc004s@192.168.2.179:" +
+        base +
+        "/" +
+        (if name == "benchmark_c.mbtx" {
+          "bf16-original-benchmark-pairs.mbtx"
+        } else {
+          name
+        }),
+      ]),
+      0,
+    )
+  }
+}

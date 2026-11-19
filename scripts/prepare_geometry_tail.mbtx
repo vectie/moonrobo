@@ -1,0 +1,23 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn edit(path : String,pairs : Array[(String,String)]) -> Unit {
+  let mut s=@fs.read_file(path).text();for (a,b) in pairs{s=rep(s,a,b)};@fs.write_file(path,s)
+}
+async fn main {
+  let t="src/learning_tensor/";let g="src/learning_aligned_gpu/"
+  edit(t+"adapter.cpp",[("#include \"fused_rotation.inc\"","#include \"fused_rotation.inc\"\n#include \"geometry_tail.inc\"")])
+  edit(t+"loader.c",[("#include \"fused_rotation_loader.inc\"","#include \"fused_rotation_loader.inc\"\n#include \"geometry_tail_loader.inc\"")])
+  edit(t+"moon.pkg",[("\"fused_rotation.mbt\": [ \"native\" ],","\"fused_rotation.mbt\": [ \"native\" ],\n    \"geometry_tail.mbt\": [ \"native\" ],")])
+  edit(t+"CMakeLists.txt",[("compact_heading.cu fused_rotation.cu)","compact_heading.cu fused_rotation.cu geometry_tail.cu)")])
+  edit(g+"execution_optimizations.mbt",[("  fused_skew : Bool","  fused_skew : Bool\n  fused_so3_tail : Bool\n  fused_cross_forward : Bool"),("    fused_skew: false,","    fused_skew: false,\n    fused_so3_tail: false,\n    fused_cross_forward: false,")])
+  edit(g+"cmd/optimizations.mbt",[("    fused_skew: setting(config, \"fused_skew\", false),","    fused_skew: setting(config, \"fused_skew\", false),\n    fused_so3_tail: setting(config, \"fused_so3_tail\", false),\n    fused_cross_forward: setting(config, \"fused_cross_forward\", false),"),("  if s.optimizations.split_world_delta {","  if s.optimizations.fused_so3_tail || s.optimizations.fused_cross_forward {\n    values[\"execution_geometry_tail\"] = 33554432L.max(4L * 4L * 9L * c.horizon.to_int64() * actor_rows.to_int64() + 1048576L)\n  }\n  if s.optimizations.split_world_delta {")])
+  edit(g+"geometry/context.mbt",[("  fused_axis_rotation : Bool","  fused_axis_rotation : Bool\n  fused_cross_forward : Bool"),("    fused_axis_rotation: false,","    fused_axis_rotation: false,\n    fused_cross_forward: false,"),("    self.cross_preserve_forward ||","    self.cross_preserve_forward || self.fused_cross_forward ||"),("  if self.cross_preserve_forward {","  if self.fused_cross_forward {\n    a.fused_cross_forward(b)\n  } else if self.cross_preserve_forward {")])
+  @fs.write_file(g+"geometry/geometry_tail.mbt","///|\n/// Fused forward retains the ATen cross VJP; independent from native cross.\npub fn Context::with_fused_cross_forward(self : Context, enabled : Bool) -> Context raise {\n  guard !enabled || (self.backend.has_geometry_tail() && self.cross_preserve_forward && !self.native_cross) else { fail(\"fused cross requires preserve-forward mode and geometry plugin\") }\n  { ..self, fused_cross_forward: enabled, }\n}\n",create_mode=CreateNew)
+  edit(g+"geometry/moon.pkg",[("\"fused_rotation.mbt\": [ \"native\" ],","\"fused_rotation.mbt\": [ \"native\" ],\n    \"geometry_tail.mbt\": [ \"native\" ],\n    \"geometry_tail_wbtest.mbt\": [ \"native\" ],")])
+  edit(g+"geometry/rotations.mbt",[("  fused_skew~ : Bool = false,","  fused_skew~ : Bool = false,\n  fused_so3_tail~ : Bool = false,"),("  // SMC builds skew zeros", "  if fused_so3_tail {\n    guard detached_constants else { fail(\"fused SO3 tail requires detached constants\") }\n    return k.so3_tail(k.matmul(k), a, b)\n  }\n  // SMC builds skew zeros")])
+  edit(g+"geometry/state.mbt",[("  fused_skew~ : Bool = false,","  fused_skew~ : Bool = false,\n  fused_so3_tail~ : Bool = false,"),("        fused_skew~,","        fused_skew~,\n        fused_so3_tail~,")])
+  for f in ["learning.mbt","microbatch.mbt","actor_microbatch.mbt"] {
+    edit(g+f,[("fused_skew=self.optimizations.fused_skew,","fused_skew=self.optimizations.fused_skew,\n        fused_so3_tail=self.optimizations.fused_so3_tail,")])
+  }
+  edit(g+"learning.mbt",[("  if optimizations.compact_skew {","  if optimizations.fused_so3_tail || optimizations.fused_cross_forward {\n    guard backend.has_geometry_tail() else { fail(\"geometry tail plugin required\") }\n    guard !optimizations.fused_so3_tail || optimizations.detached_rotation_constants else { fail(\"SO3 tail requires detached constants\") }\n  }\n  if optimizations.compact_skew {"),("    .with_fused_axis_rotation(optimizations.fused_axis_rotation)","    .with_fused_axis_rotation(optimizations.fused_axis_rotation)\n    .with_fused_cross_forward(optimizations.fused_cross_forward)")])
+}

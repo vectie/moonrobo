@@ -1,0 +1,81 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/json", "moonbitlang/core/string" }
+let out="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-heading-20261027"
+fn field(j : Json,k : String) -> Json raise { guard j is Object(m) && m.get(k) is Some(v) else {fail(k)}; v }
+fn num(j : Json) -> Double raise { match j { Number(v,..) => v; String(s) => @string.parse_double(s); _ => fail("number") } }
+async fn fetch(remote : String,destination : String) -> Json {
+  if !@fs.exists(destination) {guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/"+remote,destination])==0 else {fail("fetch "+remote)}}
+  @json.parse(@fs.read_file(destination).text())
+}
+async fn main {
+  let records : Array[Json]=[]
+  let medians : Map[String,Double]=Map([])
+  let mut peak_reserved=0.0
+  let mut peak_cgroup=0.0
+  let mut min_available=1.0e30
+  for label in ["pivot-pair-0","pivot-pair-1","pivot-pair-2","pivot-pair-3","heading-smc-actor-off-a","heading-world-gate-a","heading-smc-world-off-a"] {
+    let folder=out+"/"+label
+    @fs.mkdir(folder,recursive=true)
+    let remote="runs/hotspot-shared-"+label+"/"
+    let result=fetch(remote+"result.json",folder+"/result.json")
+    let guard_record=fetch(remote+"training-guard.json",folder+"/training-guard.json")
+    let state=fetch(remote+"training-docker-final.json",folder+"/training-docker-final.json")
+    guard state is [{"State":{"OOMKilled":False,"Running":False,..},..}] else {fail("OOM/running "+label)}
+    guard field(result,"observer")==Json("off") && field(guard_record,"reason")==Json("completed") else {fail("profiler/guard "+label)}
+    guard field(result,"rows") is Array(rows) && rows.length()==13 else {fail("repetitions "+label)}
+    let times=rows.filter(r => field(r,"steady")==Json(true)).map(r => num(field(r,"wall_ms")))
+    assert_eq(times.length(),10)
+    let ordered=times.copy(); ordered.sort()
+    let median=(ordered[4]+ordered[5])/2.0
+    medians[label]=median
+    let memory=match result {Object(m) => m.get("memory").unwrap_or({"reserved_peak_bytes":m.get("reserved_peak").unwrap_or(Json(0)),"allocated_peak_bytes":m.get("allocated_peak").unwrap_or(Json(0))}); _ => fail("object")}
+    peak_reserved=peak_reserved.max(num(field(memory,"reserved_peak_bytes")))
+    guard field(guard_record,"samples") is Array(samples) else {fail("guard samples")}
+    for s in samples {
+      peak_cgroup=peak_cgroup.max(num(field(s,"cgroup_peak_bytes")))
+      min_available=min_available.min(num(field(s,"host_available_kib"))*1024.0)
+      assert_eq(num(field(s,"cgroup_swap_bytes")),0.0)
+    }
+    records.push({"label":Json(label),"median_ms":Json(median),"steady_ms":Json(times),"memory":memory,"guard_reason":field(guard_record,"reason")})
+  }
+  let numerical=fetch("private/shared-compute-20261026-a/pivot-actor-gate-b.numeric.json",out+"/pivot-numeric.json")
+  guard numerical is {"passed":True,"mismatches":Number(0,..),..} else {fail("pivot gate failed")}
+  let checks : Array[Json]=[]
+  for (name,expected) in [("geometry",1),("pivot",1),("config",4),("resume",1),("inference",1)] {
+    let label="smc-heading-"+name+"-cpu-b"
+    let dest=out+"/"+label+".stdout.log"
+    if !@fs.exists(dest) {guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/"+label+".stdout.log",dest])==0 else {fail(label)}}
+    let text=@fs.read_file(dest).text()
+    guard !text.contains("SKIP") else {fail(label+" skipped")}
+    let mut count=0
+    for line in text.split("\n") {
+      if line.has_prefix("{\"type\":\"result\"") {guard @json.parse(line.to_owned()) is {"message":"",..} else {fail(label)}; count+=1}
+    }
+    assert_eq(count,expected)
+    checks.push({"name":Json(label),"executed_passed":Json(count),"skipped":false})
+  }
+  let eager=@json.parse(@fs.read_file(out+"/heading-smc-eager-gate-a/result.json").text())
+  let before=@json.parse(@fs.read_file("/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-source-fixes-20261027/fix-smc-eager-actor-gate-b/result.json").text())
+  let select = (j : Json, name : String) => {
+    guard field(field(j,"numerical_comparison"),"tensors") is Array(rows) else {fail("tensors")}
+    guard rows.filter(r => field(r,"name")==Json(name)) is [record] else {fail(name)}
+    record
+  }
+  let baseline=(medians["pivot-pair-0"]+medians["pivot-pair-3"])/2.0
+  let candidate=(medians["pivot-pair-1"]+medians["pivot-pair-2"])/2.0
+  let target=medians["heading-smc-actor-off-a"]
+  let result : Json={
+    "scope":"Fixed iteration60 checkpoint, weights/Adam/norms restored before each repetition, same tensors/noise/permutations. Actor4096=8x512 H32 plus20 critic updates; world2048x8 one update. Sampling/upload/reset/export excluded. These are phase times, not complete training rounds.",
+    "method":"Single agent, single GPU job, no profiler; 3 warmups+10 steady samples per process. FK ABBA then SMC compiled. World one-order matched configuration check only.",
+    "source_corrections":["Prior source pass: SMC clamped trace-acos rotation reward, native Linear throughout policy/critic, batched8-step world error; original paths retained.","New heading_mode=smc_projected threads SMC sqrt(x*x+y*y+1e-9) through all GPU world inputs/targets/error/integration and Context reward/critic. Checkpointed and audited; old missing field means stable_fallback.","New zero_joint_pivot specializes exactly zero pivots, and zero qref, from immutable kinematics; nonzero pivots/fixed links retain original generic implementation. G1 MJCF has29 zero joint pivots."],
+    "heading_single_factor":{"before_last_policy_gradient":select(before,"policy-18-gradient"),"after_last_policy_gradient":select(eager,"policy-18-gradient"),"metrics":select(eager,"metrics"),"full_eager_parity_passed":field(field(eager,"numerical_comparison"),"passed")},
+    "pivot_abba":{"baseline_ms":Json(baseline),"candidate_ms":Json(candidate),"saved_ms":Json(baseline-candidate),"saved_percent":Json((baseline-candidate)/baseline*100.0),"pair_saved_ms":Json([medians["pivot-pair-0"]-medians["pivot-pair-1"],medians["pivot-pair-3"]-medians["pivot-pair-2"]]),"smc_compiled_ms":Json(target),"remaining_ms":Json(candidate-target),"ratio":Json(candidate/target),"numerical_passed":field(numerical,"passed"),"values_compared":field(numerical,"values")},
+    "world":{"native_ms":Json(medians["heading-world-gate-a"]),"smc_compiled_ms":Json(medians["heading-smc-world-off-a"]),"remaining_ms":Json(medians["heading-world-gate-a"]-medians["heading-smc-world-off-a"]),"ratio":Json(medians["heading-world-gate-a"]/medians["heading-smc-world-off-a"]),"limitation":"one order; one update, not the10-update phase"},
+    "correctness":{"full_cross_language_actor_parity_passed":false,"candidate_promoted_to_default":false,"native_pivot_full_update_gate_passed":true,"atol":0.000002,"rtol":0.0002,"note":"Heading removes the major observed gradient discrepancy but residual strict elementwise differences remain. Analytic heading and native pivot gates do not certify full SMC or paper reproduction."},
+    "memory":{"guards_unchanged":true,"oom":false,"cgroup_swap_bytes":0,"max_torch_reserved_bytes":Json(peak_reserved),"max_cgroup_peak_bytes":Json(peak_cgroup),"min_host_available_bytes":Json(min_available),"note":"UMA counters overlap and must not be added; host available is sampled, Torch reserved covers its own allocator only."},
+    "regression_checks":Json(checks),"runs":Json(records),
+  }
+  @fs.write_file(out+"/results.json",result.stringify(indent=2),create_mode=CreateNew)
+  println(field(result,"pivot_abba").stringify(indent=2))
+  println(field(result,"world").stringify(indent=2))
+  println(field(result,"memory").stringify(indent=2))
+}

@@ -1,0 +1,29 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env" }
+async fn run(p : String,a : Array[String]) -> Unit {guard @process.run(p,a)==0else{fail(p)}}
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo"
+  let old=root+"/output/spark-runtime-20261024/coefficient-assembly-20261028"
+  let dir=root+"/output/spark-runtime-20261024/encoder-batch-20261028"
+  let b="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host="wlc004s@192.168.2.179";let sock="/tmp/moonrobo-operator-179.sock"
+  guard @env.args() is [_,mode]else{fail("prepare|stage|build")}
+  if mode=="prepare" {
+    @fs.mkdir(dir)
+    let f=@fs.read_file(old+"/return_split_fixture_a.mbt").text().replace_all(old="split_actor_return: @env.get_env_var",new="batch_actor_encoder: @env.get_env_var").replace_all(old="split_actor_return: enabled",new="batch_actor_encoder: enabled").replace_all(old="return split ABBA variant",new="encoder batch ABBA variant")
+    @fs.write_file(dir+"/encoder_batch_fixture_a.mbt",f,create_mode=CreateNew)
+    for (a,to) in [("build_return_split_a.mbtx","build_encoder_batch_a.mbtx"),("run_return_split_a.mbtx","run_encoder_batch_a.mbtx"),("invoke_return_split_a.mbtx","invoke_encoder_batch_a.mbtx"),("return_suite_a.mbtx","encoder_suite_a.mbtx"),("return_config_tests_a.mbtx","encoder_config_tests_a.mbtx")] {
+      let s=@fs.read_file(old+"/"+a).text().replace_all(old="return-split",new="encoder-batch").replace_all(old="return_split",new="encoder_batch").replace_all(old="return_suite",new="encoder_suite").replace_all(old="split_actor_return",new="batch_actor_encoder")
+      @fs.write_file(dir+"/"+to,s,create_mode=CreateNew)
+    };return
+  }
+  if mode=="stage" {
+    for f in ["encoder_batch_fixture_a.mbt","build_encoder_batch_a.mbtx","run_encoder_batch_a.mbtx","invoke_encoder_batch_a.mbtx","encoder_suite_a.mbtx","encoder_config_tests_a.mbtx"] {run("scp",["-o","ControlPath="+sock,dir+"/"+f,host+":"+b+"/"+f])}
+    run("ssh",["-S",sock,host,"test ! -e "+b+"/workspace/moonrobo-encoder-batch-a"])
+    run("ssh",["-S",sock,host,"cp -a --reflink=auto "+b+"/workspace/moonrobo-return-split-a "+b+"/workspace/moonrobo-encoder-batch-a"])
+    for f in ["execution_optimizations.mbt","learning.mbt","actor_microbatch.mbt","actor_norm_snapshot.mbt","cmd/optimizations.mbt","cmd/optimizations_wbtest.mbt"] {run("scp",["-o","ControlPath="+sock,root+"/src/learning_aligned_gpu/"+f,host+":"+b+"/workspace/moonrobo-encoder-batch-a/src/learning_aligned_gpu/"+f])}
+    run("ssh",["-S",sock,host,"cp "+b+"/encoder_batch_fixture_a.mbt "+b+"/workspace/moonrobo-encoder-batch-a/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"]);return
+  }
+  guard mode=="build"else{fail("mode")}
+  run("ssh",["-S",sock,host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+b+"/build_encoder_batch_a.mbtx -- gate-build-encoder-batch-a"])
+}

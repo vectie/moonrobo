@@ -1,0 +1,8 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="output/spark-runtime-20261024/coefficient-full-20261028"
+  let s=@fs.read_file(dir+"/cpu_full_a.mbtx").text().replace_all(old="coefficient-full-cpu-full-a",new="coefficient-full-cpu-full-b").replace_all(old="[\"coefficient_assembly_wbtest.mbt:0-1\",\"coefficient_full_wbtest.mbt:0-1\"]",new="[\"coefficient_full_wbtest.mbt:0-1\"]")
+  @fs.write_file(dir+"/cpu_full_b.mbtx",s,create_mode=CreateNew)
+  let p=dir+"/validate_cpu.mbtx";let v=@fs.read_file(p).text().replace_all(old="[(\"coefficient-full-cpu-full-a\",2),(\"coefficient-full-config-a\",9)]",new="[(\"coefficient-full-cpu-full-a\",1),(\"coefficient-full-cpu-full-b\",1),(\"coefficient-full-config-a\",9)]");@fs.write_file(p,v)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",dir+"/cpu_full_b.mbtx","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/cpu_full_b.mbtx"])==0else{fail("stage")}
+}

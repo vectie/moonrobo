@@ -1,0 +1,20 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+///|
+async fn main {
+  let out="output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host="wlc004s@192.168.2.179"
+  let prefix=@fs.read_file(out+"/build_actor_boundary_a.mbtx").text().split("async fn main {").to_array()[0].to_owned().replace_all(old="      \"--workdir\",",new="      \"--mount\",\"type=bind,src=/home/wlc004s/moonrobo/runs,dst=/data,readonly\",\n      \"--workdir\",")
+  assert_true(prefix.contains("dst=/data"))
+  let code=prefix+(
+    #|async fn main {
+    #|  container("actor-normalizer-comparison-a","/opt/isaaclab-venv/bin/python",["/build/compare_actor_boundaries_a.py","/data/hotspot-shared-actor-normalizer-native-a","/data/hotspot-shared-actor-boundary-smc-b","/build/actor-normalizer-comparison-a.json"])
+    #|}
+  )
+  @fs.write_file(out+"/compare_actor_snapshots_a.mbtx",code,create_mode=CreateNew)
+  for (src,name) in [(out+"/compare_actor_snapshots_a.mbtx","compare_actor_snapshots_a.mbtx"),("providers/motion_learning/compare_actor_boundaries.py","compare_actor_boundaries_a.py")] {
+    assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",src,host+":"+base+"/"+name]),0)
+  }
+  assert_eq(@process.run("ssh",["-S","/tmp/moonrobo-operator-179.sock",host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/compare_actor_snapshots_a.mbtx"],stdout=@process.redirect_to_file(out+"/compare.stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(out+"/compare.stderr.log",create_mode=CreateNew)),0)
+  assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",host+":"+base+"/actor-normalizer-comparison-a.json",out+"/normalizer-comparison-a.json"]),0)
+}

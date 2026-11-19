@@ -1,0 +1,122 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+struct Progress {
+  mut advised : Int32
+  mut skipped : Int32
+}
+
+///|
+async fn advise_directory(
+  directory : String,
+  maximum : Int32,
+  progress : Progress,
+  depth : Int32,
+) -> Unit {
+  guard progress.advised < maximum else { return }
+  guard depth <= 64 else { fail("unexpected directory depth in source tree") }
+  guard @fs.kind(directory, follow_symlink=false) == Directory &&
+    @fs.realpath(directory) == directory else {
+    fail("source directory changed or contains a symlink: " + directory)
+  }
+  let entries = @fs.opendir(directory)
+  defer entries.close()
+  while progress.advised < maximum {
+    guard entries.next(include_hidden=false, include_special=false)
+      is Some(entry) else {
+      break
+    }
+    let path = directory + "/" + entry.name
+    match @fs.kind(path, follow_symlink=false) {
+      Directory => advise_directory(path, maximum, progress, depth + 1)
+      Regular if entry.name.has_suffix(".csv") => {
+        // count=0 requests file-specific cache advice without reading payloads.
+        // nofollow also refuses a final-path symlink if it changes after stat.
+        let (code, _, err) = @process.collect_output("dd", [
+          "if=" + path,
+          "iflag=nocache,nofollow",
+          "count=0",
+          "status=none",
+        ])
+        guard code == 0 else {
+          fail(
+            "cache advice failed after \{progress.advised} CSVs: " +
+            path +
+            ": " +
+            err.text(),
+          )
+        }
+        progress.advised += 1
+        if progress.advised % 1000 == 0 {
+          println("cache advice completed for \{progress.advised} CSVs")
+        }
+      }
+      _ => progress.skipped += 1
+    }
+  }
+}
+
+///|
+/// Linux/GNU-only, bounded file-specific cache advice on an idle BONES source
+/// tree, or explicitly selected atomically published converted CSVs. It never
+/// writes a file or invokes global drop_caches/sync. Pause a running converter
+/// before using --completed-converted; .partial files are never selected.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 ||
+    (args.length() == 4 && args[3] == "--completed-converted") else {
+    fail(
+      "usage: moon run --target native evict_training_file_cache.mbtx ABSOLUTE_ROOT POSITIVE_MAX_FILE_COUNT [--completed-converted] (no default)",
+    )
+  }
+  let root = args[1]
+  let maximum = @string.parse_int(args[2])
+  guard maximum > 0 else { fail("maximum file count must be positive") }
+  let converted = args.length() == 4
+  let suffix = if converted { "/aligned-g1-v1/clips" } else { "/source/g1/csv" }
+  guard root.has_prefix("/") && root.has_suffix(suffix) else {
+    fail("root must be an absolute path ending in " + suffix)
+  }
+  guard @fs.kind(root, follow_symlink=false) == Directory &&
+    @fs.realpath(root) == root else {
+    fail("root must be a canonical directory without symlink components")
+  }
+  let (code, version, err) = @process.collect_output("dd", ["--version"])
+  guard code == 0 &&
+    (
+      version.text().has_prefix("dd (coreutils) ") ||
+      version.text().has_prefix("dd (GNU coreutils) ")
+    ) else {
+    fail("GNU dd is required: " + err.text())
+  }
+  let progress = { advised: 0, skipped: 0, }
+  advise_directory(root, maximum, progress, 0)
+  let report : Json = {
+    "format": "moonrobo.training-file-cache-advice.v1",
+    "root": Json(root),
+    "selection": Json(
+      if converted {
+        "completed-converted-csv"
+      } else {
+        "source-csv"
+      },
+    ),
+    "max_file_count": Json(maximum),
+    "completed_csv_advice": Json(progress.advised),
+    "skipped_non_csv_or_non_regular": Json(progress.skipped),
+    "bound_reached": Json(progress.advised == maximum),
+    "payload_bytes_read": 0,
+    "payload_bytes_written": 0,
+    "global_cache_operation": false,
+    "cache_reclaim_guaranteed": false,
+  }
+  println(report.stringify(indent=2))
+}

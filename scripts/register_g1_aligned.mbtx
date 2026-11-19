@@ -1,0 +1,270 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing " + key)
+  }
+  value
+}
+
+///|
+fn str(value : Json) -> String raise {
+  guard value is String(value) else { fail("expected string") }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(value) else { fail("expected array") }
+  value
+}
+
+///|
+async fn run(executable : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = @process.collect_output(executable, args)
+  assert_eq(code, 0, msg=stderr.text() + stdout.text())
+  stdout.text()
+}
+
+///|
+async fn sha(path : String) -> String {
+  run("/usr/bin/shasum", ["-a", "256", path]).split(" ").to_array()[0].to_owned()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() == 7 || args.length() == 9,
+    msg="usage: register_g1_aligned.mbtx REPO STUDY MOTION_DIR MOONDATA_ROOT ID OUTPUT_JSON [PHYSICS_LIBRARY PHYSICS_ARTIFACT]",
+  )
+  let root = args[1]
+  let study = args[2]
+  let report = @json.parse(@fs.read_file(study + "/report.json").text())
+  let evaluation = @json.parse(@fs.read_file(study + "/evaluation.json").text())
+  assert_eq(field(report, "format"), "moonrobo.supermimic-aligned-training.v1")
+  assert_eq(
+    field(evaluation, "format"),
+    "moonrobo.supermimic-full-clip-evaluation.v1",
+  )
+  let checkpoint = if @fs.exists(study + "/checkpoint.json") {
+    study + "/checkpoint.json"
+  } else if @fs.exists(study + "/checkpoint.pt") {
+    study + "/checkpoint.pt"
+  } else {
+    fail(
+      "retained checkpoint.json or original checkpoint.pt is required; no invented or renamed replay",
+    )
+  }
+  assert_eq(field(report, "checkpoint_sha256"), Json(sha(checkpoint)))
+  assert_eq(
+    field(report, "checkpoint_sha256"),
+    field(evaluation, "checkpoint_sha256"),
+  )
+  let evaluation_identity = field(evaluation, "identity")
+  assert_eq(
+    field(report, "identity"),
+    if evaluation_identity is { "training_identity": training, .. } {
+      training
+    } else {
+      evaluation_identity
+    },
+  )
+  let identity = field(report, "identity")
+  let scene = str(field(identity, "scene"))
+  assert_eq(Json(sha(scene)), field(identity, "scene_sha256"))
+  for motion in array(field(identity, "motions")) {
+    let name = str(field(motion, "name"))
+    assert_false(name.contains("/") || name.contains(".."))
+    assert_eq(Json(sha(args[3] + "/" + name)), field(motion, "sha256"))
+  }
+  if !@fs.exists(study + "/collection") {
+    @fs.mkdir(study + "/collection")
+  }
+  for command in ["learning_experiment", "motion_dataset", "moondata"] {
+    assert_eq(
+      @process.run(
+        "moon",
+        ["build", "cmd/" + command, "--target", "native"],
+        stdout=@process.redirect_to_file(
+          study + "/build-" + command + ".log",
+          create_mode=CreateOrTruncate,
+        ),
+        stderr=@process.redirect_to_file(
+          study + "/build-" + command + "-stderr.log",
+          create_mode=CreateOrTruncate,
+        ),
+      ),
+      0,
+    )
+  }
+  let library = @env.get_env_var("MOONROBO_MUJOCO_LIBRARY").unwrap_or("")
+  guard library != "" else {
+    fail("MOONROBO_MUJOCO_LIBRARY required for native aligned replay export")
+  }
+  @fs.write_file(
+    study + "/collection/config.json",
+    field(report, "config").stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let export_args = [
+    "-C",
+    root,
+    "run",
+    "--quiet",
+    "--warn-list",
+    "-a",
+    "--target",
+    "native",
+    "src/learning_aligned/cmd",
+    "--",
+    "export",
+    "--resume",
+    checkpoint,
+    "--library",
+    library,
+    "--config",
+    study + "/collection/config.json",
+    "--output",
+    study + "/collection/dataset.json",
+    "--motion-dir",
+    args[3],
+    "--scene",
+    scene,
+  ]
+  let decoded = if checkpoint.has_suffix(".pt") {
+    run("moon", [
+      "-C",
+      root,
+      "run",
+      "--quiet",
+      "--warn-list",
+      "-a",
+      "--target",
+      "native",
+      "cmd/reference_scripts",
+      "--",
+      root,
+      "aligned_export.py",
+      "--checkpoint",
+      checkpoint,
+      "--checkpoint-sha256",
+      str(field(report, "checkpoint_sha256")),
+      "--motion-dir",
+      args[3],
+      "--scene",
+      scene,
+      "--library",
+      library,
+      "--report",
+      study + "/report.json",
+    ])
+  } else {
+    if args.length() == 9 {
+      export_args.append([
+        "--physics-library",
+        args[7],
+        "--physics-artifact",
+        args[8],
+      ])
+    }
+    if field(identity, "backend") == Json("isaac-newton-warp-apic-native") {
+      guard args.length() == 9 else {
+        fail(
+          "native Isaac replay identity requires the original PHYSICS_LIBRARY and PHYSICS_ARTIFACT; no SDK/Python fallback",
+        )
+      }
+    }
+    ignore(run("moon", export_args))
+    @fs.read_file(study + "/collection/dataset.json").text()
+  }
+  let dataset = @json.parse(decoded)
+  @fs.write_file(
+    study + "/collection/dataset.json",
+    decoded,
+    create_mode=CreateOrTruncate,
+  )
+  let cli_root = root + "/_build/native/debug/build/cmd/"
+  let batch = @json.parse(
+    run(cli_root + "motion_dataset/motion_dataset.exe", [
+      study + "/collection/dataset.json",
+      "train",
+      "8",
+      "8",
+    ]),
+  )
+  assert_eq(field(batch, "format"), "moonrobo.training-batch.v1")
+  assert_eq(array(field(dataset, "state_axes")).length(), 71)
+  let episodes = array(field(dataset, "episodes"))
+  let mut transitions = 0
+  for episode in episodes {
+    transitions += array(field(episode, "steps")).length()
+  }
+  let metadata : Json = {
+    "format": "moonrobo.aligned-native-export.v1",
+    "numeric_backend": "MoonBit Float64 reconstruction of retained checkpoint values; Float32 bit parity has not been validated",
+    "checkpoint_import": Json(
+      if checkpoint.has_suffix(".pt") {
+        "data-only Torch ZIP/pickle replay import"
+      } else {
+        "native JSON retained replay"
+      },
+    ),
+    "native_validation_passed": true,
+    "checkpoint_sha256": field(report, "checkpoint_sha256"),
+    "dataset_sha256": Json(sha(study + "/collection/dataset.json")),
+    "episodes": Json(episodes.length()),
+    "retained_training_transitions": Json(transitions),
+    "validated_windows_length8_stride8": Json(
+      array(field(batch, "windows")).length(),
+    ),
+    "scope": "Checkpoint retained replay; no invented baseline or held-out data; original full-clip evaluation kept separately",
+    "state_conversion": "aligned p,quat,v_world,w_world,q_smc,qd_smc to compiled MJCF qpos,qvel (angular velocity body-local)",
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    study + "/native-export.json",
+    metadata.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let cli = cli_root + "learning_experiment/learning_experiment.exe"
+  let now = @env.now().reinterpret_as_int64().to_string()
+  let imported = @json.parse(run(cli, ["import", args[4], study, args[5], now]))
+  assert_true(array(field(imported, "candidates")).is_empty())
+  assert_eq(field(imported, "physical_execution_allowed"), false)
+  assert_eq(@json.parse(run(cli, ["inspect", args[4], args[5]])), imported)
+  assert_eq(
+    @json.parse(run(cli, ["import", args[4], study, args[5], now])),
+    imported,
+  )
+  let validation = @json.parse(
+    run(cli_root + "moondata/moondata.exe", ["validate", args[4], now]),
+  )
+  assert_eq(field(validation, "status"), "passed")
+  assert_eq(field(validation, "finding_count"), 0)
+  let receipt : Json = {
+    "format": "moonrobo.aligned-registration.v1",
+    "experiment": imported,
+    "native_export": metadata,
+    "evaluation": evaluation,
+    "validation": validation,
+    "legacy_baseline_comparison_available": false,
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    args[6],
+    receipt.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "Registered aligned training, full-clip evaluation, checkpoint and validated native replay; no legacy baseline inferred.",
+  )
+}

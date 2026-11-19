@@ -1,0 +1,13 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let repo="/Users/kq/Workspace/moonrobo"; let out=repo+"/output/spark-runtime-20261024/smc-algebra-20261028"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host="wlc004s@192.168.2.179"; let socket="/tmp/moonrobo-operator-179.sock"
+  let source=@fs.read_file(repo+"/output/spark-runtime-20261024/smc-heading-20261027/advise_heading_a.mbtx").text()
+  let labels=["algebra-all-world-gate-a","algebra-all-actor-gate-a","algebra-smc-eager-world-a","algebra-smc-eager-actor-a","algebra-world-baseline-a","algebra-world-rotation-a","algebra-world-xi-a","algebra-world-all-a","algebra-world-smc-a","algebra-actor-baseline-a","algebra-actor-xi-a","algebra-actor-return-a","algebra-actor-all-a","algebra-actor-smc-a","algebra-world-baseline-b","algebra-world-all-b","algebra-actor-baseline-b","algebra-actor-all-b"]
+  let cache=source.split("\n").map(l => if l.trim().has_prefix("let labels = ") {l.to_owned()+" + "+Json(labels).stringify()} else {l.to_owned()}).collect().join("\n")
+  @fs.write_file(out+"/advise_algebra_a.mbtx",cache,create_mode=CreateNew)
+  for (path,file) in [(out+"/advise_algebra_a.mbtx","advise_algebra_a.mbtx"),(repo+"/scripts/run_smc_algebra.mbtx","run_smc_algebra.mbtx"),(repo+"/scripts/compare_top3_snapshots.mbtx","compare_top3_snapshots.mbtx")] {
+    guard @process.run("scp",["-o","ControlPath="+socket,path,host+":"+base+"/"+file])==0 else {fail(file)}
+  }
+}

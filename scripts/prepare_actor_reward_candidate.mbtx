@@ -1,0 +1,179 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["prepare", "build", "run"].contains(mode) else {
+    fail("prepare/build/run")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  if mode == "prepare" {
+    let fixture = @fs.read_file(out + "/actor_aligned_fixture_a.mbt")
+      .text()
+      .replace_all(
+        old="  let rows : Array[Json] = []",
+        new=(
+          #|  let reward_root="/workspace/moonrobo/runs/hotspot-mlp-actor-reward-reference-b/reward"
+          #|  let manifest : Map[String,Json] = @json.from_json(@json.parse(@fs.read_file(reward_root+"/manifest.json").text()))
+          #|  let model : Map[String,Json] = @json.from_json(manifest["model_contract"])
+          #|  let constants=learner.context.compiled_reward_constants(@json.from_json(model["names"]),@json.from_json(model["parents"]),@json.from_json(model["joints"]),@json.from_json(model["tracked"]),@json.from_json(model["reward"]))
+          #|  learner.compiled_actor_reward=Some((backend.load_compiled_block(reward_root,cuda_device=0),constants))
+          #|  let rows : Array[Json] = []
+        ),
+      )
+    let learning = @fs.read_file("src/learning_aligned_gpu/learning.mbt")
+      .text()
+      .replace_all(
+        old="    states.push(state)",
+        new="    states.push(state)\n    actor_boundary(\"step-\\{t}-action\",action)\n    for (name,value) in [(\"p\",state.p),(\"r\",state.rotation),(\"v\",state.v),(\"w\",state.w),(\"q\",state.q),(\"qd\",state.qd)] {actor_boundary(\"step-\\{t}-\\{name}\",value)}",
+      )
+      .replace_all(
+        old="      // compiled observation boundary",
+        new="      actor_boundary(\"step-\\{t}-observation\",history.narrow(1,c.hist-1,1).reshape([n,self.mode.dim()]))",
+      )
+      .replace_all(
+        old="    history = self.backend.concat(",
+        new="    actor_boundary(\"step-\\{t}-observation\",obs)\n    history = self.backend.concat(",
+      )
+      .replace_all(
+        old="  let return_range =",
+        new="  actor_boundary(\"rewards\",rewards)\n  actor_boundary(\"failures\",failures)\n  let return_range =",
+      )
+      .replace_all(
+        old="  let adam_range = @tensor.operator_range_begin(\"diag.actor.adam\")",
+        new="  for i,p in self.policy.parameters() {actor_boundary(\"raw-policy-\\{i}\",p.gradient())}\n  let adam_range = @tensor.operator_range_begin(\"diag.actor.adam\")",
+      )
+    let suffix = @fs.read_file(out + "/actor_step_learning_e.mbt")
+    .text()
+    .split("let actor_boundary_records")
+    .to_array()[1].to_owned()
+    let learning = learning + "\n///|\nlet actor_boundary_records" + suffix
+    let mut build = @fs.read_file(out + "/build_actor_aligned_a.mbtx")
+      .text()
+      .replace_all(old="aligned-a", new="reward-reference-native-a")
+    for
+      (a, b) in [
+        ("actor_aligned_fixture_a.mbt", "actor_reward_reference_fixture_a.mbt"),
+        ("actor_step_learning_e.mbt", "actor_reward_reference_learning_a.mbt"),
+        ("compiled_actor_e.mbt", "compiled_actor_reward_reference_a.mbt"),
+        (
+          "actor_context_soft_limits_d.mbt", "actor_context_reward_reference_a.mbt",
+        ),
+      ] {
+      build = build.replace_all(old=a, new=b)
+    }
+    let runner = @fs.read_file(out + "/run_actor_aligned_a.mbtx")
+      .text()
+      .replace_all(
+        old="run_actor_aligned_a.mbtx",
+        new="run_actor_reward_reference_native_a.mbtx",
+      )
+      .replace_all(
+        old="actor-step-gate-aligned-a",
+        new="actor-step-gate-reward-reference-native-a",
+      )
+      .replace_all(
+        old="actor_aligned_fixture_a.mbt",
+        new="actor_reward_reference_fixture_a.mbt",
+      )
+      .replace_all(
+        old="  write_json(root + \"/protocol.json\"",
+        new="  let reward_dir=\"/home/wlc004s/moonrobo/runs/hotspot-mlp-actor-reward-reference-b/reward\"\n  for name in @fs.readdir(reward_dir) {if name.has_suffix(\".so\")||name.has_suffix(\".cubin\")||name==\"native.spec\"||name==\"manifest.json\" {let path=reward_dir+\"/\"+name;pins[path]=Json(hash_file(path))}}\n  write_json(root + \"/protocol.json\"",
+      )
+    for
+      (name, content) in [
+        ("actor_reward_reference_fixture_a.mbt", fixture),
+        ("actor_reward_reference_learning_a.mbt", learning),
+        (
+          "compiled_actor_reward_reference_a.mbt",
+          @fs.read_file("src/learning_aligned_gpu/compiled_actor.mbt").text(),
+        ),
+        (
+          "actor_context_reward_reference_a.mbt",
+          @fs.read_file("src/learning_aligned_gpu/geometry/context.mbt").text(),
+        ),
+        ("build_actor_reward_reference_a.mbtx", build),
+        ("run_actor_reward_reference_native_a.mbtx", runner),
+      ] {
+      @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+      if name.has_suffix(".mbtx") {
+        assert_eq(
+          @process.run("moon", ["check", "--target", "native", out + "/" + name]),
+          0,
+        )
+      }
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/reward-reference-native-" + mode + "-a"
+  @fs.mkdir(folder)
+  let command = if mode == "build" {
+    "build_actor_reward_reference_a.mbtx"
+  } else {
+    "run_actor_reward_reference_native_a.mbtx -- actor native off 1 actor-reward-reference-native-a bf16-full"
+  }
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      command,
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  if mode == "run" {
+    for
+      name in [
+        "result.json", "final.json", "boundaries.json", "completion.json", "training-guard.json",
+        "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+        "protocol.json", "compiled-packages.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-reward-reference-native-a/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+  }
+  assert_eq(code, 0)
+  if mode == "run" {
+    guard @fs.exists(folder + "/final.json") &&
+      @fs.exists(folder + "/result.json") else {
+      fail("complete update required")
+    }
+  }
+}

@@ -1,0 +1,63 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let old = @fs.read_file(
+    "output/spark-runtime-20261024/precision-scaling-20261028-a/reclaim_precision_outputs.mbtx",
+  ).text()
+  let reclaim = old
+    .replace_all(
+      old="precision-scaling-closed-output-reclaim-a.json",
+      new="compiled-mlp-closed-output-reclaim-a.json",
+    )
+    .replace_all(
+      old="s.has_prefix(\"hotspot-shared-pscale-native-\")||s.has_prefix(\"hotspot-shared-bf16-native-\")",
+      new="s.has_prefix(\"hotspot-shared-pscale-native-\")||s.has_prefix(\"hotspot-shared-bf16-native-\")||s.has_prefix(\"hotspot-shared-coefficient-\")||s.has_prefix(\"hotspot-shared-return-split-\")||s.has_prefix(\"hotspot-shared-heading-body-\")",
+    )
+  let runner = @fs.read_file(dir + "/run_compiled_mlp_a.mbtx")
+    .text()
+    .replace_all(old="run_compiled_mlp_a.mbtx", new="run_compiled_mlp_b.mbtx")
+    .replace_all(
+      old="+amp+\"-b\"",
+      new="+amp+(if amp==\"none\" {\"-c\"}else{\"-b\"})",
+    )
+    .replace_all(
+      old="+amp+\"-gate-a\"",
+      new="+amp+(if amp==\"none\" {\"-gate-b\"}else{\"-gate-a\"})",
+    )
+  for
+    (name, text) in [
+      ("reclaim_compiled_outputs_a.mbtx", reclaim),
+      ("run_compiled_mlp_b.mbtx", runner),
+    ] {
+    @fs.write_file(dir + "/" + name, text, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        dir + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  assert_eq(
+    @process.run("ssh", [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179",
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/reclaim_compiled_outputs_a.mbtx",
+    ]),
+    0,
+  )
+}

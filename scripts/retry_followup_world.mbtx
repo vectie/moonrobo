@@ -1,0 +1,84 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+///|
+let base = "/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a"
+
+///|
+async fn run(label : String, script : String, args : Array[String]) -> Unit {
+  println("Starting " + label)
+  guard @process.run(
+      "/home/wlc004s/moonrobo/toolchain/bin/moon",
+      ["run", "--target", "native", script, "--", ..args],
+      stdout=@process.redirect_to_file(
+        base + "/retry-b-" + label + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        base + "/retry-b-" + label + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    ) ==
+    0 else {
+    fail(label + " failed; retained without guard changes")
+  }
+  println("Completed " + label)
+}
+
+///|
+async fn main {
+  guard @json.parse(@fs.read_file(base + "/spec-pair.json").text())
+    is Object(spec) &&
+    spec.get("pins") is Some(Array(pins)) else {
+    fail("spec required")
+  }
+  for
+    path in [
+      base + "/retry_followup_world.mbtx",
+      "/home/wlc004s/moonrobo/runs/hotspot-world-packed-abba-20261026-a/run-0/result.json",
+      "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/cache-followup-world-before-pair-20261026-a.json",
+    ] {
+    let bytes = @utf8.encode(@fs.read_file(path).text())
+    let hash = @crypto.SHA256::new()
+    hash.update(bytes)
+    pins.push({
+      "path": Json(path),
+      "sha256": Json(@crypto.bytes_to_hex_string(hash.finalize())),
+      "role": "fresh-world-pair-recovery",
+    })
+  }
+  spec["retry_scope"] = "Prior group rejected during first preflight before training; all prior rows excluded. Only verified closed image pages advised. No reserve, threshold, batch, source or numeric gate change. Fresh full ABBA."
+  @fs.write_file(
+    base + "/spec-pair-b.json",
+    Json(spec).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  let root = "/home/wlc004s/moonrobo/runs/hotspot-world-packed-abba-20261026-b"
+  let runner = base + "/run_followup_pairs.mbtx"
+  run("prepare", runner, ["--prepare", base + "/spec-pair-b.json", root])
+  let tools = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+  for i in 0..<4 {
+    run("run-" + i.to_string(), runner, ["--run", root, i.to_string()])
+    run("cache-" + i.to_string(), tools + "/advise_hotspot_run_cache.mbtx", [
+      "--advise-caches",
+      tools + "/cache-world-packed-b-cuda-" + i.to_string() + ".json",
+      root + "/run-" + i.to_string(),
+    ])
+    run(
+      "image-" + i.to_string(),
+      "/home/wlc004s/moonrobo/private/hotspot-smc4096-20261026-a/advise_closed_smc_small_image_pages.mbtx",
+      ["--advise", "cache-world-packed-b-image-" + i.to_string() + ".json"],
+    )
+  }
+  run("summary", base + "/summarize_hotspot_pairs.mbtx", [
+    root,
+    root + "/summary.json",
+  ])
+}

@@ -1,0 +1,77 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+}
+
+///|
+/// Literal reviewed source edits only; does not run numerical code.
+async fn main {
+  if @fs.exists("docs/PYTHON_DEPENDENCIES.json") {
+    fail(
+      "One-off source migration is already audited; do not rerun its rewrite recipe",
+    )
+  }
+  let manifest = @json.parse(
+    @fs.read_file("scripts/python_reference/temporal-balance-sources.json").text(),
+  )
+  guard manifest is Array(rows) else { fail("source manifest required") }
+  let names = rows.map(fn(row) {
+    guard row is Object(fields) && fields.get("script") is Some(String(name)) else {
+      fail("invalid source row")
+    }
+    name
+  })
+  names.push("probe_g1_replay_directions.mbtx")
+  let transferred = [
+    "export_g1_learned_balance.mbtx", "export_g1_sustained_balance.mbtx", "report_g1_learned_balance.mbtx",
+    "report_g1_sustained_balance.mbtx", "report_g1_balance_teacher_long.mbtx", "report_g1_balance_intervention.mbtx",
+    "report_g1_balance_long_intervention.mbtx", "report_g1_balance_features.mbtx",
+  ]
+  for name in @fs.readdir("scripts", sort=true) {
+    if !names.contains(name) || transferred.contains(name) {
+      continue
+    }
+    let path = "scripts/" + name
+    let original = @fs.read_file(path).text()
+    let mut source = original
+    source = source.replace(
+      old="root,package,\"--repo\",root,..command",
+      new="root,package,..command,\"--repo\",root",
+    )
+    // All new native workflows use canonical JSON filenames. Reference scripts
+    // retain the old .pt spelling verbatim in python_reference for paired retest.
+    source = source.replace_all(old=".pt\"", new=".moon.json\"")
+    if name == "register_g1_learned_balance.mbtx" {
+      source = source.replace(
+        old="Json(digest(exported + \"/provider-sources/learned_balance_export.py\"))",
+        new="Json(digest(exported + \"/\" + provider_snapshot(metadata, \"provider-sources/learned_balance_export.py\")))",
+      )
+      if !source.contains("fn provider_snapshot(") {
+        source += "\n///| Snapshot extension reflects real source language; old metadata keeps its original identity.\nfn provider_snapshot(metadata:Json, legacy:String)->String raise {guard metadata is Object(fields) else {fail(\"metadata must be object\")};match fields.get(\"provider_snapshot\") {Some(String(path))=>path;None=>legacy;_=>fail(\"invalid provider snapshot\")}}\n"
+      }
+    }
+    if name == "register_g1_sustained_balance.mbtx" {
+      source = source.replace(
+        old="Json(sha(exported + \"/provider-sources/sustained_balance_export.py\"))",
+        new="Json(sha(exported + \"/\" + provider_snapshot(export_report, \"provider-sources/sustained_balance_export.py\")))",
+      )
+      if !source.contains("fn provider_snapshot(") {
+        source += "\n///| Snapshot extension reflects real source language; legacy metadata keeps its original identity.\nfn provider_snapshot(metadata:Json, legacy:String)->String raise {guard metadata is Object(fields) else {fail(\"metadata must be object\")};match fields.get(\"provider_snapshot\") {Some(String(path))=>path;None=>legacy;_=>fail(\"invalid provider snapshot\")}}\n"
+      }
+    }
+    if source != original {
+      @fs.write_file(path, source, create_mode=CreateOrTruncate)
+    }
+  }
+  let path = "src/learning_temporal/physics/study.mbt"
+  let source = @fs.read_file(path)
+    .text()
+    .replace(old="\"residual-actor\"", new="\"g1-actor\"")
+    .replace(
+      old="(@async.now()-started).to_json()",
+      new="((@async.now()-started).to_double()/1000).to_json()",
+    )
+  @fs.write_file(path, source, create_mode=CreateOrTruncate)
+}

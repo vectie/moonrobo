@@ -1,0 +1,131 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+let local_root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/hotspot-smc4096-20261026"
+
+///|
+async fn fetch(source : String, relative : String) -> Unit {
+  guard (source.has_suffix(".json") || source.has_suffix(".log")) &&
+    !relative.contains("..") else {
+    fail("review metadata only")
+  }
+  let target = local_root + "/" + relative
+  if @fs.exists(target) {
+    return
+  }
+  let status = @async.with_timeout(60000, () => {
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179:" + source,
+      target,
+    ])
+  })
+  guard status == 0 else { fail("fetch failed: " + source) }
+  let file = @fs.open(target, mode=ReadOnly)
+  defer file.close()
+  guard file.size() <= 16777216L else { fail("metadata exceeds16MiB") }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["pair", "traces"].contains(mode) else {
+    fail("pair|traces")
+  }
+  if mode == "pair" {
+    @fs.mkdir(local_root + "/pair", recursive=true)
+    let source = "/home/wlc004s/moonrobo/runs/native-hotspot-vs-smc512-20261026-b"
+    for name in ["summary.json", "spec.json", "plan.json"] {
+      fetch(source + "/" + name, "pair/" + name)
+    }
+    for i in 0..<4 {
+      let run = "run-" + i.to_string()
+      fetch(source + "/" + run + "/result.json", "pair/" + run + ".result.json")
+      if i == 1 || i == 2 {
+        fetch(
+          source + "/" + run + "/logs/microbatch-receipt.json",
+          "pair/" + run + ".microbatch.json",
+        )
+      }
+    }
+    println("Fetched fresh accepted pair evidence")
+    return
+  }
+  let tools = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+  for (kind, prefix) in [("native", "n"), ("smc-compiled", "s")] {
+    for phase in ["actor", "world", "collect"] {
+      for observer in ["off", "trace"] {
+        let suffix = if prefix == "n" && phase == "world" && observer == "trace" {
+          "tracec"
+        } else {
+          observer
+        }
+        let label = "combo26-" + prefix + "-" + phase + "-" + suffix
+        let folder = prefix + "-" + phase + "-" + observer
+        @fs.mkdir(local_root + "/" + folder, recursive=true)
+        let run = "/home/wlc004s/moonrobo/runs/operator-trace41-20261025-phase-" +
+          label +
+          "-" +
+          kind
+        for name in ["outer-result.json", "launch.json"] {
+          fetch(run + "/" + name, folder + "/" + name)
+        }
+        for
+          name in [
+            "inner-receipt.json", "target.stdout.log", "target.stderr.log",
+          ] {
+          fetch(run + "/run/" + kind + "/" + name, folder + "/" + name)
+        }
+        if kind == "native" {
+          for
+            name in [
+              "operator-diagnostics.json", "operator-diagnostic-run.json",
+            ] {
+            fetch(run + "/pair/train/" + name, folder + "/" + name)
+          }
+        } else {
+          fetch(
+            run + "/pair/logs/moonrobo-trace-capture.json",
+            folder + "/capture.json",
+          )
+        }
+        if observer == "trace" {
+          let exported = tools +
+            "/trace41-phase-" +
+            label +
+            "-" +
+            kind +
+            "-export"
+          for
+            name in [
+              "phase-attribution.json", "schema.json", "export-receipt.json", "export.stderr.log",
+            ] {
+            fetch(exported + "/" + name, folder + "/" + name)
+          }
+          if phase == "collect" {
+            fetch(
+              exported + "/copy-attribution.json",
+              folder + "/copy-attribution.json",
+            )
+          }
+          if phase == "world" {
+            fetch(
+              exported + "/sync-attribution.json",
+              folder + "/sync-attribution.json",
+            )
+          }
+        }
+      }
+    }
+  }
+  println(
+    "Fetched twelve windows and six bounded trace reports; raw traces remain remote",
+  )
+}

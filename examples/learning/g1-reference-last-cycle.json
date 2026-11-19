@@ -1,0 +1,19 @@
+{
+  "format": "moonrobo.g1-reference-last-cycle-charter.v1",
+  "source_report_sha256": "a8308c60c8c1d9eb3e561eb667daac8736d7374989dd21e69182ebd0bd65ae25",
+  "seeds": [0, 1, 2],
+  "methods": ["replay-prefix-extended", "replay-prefix-anchor"],
+  "before_cycle": 5,
+  "after_cycle": 6,
+  "probe_clip_indices": [0, 3, 6],
+  "reference_origin_step": 0,
+  "prediction_horizons": [8, 32],
+  "training_origin_samples": 256,
+  "training_origin_seed_base": 99300,
+  "expected_physical_records": 36,
+  "expected_new_physical_records": 18,
+  "expected_reused_physical_records": 18,
+  "comparison": "Freeze all six final world models. Compare each paired cycle-5 and cycle-6 actor on the same three known development references from origin zero. Reuse the archived cycle-6 final evaluations and collect only the missing cycle-5 deterministic episodes. Compare H32 closed-loop imagined return changes with actual H32 and full-remainder discounted returns. Separately score open-loop H8/H32 predictions under recorded actions across both actors' episodes, including a final pre-fall window. Score imagined returns on 256 fixed sampled states from each run's actual cycle-6 collection; these do not constitute physical counterfactuals at those states.",
+  "selection": "All methods, seeds and representative motion families are fixed before this diagnostic. No fitting, optimizer step, perturbation search, checkpoint selection or policy adoption. Existing known-reference final evaluations are development diagnostics, not an untouched generalization test. No new motion coverage or full-suite qualification claim.",
+  "physical_execution_allowed": false
+}

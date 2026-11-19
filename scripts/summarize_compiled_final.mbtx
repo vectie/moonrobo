@@ -1,0 +1,108 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let timings : Array[Json] = []
+  let gates : Array[Json] = []
+  for precision in ["bf16", "none"] {
+    for side in ["native", "smc"] {
+      let label = "aoti-final2-" + side + "-" + precision
+      let numeric = @json.parse(
+        @fs.read_file(root + "/" + label + "-gate/result.json").text(),
+      )
+      let closed = @json.parse(
+        @fs.read_file(root + "/" + label + "-gate/completion.json").text(),
+      )
+      gates.push({
+        "run": Json(label + "-gate"),
+        "completion": closed,
+        "comparison": if numeric is Object(m) {
+          m.get("passed").unwrap_or(Json(null))
+        } else {
+          Json(null)
+        },
+      })
+      guard closed is { "passed": True, .. } else {
+        fail("native or reference gate failed")
+      }
+      if side == "smc" {
+        guard numeric is { "passed": True, .. } else {
+          fail("SMC numerical gate failed")
+        }
+      }
+      let result = @json.parse(
+        @fs.read_file(root + "/" + label + "-bench/result.json").text(),
+      )
+      guard result is { "rows": Array(rows), .. } else { fail("timings") }
+      let values = rows.filter_map(r => {
+        match r {
+          { "steady": True, "wall_ms": Number(ms, ..), .. } => Some(ms)
+          _ => None
+        }
+      })
+      values.sort()
+      guard values.length() == 50 else { fail("50 steady samples") }
+      timings.push({
+        "run": Json(label + "-bench"),
+        "precision": Json(precision),
+        "side": Json(side),
+        "numeric_passed": if result is Object(m) {
+          m.get("passed").unwrap_or(Json(null))
+        } else {
+          Json(null)
+        },
+        "samples": 50,
+        "median_ms": Json((values[24] + values[25]) / 2.0),
+      })
+    }
+  }
+  let world = @json.parse(
+    @fs.read_file(root + "/aoti-window-smc-bf16-gate-g/result.json").text(),
+  )
+  guard world
+    is {
+      "numerical_comparison": { "passed": False, "tensors": Array(tensors), .. },
+      ..
+    } else {
+    fail("expected rejected window evidence")
+  }
+  let failing = tensors.filter_map(t => {
+    match t {
+      {
+        "name": String(name),
+        "violations": Number(n, ..),
+        "max_abs": max_abs,
+        "cosine": cosine,
+        ..
+      } if n > 0.0 =>
+        Some({
+          "name": Json(name),
+          "violations": Json(n),
+          "max_abs": max_abs,
+          "cosine": cosine,
+        })
+      _ => None
+    }
+  })
+  let result : Json = {
+    "final_mlp_gates": Json(gates),
+    "final_mlp_timing": Json(timings),
+    "whole_world_gate_passed": false,
+    "whole_world_failing_tensors": Json(failing),
+    "whole_world_enabled": false,
+    "new_full_training_throughput_measured": false,
+    "guards_unchanged": true,
+  }
+  @fs.write_file(
+    root + "/final-results.json",
+    result.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(result.stringify(indent=2))
+}

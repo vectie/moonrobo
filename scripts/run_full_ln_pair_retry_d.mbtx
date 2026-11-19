@@ -1,0 +1,90 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, label] && ["d"].contains(label) else {
+    fail("fresh b|c")
+  }
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let tools = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+  let root = "/home/wlc004s/moonrobo/runs/native-full-ln-vs-smc512-20261026-" +
+    label
+  guard @fs.exists(base + "/full-ln-gates-a.json") && !@fs.exists(root) else {
+    fail("completed gates and fresh full pair required")
+  }
+  async fn run(name : String, script : String, args : Array[String]) -> Unit {
+    println("Starting " + name)
+    let code = @process.run(
+      "/home/wlc004s/moonrobo/toolchain/bin/moon",
+      ["run", "--target", "native", script, "--", ..args],
+      stdout=@process.redirect_to_file(
+        base + "/full-ln-retry-" + label + "-" + name + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        base + "/full-ln-retry-" + label + "-" + name + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    @fs.write_file(
+      base + "/full-ln-retry-" + label + "-" + name + ".receipt.json",
+      Json({
+        "exit_code": Json(code),
+        "script": Json(script),
+        "args": Json(args),
+      }).stringify(indent=2),
+      create_mode=CreateNew,
+    )
+    guard code == 0 else {
+      fail(name + " failed; stop without changing guards")
+    }
+    println("Completed " + name)
+  }
+  run("prepare", tools + "/run_smc_microbatch_pairs.mbtx", [
+    "--prepare",
+    base + "/full-ln-pair-spec-a.json",
+    root,
+  ])
+  for i in 0..<4 {
+    let index = i.to_string()
+    run("run-" + index, tools + "/run_smc_microbatch_pairs.mbtx", [
+      "--run", root, index,
+    ])
+    for mode in ["advise", "advise-caches"] {
+      run(mode + "-" + index, tools + "/advise_hotspot_run_cache.mbtx", [
+        "--" + mode,
+        base +
+        "/full-ln-retry-" +
+        label +
+        "-cache-" +
+        mode +
+        "-" +
+        index +
+        ".json",
+        root + "/run-" + index,
+      ])
+    }
+    run("image-" + index, tools + "/advise_closed_smc_image_pages_f.mbtx", [
+      "--advise",
+      "full-ln-retry-" + label + "-image-" + index + ".json",
+    ])
+    run("closed-builds-" + index, tools + "/advise_full_ln_builds_d.mbtx", [
+      "--host-build",
+      "full-ln-retry-d-builds-" + index + ".json",
+    ])
+    run("compiler-image-" + index, tools + "/advise_full_ln_image_usr_b.mbtx", [
+      "--advise",
+      "full-ln-retry-d-usr-" + index + ".json",
+    ])
+  }
+  run("summary", tools + "/summarize_smc_microbatch_pairs.mbtx", [
+    root,
+    root + "/summary.json",
+  ])
+}

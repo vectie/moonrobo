@@ -1,0 +1,445 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+///|
+struct Blob {
+  file : String
+  dtype : String
+  shape : Array[Int32]
+  count : Int64
+  byte_length : Int64
+  sha256 : String
+} derive(FromJson)
+
+///|
+struct Record {
+  name : String
+  source_dtype : String
+  blob : Blob
+} derive(FromJson)
+
+///|
+struct Snapshot {
+  format : String
+  phase : String
+  optimizer_metadata : Array[Json]
+  normalizer_counts : Array[Double]
+  records : Array[Record]
+} derive(FromJson)
+
+///|
+struct Comparison {
+  name : String
+  source_dtype : String
+  shape : Array[Int32]
+  values : Int64
+  mismatches : Int64
+  max_absolute_difference : Double
+  max_tolerance_ratio : Double
+  worst_index : Int64
+  worst_full : Double
+  worst_split : Double
+  exact_bytes : Bool
+} derive(ToJson)
+
+///|
+fn field(document : Json, key : String) -> Json raise {
+  guard document is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing JSON field: " + key)
+  }
+  value
+}
+
+///|
+async fn read_json(path : String) -> Json {
+  guard @fs.kind(path, follow_symlink=false) is Regular else {
+    fail("JSON must be a regular file")
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let n = file.size()
+  guard n > 0L && n <= 4194304L else { fail("gate JSON exceeds 4MiB") }
+  @json.parse(@utf8.decode(file.read_exactly_at(n.to_int(), position=0L)))
+}
+
+///|
+fn valid_sha(value : String) -> Bool {
+  value.length() == 64 &&
+  value.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+fn validate(record : Record) -> Unit raise {
+  let blob = record.blob
+  guard !record.name.is_empty() &&
+    record.name.length() <= 128 &&
+    record.name
+    .iter()
+    .all(c => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') &&
+    blob.file == record.name + ".f64" &&
+    blob.dtype == "f64le" &&
+    (record.source_dtype == "float32" || record.source_dtype == "float64") &&
+    !blob.shape.is_empty() &&
+    blob.shape.length() <= 4 &&
+    valid_sha(blob.sha256) else {
+    fail("invalid numerical record descriptor")
+  }
+  let mut n = 1L
+  for dim in blob.shape {
+    guard dim > 0 && n <= 16777216L / dim.to_int64() else {
+      fail("record exceeds 16M values")
+    }
+    n *= dim.to_int64()
+  }
+  guard n == blob.count && n * 8L == blob.byte_length else {
+    fail("record shape/length mismatch")
+  }
+}
+
+///|
+fn value_at(bytes : Bytes, index : Int32) -> Double {
+  let mut bits = 0L
+  for j in 0..<8 {
+    bits = bits | (bytes[index * 8 + j].to_int().to_int64() << (j * 8))
+  }
+  bits.reinterpret_as_double()
+}
+
+///|
+fn finite(value : Double) -> Bool {
+  value == value && value.abs() < 1.0e300
+}
+
+///|
+async fn compare_record(
+  left_root : String,
+  right_root : String,
+  a : Record,
+  b : Record,
+) -> Comparison {
+  validate(a)
+  validate(b)
+  guard a.name == b.name &&
+    a.source_dtype == b.source_dtype &&
+    a.blob.shape == b.blob.shape &&
+    a.blob.count == b.blob.count else {
+    fail("snapshot record identity/order differs")
+  }
+  let left_path = left_root + "/" + a.blob.file
+  let right_path = right_root + "/" + b.blob.file
+  guard @fs.kind(left_path, follow_symlink=false) is Regular &&
+    @fs.kind(right_path, follow_symlink=false) is Regular else {
+    fail("sidecars must be regular files")
+  }
+  let left = @fs.open(left_path, mode=ReadOnly)
+  defer left.close()
+  let right = @fs.open(right_path, mode=ReadOnly)
+  defer right.close()
+  guard left.size() == a.blob.byte_length && right.size() == b.blob.byte_length else {
+    fail("sidecar length differs")
+  }
+  let lh = @crypto.SHA256::new()
+  let rh = @crypto.SHA256::new()
+  let mut mismatches = 0L
+  let mut max_abs = 0.0
+  let mut max_ratio = 0.0
+  let mut worst_index = 0L
+  let mut worst_full = 0.0
+  let mut worst_split = 0.0
+  for offset = 0L; offset < a.blob.count; {
+    let n = (a.blob.count - offset).min(8192L).to_int()
+    let x = left.read_exactly_at(n * 8, position=offset * 8L)
+    let y = right.read_exactly_at(n * 8, position=offset * 8L)
+    lh.update(x)
+    rh.update(y)
+    for i in 0..<n {
+      let full = value_at(x, i)
+      let split = value_at(y, i)
+      guard finite(full) && finite(split) else {
+        fail("nonfinite value in numerical snapshot")
+      }
+      let delta = (full - split).abs()
+      // Fixed before GPU execution. Full is the declared reference; no adaptive
+      // tolerance, relative-only exception, dropped value or successful retry selection.
+      let tolerance = 0.000002 + 0.0002 * full.abs()
+      let ratio = delta / tolerance
+      if ratio > 1.0 {
+        mismatches += 1L
+      }
+      max_abs = max_abs.max(delta)
+      if ratio > max_ratio {
+        max_ratio = ratio
+        worst_index = offset + i.to_int64()
+        worst_full = full
+        worst_split = split
+      }
+    }
+    continue offset + n.to_int64()
+  }
+  guard left.size() == a.blob.byte_length &&
+    right.size() == b.blob.byte_length &&
+    @crypto.bytes_to_hex_string(lh.finalize()) == a.blob.sha256 &&
+    @crypto.bytes_to_hex_string(rh.finalize()) == b.blob.sha256 else {
+    fail("sidecar SHA256 or final length mismatch")
+  }
+  {
+    name: a.name,
+    source_dtype: a.source_dtype,
+    shape: a.blob.shape,
+    values: a.blob.count,
+    mismatches,
+    max_absolute_difference: max_abs,
+    max_tolerance_ratio: max_ratio,
+    worst_index,
+    worst_full,
+    worst_split,
+    exact_bytes: a.blob.sha256 == b.blob.sha256,
+  }
+}
+
+///|
+fn verify_runs(a : Json, b : Json) -> Unit raise {
+  guard field(a, "format") == Json("moonrobo.microbatch-numerical-run.v1") &&
+    field(b, "format") == field(a, "format") &&
+    field(a, "completed") == Json(true) &&
+    field(b, "completed") == Json(true) &&
+    field(a, "mode") == Json("full") &&
+    field(b, "mode") == Json("split") &&
+    field(a, "execution") ==
+    Json({ "world_microbatch": 0, "actor_microbatch": 0 }) &&
+    field(b, "execution") ==
+    Json({ "world_microbatch": 2, "actor_microbatch": 2 }) else {
+    fail("requires completed fixed full and split runs")
+  }
+  for
+    key in [
+      "profile", "cuda_device", "precision", "seed", "logical_batch", "config", "input_identity",
+      "initial_shared_state", "phases", "plugin_sha256", "binary_sha256", "absolute_tolerance",
+      "relative_tolerance", "kinematics", "extra_probe_rollouts", "world_optimizer_updates",
+      "actor_optimizer_updates", "critic_optimizer_updates", "probe_matches_production_objective_and_critic_norm",
+    ] {
+    guard field(a, key) == field(b, key) else {
+      fail("run identity differs: " + key)
+    }
+  }
+  guard field(a, "absolute_tolerance") == Json(0.000002) &&
+    field(a, "relative_tolerance") == Json(0.0002) &&
+    field(a, "logical_batch") == Json(4) else {
+    fail("gate tolerance/batch contract changed")
+  }
+  guard field(a, "profile") == Json("cpu-smoke") ||
+    (
+      field(a, "profile") == Json("paper-cuda") &&
+      field(a, "cuda_device") == Json(0)
+    ) else {
+    fail("unknown gate profile/device")
+  }
+}
+
+///|
+fn verify_record_completeness(
+  snapshot : Snapshot,
+  names : Map[String, Bool],
+) -> Unit raise {
+  if snapshot.phase.has_suffix("-probe") {
+    for
+      required in [
+        "actor-objective", "critic-input", "rewards", "failures", "values", "gae",
+        "updated-critic-mean", "updated-critic-variance",
+      ] {
+      guard names.contains(required) else {
+        fail("required probe record absent: " + required)
+      }
+    }
+    guard snapshot.optimizer_metadata.is_empty() &&
+      snapshot.normalizer_counts.length() == 1 else {
+      fail("invalid probe metadata")
+    }
+    return
+  }
+  guard names.contains("metrics") &&
+    snapshot.optimizer_metadata.length() == 3 &&
+    snapshot.normalizer_counts.length() == 5 else {
+    fail("learner state evidence missing")
+  }
+  for i in 0..<5 {
+    guard names.contains("norm-\{i}-mean") &&
+      names.contains("norm-\{i}-variance") else {
+      fail("normalizer values missing")
+    }
+  }
+  let models = ["world", "policy", "critic"]
+  for i, metadata in snapshot.optimizer_metadata {
+    let count : Int32 = @json.from_json(field(metadata, "parameter_count"))
+    let states : Array[Json] = @json.from_json(field(metadata, "states"))
+    guard count > 0 && count <= 128 && states.length() == count else {
+      fail("invalid parameter count")
+    }
+    for p in 0..<count {
+      guard names.contains("\{models[i]}-\{p}-kind0") else {
+        fail("parameter record absent")
+      }
+      if field(states[p], "present") == Json(true) {
+        guard names.contains("\{models[i]}-\{p}-kind1") &&
+          names.contains("\{models[i]}-\{p}-kind2") else {
+          fail("Adam moment record absent")
+        }
+      }
+      if (snapshot.phase.has_prefix("world-") && i == 0) ||
+        (snapshot.phase.has_prefix("actor-") && i > 0) {
+        guard names.contains("\{models[i]}-\{p}-gradient") else {
+          fail("updated model gradient absent")
+        }
+      }
+    }
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 4 &&
+    args[1].has_prefix("/") &&
+    args[2].has_prefix("/") &&
+    args[3].has_prefix("/") else {
+    fail(
+      "usage: compare_native_microbatch_gate.mbtx ABS_FULL_DIR ABS_SPLIT_DIR ABS_REPORT.json; CPU only, immutable input sidecars",
+    )
+  }
+  let a = read_json(args[1] + "/run.json")
+  let b = read_json(args[2] + "/run.json")
+  verify_runs(a, b)
+  let phases : Array[String] = @json.from_json(field(a, "phases"))
+  guard phases ==
+    [
+      "world-1", "world-2", "actor-1-probe", "actor-1", "actor-2-probe", "actor-2",
+    ] else {
+    fail("expected every update and both GAE probes")
+  }
+  let reports = []
+  let mut total_values = 0L
+  let mut total_mismatches = 0L
+  for phase in phases {
+    let left = args[1] + "/" + phase
+    let right = args[2] + "/" + phase
+    let x : Snapshot = @json.from_json(read_json(left + "/snapshot.json"))
+    let y : Snapshot = @json.from_json(read_json(right + "/snapshot.json"))
+    guard x.format == "moonrobo.microbatch-numerical-snapshot.v1" &&
+      x.format == y.format &&
+      x.phase == phase &&
+      y.phase == phase &&
+      x.optimizer_metadata == y.optimizer_metadata &&
+      x.normalizer_counts == y.normalizer_counts &&
+      !x.records.is_empty() &&
+      x.records.length() <= 1024 &&
+      x.records.length() == y.records.length() else {
+      fail(
+        "snapshot schema/Adam options+steps/norm counts/record count differs: " +
+        phase,
+      )
+    }
+    let names : Map[String, Bool] = Map([])
+    let comparisons = []
+    for i, record in x.records {
+      guard !names.contains(record.name) else {
+        fail("duplicate snapshot record")
+      }
+      names[record.name] = true
+      let result = compare_record(left, right, record, y.records[i])
+      total_values += result.values
+      total_mismatches += result.mismatches
+      comparisons.push(result)
+    }
+    verify_record_completeness(x, names)
+    reports.push({
+      "phase": Json(phase),
+      "optimizer_metadata_exact": true,
+      "normalizer_counts_exact": true,
+      "records": Json(comparisons),
+    })
+  }
+  let report : Json = {
+    "format": "moonrobo.microbatch-numerical-comparison.v1",
+    "passed": Json(total_mismatches == 0L),
+    "profile": field(a, "profile"),
+    "full": Json(args[1]),
+    "split": Json(args[2]),
+    "absolute_tolerance": 0.000002,
+    "relative_tolerance": 0.0002,
+    "reference": "full",
+    "values_compared": Json(total_values),
+    "mismatches": Json(total_mismatches),
+    "records_verified_by_sha256": true,
+    "input_and_initial_state_identity_exact": true,
+    "phases": Json(reports),
+    "full_memory": field(a, "final_memory"),
+    "split_memory": field(b, "final_memory"),
+    "peak_memory_reduction_claimed": false,
+    "bitwise_equality_claimed": false,
+    "physics_or_convergence_claimed": false,
+    "gaes_are_extra_probes_without_optimizer_step": true,
+  }
+  @fs.write_file(
+    args[3],
+    report.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+  println(
+    "Compared \{total_values} values; outside fixed tolerance: \{total_mismatches}. Report: \{args[3]}",
+  )
+  guard total_mismatches == 0L else {
+    fail(
+      "numerical gate failed; retain all snapshots and report, do not widen tolerance",
+    )
+  }
+}
+
+///|
+test "descriptor validation rejects traversal wrong length and oversized shapes" {
+  let base : Record = {
+    name: "world-0-kind0",
+    source_dtype: "float32",
+    blob: {
+      file: "world-0-kind0.f64",
+      dtype: "f64le",
+      shape: [2, 3],
+      count: 6L,
+      byte_length: 48L,
+      sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    },
+  }
+  validate(base)
+  for
+    broken in [
+      { ..base, blob: { ..base.blob, file: "../outside.f64", }, },
+      { ..base, blob: { ..base.blob, byte_length: 49L, }, },
+      { ..base, blob: { ..base.blob, shape: [16777217], }, },
+    ] {
+    try validate(broken) catch {
+      _ => ()
+    } noraise {
+      _ => fail("invalid descriptor accepted")
+    }
+  }
+}
+
+///|
+test "canonical readback preserves signed zero and finite IEEE64 values" {
+  for value in [0.0, -0.0, -0.001, 100000.25] {
+    let bytes = Bytes::makei(8, i => {
+      (value.reinterpret_as_int64() >> (i * 8)).to_byte()
+    })
+    assert_eq(
+      value_at(bytes, 0).reinterpret_as_int64(),
+      value.reinterpret_as_int64(),
+    )
+  }
+}

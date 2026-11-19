@@ -1,0 +1,85 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let fixture = @fs.read_file(out + "/compiled_window_fixture_a.mbt")
+    .text()
+    .replace_all(
+      old="learner.world.compiled_fitting_window=Some((backend.load_compiled_block(path+\"/rollout\",cuda_device=0),backend.load_compiled_block(path+\"/error\",cuda_device=0)))",
+      new=(
+        #|learner.world.compiled_fitting_window=Some((try backend.load_compiled_block(path+"/rollout",cuda_device=0) catch {@tensor.TensorError::Native(message)=>fail("load rollout: "+message)},try backend.load_compiled_block(path+"/error",cuda_device=0) catch {@tensor.TensorError::Native(message)=>fail("load error: "+message)}))
+      ),
+    )
+    .replace_all(
+      old="let m = learner.fit_world_batch(world)",
+      new="let m = try learner.fit_world_batch(world) catch {@tensor.TensorError::Native(message)=>fail(\"fit world: \"+message); e=>raise e}",
+    )
+  assert_true(
+    fixture.contains("fit world: ") && fixture.contains("load rollout: "),
+  )
+  let parent = @fs.read_file(out + "/build_compiled_window_a.mbtx").text()
+  let build = parent[:parent.find("async fn main {").unwrap()].to_owned() +
+    (
+      #|async fn main {
+      #|  require_idle()
+      #|  run("aoti-window-fixture-c","cp",[base+"/compiled_window_fixture_c.mbt",base+"/workspace/moonrobo-compiled-window-a/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"])
+      #|  container("aoti-window-native-build-c","/toolchain/bin/moon",["test","--build-only","--release","--target","native","-j","2","--frozen","src/learning_aligned_gpu/cmd"],workdir="/workspace/moonrobo-compiled-window-a")
+      #|  run("aoti-window-binary-c","cp",[base+"/workspace/moonrobo-compiled-window-a/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/cmd/cmd.whitebox_test.exe",base+"/compiled-window-gate-c"])
+      #|}
+    )
+  let runner = @fs.read_file(out + "/run_compiled_window_g.mbtx")
+    .text()
+    .replace_all(
+      old="run_compiled_window_g.mbtx",
+      new="run_compiled_window_i.mbtx",
+    )
+    .replace_all(old="compiled-window-gate-a", new="compiled-window-gate-c")
+    .replace_all(old="+amp+\"-gate-a\"", new="+amp+\"-gate-c\"")
+  for
+    (name, code) in [
+      ("compiled_window_fixture_c.mbt", fixture),
+      ("build_compiled_window_c.mbtx", build),
+      ("run_compiled_window_i.mbtx", runner),
+    ] {
+    @fs.write_file(out + "/" + name, code, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179",
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/build_compiled_window_c.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/window-build-c.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/window-build-c.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+}

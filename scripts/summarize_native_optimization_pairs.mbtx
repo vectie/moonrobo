@@ -1,0 +1,1124 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/x/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(values) && values.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn optional(value : Json, key : String) -> Json? raise {
+  guard value is Object(values) else { fail("expected JSON object") }
+  values.get(key)
+}
+
+///|
+fn text(value : Json) -> String raise {
+  guard value is String(value) else { fail("expected string") }
+  value
+}
+
+///|
+fn number(value : Json) -> Double raise {
+  guard value is Number(value, ..) && value >= 0.0 && value < 1.0e100 else {
+    fail("expected finite nonnegative number")
+  }
+  value
+}
+
+///|
+fn integer(value : Json) -> Int64 raise {
+  let n = match value {
+    String(value) => @string.parse_int64(value)
+    _ => {
+      let n = number(value)
+      guard n <= 9007199254740991.0 && n.to_int64().to_double() == n else {
+        fail("integer not exact")
+      }
+      n.to_int64()
+    }
+  }
+  guard n >= 0L else { fail("negative integer") }
+  n
+}
+
+///|
+async fn read_json(path : String, limit~ : Int64 = 33554432L) -> Json {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("missing/nonregular evidence: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= limit else { fail("evidence exceeds byte bound") }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else { fail("evidence changed while reading") }
+  @json.parse(@utf8.decode(bytes))
+}
+
+///|
+async fn file_sha(path : String, limit~ : Int64 = 33554432L) -> String {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= limit else {
+    fail("hash input exceeds byte bound")
+  }
+  let hash = @crypto.SHA256::new()
+  for offset = 0L; offset < size; {
+    let n = (size - offset).min(65536L).to_int()
+    hash.update(file.read_exactly_at(n, position=offset))
+    continue offset + n.to_int64()
+  }
+  guard file.size() == size else { fail("hash input changed") }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+fn stats(values : Array[Double]) -> Json raise {
+  guard values.length() > 0 else { fail("empty measurement set") }
+  let sorted = values.copy()
+  sorted.sort()
+  let n = sorted.length()
+  let median = if n % 2 == 1 {
+    sorted[n / 2]
+  } else {
+    (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
+  }
+  let mut sum = 0.0
+  for value in sorted {
+    sum += value
+  }
+  {
+    "count": Json(n),
+    "sum": Json(sum),
+    "mean": Json(sum / n.to_double()),
+    "median": Json(median),
+    "p90": Json(sorted[(9 * n + 9) / 10 - 1]),
+    "min": Json(sorted[0]),
+    "max": Json(sorted[n - 1]),
+    "p90_method": "nearest-rank",
+  }
+}
+
+///|
+fn delta(
+  times : Map[String, Int64],
+  before : String,
+  after : String,
+) -> Double raise {
+  guard times.get(before) is Some(a) && times.get(after) is Some(b) && b >= a else {
+    fail("missing/reversed phase boundary: " + before + " -> " + after)
+  }
+  (b - a).to_double()
+}
+
+///|
+fn observed_cgroup(report : Json) -> Json raise {
+  guard field(report, "samples") is Array(samples) && samples.length() <= 128 else {
+    fail("bounded memory samples required")
+  }
+  let rows = samples.copy()
+  let last = optional(report, "last_sample")
+  if last is Some(Object(_) as value) && !rows.contains(value) {
+    rows.push(value)
+  }
+  let metric_names = ["memory.peak", "memory.current", "memory.swap.current"]
+  let maximum : Map[String, Int64] = Map([])
+  let metric_counts : Map[String, Int32] = Map([])
+  let event_names = ["max", "oom", "oom_kill", "oom_group_kill"]
+  let events : Map[String, Int64] = Map([])
+  let event_counts : Map[String, Int32] = Map([])
+  let mut observed = 0
+  let mut missing = 0
+  for row in rows {
+    let host = optional(row, "host")
+    let metrics = match host {
+      Some(Object(fields)) => fields.get("cgroup_metrics")
+      _ => None
+    }
+    guard metrics is Some(Object(metrics)) else {
+      missing += 1
+      continue
+    }
+    observed += 1
+    for key in metric_names {
+      match metrics.get(key) {
+        None | Some(Null) => ()
+        Some(value) => {
+          let value = integer(value)
+          maximum[key] = maximum.get(key).unwrap_or(0L).max(value)
+          metric_counts[key] = metric_counts.get(key).unwrap_or(0) + 1
+        }
+      }
+    }
+    match metrics.get("memory.events") {
+      None | Some(Null) => ()
+      Some(String(value)) => {
+        guard value.length() <= 4096 else {
+          fail("memory.events exceeds 4 KiB bound")
+        }
+        let seen : Map[String, Unit] = Map([])
+        for line in value.split("\n") {
+          let columns = line.split(" ").filter(x => x != "").to_array()
+          if columns.is_empty() {
+            continue
+          }
+          guard columns.length() == 2 else {
+            fail("invalid memory.events line")
+          }
+          let key = columns[0].to_owned()
+          guard !seen.contains(key) else { fail("duplicate memory.events key") }
+          seen[key] = ()
+          if event_names.contains(key) {
+            let count = integer(Json(columns[1].to_owned()))
+            events[key] = events.get(key).unwrap_or(0L).max(count)
+            event_counts[key] = event_counts.get(key).unwrap_or(0) + 1
+          }
+        }
+      }
+      Some(_) => fail("memory.events must be captured text or null")
+    }
+  }
+  fn value_or_null(values : Map[String, Int64], key : String) -> Json {
+    match values.get(key) {
+      Some(value) => Json(value)
+      None => Json::null()
+    }
+  }
+  let event_values : Map[String, Json] = Map([])
+  for key in event_names {
+    event_values[key] = value_or_null(events, key)
+  }
+  {
+    "maximum_observed_cgroup_memory_peak_bytes": value_or_null(
+      maximum, "memory.peak",
+    ),
+    "maximum_observed_cgroup_memory_current_bytes": value_or_null(
+      maximum, "memory.current",
+    ),
+    "maximum_observed_cgroup_swap_bytes": value_or_null(
+      maximum, "memory.swap.current",
+    ),
+    "maximum_observed_cgroup_event_counters": Json::object(event_values),
+    "cgroup_metric_observation_counts": Json(metric_counts),
+    "cgroup_event_observation_counts": Json(event_counts),
+    "observed_cgroup_sample_count": Json(observed),
+    "samples_without_cgroup_metrics": Json(missing),
+    "last_sample_considered": Json(last is Some(Object(_))),
+    "observation_scope": "maxima from retained phase-boundary samples plus last_sample, with identical last row counted once; memory.peak is the kernel high-water mark at each observation and memory.events counters are cumulative, not increments; no guarantee for after the final sample or complete container lifetime; not combined host/GPU UMA usage",
+  }
+}
+
+///|
+fn timings(report : Json, iterations : Int32, warmup : Int32) -> Json raise {
+  guard field(report, "format") ==
+    Json("moonrobo.cuda-training-memory-report.v1") &&
+    field(report, "status") == Json("complete") &&
+    field(report, "error") == Json::null() &&
+    integer(field(report, "starting_iteration")) == 0L &&
+    integer(field(report, "omitted_sample_count")) == 0L &&
+    field(field(report, "options"), "synchronize_each_sample") == Json(true) &&
+    field(report, "samples") is Array(samples) else {
+    fail("complete synchronized telemetry with no omissions required")
+  }
+  let times : Map[String, Int64] = Map([])
+  let mut previous = 0L
+  for i, sample in samples {
+    guard integer(field(sample, "sequence")) == i.to_int64() else {
+      fail("telemetry sequence gap")
+    }
+    let start = integer(field(sample, "sample_begin_unix_ms"))
+    let end = integer(field(sample, "sample_end_unix_ms"))
+    let key = text(field(sample, "phase")) +
+      ":" +
+      integer(field(sample, "iteration")).to_string()
+    guard start >= previous && end >= start && !times.contains(key) else {
+      fail("nonmonotonic/duplicate sample")
+    }
+    times[key] = end
+    previous = end
+  }
+  let collection : Array[Double] = []
+  let world : Array[Double] = []
+  let actor : Array[Double] = []
+  let total : Array[Double] = []
+  let rows : Array[Json] = []
+  for i in (warmup + 1)..<=iterations {
+    let c = delta(
+      times,
+      "actor_critic_complete:\{i - 1}",
+      "collection_complete:\{i}",
+    )
+    let w = delta(
+      times,
+      "collection_complete:\{i}",
+      "world_updates_complete:\{i}",
+    )
+    let a = delta(
+      times,
+      "world_updates_complete:\{i}",
+      "actor_critic_complete:\{i}",
+    )
+    collection.push(c)
+    world.push(w)
+    actor.push(a)
+    total.push(c + w + a)
+    rows.push({
+      "iteration": Json(i),
+      "collection_ms": Json(c),
+      "world_ms": Json(w),
+      "actor_critic_ms": Json(a),
+      "total_ms": Json(c + w + a),
+    })
+  }
+  {
+    "rows": Json(rows),
+    "collection_ms": stats(collection),
+    "world_ms": stats(world),
+    "actor_critic_ms": stats(actor),
+    "total_ms": stats(total),
+    "excluded_initial_iterations": Json(warmup),
+    "replay_warmup_ms": Json(
+      delta(times, "window_start:0", "warmup_complete:0"),
+    ),
+    "checkpoint_ms": Json(
+      delta(
+        times,
+        "checkpoint_begin:\{iterations}",
+        "checkpoint_complete:\{iterations}",
+      ),
+    ),
+    "initialization_before_window_ms": Json::null(),
+    "allocated_window_peak_bytes": field(report, "allocated_window_peak_bytes"),
+    "reserved_window_peak_bytes": field(report, "reserved_window_peak_bytes"),
+    "minimum_observed_cuda_free_bytes": field(
+      report, "minimum_observed_cuda_free_bytes",
+    ),
+    "observed_cgroup": observed_cgroup(report),
+    "scope": "synchronized wall-time boundaries include host telemetry and ending synchronization; no startup/checkpoint in total_ms; GPU peaks are diagnostic-window allocator peaks, not total UMA lifetime peaks",
+  }
+}
+
+///|
+fn verify_container(value : Json, spec : Json) -> Json raise {
+  guard value is Array([container]) else {
+    fail("one Docker container inspection required")
+  }
+  let state = field(container, "State")
+  guard field(container, "Image") == field(spec, "image_id") &&
+    field(state, "Running") == Json(false) &&
+    field(state, "OOMKilled") == Json(false) &&
+    integer(field(state, "ExitCode")) == 0L else {
+    fail("image/exit/OOM state rejected")
+  }
+  let host = field(container, "HostConfig")
+  guard integer(field(host, "Memory")) == 107374182400L &&
+    integer(field(host, "MemorySwap")) == 107374182400L &&
+    integer(field(host, "NanoCpus")) == 12000000000L &&
+    field(host, "NetworkMode") == Json("none") else {
+    fail("cgroup/CPU/network budget changed")
+  }
+  {
+    "exit_code": 0,
+    "oom_killed": false,
+    "memory_limit_bytes": 107374182400,
+    "memory_swap_limit_bytes": 107374182400,
+    "cpus": 12,
+    "actual_cgroup_memory_peak_bytes": Json::null(),
+    "peak_note": "Docker limits verified; cgroup lifetime peak is not inferred from allocator or Docker state",
+  }
+}
+
+///|
+fn identity_core(
+  identity : Json,
+  spec : Json,
+  expected_config : Json,
+) -> Json raise {
+  guard field(identity, "format") ==
+    Json("moonrobo.native-tensor-run-identity.v1") &&
+    field(identity, "config") == expected_config &&
+    field(identity, "distributed_session") == Json::null() else {
+    fail("identity/config/distributed scope differs")
+  }
+  let files = field(spec, "files")
+  for
+    (key, pin) in [
+      ("native_executable_sha256", "trainer"),
+      ("tensor_library_sha256", "tensor_library"),
+      ("physics_library_sha256", "physics_library"),
+      ("physics_artifact_sha256", "physics_artifact"),
+      ("manifest_sha256", "manifest"),
+      ("scene_sha256", "scene"),
+    ] {
+    guard field(identity, key) == field(field(files, pin), "sha256") else {
+      fail("runtime pin differs: " + key)
+    }
+  }
+  guard field(identity, "mujoco_library_sha256") ==
+    field(spec, "mujoco_library_sha256") else {
+    fail("MuJoCo pin differs")
+  }
+  let core : Map[String, Json] = Map([])
+  for
+    key in [
+      "native_executable_sha256", "tensor_library_sha256", "physics_library_sha256",
+      "physics_artifact_sha256", "mujoco_library_sha256", "scene_sha256", "scene_assets_sha256",
+      "manifest_sha256", "torch_version", "learner_config", "batch_execution", "seed",
+      "cuda_device", "numeric_backend", "split", "reference_backend", "replay_quaternion_order",
+      "cuda_fp32_policy",
+    ] {
+    core[key] = field(identity, key)
+  }
+  Json::object(core)
+}
+
+///|
+fn profile_summary(profile : Json) -> Json raise {
+  guard (
+      optional(profile, "schema") == Some(Json("moonrobo.execution-profile.v1")) ||
+      optional(profile, "format") == Some(Json("moonrobo.execution-profile.v1"))
+    ) &&
+    field(profile, "enabled") == Json(true) &&
+    field(profile, "spans") is Array(spans) &&
+    spans.length() <= 65536 &&
+    integer(field(profile, "recorded_spans")) == spans.length().to_int64() else {
+    fail("invalid bounded execution profile")
+  }
+  let cpu : Map[String, Array[Double]] = Map([])
+  let gpu : Map[String, Array[Double]] = Map([])
+  let statuses : Map[String, Int32] = {
+    "complete": 0,
+    "pending": 0,
+    "disabled": 0,
+    "cancelled": 0,
+  }
+  let mut cancelled = 0
+  for span in spans {
+    let label = text(field(span, "label"))
+    guard label.length() <= 256 && field(span, "cpu_inclusive") == Json(true) else {
+      fail("unsupported span label/scope")
+    }
+    if !cpu.contains(label) {
+      guard cpu.length() < 256 else { fail("too many profile labels") }
+      cpu[label] = []
+      gpu[label] = []
+    }
+    if field(span, "cpu_submit_us") != Json::null() {
+      cpu[label].push(number(field(span, "cpu_submit_us")))
+    }
+    let status = text(field(span, "gpu_status"))
+    guard statuses.get(status) is Some(count) else {
+      fail("unknown GPU span status")
+    }
+    statuses[status] = count + 1
+    if status == "complete" {
+      gpu[label].push(number(field(span, "gpu_elapsed_ms")))
+    }
+    if field(span, "cancelled") == Json(true) {
+      cancelled += 1
+    }
+  }
+  let labels : Array[Json] = []
+  for label, values in cpu {
+    labels.push({
+      "label": Json(label),
+      "cpu_inclusive_us": if values.length() > 0 {
+        stats(values)
+      } else {
+        Json::null()
+      },
+      "gpu_complete_stream_interval_ms": if gpu[label].length() > 0 {
+        stats(gpu[label])
+      } else {
+        Json::null()
+      },
+    })
+  }
+  let dropped = integer(field(profile, "dropped_spans"))
+  {
+    "format": "moonrobo.execution-profile-label-summary.v1",
+    "labels": Json(labels),
+    "recorded_spans": Json(spans.length()),
+    "dropped_spans": Json(dropped),
+    "gpu_status_counts": Json(statuses),
+    "cancelled_spans": Json(cancelled),
+    "complete_recording": Json(
+      dropped == 0L &&
+      cancelled == 0 &&
+      optional(profile, "open_spans").map(integer).unwrap_or(0L) == 0L &&
+      statuses["pending"] == 0 &&
+      statuses["cancelled"] == 0,
+    ),
+    "nvtx_requested": field(profile, "nvtx_requested"),
+    "nvtx_available": field(profile, "nvtx_available"),
+    "timing_scope": "inclusive CPU scopes and completed CUDA stream intervals, not additive kernel-active durations; nested label totals must not be summed",
+    "warmup_filter_applied": false,
+    "warmup_note": "diagnostic label statistics include all recorded spans; steady-state iteration timing is reported separately from synchronized boundaries",
+  }
+}
+
+///|
+struct CpuSpan {
+  id : Int64
+  parent : Int64
+  label : String
+  start : Double
+  duration : Double?
+  cancelled : Bool
+}
+
+///|
+fn profile_cpu_tree(profile : Json) -> Json raise {
+  guard field(profile, "spans") is Array(raw) && raw.length() <= 65536 else {
+    fail("bounded spans required")
+  }
+  let capacity = integer(field(profile, "max_spans"))
+  guard capacity >= 1L &&
+    capacity <= 65536L &&
+    raw.length().to_int64() <= capacity else {
+    fail("profile capacity invalid")
+  }
+  let spans : Array[CpuSpan] = []
+  let children : Array[Array[Int32]] = [ for _ in 0..<raw.length() => [] ]
+  let mut open = 0
+  let mut cancelled = 0
+  for i, row in raw {
+    let id = integer(field(row, "id"))
+    let parent = integer(field(row, "parent_id"))
+    guard id == i.to_int64() + 1L && parent < id else {
+      fail("nonsequential/cyclic/missing span parent")
+    }
+    let duration = if field(row, "cpu_submit_us") == Json::null() {
+      open += 1
+      None
+    } else {
+      Some(number(field(row, "cpu_submit_us")))
+    }
+    let was_cancelled = match field(row, "cancelled") {
+      True => true
+      False => false
+      _ => fail("invalid cancelled flag")
+    }
+    if was_cancelled {
+      cancelled += 1
+    }
+    spans.push({
+      id,
+      parent,
+      label: text(field(row, "label")),
+      start: number(field(row, "cpu_start_us")),
+      duration,
+      cancelled: was_cancelled,
+    })
+    if parent > 0L {
+      children[parent.to_int() - 1].push(i)
+    }
+  }
+  guard integer(field(profile, "open_spans")) == open.to_int64() else {
+    fail("open span count differs")
+  }
+  let complete = integer(field(profile, "dropped_spans")) == 0L &&
+    open == 0 &&
+    cancelled == 0
+  let exclusive : Map[String, Array[Double]] = Map([])
+  let leaves : Map[String, Int32] = Map([])
+  let parents : Map[String, Map[String, Unit]] = Map([])
+  let tree : Array[Json] = []
+  for i, span in spans {
+    if !exclusive.contains(span.label) {
+      exclusive[span.label] = []
+      leaves[span.label] = 0
+      parents[span.label] = Map([])
+    }
+    parents[span.label][if span.parent == 0L {
+      "<root>"
+    } else {
+      spans[span.parent.to_int() - 1].label
+    }] = ()
+    if children[i].is_empty() {
+      leaves[span.label] = leaves[span.label] + 1
+    }
+    let self_time = if complete {
+      let duration = span.duration.unwrap()
+      let mut child_total = 0.0
+      let mut previous_end = span.start
+      for child_index in children[i] {
+        let child = spans[child_index]
+        let child_duration = child.duration.unwrap()
+        // The profiler is single-threaded and strictly nested. One nanosecond
+        // accounts only for double rounding of absolute microsecond timestamps.
+        guard child.start + 0.001 >= previous_end &&
+          child.start + child_duration <= span.start + duration + 0.001 else {
+          fail("overlapping/out-of-parent CPU intervals")
+        }
+        child_total += child_duration
+        previous_end = child.start + child_duration
+      }
+      guard child_total <= duration + 0.001 else {
+        fail("child CPU durations exceed parent")
+      }
+      let value = (duration - child_total).max(0.0)
+      exclusive[span.label].push(value)
+      Some(value)
+    } else {
+      None
+    }
+    tree.push({
+      "id": Json(span.id),
+      "parent_id": Json(span.parent),
+      "label": Json(span.label),
+      "observed_leaf": Json(children[i].is_empty()),
+      "direct_child_count": Json(children[i].length()),
+      "cpu_exclusive_us": match self_time {
+        Some(value) => Json(value)
+        None => Json::null()
+      },
+      "cancelled": Json(span.cancelled),
+    })
+  }
+  let labels : Array[Json] = []
+  for label, values in exclusive {
+    let parent_labels : Array[String] = []
+    for name, _ in parents[label] {
+      parent_labels.push(name)
+    }
+    labels.push({
+      "label": Json(label),
+      "parent_labels": Json(parent_labels),
+      "observed_leaf_count": Json(leaves[label]),
+      "cpu_exclusive_us": if values.length() > 0 {
+        stats(values)
+      } else {
+        Json::null()
+      },
+    })
+  }
+  {
+    "complete_cpu_recording": Json(complete),
+    "cpu_exclusive_available": Json(complete),
+    "labels": Json(labels),
+    "tree": Json(tree),
+    "gpu_exclusive_computed": false,
+    "scope": "CPU exclusive = parent host duration minus direct child host durations only for complete noncancelled strictly nested records; observed leaves may hide omitted work in partial records; GPU inclusive intervals are never subtracted",
+  }
+}
+
+///|
+async fn summarize_profile(path : String, output : String) -> Unit {
+  let profile = read_json(path, limit=67108864L)
+  let labels = profile_summary(profile)
+  let hierarchy = profile_cpu_tree(profile)
+  let report : Json = {
+    "format": "moonrobo.execution-profile-diagnostic.v1",
+    "source_path": Json(path),
+    "source_sha256": Json(file_sha(path, limit=67108864L)),
+    "paired_comparison": false,
+    "speedup_claim": false,
+    "single_diagnostic_run_sufficient": true,
+    "inclusive_labels": labels,
+    "cpu_hierarchy": hierarchy,
+    "interpretation": "diagnostic CPU host scopes and CUDA stream elapsed intervals, not GPU kernel-active time; inclusive labels overlap through nesting; no throughput baseline/candidate comparison or numerical-equivalence claim",
+  }
+  @fs.write_file(
+    output,
+    report.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+  println("Wrote single-run diagnostic profile summary: " + output)
+}
+
+///|
+fn aggregate(rows : Array[Json], variant : String) -> Json raise {
+  let run_means : Array[Double] = []
+  let totals : Array[Double] = []
+  let phases : Map[String, Array[Double]] = {
+    "collection_ms": [],
+    "world_ms": [],
+    "actor_critic_ms": [],
+  }
+  let memory : Array[Json] = []
+  for row in rows {
+    if field(row, "variant") == Json(variant) {
+      let timing = field(row, "timing")
+      run_means.push(number(field(field(timing, "total_ms"), "mean")))
+      guard field(timing, "rows") is Array(iterations) else {
+        fail("missing iteration measurements")
+      }
+      for iteration in iterations {
+        totals.push(number(field(iteration, "total_ms")))
+        for key, values in phases {
+          values.push(number(field(iteration, key)))
+        }
+      }
+      memory.push({
+        "run": field(row, "index"),
+        "allocated_peak_bytes": field(timing, "allocated_window_peak_bytes"),
+        "reserved_peak_bytes": field(timing, "reserved_window_peak_bytes"),
+        "minimum_cuda_free_bytes": field(
+          timing, "minimum_observed_cuda_free_bytes",
+        ),
+        "observed_cgroup": field(timing, "observed_cgroup"),
+      })
+    }
+  }
+  {
+    "run_mean_total_ms": stats(run_means),
+    "pooled_iteration_total_ms": stats(totals),
+    "collection_ms": stats(phases["collection_ms"]),
+    "world_ms": stats(phases["world_ms"]),
+    "actor_critic_ms": stats(phases["actor_critic_ms"]),
+    "memory_by_run": Json(memory),
+  }
+}
+
+///|
+fn graph_route_evidence(route : Json, expected : Json) -> Json raise {
+  let enabled = optional(expected, "critic_cuda_graph") == Some(Json(true))
+  let iterations = integer(field(expected, "iterations"))
+  let replays = if enabled {
+    iterations *
+    integer(field(expected, "critic_epochs")) *
+    integer(field(expected, "critic_minibatches"))
+  } else {
+    0L
+  }
+  guard integer(field(route, "captures")) ==
+    (if enabled { iterations } else { 0L }) &&
+    integer(field(route, "replays")) == replays &&
+    integer(field(route, "peak_private_pool_reserved_bytes")) <= 1073741824L else {
+    fail("critic graph route counts/private pool exceed isolated protocol")
+  }
+  if enabled {
+    guard integer(field(route, "peak_static_bytes")) > 0L &&
+      integer(field(route, "peak_gradient_bytes")) > 0L else {
+      fail("graph requested but no static/gradient evidence")
+    }
+  }
+  {
+    "enabled": Json(enabled),
+    "diagnostics": route,
+    "expected_replays": Json(replays),
+    "graph_route_verified": true,
+    "numerical_equivalence_verified": false,
+    "scope": "single-node isolated critic forward/backward graph; optimizer remains outside; not actor/world capture or DDP training",
+  }
+}
+
+///|
+async fn summarize(root : String, output : String) -> Unit {
+  let spec = read_json(root + "/spec.json", limit=1048576L)
+  let plan = read_json(root + "/plan.json", limit=1048576L)
+  guard field(plan, "spec_sha256") == Json(file_sha(root + "/spec.json")) &&
+    field(plan, "order") is Array(order) &&
+    order.length() >= 4 &&
+    order.length() <= 12 else {
+    fail("invalid frozen plan/spec")
+  }
+  let iterations = integer(field(field(spec, "baseline_config"), "iterations")).to_int()
+  let warmup = integer(field(spec, "warmup_iterations")).to_int()
+  let records : Array[Json] = []
+  let valid : Array[Json] = []
+  let mut first_identity : Json? = None
+  for i, variant_json in order {
+    let variant = text(variant_json)
+    let folder = root + "/run-\{i}"
+    try {
+      let result = read_json(folder + "/result.json")
+      guard field(result, "passed") == Json(true) &&
+        field(result, "index") == Json(i) &&
+        field(result, "variant") == variant_json &&
+        field(result, "spec_sha256") == field(plan, "spec_sha256") &&
+        field(result, "config_sha256") ==
+        Json(file_sha(folder + "/config.json")) else {
+        fail("launcher failed/identity differs")
+      }
+      let expected = field(spec, variant + "_config")
+      guard read_json(folder + "/config.json") == expected else {
+        fail("run config differs")
+      }
+      let preflight = read_json(folder + "/preflight-result.json")
+      let train_result = read_json(folder + "/train-result.json")
+      guard field(preflight, "passed") == Json(true) &&
+        field(train_result, "passed") == Json(true) else {
+        fail("preflight/train incomplete")
+      }
+      ignore(
+        verify_container(
+          read_json(folder + "/preflight-docker-final.json"),
+          spec,
+        ),
+      )
+      let docker = verify_container(
+        read_json(folder + "/train-docker-final.json"),
+        spec,
+      )
+      let training = read_json(folder + "/train/report.json")
+      guard field(training, "format") ==
+        Json("moonrobo.native-tensor-training-report.v1") &&
+        field(training, "training_complete_for_requested_iterations") ==
+        Json(true) &&
+        integer(field(training, "iteration")) == iterations.to_int64() &&
+        field(training, "distributed") == Json(false) else {
+        fail("training missing/incomplete")
+      }
+      let identity = identity_core(field(training, "identity"), spec, expected)
+      match first_identity {
+        None => first_identity = Some(identity)
+        Some(first) => {
+          guard first == identity else {
+            fail("paired core runtime identity differs")
+          }
+        }
+      }
+      let timing = timings(
+        field(training, "cuda_memory_telemetry"),
+        iterations,
+        warmup,
+      )
+      if docker is Object(container_fields) &&
+        field(timing, "observed_cgroup") is Object(observations) {
+        for key, value in observations {
+          container_fields[key] = value
+        }
+      }
+      guard integer(field(timing, "minimum_observed_cuda_free_bytes")) >=
+        17179869184L &&
+        integer(field(timing, "reserved_window_peak_bytes")) >=
+        integer(field(timing, "allocated_window_peak_bytes")) else {
+        fail("CUDA reserve/allocator memory evidence rejected")
+      }
+      let profile = if field(spec, "execution_profile") == Json(true) {
+        profile_summary(read_json(folder + "/train/execution-profile.json"))
+      } else {
+        Json::null()
+      }
+      let graph = if ["critic-cuda-graph", "critic_cuda_graph"].contains(
+          text(field(spec, "stage")),
+        ) {
+        let preflight = read_json(folder + "/graph-preflight-evidence.json")
+        let requested = optional(expected, "critic_cuda_graph") ==
+          Some(Json(true))
+        guard field(preflight, "format") ==
+          Json("moonrobo.critic-cuda-graph-preflight.v1") &&
+          field(preflight, "preflight_stdout_sha256") ==
+          Json(file_sha(folder + "/preflight.stdout.log")) &&
+          field(field(preflight, "capability"), "requested") == Json(requested) &&
+          field(field(preflight, "capability"), "available") == Json(true) else {
+          fail("graph capability preflight evidence rejected")
+        }
+        graph_route_evidence(field(training, "critic_cuda_graph"), expected)
+      } else {
+        Json::null()
+      }
+      let row : Json = {
+        "index": Json(i),
+        "variant": variant_json,
+        "status": "complete",
+        "timing": timing,
+        "execution_profile": profile,
+        "critic_cuda_graph": graph,
+        "container": docker,
+        "process_attach_elapsed_ms": field(train_result, "elapsed_ms"),
+        "startup_note": "process attach duration reported separately; initialization before telemetry window not independently measured",
+      }
+      valid.push(row)
+      records.push(row)
+    } catch {
+      error =>
+        records.push({
+          "index": Json(i),
+          "variant": variant_json,
+          "status": "rejected_or_missing",
+          "error": Json(error.to_string()),
+        })
+    }
+  }
+  let complete = valid.length() == order.length()
+  let profiled = field(spec, "execution_profile") == Json(true)
+  let pair_ratios : Array[Double] = []
+  if complete {
+    for i in 0..<(valid.length() / 2) {
+      let first = valid[2 * i]
+      let second = valid[2 * i + 1]
+      let a = number(field(field(field(first, "timing"), "total_ms"), "mean"))
+      let b = number(field(field(field(second, "timing"), "total_ms"), "mean"))
+      guard a > 0.0 && b > 0.0 else { fail("zero run duration") }
+      pair_ratios.push(
+        if field(first, "variant") == Json("baseline") {
+          a / b
+        } else {
+          b / a
+        },
+      )
+    }
+  }
+  let report : Json = {
+    "format": "moonrobo.native-optimization-pairs.summary.v1",
+    "stage": field(spec, "stage"),
+    "spec_sha256": field(plan, "spec_sha256"),
+    "all_records_complete": Json(complete),
+    "eligible_for_unprofiled_throughput_comparison": Json(complete && !profiled),
+    "execution_profile": Json(profiled),
+    "numerical_equivalence_verified": false,
+    "baseline": if complete {
+      aggregate(valid, "baseline")
+    } else {
+      Json::null()
+    },
+    "candidate": if complete {
+      aggregate(valid, "candidate")
+    } else {
+      Json::null()
+    },
+    "paired_baseline_over_candidate_speed_ratio": if complete && !profiled {
+      stats(pair_ratios)
+    } else {
+      Json::null()
+    },
+    "runs": Json(records),
+    "acceptance": "speed alone does not establish correctness; separately verify losses, gradients, parameters, Adam moments, normalizers and memory; no automatic candidate selection",
+    "failure_policy": "missing, failed, OOM or mismatched runs reject the whole paired comparison; successful subset is never silently selected",
+  }
+  @fs.write_file(
+    output,
+    report.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+  guard complete else {
+    fail("paired comparison rejected; failures retained in " + output)
+  }
+  println("Wrote paired summary: " + output)
+}
+
+///|
+fn self_test() -> Unit raise {
+  let first_memory : Json = {
+    "sequence": 0,
+    "host": {
+      "cgroup_metrics": {
+        "memory.peak": "100",
+        "memory.current": "80",
+        "memory.swap.current": "5",
+        "memory.events": "max 1\noom 0\noom_kill 0",
+      },
+    },
+  }
+  let last_memory : Json = {
+    "sequence": 1,
+    "host": {
+      "cgroup_metrics": {
+        "memory.peak": "200",
+        "memory.current": "70",
+        "memory.swap.current": "0",
+        "memory.events": "max 3\noom 2\noom_kill 1",
+      },
+    },
+  }
+  let memory = observed_cgroup({
+    "samples": Json([first_memory]),
+    "last_sample": last_memory,
+  })
+  assert_eq(
+    integer(field(memory, "maximum_observed_cgroup_memory_peak_bytes")),
+    200L,
+  )
+  assert_eq(integer(field(memory, "maximum_observed_cgroup_swap_bytes")), 5L)
+  assert_eq(
+    integer(
+      field(field(memory, "maximum_observed_cgroup_event_counters"), "oom"),
+    ),
+    2L,
+  )
+  assert_eq(
+    field(
+      field(memory, "maximum_observed_cgroup_event_counters"),
+      "oom_group_kill",
+    ),
+    Json::null(),
+  )
+  let duplicate = observed_cgroup({
+    "samples": Json([first_memory]),
+    "last_sample": first_memory,
+  })
+  assert_eq(field(duplicate, "observed_cgroup_sample_count"), Json(1))
+  let missing = observed_cgroup({ "samples": [{ "host": {} }] })
+  assert_eq(
+    field(missing, "maximum_observed_cgroup_memory_peak_bytes"),
+    Json::null(),
+  )
+  assert_eq(field(missing, "samples_without_cgroup_metrics"), Json(1))
+  let s = stats([10.0, 30.0, 20.0, 40.0])
+  assert_eq(field(s, "median"), Json(25.0))
+  assert_eq(field(s, "p90"), Json(40.0))
+  assert_eq(integer(Json("107374182400")), 107374182400L)
+  try stats([]) catch {
+    _ => ()
+  } noraise {
+    _ => fail("accepted empty measurements")
+  }
+  try delta(Map([]), "a", "b") catch {
+    _ => ()
+  } noraise {
+    _ => fail("accepted missing phase")
+  }
+  try delta({ "a": 2L, "b": 1L }, "a", "b") catch {
+    _ => ()
+  } noraise {
+    _ => fail("accepted reversed time")
+  }
+  let profile : Json = {
+    "format": "moonrobo.execution-profile.v1",
+    "enabled": true,
+    "recorded_spans": 1,
+    "dropped_spans": 0,
+    "nvtx_requested": true,
+    "nvtx_available": false,
+    "spans": [
+      {
+        "label": "world.backward",
+        "cpu_submit_us": 10,
+        "cpu_inclusive": true,
+        "gpu_status": "complete",
+        "gpu_elapsed_ms": 2,
+        "cancelled": false,
+      },
+    ],
+  }
+  assert_eq(field(profile_summary(profile), "complete_recording"), Json(true))
+  guard profile is Object(values) else { fail("fixture expected object") }
+  values["dropped_spans"] = Json(1)
+  assert_eq(field(profile_summary(profile), "complete_recording"), Json(false))
+  let tree_fixture : Json = {
+    "max_spans": 3,
+    "open_spans": 0,
+    "dropped_spans": 0,
+    "spans": [
+      {
+        "id": 1,
+        "parent_id": 0,
+        "label": "parent",
+        "cpu_start_us": 0,
+        "cpu_submit_us": 10,
+        "cancelled": false,
+      },
+      {
+        "id": 2,
+        "parent_id": 1,
+        "label": "child",
+        "cpu_start_us": 2,
+        "cpu_submit_us": 3,
+        "cancelled": false,
+      },
+      {
+        "id": 3,
+        "parent_id": 1,
+        "label": "child",
+        "cpu_start_us": 6,
+        "cpu_submit_us": 2,
+        "cancelled": false,
+      },
+    ],
+  }
+  let tree = profile_cpu_tree(tree_fixture)
+  guard field(tree, "tree") is Array(rows) else { fail("tree fixture missing") }
+  assert_eq(field(rows[0], "cpu_exclusive_us"), Json(5.0))
+  assert_eq(field(rows[0], "observed_leaf"), Json(false))
+  assert_eq(field(rows[1], "cpu_exclusive_us"), Json(3.0))
+  assert_eq(field(rows[1], "observed_leaf"), Json(true))
+  guard tree_fixture is Object(tree_fields) else {
+    fail("fixture expected object")
+  }
+  tree_fields["dropped_spans"] = Json(1)
+  assert_eq(
+    field(profile_cpu_tree(tree_fixture), "cpu_exclusive_available"),
+    Json(false),
+  )
+  tree_fields["dropped_spans"] = Json(0)
+  guard field(tree_fixture, "spans") is Array(tree_spans) &&
+    tree_spans[2] is Object(last_child) else {
+    fail("fixture missing child")
+  }
+  last_child["parent_id"] = Json(3)
+  try profile_cpu_tree(tree_fixture) catch {
+    _ => ()
+  } noraise {
+    _ => fail("accepted cyclic parent")
+  }
+  last_child["parent_id"] = Json(1)
+  last_child["cpu_start_us"] = Json(4)
+  try profile_cpu_tree(tree_fixture) catch {
+    _ => ()
+  } noraise {
+    _ => fail("accepted overlapping siblings")
+  }
+  let graph_config : Json = {
+    "iterations": 10,
+    "critic_epochs": 5,
+    "critic_minibatches": 4,
+    "critic_cuda_graph": true,
+  }
+  let graph_route : Json = {
+    "captures": "10",
+    "replays": "200",
+    "peak_private_pool_reserved_bytes": "1048576",
+    "peak_static_bytes": "4096",
+    "peak_gradient_bytes": "2048",
+  }
+  assert_eq(
+    field(graph_route_evidence(graph_route, graph_config), "enabled"),
+    Json(true),
+  )
+  guard graph_route is Object(graph_fields) else {
+    fail("fixture expected object")
+  }
+  graph_fields["replays"] = Json("0")
+  try graph_route_evidence(graph_route, graph_config) catch {
+    _ => ()
+  } noraise {
+    _ => fail("accepted configured graph with no replay")
+  }
+  graph_fields["replays"] = Json("200")
+  graph_fields["peak_private_pool_reserved_bytes"] = Json("1073741825")
+  try graph_route_evidence(graph_route, graph_config) catch {
+    _ => ()
+  } noraise {
+    _ => fail("accepted graph pool budget overrun")
+  }
+  println("paired summary self-tests passed (no GPU)")
+}
+
+///|
+async fn main {
+  match @env.args() {
+    [_, "--self-test"] => self_test()
+    [_, "--profile", profile, output] => summarize_profile(profile, output)
+    [_, "--check-telemetry", report, iterations, warmup] =>
+      println(
+        timings(
+          field(read_json(report), "cuda_memory_telemetry"),
+          @string.parse_int(iterations),
+          @string.parse_int(warmup),
+        ).stringify(indent=2),
+      )
+    [_, root, output] => summarize(root, output)
+    _ =>
+      fail(
+        "usage: ROOT FRESH_SUMMARY_JSON | --profile PROFILE_JSON FRESH_OUTPUT_JSON | --self-test | --check-telemetry TRAINING_REPORT ITERATIONS WARMUP; incomplete paired evidence writes rejection summary and exits nonzero",
+      )
+  }
+}

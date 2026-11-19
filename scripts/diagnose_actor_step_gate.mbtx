@@ -1,0 +1,121 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["prepare", "build", "run"].contains(mode) else {
+    fail("prepare/build/run")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  if mode == "prepare" {
+    for
+      file in [
+        "actor_step_learning_b.mbt", "actor_step_fixture_b.mbt", "build_actor_step_b.mbtx",
+        "run_actor_step_gate_b.mbtx",
+      ] {
+      let mut code = @fs.read_file(out + "/" + file).text()
+      for
+        (old, new) in [
+          ("actor_step_learning_b.mbt", "actor_step_learning_c.mbt"),
+          ("actor_step_fixture_b.mbt", "actor_step_fixture_c.mbt"),
+          ("run_actor_step_gate_b.mbtx", "run_actor_step_gate_c.mbtx"),
+          ("moonrobo-bctor-step-b", "moonrobo-actor-step-c"),
+          ("actor-step-copy-b", "actor-step-copy-c"),
+          ("actor-step-overlay-b\"", "actor-step-overlay-c\""),
+          ("actor-step-fixture-b", "actor-step-fixture-c"),
+          ("actor-step-source-b", "actor-step-source-c"),
+          ("actor-step-build-b", "actor-step-build-c"),
+          ("actor-step-cpu-tests-b", "actor-step-cpu-tests-c"),
+          ("actor-step-binary-b", "actor-step-binary-c"),
+          ("actor-step-gate-b", "actor-step-gate-c"),
+        ] {
+        code = code.replace_all(old~, new~)
+      }
+      if file == "actor_step_fixture_b.mbt" {
+        code = code.replace_all(
+          old="let m = learner.update_policy(policy)",
+          new="let m = try learner.update_policy(policy) catch {@tensor.TensorError::Native(message)=>fail(\"actor native: \"+message); e=>raise e}",
+        )
+      }
+      if file == "actor_step_learning_b.mbt" {
+        code = code
+          .replace_all(
+            old="let values = block.forward_many(",
+            new="let values = try block.forward_many(",
+          )
+          .replace_all(
+            old="      guard values.length() == 8",
+            new="      catch {@tensor.TensorError::Native(message)=>fail(\"actor compiled step \\{t}: \"+message); e=>raise e}\n      guard values.length() == 8",
+          )
+      }
+      let target = file.replace_all(old="_b.", new="_c.")
+      @fs.write_file(out + "/" + target, code, create_mode=CreateNew)
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + target,
+          host + ":" + base + "/" + target,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/step-" + mode + "-c"
+  @fs.mkdir(folder)
+  let command = if mode == "build" {
+    "build_actor_step_c.mbtx"
+  } else {
+    "run_actor_step_gate_c.mbtx -- actor native off 1 actor-step-native-c bf16-full"
+  }
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      command,
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  if mode == "run" {
+    for
+      name in [
+        "result.json", "boundaries.json", "completion.json", "training-guard.json",
+        "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+        "protocol.json", "compiled-packages.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-step-native-c/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+  }
+  assert_eq(status, 0)
+}

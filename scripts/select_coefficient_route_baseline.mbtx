@@ -1,0 +1,12 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let dir="output/spark-runtime-20261024/coefficient-assembly-20261028"
+  let p=dir+"/routes_retry.mbtx";let mut s=@fs.read_file(p).text()
+  s=s.replace_all(old="[(\"world\",\"forward\"),(\"actor\",\"forward\")]",new="[(\"world\",\"baseline\"),(\"actor\",\"baseline\")]")
+  s=s.replace_all(old="invoke_coefficient_assembly_a.mbtx",new="invoke_return_split_a.mbtx")
+  let old="    // Bounded CPU-only export; these profiled times are never used for speed claims."
+  guard s.contains(old)else{fail("route validator")}
+  s=s.replace_all(old=old,new="    guard field(read(root+\"/result.json\"),\"rows\") is Array(rs) && rs.length()==13 else { fail(\"route samples\") }; for row in rs { let e=field(row,\"execution\"); assert_eq(field(e,\"fused_so3_coefficients_forward\"),Json(true)); assert_eq(field(e,\"split_so3_coefficients\"),Json(false)); assert_eq(field(e,\"split_actor_return\"),Json(false)) }\n"+old)
+  @fs.write_file(p,s)
+  guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock",p,"wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/shared-compute-20261026-a/coefficient_routes_retry_a.mbtx"])==0else{fail("stage")}
+}

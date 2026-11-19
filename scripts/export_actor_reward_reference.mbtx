@@ -1,0 +1,181 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, rev] &&
+    ["prepare", "export"].contains(mode) &&
+    ["a", "b", "c", "d"].contains(rev) else {
+    fail("prepare/export revision")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let runner = "run_actor_reward_reference_" + rev + ".mbtx"
+  let adapter = "export_actor_reward_reference_" + rev + ".py"
+  if mode == "prepare" {
+    let code = @fs.read_file(out + "/run_actor_reference_backward_b.mbtx")
+      .text()
+      .replace_all(old="run_actor_reference_backward_b.mbtx", new=runner)
+      .replace_all(old="export_actor_reference_backward_b.py", new=adapter)
+      .replace_all(old="[\"initial\",\"recurrent\"]", new="[\"reward\"]")
+      .replace_all(
+        old="  write_json(root + \"/protocol.json\"",
+        new="  for name in [\"reference_fx_graph_a.py\",\"compiler_reference_contract_f.py\"] {pins[base+\"/\"+name]=Json(hash_file(base+\"/\"+name))}\n  write_json(root + \"/protocol.json\"",
+      )
+    let code = if ["c", "d"].contains(rev) {
+      code
+      .replace_all(
+        old="  write_json(root + \"/protocol.json\"",
+        new="  pins[base+\"/compiler_reward_reductions_c.py\"]=Json(hash_file(base+\"/compiler_reward_reductions_c.py\"))\n  write_json(root + \"/protocol.json\"",
+      )
+      .replace_all(
+        old="  e[\"MOONROBO_SHARED_OUTPUT\"]",
+        new="  e[\"MOONROBO_REWARD_ORIGINAL_REDUCTIONS\"]=\"1\"\n  e[\"MOONROBO_SHARED_OUTPUT\"]",
+      )
+    } else {
+      code
+    }
+    let code = if rev == "d" {
+      code.replace_all(
+        old="reference_fx_graph_a.py",
+        new="reference_fx_graph_reward_d.py",
+      )
+    } else {
+      code
+    }
+    if ["c", "d"].contains(rev) {
+      let helper = "compiler_reward_reductions_c.py"
+      if @fs.exists(out + "/" + helper) {
+        assert_eq(
+          @fs.read_file(out + "/" + helper).text(),
+          @fs.read_file(
+            "providers/motion_learning/compiler_reward_reductions.py",
+          ).text(),
+        )
+      } else {
+        @fs.write_file(
+          out + "/" + helper,
+          @fs.read_file(
+            "providers/motion_learning/compiler_reward_reductions.py",
+          ),
+          create_mode=CreateNew,
+        )
+      }
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + helper,
+          host + ":" + base + "/" + helper,
+        ]),
+        0,
+      )
+      guard code.contains("MOONROBO_REWARD_ORIGINAL_REDUCTIONS") else {
+        fail("explicit original-reduction export mode required")
+      }
+    }
+    for
+      (name, content) in [
+        (runner, code),
+        (
+          adapter,
+          @fs.read_file(
+            "providers/motion_learning/export_actor_reward_reference.py",
+          )
+          .text()
+          .replace_all(
+            old="from reference_fx_graph_a",
+            new=if rev == "d" {
+              "from reference_fx_graph_reward_d"
+            } else {
+              "from reference_fx_graph_a"
+            },
+          ),
+        ),
+        (
+          if rev == "d" {
+            "reference_fx_graph_reward_d.py"
+          } else {
+            "reference_fx_graph_a.py"
+          },
+          @fs.read_file("providers/motion_learning/reference_fx_graph.py").text(),
+        ),
+      ] {
+      if name == "reference_fx_graph_a.py" && @fs.exists(out + "/" + name) {
+        assert_eq(@fs.read_file(out + "/" + name).text(), content)
+        continue
+      }
+      @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+      if name == runner {
+        assert_eq(
+          @process.run("moon", ["check", "--target", "native", out + "/" + name]),
+          0,
+        )
+      }
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/reward-reference-" + rev
+  @fs.mkdir(folder)
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      runner +
+      " -- actor compiled off actor-reward-reference-" +
+      rev +
+      " bf16",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "completion.json", "protocol.json", "training-guard.json", "training-docker-final.json",
+      "training.stdout.log", "training.stderr.log", "exported-artifacts.json", "forward-decisions.json",
+      "backward-decisions.json", "dynamic-reduction-decisions.json", "dynamic-control-decisions.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-mlp-actor-reward-reference-" +
+        rev +
+        "/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(code, 0)
+}

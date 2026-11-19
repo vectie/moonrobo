@@ -1,0 +1,14 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo"
+  let out=root+"/output/spark-runtime-20261024/smc-heading-body-20261028"
+  let mut s=@fs.read_file(root+"/scripts/report_structural_rotations.mbtx").text()
+  s=rep(s,"smc-structural-20261028","smc-heading-body-20261028")
+  s=rep(s,"\"primitives-struct-\"+variant+\"-\"+phase+\"-\"+kind+(if phase==\"actor\"&&variant==\"smc\"&&kind==\"off\" {\"-b\"}else{\"-a\"})","\"heading-body-\"+variant+\"-\"+phase+\"-\"+kind+\"-c\"")
+  s=rep(s,"structural-cpu-gates.json","heading-body-cpu-b.json")
+  s=rep(s,"[(\"world\",[\"skew\",\"structural\"]),(\"actor\",[\"axis\",\"static\",\"skew\",\"structural\",\"fk\"])]","[(\"world\",[\"heading\",\"split\",\"both\"]),(\"actor\",[\"heading\",\"split\",\"both\"])]")
+  s=rep(s,"[(\"actor\",\"axis\"),(\"actor\",\"static\"),(\"world\",\"skew\"),(\"actor\",\"skew\"),(\"actor\",\"structural\"),(\"world\",\"structural\"),(\"actor\",\"fk\")]","[(\"world\",\"heading\"),(\"world\",\"split\"),(\"world\",\"both\"),(\"actor\",\"heading\"),(\"actor\",\"split\"),(\"actor\",\"both\")]")
+  s=rep(s,"Previously passed preserve-forward cross + detached rotation constants + world norm snapshot, in addition to aligned LN/Linear/heading/FK baseline.","Previous effective axis rotation and fixed-FK pruning, preserve-forward cross, detached rotation constants and world norm snapshot. Compact skew disabled. Compact heading and split delta are the only new admitted candidates; batched body errors rejected on CPU and never benchmarked.")
+  @fs.write_file(out+"/report_heading_body.mbtx",s,create_mode=CreateNew)
+}

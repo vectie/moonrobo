@@ -1,0 +1,91 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn run(program : String, args : Array[String]) -> Unit {
+  guard @process.run(program, args) == 0 else { fail(program + " failed") }
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let old = repo + "/output/spark-runtime-20261024/shared-compute-20261026"
+  let root = repo + "/output/spark-runtime-20261024/layernorm-mlp-20261026"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-operator-179.sock"
+  let prefix = @fs.read_file(old + "/parent-runner.mbtx")
+  .text()
+  .split("///|\nasync fn main {")
+  .to_array()[0].to_owned()
+  let runner = (prefix +
+    @fs.read_file(repo + "/scripts/mlp_runner_main.txt").text())
+    .replace_all(old="mlp_a", new="mlp_b")
+    .replace_all(old="mlp-gate-a", new="mlp-gate-b")
+    .replace_all(old="mlp_smc_probe_a", new="mlp_smc_probe_b")
+    .replace_all(old="native-gate-a", new="native-gate-b")
+    .replace_all(old="run_mlp_comparison_a", new="run_mlp_comparison_b")
+  let builder = @fs.read_file(root + "/build_mlp_comparison_a.mbtx")
+    .text()
+    .replace_all(old="mlp-a", new="mlp-b")
+    .replace_all(old="mlp_a", new="mlp_b")
+    .replace_all(old="mlp-gate-a", new="mlp-gate-b")
+    .replace_all(old="mlp-tensor-gate-a", new="mlp-tensor-gate-b")
+    .replace_all(old="mlp-runtime-gate-a", new="mlp-runtime-gate-b")
+    .replace_all(old="mlp-plugin-build-a", new="mlp-plugin-build-b")
+  for
+    (name, contents) in [
+      ("run_mlp_comparison_b.mbtx", runner),
+      ("build_mlp_comparison_b.mbtx", builder),
+      (
+        "mlp_smc_probe_b.py",
+        @fs.read_file(repo + "/providers/motion_learning/mlp_smc_probe.py").text(),
+      ),
+    ] {
+    @fs.write_file(root + "/" + name, contents, create_mode=CreateNew)
+    run("scp", [
+      "-o",
+      "ControlPath=" + socket,
+      root + "/" + name,
+      host + ":" + base + "/" + name,
+    ])
+  }
+  run("ssh", [
+    "-S",
+    socket,
+    host,
+    "cp -a --reflink=auto " +
+    base +
+    "/workspace/moonrobo-mlp-a " +
+    base +
+    "/workspace/moonrobo-mlp-b",
+  ])
+  for
+    path in [
+      "src/learning_aligned_gpu/cmd/mlp_comparison_wbtest.mbt", "src/learning_aligned_gpu/networks.mbt",
+      "src/learning_tensor/precision.inc", "src/learning_tensor/precision_loader.inc",
+      "src/learning_tensor/precision.mbt",
+    ] {
+    run("scp", [
+      "-o",
+      "ControlPath=" + socket,
+      repo + "/" + path,
+      host + ":" + base + "/workspace/moonrobo-mlp-b/" + path,
+    ])
+  }
+  for mode in ["plugin", "gate-build-mlp-b"] {
+    run("ssh", [
+      "-S",
+      socket,
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/build_mlp_comparison_b.mbtx -- " +
+      mode,
+    ])
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "seeds": [0, 1, 2],
+  "updates": 400,
+  "batch_size": 64,
+  "hidden_width": 128,
+  "learning_rate": 0.001,
+  "normalization_floor": 0.1,
+  "evaluate_every": 50,
+  "cpu_threads": 2,
+  "late_window_fraction": 0.5,
+  "late_validation_weight": 0.5,
+  "horizontal_translation_invariant": true,
+  "acceptance": "Same data, seeds and fit budget as long dynamics. Require translation equivariance and report prediction/physical probes separately; no stable-control qualification from model error."
+}

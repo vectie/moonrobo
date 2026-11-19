@@ -1,0 +1,95 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let before = @fs.read_file(dir + "/world-fixture-before.mbt").text()
+  let fixture = before.replace_all(
+    old="  let upload = (shape, values) => {",
+    new=(
+      #|  if @env.get_env_var("MOONROBO_COMPILED_WORLD_PACKAGE") is Some(path) {
+      #|    guard mode=="world" else {fail("compiled fitting MLP is world-only")}
+      #|    learner.world.compiled_fitting_mlp=Some(backend.load_compiled_block(path,cuda_device=0))
+      #|  }
+      #|  let upload = (shape, values) => {
+    ),
+  )
+  @fs.write_file(
+    dir + "/compiled_world_fixture_a.mbt",
+    fixture,
+    create_mode=CreateNew,
+  )
+  let parent = @fs.read_file(dir + "/build_compiled_mlp_a.mbtx").text()
+  let builder = parent[:parent.find("async fn main {").unwrap()].to_owned() +
+    (
+      #|async fn main {
+      #|  require_idle()
+      #|  let ws=base+"/workspace/moonrobo-compiled-world-a"
+      #|  guard !@fs.exists(ws) else {fail("fresh world workspace")}
+      #|  run("aoti-world-copy-a","cp",["-a","--reflink=auto",base+"/workspace/moonrobo-compiled-mlp-a",ws])
+      #|  run("aoti-world-overlay-a","tar",["-xzf",base+"/compiled-world-overlay-a.tar.gz","-C",ws])
+      #|  run("aoti-world-fixture-a","cp",[base+"/compiled_world_fixture_a.mbt",ws+"/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"])
+      #|  container("aoti-world-build-a","/toolchain/bin/moon",["test","--build-only","--release","--target","native","-j","2","--frozen","src/learning_aligned_gpu/cmd"],workdir="/workspace/moonrobo-compiled-world-a")
+      #|  run("aoti-world-binary-a","cp",[ws+"/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/cmd/cmd.whitebox_test.exe",base+"/compiled-world-gate-a"])
+      #|}
+    )
+  @fs.write_file(
+    dir + "/build_compiled_world_a.mbtx",
+    builder,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("tar", [
+      "--disable-copyfile",
+      "-czf",
+      dir + "/compiled-world-overlay-a.tar.gz",
+      "src/learning_aligned_gpu/networks.mbt",
+      "src/learning_aligned_gpu/world_norm_snapshot.mbt",
+    ]),
+    0,
+  )
+  let runner = @fs.read_file(
+      "output/spark-runtime-20261024/precision-scaling-20261028-a/run_precision_scaling_a.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="run_precision_scaling_a.mbtx",
+      new="run_compiled_world_a.mbtx",
+    )
+    .replace_all(old="bf16-original-gate-a", new="compiled-world-gate-a")
+    .replace_all(
+      old="libmoonrobo_coefficient_full_a.so",
+      new="libmoonrobo_compiled_mlp_a.so",
+    )
+    .replace_all(
+      old="  e[\"MOONROBO_SHARED_MODE\"]",
+      new="  if implementation==\"native\" { e[\"MOONROBO_COMPILED_WORLD_PACKAGE\"]=Json(\"/workspace/moonrobo/runs/hotspot-mlp-aoti-export-\"+amp+(if amp==\"none\" {\"-c\"}else{\"-b\"})) }\n  e[\"MOONROBO_SHARED_MODE\"]",
+    )
+  @fs.write_file(
+    dir + "/run_compiled_world_a.mbtx",
+    runner,
+    create_mode=CreateNew,
+  )
+  for
+    name in [
+      "compiled-world-overlay-a.tar.gz", "compiled_world_fixture_a.mbt", "build_compiled_world_a.mbtx",
+      "run_compiled_world_a.mbtx",
+    ] {
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        dir + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+}

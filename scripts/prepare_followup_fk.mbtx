@@ -1,0 +1,144 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let evidence = repo + "/output/spark-runtime-20261024/world-ln-fk-20261026"
+  let out = evidence + "/fk"
+  let old = "/home/wlc004s/moonrobo/private/hotspot-followup-world-20261026-a"
+  let base = "/home/wlc004s/moonrobo/private/hotspot-followup-fk-20261026-a"
+  guard !@fs.exists(out) else { fail("fresh FK stage required") }
+  @fs.mkdir(out)
+  async fn run(program : String, args : Array[String]) -> Unit {
+    guard @process.run(program, args) == 0 else { fail("failed " + program) }
+  }
+  let builder = @fs.read_file(
+      repo + "/scripts/build_hotspot_candidates_v2.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="/home/wlc004s/moonrobo/private/hotspot-optimization-20261025-b",
+      new=base,
+    )
+  let runner = @fs.read_file(evidence + "/run_followup_pairs.mbtx")
+    .text()
+    .replace_all(old~, new=base)
+    .replace_all(
+      old="/workspace/moonrobo/private/hotspot-followup-world-20261026-a",
+      new="/workspace/moonrobo/private/hotspot-followup-fk-20261026-a",
+    )
+    .replace_all(
+      old="\"world_packed_replay\",",
+      new="\"world_packed_replay\", \"geometry_submitted_axis\",",
+    )
+    .replace_all(
+      old="\"world_packed\", \"world-fields\",",
+      new="\"world_packed\", \"world-fields\", \"fk_axis\",",
+    )
+  let spec = @fs.read_file(repo + "/scripts/prepare_followup_world_spec.mbtx")
+    .text()
+    .replace_all(old~, new=base)
+    .replace_all(
+      old="/workspace/moonrobo/private/hotspot-followup-world-20261026-a",
+      new="/workspace/moonrobo/private/hotspot-followup-fk-20261026-a",
+    )
+    .replace_all(
+      old="config[\"world_packed_replay\"] = Json(side == \"b\")",
+      new="config[\"world_packed_replay\"] = Json(false)\n    config[\"geometry_submitted_axis\"] = Json(side == \"b\")",
+    )
+    .replace_all(
+      old="\"appledouble-quarantine.json\", \"quarantine_followup_metadata_v3.mbtx\", \"trainer-clean-build.receipt.json\", \"gate-build-clean.receipt.json\"",
+      new="\"plugin-build.receipt.json\", \"trainer-build.receipt.json\", \"gate-build.receipt.json\"",
+    )
+    .replace_all(
+      old="[\"world-fields\", \"world_packed\"]",
+      new="[\"fk_axis\"]",
+    )
+    .replace_all(old="followup_world", new="followup_fk")
+    .replace_all(old="world-packed", new="fk-axis-submit")
+    .replace_all(
+      old="Only world_packed_replay differs.",
+      new="Only geometry_submitted_axis differs. World packed and LN fusion are disabled on both sides.",
+    )
+    .replace_all(
+      old="Packed sampler retains start/env RNG order, block validation boundary, original masks and Float64-to-Float32 conversion.",
+      new="FK axis-angle uses one FFI submission of identical ordered ATen nodes, with all affine multiply-by-one and add-zero operations retained. GPU kernel count is unchanged; no speedup is assumed.",
+    )
+    .replace_all(
+      old="unchanged tensor plugin",
+      new="same rebuilt tensor plugin",
+    )
+  let controller = @fs.read_file(repo + "/scripts/run_followup_world.mbtx")
+    .text()
+    .replace_all(old~, new=base)
+    .replace_all(
+      old="[\"stage\", \"fixture-stage\", \"trainer\", \"gate-build\"]",
+      new="[\"stage\", \"fixture-stage\", \"plugin\", \"trainer\", \"gate-build\"]",
+    )
+    .replace_all(
+      old="[\"world-fields\", \"world_packed\"]",
+      new="[\"fk_axis\"]",
+    )
+    .replace_all(old="followup_world", new="followup_fk")
+    .replace_all(old="world-packed", new="fk-axis-submit")
+    .replace_all(old="[root])", new="[root, root + \"/summary.json\"])")
+  for
+    (name, source) in [
+      ("build_followup_fk.mbtx", builder),
+      ("run_followup_pairs.mbtx", runner),
+      ("prepare_followup_fk_spec.mbtx", spec),
+      ("run_followup_fk.mbtx", controller),
+    ] {
+    @fs.write_file(out + "/" + name, source, create_mode=CreateNew)
+  }
+  run("env", [
+    "COPYFILE_DISABLE=1",
+    "tar",
+    "--exclude=_build",
+    "--exclude=.mooncakes",
+    "--exclude=target",
+    "--exclude=._*",
+    "-czf",
+    out + "/overlay.tar.gz",
+    "-C",
+    repo,
+    "moon.mod",
+    "src/learning_aligned",
+    "src/learning_aligned_gpu",
+    "src/learning_tensor",
+  ])
+  run("ssh", [
+    "-S",
+    "/tmp/moonrobo-operator-179.sock",
+    "wlc004s@192.168.2.179",
+    "mkdir " + base,
+  ])
+  for
+    name in [
+      "build_followup_fk.mbtx", "run_followup_pairs.mbtx", "prepare_followup_fk_spec.mbtx",
+      "run_followup_fk.mbtx", "overlay.tar.gz",
+    ] {
+    run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/" + name,
+      "wlc004s@192.168.2.179:" + base + "/" + name,
+    ])
+  }
+  for
+    name in [
+      "stage_hotspot_fixture_workspace.mbtx", "summarize_hotspot_pairs.mbtx",
+    ] {
+    run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      repo + "/scripts/" + name,
+      "wlc004s@192.168.2.179:" + base + "/" + name,
+    ])
+  }
+}

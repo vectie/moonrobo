@@ -1,0 +1,138 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["prepare", "build", "run"].contains(mode) else {
+    fail("prepare/build/run")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  if mode == "prepare" {
+    let fixture = @fs.read_file(out + "/actor_step_fixture_e.mbt")
+      .text()
+      .replace_all(
+        old="context.with_smc_fk_layout(true)",
+        new="context.with_smc_fk_layout(true).with_smc_soft_limits()",
+      )
+      .replace_all(old="smc_actor_return: false", new="smc_actor_return: true")
+    let mut build = @fs.read_file(out + "/build_actor_step_e.mbtx").text()
+    for
+      stem in [
+        "moonrobo-actor-step-", "actor-step-copy-", "actor-step-overlay-", "actor-step-fixture-",
+        "actor-step-source-", "actor-step-helper-", "actor-step-fk-", "actor-step-build-",
+        "actor-step-cpu-tests-", "actor-step-binary-", "actor-step-gate-",
+      ] {
+      build = build.replace_all(old=stem + "e", new=stem + "aligned-a")
+    }
+    build = build
+      .replace_all(
+        old="actor_step_fixture_e.mbt",
+        new="actor_aligned_fixture_a.mbt",
+      )
+      .replace_all(
+        old="actor_smc_fk_e.mbt",
+        new="actor_context_soft_limits_d.mbt",
+      )
+    let runner = @fs.read_file(out + "/run_actor_padding_gate_g.mbtx")
+      .text()
+      .replace_all(
+        old="run_actor_padding_gate_g.mbtx",
+        new="run_actor_aligned_a.mbtx",
+      )
+      .replace_all(old="actor-step-gate-e", new="actor-step-gate-aligned-a")
+      .replace_all(
+        old="actor_step_fixture_e.mbt",
+        new="actor_aligned_fixture_a.mbt",
+      )
+      .replace_all(
+        old="hotspot-mlp-actor-backward-padding-g",
+        new="hotspot-mlp-actor-reference-backward-b",
+      )
+    for
+      (name, content) in [
+        ("actor_aligned_fixture_a.mbt", fixture),
+        ("build_actor_aligned_a.mbtx", build),
+        ("run_actor_aligned_a.mbtx", runner),
+      ] {
+      @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+      if name.has_suffix(".mbtx") {
+        assert_eq(
+          @process.run("moon", ["check", "--target", "native", out + "/" + name]),
+          0,
+        )
+      }
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/aligned-" + mode + "-a"
+  @fs.mkdir(folder)
+  let command = if mode == "build" {
+    "build_actor_aligned_a.mbtx"
+  } else {
+    "run_actor_aligned_a.mbtx -- actor native off 1 actor-aligned-native-a bf16-full"
+  }
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      command,
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  if mode == "run" {
+    for
+      name in [
+        "result.json", "final.json", "boundaries.json", "completion.json", "training-guard.json",
+        "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+        "protocol.json", "compiled-packages.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-aligned-native-a/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+  }
+  assert_eq(code, 0)
+  if mode == "run" {
+    guard @fs.exists(folder + "/final.json") &&
+      @fs.exists(folder + "/result.json") else {
+      fail("complete update required")
+    }
+  }
+}

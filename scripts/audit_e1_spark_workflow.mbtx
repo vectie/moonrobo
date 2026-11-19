@@ -1,0 +1,126 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn[T : FromJson] field(value : Json, key : String) -> T raise {
+  guard value is Object(fields) && fields.get(key) is Some(v) else { fail("missing E1 evidence field: "+key) }
+  @json.from_json(v)
+}
+
+///|
+fn int_field(value : Json, key : String) -> Int raise { field(value,key) }
+
+///|
+fn string_field(value : Json, key : String) -> String raise { field(value,key) }
+
+///|
+fn bool_field(value : Json, key : String) -> Bool raise { field(value,key) }
+
+///|
+fn double_field(value : Json, key : String) -> Double raise { field(value,key) }
+
+///|
+fn json_field(value : Json, key : String) -> Json raise { field(value,key) }
+
+///|
+async fn json(path : String) -> Json {
+  @json.parse(@utf8.decode(@fs.read_file(path).binary()))
+}
+
+///|
+async fn sha(path : String) -> String {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 536870912L else { fail("audit artifact size bound exceeded") }
+  let hash = @crypto.SHA256::new()
+  for offset = 0L; offset < size; {
+    let count = (size-offset).min(262144L).to_int()
+    hash.update(file.read_exactly_at(count,position=offset))
+    continue offset+count.to_int64()
+  }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 2 else { fail("usage: audit_e1_spark_workflow.mbtx JOB_ROOT") }
+  let root = args[1]
+  guard root == "/home/wlc004s/moonrobo/private/e1-native-20261110" else { fail("audit must run on the 179 training job") }
+  let (host_code,host_output,_) = @process.collect_output("hostname",[])
+  guard host_code == 0 && host_output.text().trim() == "spark-368c" else { fail("unexpected execution host") }
+  let report = json(root+"/out/final-method-23/report.json")
+  let counters : Json = field(report,"counters")
+  let identity : Json = field(report,"identity")
+  let config : Json = field(identity,"config")
+  let learner : Json = field(config,"learner")
+  assert_eq(int_field(report,"iteration"),3)
+  assert_eq(int_field(report,"learner_device"),0)
+  assert_eq(int_field(learner,"horizon"),32)
+  assert_eq(int_field(learner,"wm_window"),8)
+  assert_eq(int_field(learner,"policy_batch"),256)
+  assert_eq(int_field(learner,"wm_batch"),256)
+  assert_eq(string_field(counters,"actor_updates"),"3")
+  assert_eq(string_field(counters,"model_updates"),"30")
+  assert_eq(string_field(counters,"critic_updates"),"60")
+  let admission : Json = field(report,"memory_admission")
+  assert_true(bool_field(admission,"accepted"))
+  assert_eq(int_field(admission,"admission_percent"),65)
+  let tests = @utf8.decode(@fs.read_file(root+"/test.log").binary())
+  let regression = @utf8.decode(@fs.read_file(root+"/g1-regression.log").binary())
+  assert_true(tests.contains("Total tests: 7, passed: 7, failed: 0."))
+  assert_false(tests.contains("SKIP E1"))
+  assert_true(regression.contains("Total tests: 20, passed: 20, failed: 0."))
+  let evaluation = json(root+"/out/final-evaluation-23.json")
+  assert_true(bool_field(evaluation,"benchmark_complete"))
+  assert_eq(int_field(evaluation,"n_clips"),2)
+  let (code,inspect,error) = @process.collect_output("docker",["inspect","moonrobo-e1-23-training-20261110"])
+  guard code == 0 else { fail(error.text()) }
+  let containers : Array[Json] = @json.from_json(@json.parse(inspect.text()))
+  let state : Json = field(containers[0],"State")
+  let (log_code,logs,_) = @process.collect_output("docker",["logs","--tail","3","moonrobo-e1-23-training-20261110"])
+  guard log_code == 0 else { fail("unable to read the production training log") }
+  let digest = sha(root+"/incoming/e1-source-final-20261110.tar.gz")
+  assert_eq(digest,"5636c4084a770067016be570f2b22bbd5f8eb9e9fa23c5de481c2d422457bab1")
+  let pointer = json(root+"/out/train-23/current.json")
+  let generation = string_field(pointer,"generation")
+  guard generation.has_prefix("generation-") && !generation.contains("/") && !generation.contains("..") else { fail("invalid checkpoint generation") }
+  let directory = root+"/out/train-23/"+generation
+  assert_eq(sha(directory+"/checkpoint.json"),string_field(pointer,"sha256"))
+  let checkpoint = json(directory+"/checkpoint.json")
+  let members : Map[String,String] = field(checkpoint,"files")
+  for name,digest in members {
+    guard !name.contains("/") && !name.contains("..") else { fail("invalid checkpoint member") }
+    assert_eq(sha(directory+"/"+name),digest)
+  }
+  let (date_code,date_output,_) = @process.collect_output("date",["-u","+%Y-%m-%dT%H:%M:%SZ"])
+  assert_eq(date_code,0)
+  let summary : Json = {
+    "format": "moonrobo.e1-two-spark-software-audit.v1", "data_host": 178, "training_host": 179,
+    "observed_at_utc": date_output.text().trim().to_owned(),
+    "training_hostname": host_output.text().trim().to_owned(), "software_gate_passed": true,
+    "source_archive_sha256": digest, "dataset_manifest_sha256": sha(root+"/data-23/dataset.json"),
+    "executable_sha256": sha(root+"/e1-trainer-frozen"), "tensor_library_sha256": sha(root+"/libmoonrobo_learning_tensor.so"),
+    "e1_tests": 7, "g1_regression_tests": 20, "full_shape_gate_iteration": 3,
+    "full_shape_gate_counters": counters, "cuda_allocator": json_field(report,"cuda_memory_after_training"),
+    "memory_admission": admission,
+    "validation_evaluation": { "clips": int_field(evaluation,"n_clips"), "completed": int_field(evaluation,"n_completed"),
+      "failed": int_field(evaluation,"n_failed"), "normalized_return": double_field(evaluation,"norm_return") },
+    "launch": json(root+"/training-launch.json"), "training_state": state,
+    "container_image_id": string_field(containers[0],"Image"), "latest_training_log": logs.text(),
+    "verified_training_checkpoint": pointer, "verified_checkpoint_members": members.length(),
+    "scope": "four vendor E1 motion files; training on dance1 and 0_boxing, validation on 135_02 and 02_boxing; 23-axis simulation derived by fixing waist roll; no hardware or full BONES coverage claim",
+  }
+  @fs.write_file(root+"/software-audit.json",@utf8.encode(summary.stringify(indent=2)),create_mode=CreateOrTruncate)
+  println(summary.stringify())
+}

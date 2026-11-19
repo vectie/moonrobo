@@ -1,0 +1,156 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["prepare", "build"].contains(mode) else {
+    fail("prepare/build")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  guard @json.parse(@fs.read_file(out + "/actor-full-snapshot-j.json").text())
+    is { "numerical_pass": True, .. } else {
+    fail("complete actor/critic numerical gate required")
+  }
+  if mode == "prepare" {
+    let fixture = @fs.read_file(out + "/actor_geometry_j_fixture.mbt")
+      .text()
+      .replace_all(
+        old="\"world\", \"actor\"].contains(mode)",
+        new="\"world\", \"actor\", \"train\"].contains(mode)",
+      )
+      .replace_all(
+        old="  let rows : Array[Json] = []",
+        new=(
+          #|  let world_root="/workspace/moonrobo/runs/hotspot-mlp-world-reference-export-k"
+          #|  learner.world.compiled_fitting_window=Some((backend.load_compiled_block(world_root+"/rollout",cuda_device=0),backend.load_compiled_block(world_root+"/error",cuda_device=0)))
+          #|  let rows : Array[Json] = []
+        ),
+      )
+      .replace_all(
+        old="    } else {\n      let m = try learner.update_policy(policy)",
+        new=(
+          #|    } else if mode=="train" {
+          #|      let mut world_metrics : Array[Double] = []
+          #|      for _ in 0..<10 {let m=learner.fit_world_batch(world);world_metrics=[m.wm_loss,m.wm_error_last]}
+          #|      let m=learner.update_policy(policy)
+          #|      [..world_metrics,m.policy_loss,m.critic_loss_last,m.imagined_reward,m.imagined_survival]
+          #|    } else {
+          #|      let m = try learner.update_policy(policy)
+        ),
+      )
+    let learning = @fs.read_file("src/learning_aligned_gpu/learning.mbt").text() +
+      "\n///|\npub fn actor_boundaries() -> Array[(String,Array[Int],Array[Double])] { [] }\n"
+    let build = @fs.read_file(out + "/build_actor_geometry_j.mbtx")
+      .text()
+      .replace_all(old="geometry-native-j", new="training-native-k")
+      .replace_all(
+        old="actor_geometry_j_fixture.mbt",
+        new="training_fixture_k.mbt",
+      )
+      .replace_all(
+        old="actor_geometry_j_learning.mbt",
+        new="training_learning_k.mbt",
+      )
+      .replace_all(old="regression-j", new="regression-k")
+      .replace_all(old="copy-actor_j_", new="copy-training_k_")
+      .replace_all(old="copy-actor_numeric_", new="copy-training_numeric_")
+    let runner = @fs.read_file(out + "/run_actor_geometry_j.mbtx")
+      .text()
+      .replace_all(
+        old="run_actor_geometry_j.mbtx",
+        new="run_aligned_training_k.mbtx",
+      )
+      .replace_all(
+        old="actor-step-gate-geometry-native-j",
+        new="actor-step-gate-training-native-k",
+      )
+      .replace_all(
+        old="\"world\", \"actor\"].contains(phase)",
+        new="\"world\", \"actor\", \"train\"].contains(phase)",
+      )
+      .replace_all(
+        old="actor_boundary_probe_a.py",
+        new="aligned_training_reference_k.py",
+      )
+      .replace_all(
+        old="  e[\"MOONROBO_AOTI_ADJOINTS\"]=\"/pair\"",
+        new="  ignore(e.remove(\"MOONROBO_AOTI_ADJOINTS\"))\n  e[\"ALIGNED_TRAINING_NATIVE\"]=\"/workspace/moonrobo/runs/hotspot-shared-training-native-gate-k\"",
+      )
+      .replace_all(
+        old="if implementation==\"smc\" {for name in [\"inductor-cache\",\"triton-cache\"]",
+        new="if false {for name in [\"inductor-cache\",\"triton-cache\"]",
+      )
+      .replace_all(
+        old="  write_json(root + \"/protocol.json\"",
+        new=(
+          #|  let world_root="/home/wlc004s/moonrobo/runs/hotspot-mlp-world-reference-export-k"
+          #|  for branch in ["rollout","error"] {for name in @fs.readdir(world_root+"/"+branch) {if name.has_suffix(".so")||name.has_suffix(".cubin")||name=="native.spec"||name=="manifest.json" {let path=world_root+"/"+branch+"/"+name;pins[path]=Json(hash_file(path))}}}
+          #|  pins[base+"/compiler_reference_contract_f.py"]=Json(hash_file(base+"/compiler_reference_contract_f.py"))
+          #|  for name in ["frozen-kernels.py","frozen-choices.json"] {let path="/home/wlc004s/moonrobo/runs/hotspot-shared-actor-frozen-reference-h/"+name;pins[path]=Json(hash_file(path))}
+          #|  write_json(root + "/protocol.json"
+        ),
+      )
+    for
+      (name, content) in [
+        ("training_fixture_k.mbt", fixture),
+        ("training_learning_k.mbt", learning),
+        ("build_aligned_training_k.mbtx", build),
+        ("run_aligned_training_k.mbtx", runner),
+        (
+          "aligned_training_reference_k.py",
+          @fs.read_file(
+            "providers/motion_learning/aligned_training_reference.py",
+          ).text(),
+        ),
+      ] {
+      @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+      if name.has_suffix(".mbtx") {
+        assert_eq(
+          @process.run("moon", ["check", "--target", "native", out + "/" + name]),
+          0,
+        )
+      }
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/build_aligned_training_k.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/training-build-k.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/training-build-k.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+}

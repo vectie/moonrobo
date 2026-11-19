@@ -1,0 +1,76 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(m) && m.get(k) is Some(v) else { fail("missing " + k) }
+  v
+}
+
+///|
+fn number(j : Json) -> Double raise {
+  match j {
+    Number(n, ..) => n
+    String(s) => @string.parse_double(s)
+    _ => fail("number required")
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, path] else { fail("accepted summary path") }
+  let summary = @json.parse(@fs.read_file(path).text())
+  guard field(summary, "accepted") == Json(true) &&
+    field(summary, "runs") is Array(runs) && runs.length() == 4 else {
+    fail("complete accepted four-run ABBA required")
+  }
+  let phases : Map[String, Json] = {}
+  for side in ["a", "b"] {
+    let sums : Map[String, Double] = {}
+    let mut count = 0
+    let mut cuda_reserved = 0.0
+    let mut cuda_allocated = 0.0
+    let mut cgroup_peak = 0.0
+    let mut minimum_cuda_free = 1.0e30
+    for run in runs {
+      if field(run, "side") != Json(side) { continue }
+      guard field(run, "rows") is Array(rows) && rows.length() == 60 else {
+        fail("all60 rows required")
+      }
+      for row in rows[40:60] {
+        for key in ["collection_ms", "world_ms", "actor_critic_ms", "total_ms"] {
+          sums[key] = sums.get(key).unwrap_or(0.0) + number(field(row, key))
+        }
+        count += 1
+      }
+      let details = field(run, "runtime_details")
+      cuda_reserved = cuda_reserved.max(number(field(details, "cuda_reserved_window_peak_bytes")))
+      cuda_allocated = cuda_allocated.max(number(field(details, "cuda_allocated_window_peak_bytes")))
+      minimum_cuda_free = minimum_cuda_free.min(number(field(details, "minimum_observed_cuda_free_bytes")))
+      cgroup_peak = cgroup_peak.max(number(field(field(run, "resource_observations"), "maximum_observed_cgroup_memory_peak_bytes")))
+    }
+    guard count == 40 else { fail("each side40 steady rows required") }
+    let result : Map[String, Json] = {}
+    for key, value in sums { result[key] = Json(value / count.to_double()) }
+    result["cuda_reserved_peak_bytes"] = Json(cuda_reserved)
+    result["cuda_allocated_peak_bytes"] = Json(cuda_allocated)
+    result["minimum_observed_cuda_free_bytes"] = Json(minimum_cuda_free)
+    result["maximum_observed_cgroup_peak_bytes"] = Json(cgroup_peak)
+    phases[side] = Json::object(result)
+  }
+  let ratio = number(field(summary, "a_over_b_mean_time_ratio"))
+  println(({
+    "accepted": true,
+    "phases_and_resources": Json::object(phases),
+    "adjacent_ratios": field(summary, "adjacent_ab_ba_a_over_b_mean_time_ratios"),
+    "a_over_b": Json(ratio),
+    "elapsed_reduction_percent": Json((1.0 - 1.0 / ratio) * 100.0),
+    "scope": "complete ABBA steady41-60; sums use synchronized phase boundaries; allocator and cgroup counters overlap on UMA and are not added",
+  } : Json).stringify(indent=2))
+}

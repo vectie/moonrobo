@@ -1,0 +1,757 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+// CPU-only analysis of already recorded NVIDIA samples and trainer telemetry.
+// Input timestamps are explicitly UTC; no local timezone inference is made.
+struct GpuSample {
+  time_ms : Int64
+  utilization : Double?
+  power_w : Double?
+  memory_utilization : Double?
+  sm_clock_mhz : Double?
+  memory_clock_mhz : Double?
+}
+
+///|
+fn field(value : Json, name : String) -> Json raise {
+  guard value is Object(fields) && fields.get(name) is Some(result) else {
+    fail("missing JSON field: " + name)
+  }
+  result
+}
+
+///|
+fn nonnegative_integer(value : Json) -> Int64 raise {
+  let result = match value {
+    String(text) => @string.parse_int64(text)
+    Number(n, ..) => {
+      guard n >= 0.0 && n <= 9007199254740991.0 && n.to_int64().to_double() == n else {
+        fail("expected exact integer")
+      }
+      n.to_int64()
+    }
+    _ => fail("expected integer")
+  }
+  guard result >= 0L else { fail("negative integer") }
+  result
+}
+
+///|
+fn digits(text : StringView) -> Int32 raise {
+  guard !text.is_empty() && text.iter().all(c => c >= '0' && c <= '9') else {
+    fail("expected decimal digits")
+  }
+  @string.parse_int(text)
+}
+
+///|
+fn leap(year : Int32) -> Bool {
+  year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
+}
+
+///|
+fn utc_milliseconds(text : String) -> Int64 raise {
+  guard text.length() == 23 &&
+    text[4] == '/' &&
+    text[7] == '/' &&
+    text[10] == ' ' &&
+    text[13] == ':' &&
+    text[16] == ':' &&
+    text[19] == '.' else {
+    fail("expected UTC timestamp YYYY/MM/DD HH:MM:SS.mmm")
+  }
+  let year = digits(text[0:4])
+  let month = digits(text[5:7])
+  let day = digits(text[8:10])
+  let hour = digits(text[11:13])
+  let minute = digits(text[14:16])
+  let second = digits(text[17:19])
+  let millis = digits(text[20:23])
+  guard year >= 1970 &&
+    year <= 9999 &&
+    month >= 1 &&
+    month <= 12 &&
+    hour < 24 &&
+    minute < 60 &&
+    second < 60 else {
+    fail(
+      "UTC calendar or time component out of range; leap seconds unsupported",
+    )
+  }
+  let months = [
+    31,
+    if leap(year) {
+      29
+    } else {
+      28
+    },
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ]
+  guard day >= 1 && day <= months[month - 1] else { fail("invalid UTC day") }
+  // Gregorian days before Jan 1 of year minus days before Jan 1, 1970.
+  let previous = year - 1
+  let mut days = 365L * (year - 1970).to_int64() +
+    (previous / 4 - previous / 100 + previous / 400 - 477).to_int64()
+  for i in 0..<(month - 1) {
+    days += months[i].to_int64()
+  }
+  days += (day - 1).to_int64()
+  (
+    ((days * 24L + hour.to_int64()) * 60L + minute.to_int64()) * 60L +
+    second.to_int64()
+  ) *
+  1000L +
+  millis.to_int64()
+}
+
+///|
+fn metric(
+  text : String,
+  suffix : String,
+  maximum : Double,
+  nounits~ : Bool = false,
+) -> Double? raise {
+  if text == "[N/A]" {
+    return None
+  }
+  let number = if nounits {
+    text[:]
+  } else {
+    guard text.has_suffix(suffix) else { fail("invalid metric unit: " + text) }
+    text[:text.length() - suffix.length()].trim()
+  }
+  let value = @string.parse_double(number)
+  // Both comparisons reject NaN; the upper bound also rejects infinity.
+  guard value >= 0.0 && value <= maximum else {
+    fail("nonfinite or out-of-range metric: " + text)
+  }
+  Some(value)
+}
+
+///|
+fn parse_csv(
+  source : String,
+  nounits~ : Bool = false,
+) -> Array[GpuSample] raise {
+  let lines = source.split("\n").to_array()
+  guard lines.length() >= 2 && lines.length() <= 100002 else {
+    fail("CSV row count out of bound")
+  }
+  let expected = [
+    "timestamp", "utilization.gpu [%]", "utilization.memory [%]", "power.draw [W]",
+    "clocks.current.sm [MHz]", "clocks.current.memory [MHz]",
+  ]
+  let headers = lines[0]
+    .trim()
+    .split(",")
+    .map(x => x.trim().to_owned())
+    .to_array()
+  guard headers == expected else { fail("unexpected NVIDIA CSV header/order") }
+  let rows : Array[GpuSample] = []
+  let mut previous = -1L
+  for i in 1..<lines.length() {
+    let line = lines[i].trim()
+    if line.is_empty() && i == lines.length() - 1 {
+      continue
+    }
+    guard !line.is_empty() && line.length() <= 2048 else {
+      fail("empty or oversized NVIDIA CSV row")
+    }
+    let columns = line.split(",").map(x => x.trim().to_owned()).to_array()
+    guard columns.length() == 6 else {
+      fail("expected exactly six NVIDIA CSV columns")
+    }
+    let timestamp = utc_milliseconds(columns[0])
+    guard timestamp > previous else {
+      fail("NVIDIA UTC timestamps must strictly increase")
+    }
+    previous = timestamp
+    rows.push({
+      time_ms: timestamp,
+      utilization: metric(columns[1], " %", 100.0, nounits~),
+      memory_utilization: metric(columns[2], " %", 100.0, nounits~),
+      power_w: metric(columns[3], " W", 100000.0, nounits~),
+      sm_clock_mhz: metric(columns[4], " MHz", 100000.0, nounits~),
+      memory_clock_mhz: metric(columns[5], " MHz", 100000.0, nounits~),
+    })
+  }
+  guard !rows.is_empty() else { fail("no NVIDIA samples") }
+  rows
+}
+
+///|
+fn statistics(values : Array[Double], total : Int32) -> Json {
+  let mut sum = 0.0
+  let mut maximum = 0.0
+  for value in values {
+    sum += value
+    maximum = maximum.max(value)
+  }
+  {
+    "valid_sample_count": Json(values.length()),
+    "missing_sample_count": Json(total - values.length()),
+    "sample_mean": if values.is_empty() {
+      Json::null()
+    } else {
+      Json(sum / values.length().to_double())
+    },
+    "sample_max": if values.is_empty() {
+      Json::null()
+    } else {
+      Json(maximum)
+    },
+  }
+}
+
+///|
+fn summarize(samples : Array[GpuSample]) -> Json {
+  let gpu : Array[Double] = []
+  let power : Array[Double] = []
+  let mut memory_na = 0
+  let mut sm_clock_na = 0
+  let mut memory_clock_na = 0
+  for sample in samples {
+    if sample.utilization is Some(value) {
+      gpu.push(value)
+    }
+    if sample.power_w is Some(value) {
+      power.push(value)
+    }
+    if sample.memory_utilization is None {
+      memory_na += 1
+    }
+    if sample.sm_clock_mhz is None {
+      sm_clock_na += 1
+    }
+    if sample.memory_clock_mhz is None {
+      memory_clock_na += 1
+    }
+  }
+  {
+    "timestamp_sample_count": Json(samples.length()),
+    "nvidia_utilization_gpu_percent": statistics(gpu, samples.length()),
+    "nvidia_power_draw_watts": statistics(power, samples.length()),
+    "unaggregated_columns_missing_counts": {
+      "utilization_memory_percent": Json(memory_na),
+      "sm_clock_mhz": Json(sm_clock_na),
+      "memory_clock_mhz": Json(memory_clock_na),
+    },
+  }
+}
+
+///|
+fn key(phase : String, iteration : Int64) -> String {
+  phase + ":" + iteration.to_string()
+}
+
+///|
+fn completed_times(
+  report : Json,
+  iterations~ : Int32 = 5,
+) -> Map[String, Int64] raise {
+  guard iterations == 5 || iterations == 10 else {
+    fail("unsupported observation iteration count")
+  }
+  guard field(report, "format") ==
+    Json("moonrobo.native-tensor-training-report.v1") &&
+    field(report, "training_complete_for_requested_iterations") == Json(true) &&
+    nonnegative_integer(field(report, "iteration")) == iterations.to_int64() else {
+    fail(
+      if iterations == 5 {
+        "expected completed five-iteration training report"
+      } else {
+        "expected completed ten-iteration training report"
+      },
+    )
+  }
+  let diagnostic = field(report, "cuda_memory_telemetry")
+  guard field(diagnostic, "format") ==
+    Json("moonrobo.cuda-training-memory-report.v1") &&
+    field(diagnostic, "status") == Json("complete") &&
+    field(diagnostic, "error") == Json::null() &&
+    nonnegative_integer(field(diagnostic, "omitted_sample_count")) == 0L &&
+    field(field(diagnostic, "options"), "synchronize_each_sample") == Json(true) &&
+    field(diagnostic, "samples") is Array(samples) &&
+    !samples.is_empty() else {
+    fail("expected complete retained synchronized CUDA telemetry")
+  }
+  let times : Map[String, Int64] = Map([])
+  let mut previous = 0L
+  for i, sample in samples {
+    guard field(sample, "phase") is String(phase) &&
+      nonnegative_integer(field(sample, "sequence")) == i.to_int64() else {
+      fail("invalid CUDA telemetry phase/sequence")
+    }
+    let iteration = nonnegative_integer(field(sample, "iteration"))
+    let begin = nonnegative_integer(field(sample, "sample_begin_unix_ms"))
+    let end = nonnegative_integer(field(sample, "sample_end_unix_ms"))
+    let name = key(phase, iteration)
+    guard begin >= previous && end >= begin && !times.contains(name) else {
+      fail("nonmonotonic or duplicate CUDA telemetry sample")
+    }
+    times[name] = end
+    previous = end
+  }
+  times
+}
+
+///|
+fn aggregate_case(
+  report : Json,
+  rows : Array[GpuSample],
+  iterations~ : Int32 = 5,
+) -> Json raise {
+  let times = completed_times(report, iterations~)
+  let phase_rows : Array[Json] = []
+  let unsampled : Array[Json] = []
+  let aggregate : Array[Json] = []
+  for
+    phase in [
+      "collection_and_between_iteration_overhead", "world_updates", "actor_and_critic_updates",
+    ] {
+    let selected_all : Array[GpuSample] = []
+    for iteration in 2L..<=iterations.to_int64() {
+      let (start_key, end_key) = match phase {
+        "world_updates" =>
+          (
+            key("collection_complete", iteration),
+            key("world_updates_complete", iteration),
+          )
+        "actor_and_critic_updates" =>
+          (
+            key("world_updates_complete", iteration),
+            key("actor_critic_complete", iteration),
+          )
+        _ =>
+          (
+            key("actor_critic_complete", iteration - 1L),
+            key("collection_complete", iteration),
+          )
+      }
+      guard times.get(start_key) is Some(start) &&
+        times.get(end_key) is Some(end) &&
+        end >= start else {
+        fail(
+          "missing or reversed completed phase: " + start_key + " -> " + end_key,
+        )
+      }
+      let selected = rows.filter(row => {
+        row.time_ms >= start && row.time_ms < end
+      })
+      let interval : Json = {
+        "phase": Json(phase),
+        "iteration": Json(iteration),
+        "start_unix_ms_inclusive": Json(start),
+        "end_unix_ms_exclusive": Json(end),
+      }
+      if selected.is_empty() {
+        unsampled.push(interval)
+      } else {
+        selected_all.append(selected)
+        phase_rows.push({
+          "interval": interval,
+          "statistics": summarize(selected),
+        })
+      }
+    }
+    if !selected_all.is_empty() {
+      aggregate.push({
+        "phase": Json(phase),
+        "iterations": Json(Array::makei(iterations - 1, i => i + 2)),
+        "statistics": summarize(selected_all),
+      })
+    }
+  }
+  {
+    "sampled_phase_intervals": Json(phase_rows),
+    "completed_intervals_without_samples": Json(unsampled),
+    "phase_aggregates": Json(aggregate),
+  }
+}
+
+///|
+async fn read_text(path : String, limit : Int64) -> String {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("expected regular input: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= limit else {
+    fail("input size outside bound: " + path)
+  }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else {
+    fail("input changed size while reading: " + path)
+  }
+  @utf8.decode(bytes)
+}
+
+///|
+async fn run(
+  root : String,
+  output : String,
+  paper_batches~ : Bool = false,
+  single_paper~ : Bool = false,
+  nounits~ : Bool = false,
+) -> Unit {
+  guard !(paper_batches && single_paper) else {
+    fail("single-paper and paper-batches modes are mutually exclusive")
+  }
+  let csv_path = root + "/gpu-samples.csv"
+  let rows = parse_csv(read_text(csv_path, 16777216L), nounits~)
+  let results : Array[Json] = []
+  let iterations = if paper_batches || single_paper { 10 } else { 5 }
+  let cases = if single_paper {
+    ["wm2048_pi512"]
+  } else if paper_batches {
+    ["micro256", "micro512", "micro1024"]
+  } else {
+    ["micro16", "micro32", "micro64", "full128"]
+  }
+  for name in cases {
+    let source = if single_paper {
+      root + "/train/report.json"
+    } else {
+      root + "/cases/" + name + "/train/report.json"
+    }
+    let result : Json = try {
+      let report = @json.parse(read_text(source, 8388608L))
+      if single_paper {
+        let config = @json.parse(read_text(root + "/config.json", 1048576L))
+        validate_single_paper(report, config)
+      }
+      let detail = aggregate_case(report, rows, iterations~)
+      {
+        "case": Json(name),
+        "status": "completed_telemetry",
+        "report_path": Json(source),
+        "aggregation": detail,
+      }
+    } catch {
+      error =>
+        {
+          "case": Json(name),
+          "status": "unavailable_or_invalid",
+          "report_path": Json(source),
+          "error": Json(error.to_string()),
+        }
+    }
+    results.push(result)
+  }
+  let result : Json = {
+    "format": "moonrobo.native-batch-nvidia-phase-samples.v1",
+    "csv_path": Json(csv_path),
+    "csv_timezone": "UTC explicitly supplied by recorder",
+    "csv_sample_count": Json(rows.length()),
+    "csv_first_unix_ms": Json(rows[0].time_ms),
+    "csv_last_unix_ms": Json(rows[rows.length() - 1].time_ms),
+    "cases": Json(results),
+    "metric_semantics": "NVIDIA utilization.gpu percentage and device power.draw observations; these are not SM occupancy or Tensor Core occupancy measurements",
+    "timing_semantics": "sample timestamp assigned to completed synchronized phase interval [previous sample_end_unix_ms,current sample_end_unix_ms); first training iteration, warmup, initialization, and checkpoint excluded",
+    "boundary_error": "NVIDIA metrics may cover a trailing driver sampling period and are sampled separately from trainer telemetry; short-phase boundaries can misattribute a sample and unsampled intervals remain unknown",
+    "aggregation_semantics": "arithmetic mean/max of available observations, not time-weighted or GPU-kernel-only; device-wide samples can include other processes",
+    "missing_semantics": "[N/A] remains missing and is never converted to zero; no memory.used column is present in the expected CSV, so memory occupancy is not inferred",
+    "external_requirements": "recorder and trainer clocks must describe the same UTC host; compare separate cgroup/OOM evidence, configuration/runtime hashes, and numerical equivalence checks",
+  }
+  if (paper_batches || single_paper) && result is Object(fields) {
+    fields["mode"] = Json(
+      if single_paper {
+        "single-paper"
+      } else {
+        "paper-batches"
+      },
+    )
+    fields["expected_training_iterations"] = Json(10)
+    fields["measured_iterations"] = Json(Array::makei(9, i => i + 2))
+    if single_paper {
+      fields["config_path"] = Json(root + "/config.json")
+      fields["world_microbatch"] = Json(2048)
+      fields["policy_microbatch"] = Json(512)
+    }
+  }
+  if nounits && result is Object(fields) {
+    fields["csv_value_units_mode"] = Json(
+      "explicit --nounits; bare numeric values with unchanged required header unit metadata",
+    )
+  }
+  @fs.write_file(
+    output,
+    result.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+  println("Wrote CPU-only NVIDIA phase aggregation: " + output)
+}
+
+///|
+fn validate_single_paper(report : Json, config : Json) -> Unit raise {
+  guard field(field(report, "identity"), "config") == config &&
+    field(report, "distributed") == Json(false) &&
+    nonnegative_integer(
+      field(field(report, "cuda_memory_telemetry"), "starting_iteration"),
+    ) ==
+    0L else {
+    fail("single-paper requires matching config and a fresh nondistributed run")
+  }
+  for
+    (name, expected) in [
+      ("capacity_profile", Json("paper-4096")),
+      ("memory_admission_percent", Json(80)),
+      ("backend", Json("isaac")),
+      ("device", Json("cuda:0")),
+      ("precision", Json("float32")),
+      ("amp", Json("none")),
+      ("allow_tf32", Json(true)),
+      ("observation_mode", Json("paper")),
+      ("self_collisions", Json(true)),
+      ("num_envs", Json(256)),
+      ("wm_batch", Json(2048)),
+      ("pi_batch", Json(4096)),
+      ("wm_microbatch", Json(2048)),
+      ("pi_microbatch", Json(512)),
+      ("hist", Json(10)),
+      ("goal_frames", Json(10)),
+      ("horizon", Json(32)),
+      ("wm_window", Json(8)),
+      ("wm_batches", Json(10)),
+      ("wm_only_iters", Json(0)),
+      ("critic_epochs", Json(5)),
+      ("critic_minibatches", Json(4)),
+      ("iterations", Json(10)),
+      ("checkpoint_every", Json(10)),
+      ("seed", Json(179)),
+    ] {
+    guard field(config, name) == expected else {
+      fail("unsupported single-paper config field: " + name)
+    }
+  }
+}
+
+///|
+fn expect_failure(action : () -> Unit raise) -> Unit raise {
+  try action() catch {
+    _ => ()
+  } noraise {
+    _ => fail("expected failure")
+  }
+}
+
+///|
+fn fixture_report(iterations~ : Int32 = 5) -> Json {
+  let samples : Array[Json] = []
+  fn add(phase : String, iteration : Int32, time : Int32) -> Unit {
+    samples.push({
+      "phase": Json(phase),
+      "iteration": Json(iteration),
+      "sequence": Json(samples.length()),
+      "sample_begin_unix_ms": Json(time),
+      "sample_end_unix_ms": Json(time),
+    })
+  }
+  add("actor_critic_complete", 1, 100)
+  for iteration in 2..<=iterations {
+    let base = 100 + (iteration - 2) * 300
+    add("collection_complete", iteration, base + 100)
+    add("world_updates_complete", iteration, base + 200)
+    add("actor_critic_complete", iteration, base + 300)
+  }
+  {
+    "format": "moonrobo.native-tensor-training-report.v1",
+    "training_complete_for_requested_iterations": true,
+    "iteration": Json(iterations),
+    "cuda_memory_telemetry": {
+      "format": "moonrobo.cuda-training-memory-report.v1",
+      "status": "complete",
+      "error": Json::null(),
+      "starting_iteration": 0,
+      "omitted_sample_count": "0",
+      "options": { "synchronize_each_sample": true },
+      "samples": Json(samples),
+    },
+  }
+}
+
+///|
+fn self_test() -> Unit raise {
+  assert_eq(utc_milliseconds("1970/01/01 00:00:00.000"), 0L)
+  assert_eq(utc_milliseconds("2000/02/29 00:00:00.000"), 951782400000L)
+  assert_eq(utc_milliseconds("2024/02/29 00:00:00.000"), 1709164800000L)
+  assert_eq(utc_milliseconds("2026/10/24 02:19:12.260"), 1792808352260L)
+  for
+    invalid in [
+      "2100/02/29 00:00:00.000", "2026/10/24 24:00:00.000", "2026/10/24 02:19:60.000",
+      "2026-10-24 02:19:12.260", "2026/04/31 02:19:12.260",
+    ] {
+    expect_failure(() => ignore(utc_milliseconds(invalid)))
+  }
+  let header = "timestamp, utilization.gpu [%], utilization.memory [%], power.draw [W], clocks.current.sm [MHz], clocks.current.memory [MHz]\n"
+  let line = "2026/10/24 02:19:12.260, 0 %, 0 %, 5.30 W, 208 MHz, [N/A]\n"
+  let rows = parse_csv(
+    header +
+    line +
+    "2026/10/24 02:19:13.260, 80 %, [N/A], 10.30 W, 400 MHz, [N/A]\n",
+  )
+  let bare_line = "2026/10/24 02:19:12.260, 0, 0, 5.30, 208, [N/A]\n"
+  let bare_rows = parse_csv(header + bare_line, nounits=true)
+  assert_eq(bare_rows.length(), 1)
+  assert_eq(bare_rows[0].utilization, Some(0.0))
+  assert_eq(bare_rows[0].power_w, Some(5.3))
+  assert_eq(bare_rows[0].memory_clock_mhz, None)
+  expect_failure(() => ignore(parse_csv(header + bare_line)))
+  expect_failure(() => ignore(parse_csv(header + line, nounits=true)))
+  assert_eq(rows.length(), 2)
+  assert_eq(rows[0].memory_clock_mhz, None)
+  let summary = summarize(rows)
+  assert_eq(
+    field(field(summary, "nvidia_utilization_gpu_percent"), "sample_mean"),
+    Json(40.0),
+  )
+  assert_eq(
+    field(
+      field(summary, "unaggregated_columns_missing_counts"),
+      "memory_clock_mhz",
+    ),
+    Json(2),
+  )
+  assert_eq(field(statistics([], 2), "sample_mean"), Json::null())
+  assert_eq(field(statistics([], 2), "missing_sample_count"), Json(2))
+  expect_failure(() => ignore(parse_csv(header + line + line)))
+  for invalid in ["nan W", "inf W", "-1 W", "100001 W"] {
+    expect_failure(() => ignore(metric(invalid, " W", 100000.0)))
+  }
+  expect_failure(() => ignore(metric("101 %", " %", 100.0)))
+  let selected = [100L, 200L, 300L, 400L, 1300L].map(time => {
+    ..rows[0],
+    time_ms: time,
+  })
+  let aggregate = aggregate_case(fixture_report(), selected)
+  guard field(aggregate, "sampled_phase_intervals") is Array(intervals) &&
+    field(aggregate, "completed_intervals_without_samples") is Array(missing) &&
+    field(aggregate, "phase_aggregates") is Array(phases) else {
+    fail("expected aggregate arrays")
+  }
+  assert_eq(intervals.length(), 4)
+  assert_eq(missing.length(), 8)
+  assert_eq(phases.length(), 3)
+  assert_eq(
+    field(field(phases[0], "statistics"), "timestamp_sample_count"),
+    Json(2),
+  )
+  assert_eq(
+    field(field(phases[1], "statistics"), "timestamp_sample_count"),
+    Json(1),
+  )
+  assert_eq(
+    field(field(phases[2], "statistics"), "timestamp_sample_count"),
+    Json(1),
+  )
+  // The sample at final phase end (1300) is excluded, and every included boundary
+  // sample belongs to exactly one phase. Unmeasured intervals do not get zeros.
+  expect_failure(() => ignore(completed_times(Json::null())))
+  let paper_rows = [100L, 200L, 300L, 2500L, 2600L, 2700L, 2800L].map(time => {
+    ..rows[0],
+    time_ms: time,
+  })
+  let paper = aggregate_case(
+    fixture_report(iterations=10),
+    paper_rows,
+    iterations=10,
+  )
+  guard field(paper, "sampled_phase_intervals") is Array(paper_intervals) &&
+    field(paper, "completed_intervals_without_samples") is Array(paper_missing) &&
+    field(paper, "phase_aggregates") is Array(paper_phases) else {
+    fail("expected paper aggregate arrays")
+  }
+  assert_eq(paper_intervals.length(), 6)
+  assert_eq(paper_missing.length(), 21)
+  assert_eq(paper_phases.length(), 3)
+  for phase in paper_phases {
+    assert_eq(
+      field(field(phase, "statistics"), "timestamp_sample_count"),
+      Json(2),
+    )
+    assert_eq(field(phase, "iterations"), Json([2, 3, 4, 5, 6, 7, 8, 9, 10]))
+  }
+  // The final end (2800) is excluded. The second and tenth iteration boundaries
+  // contribute one sample to each of the three measured phases, without overlap.
+  expect_failure(() => ignore(completed_times(fixture_report(iterations=10))))
+  expect_failure(() => ignore(completed_times(fixture_report(), iterations=10)))
+  let single_config : Json = {
+    "capacity_profile": "paper-4096",
+    "memory_admission_percent": 80,
+    "backend": "isaac",
+    "device": "cuda:0",
+    "precision": "float32",
+    "amp": "none",
+    "allow_tf32": true,
+    "observation_mode": "paper",
+    "self_collisions": true,
+    "num_envs": 256,
+    "wm_batch": 2048,
+    "pi_batch": 4096,
+    "wm_microbatch": 2048,
+    "pi_microbatch": 512,
+    "hist": 10,
+    "goal_frames": 10,
+    "horizon": 32,
+    "wm_window": 8,
+    "wm_batches": 10,
+    "wm_only_iters": 0,
+    "critic_epochs": 5,
+    "critic_minibatches": 4,
+    "iterations": 10,
+    "checkpoint_every": 10,
+    "seed": 179,
+  }
+  let single = fixture_report(iterations=10)
+  guard single is Object(single_fields) else { fail("expected fixture object") }
+  single_fields["identity"] = { "config": single_config }
+  single_fields["distributed"] = Json(false)
+  validate_single_paper(single, single_config)
+  assert_eq(aggregate_case(single, paper_rows, iterations=10), paper)
+  expect_failure(() => validate_single_paper(single, Json::null()))
+  single_fields["distributed"] = Json(true)
+  expect_failure(() => validate_single_paper(single, single_config))
+}
+
+///|
+async fn main {
+  match @env.args()[1:].to_owned() {
+    ["--self-test"] => {
+      self_test()
+      println("NVIDIA phase summary self-test passed")
+    }
+    ["--paper-batches", root, output] => run(root, output, paper_batches=true)
+    ["--single-paper", root, output] => run(root, output, single_paper=true)
+    ["--nounits", root, output] => run(root, output, nounits=true)
+    ["--paper-batches", "--nounits", root, output]
+    | ["--nounits", "--paper-batches", root, output] =>
+      run(root, output, paper_batches=true, nounits=true)
+    ["--single-paper", "--nounits", root, output]
+    | ["--nounits", "--single-paper", root, output] =>
+      run(root, output, single_paper=true, nounits=true)
+    [root, output] => run(root, output)
+    _ =>
+      fail(
+        "usage: summarize_native_batch_gpu [--paper-batches | --single-paper] [--nounits] ROOT FRESH_REPORT_JSON | --self-test",
+      )
+  }
+}

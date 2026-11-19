@@ -1,0 +1,2077 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+let image_id = "sha256:9d517324498da0ab109841d666bd49b9e9838bf3878e678c226c15848cbcac3b"
+
+///|
+let memory_limit = 51539607552L
+
+///|
+let artifact_sha = "2f9e0a8d8f33f21388c512603240ca82b89bc54e98a0e9d2a98bbf92fcaa0249"
+
+///|
+let physics_sha = "6c5df912291754b37ac2c60a0b0c13253d2486e87c42ca20fb0ad19e910099e1"
+
+///|
+let trainer_sha = "1dd7a5f95017e3865489dbb65cec490934a82c87acaac5da7aad11fe971c4c27"
+
+///|
+let tensor_sha = "a1176bb28ce4fb928006c7e5db20fbe1b693bcabab6d482e0f766a00ad802f1f"
+
+///|
+let physics_library = "/opt/moonrobo/apic-runtime/libmoonrobo_aligned_apic.so"
+
+///|
+let manifest_sha = "760c59585d792da74e9437f12dced4d216afd5d17411cf4bfa507ed51e6bc60f"
+
+///|
+let config_sha = "7a775402febfc9d26dd9f0f880b4634a2caeb33f93e8751053b7163c90dada6c"
+
+///|
+let config_relative = "examples/learning/g1-native-tensor-apic-n4-microbatch-ddp-gate.json"
+
+///|
+struct LaunchSpec {
+  format : String
+  image_id : String
+  trainer_relative_path : String
+  trainer_sha256 : String
+  tensor_library_sha256 : String
+  physics_library : String
+  physics_library_sha256 : String
+  artifact_relative_path : String
+  artifact_sha256 : String
+  manifest_sha256 : String
+  config_sha256 : String
+  memory_limit_bytes : Int64
+  data_ready_timeout_seconds : Int32
+} derive(ToJson, FromJson)
+
+///|
+#cfg(target="native")
+fn native_helper_target() -> Bool {
+  true
+}
+
+///|
+#cfg(not(target="native"))
+fn native_helper_target() -> Bool {
+  false
+}
+
+///|
+fn sha_text_valid(text : String) -> Bool {
+  text.length() == 64 &&
+  text.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+fn safe_relative(path : String) -> Bool {
+  path.length() > 0 &&
+  path.length() <= 512 &&
+  !path.has_prefix("/") &&
+  path.split("/").all(x => x != "" && x != "." && x != "..") &&
+  path
+  .iter()
+  .all(c => {
+    (c >= 'a' && c <= 'z') ||
+    (c >= 'A' && c <= 'Z') ||
+    (c >= '0' && c <= '9') ||
+    c == '/' ||
+    c == '.' ||
+    c == '-' ||
+    c == '_'
+  })
+}
+
+///|
+fn validate_spec(spec : LaunchSpec) -> Unit raise {
+  guard spec.format == "moonrobo.spark-native-bounded-ddp-spec.v1" &&
+    (
+      spec.trainer_relative_path ==
+      "private/native-bounded-training-20261024-a/trainer" ||
+      spec.trainer_relative_path == "private/native-bounded-gate/trainer"
+    ) &&
+    spec.image_id == image_id &&
+    spec.physics_library == physics_library &&
+    spec.physics_library_sha256 == physics_sha &&
+    spec.artifact_sha256 == artifact_sha &&
+    spec.manifest_sha256 == manifest_sha &&
+    spec.config_sha256 == config_sha &&
+    spec.memory_limit_bytes == memory_limit &&
+    spec.trainer_sha256 == trainer_sha &&
+    spec.tensor_library_sha256 == tensor_sha &&
+    safe_relative(spec.artifact_relative_path) &&
+    spec.artifact_relative_path.has_suffix("/manifest.json") &&
+    spec.data_ready_timeout_seconds >= 60 &&
+    spec.data_ready_timeout_seconds <= 21600 else {
+    fail(
+      "bounded DDP gate requires the fixed N4 bundle/runtime/microbatch config/trainer/tensor/40-motion identities and 48 GiB limit; readiness 60..21600 seconds",
+    )
+  }
+}
+
+///|
+async fn read_spec(path : String) -> LaunchSpec {
+  let spec : LaunchSpec = @json.from_json(bounded_json(path, 8192L))
+  validate_spec(spec)
+  spec
+}
+
+///|
+fn trainer_relative_path(spec : LaunchSpec) -> String {
+  spec.trainer_relative_path
+}
+
+///|
+fn template_spec(
+  trainer : String,
+  tensor : String,
+  artifact : String,
+  ready_seconds : Int32,
+  trainer_path~ : String? = None,
+) -> LaunchSpec raise {
+  let spec : LaunchSpec = {
+    format: "moonrobo.spark-native-bounded-ddp-spec.v1",
+    image_id,
+    trainer_relative_path: trainer_path.unwrap_or(
+      "private/native-bounded-training-20261024-a/trainer",
+    ),
+    trainer_sha256: trainer,
+    tensor_library_sha256: tensor,
+    physics_library,
+    physics_library_sha256: physics_sha,
+    artifact_relative_path: artifact,
+    artifact_sha256: artifact_sha,
+    manifest_sha256: manifest_sha,
+    config_sha256: config_sha,
+    memory_limit_bytes: memory_limit,
+    data_ready_timeout_seconds: ready_seconds,
+  }
+  validate_spec(spec)
+  spec
+}
+
+///|
+fn expected_repo(rank : Int32) -> String raise {
+  match rank {
+    0 => "/home/wlc003s/moonrobo"
+    1 => "/home/wlc004s/moonrobo"
+    _ => fail("only ranks zero and one are supported")
+  }
+}
+
+///|
+fn validate_route(repo : String, rank : Int32, session : String) -> Unit raise {
+  guard repo == expected_repo(rank) && safe_session(session) else {
+    fail(
+      "rank-specific canonical Spark repository and fresh 16..64 character ASCII session are required",
+    )
+  }
+}
+
+///|
+/// Pure, reviewable launch description. No filesystem, Docker, CUDA or
+/// rendezvous operation is performed here; the caller reads only the small spec.
+fn launch_plan(
+  spec : LaunchSpec,
+  repo : String,
+  rank : Int32,
+  session : String,
+) -> Json raise {
+  validate_spec(spec)
+  validate_route(repo, rank, session)
+  let output = repo +
+    "/runs/spark-native-bounded-ddp-gate-" +
+    session +
+    "/rank-\{rank}"
+  {
+    "format": "moonrobo.spark-native-bounded-ddp-plan.v1",
+    "plan_only": true,
+    "read_only": true,
+    "gpu_allocated": false,
+    "ticket_generated": false,
+    "image_presence_checked": false,
+    "staged_asset_hashes_checked": false,
+    "ssh_authentication_created": false,
+    "spec": Json(spec),
+    "resolved_host_trainer": repo + "/" + trainer_relative_path(spec),
+    "rank": rank,
+    "world_size": 2,
+    "session_id": session,
+    "repository": repo,
+    "output": output,
+    "base_seed": 179,
+    "collection_seed": rank + 179,
+    "config": gate_config(),
+    "profile_scope": "N4 / microbatch2 / compact replay / bounded gather / stream-v2 / fixed forty-motion LAFAN1 / one optimizer iteration",
+    "first_step_on_178": {
+      "program": "moon",
+      "arguments": Json([
+        "run",
+        "--target",
+        "native",
+        "scripts/forward_native_nccl_id.mbtx",
+        "--",
+        "/home/wlc003s/moonrobo",
+        session,
+        "--data-ready-timeout-seconds",
+        spec.data_ready_timeout_seconds.to_string(),
+      ]),
+      "start_once_before_both_rank_launchers": true,
+      "requires_existing_authenticated_control_socket": "/home/wlc003s/moonrobo/private/ssh-179.sock",
+      "new_authentication_created": false,
+    },
+    "coordinator_receipt_required_before_launch": repo +
+    "/private/" +
+    session +
+    ".id.json.data-ready-coordinator.json",
+    "rendezvous": {
+      "host_path": repo + "/private/" + session + ".id.json",
+      "container_path": "/rendezvous/" + session + ".id.json",
+      "ticket_published_after_both_ranks_prepare_and_identity_matches": true,
+      "ticket_timeout_seconds": 60,
+      "preparation_timeout_seconds": spec.data_ready_timeout_seconds,
+      "preparation_deadline_scope": "shared coordinator deadline beginning when the forwarder starts; not renewed per rank",
+      "ordinary_failure_marker_propagation": true,
+      "sigkill_or_oom_peer_detection": "bounded coordinator deadline or external container watchdog; immediate propagation is not guaranteed",
+    },
+    "container": {
+      "image": image_id,
+      "pull": "never",
+      "architecture": "arm64",
+      "memory_limit_bytes": Json(memory_limit),
+      "extra_swap_bytes": 0,
+      "cpus": 4,
+      "shared_memory_bytes": Json(1073741824L),
+      "network": "host",
+      "nccl_net": "IB",
+      "interface": if rank == 0 {
+        "enp1s0f1np1"
+      } else {
+        "enp1s0f0np0"
+      },
+      "hca": if rank == 0 {
+        "rocep1s0f1:1"
+      } else {
+        "rocep1s0f0:1"
+      },
+      "user": "ordinary account UID:GID read at launch",
+      "read_only_repository_mount": repo,
+      "writable_mounts": Json([repo + "/private", output]),
+    },
+    "trainer_program": "/usr/bin/timeout",
+    "launcher_target_required": "native",
+    "trainer_arguments": Json(trainer_arguments(spec, rank, session)),
+    "combined_trainer_deadline_seconds": spec.data_ready_timeout_seconds + 300,
+    "post_preparation_budget_seconds": 300,
+    "training_phase_deadline_independently_enforced": false,
+    "attach_deadline_seconds": spec.data_ready_timeout_seconds + 345,
+    "memory_admission_percent": 65,
+    "memory_guard_bypassed": false,
+    "memory_peak_scope": "actual kernel cumulative cgroup peak sampled before helper exit; missing final samples stay unknown",
+    "complete_lifetime_peak_certified": false,
+    "sdk_numerical_parity_verified": false,
+    "benchmark": false,
+  }
+}
+
+///|
+async fn file_sha(path : String, bound : Int64) -> String {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("required staged input is not a regular file: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= bound else {
+    fail("staged input size exceeds gate envelope: " + path)
+  }
+  let hash = @crypto.SHA256::new()
+  for offset = 0L; offset < size; {
+    let count = (size - offset).min(65536L).to_int()
+    hash.update(file.read_exactly_at(count, position=offset))
+    continue offset + count.to_int64()
+  }
+  guard file.size() == size else {
+    fail("pinned input changed size while hashing: " + path)
+  }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+fn safe_session(value : String) -> Bool {
+  value.length() >= 16 &&
+  value.length() <= 64 &&
+  value
+  .iter()
+  .all(c => {
+    (c >= 'a' && c <= 'z') ||
+    (c >= 'A' && c <= 'Z') ||
+    (c >= '0' && c <= '9') ||
+    c == '-' ||
+    c == '_'
+  })
+}
+
+///|
+fn field(value : Json, name : String) -> Json raise {
+  guard value is Object(fields) && fields.get(name) is Some(result) else {
+    fail("required JSON field missing: " + name)
+  }
+  result
+}
+
+///|
+fn error_message(error : Error) -> String {
+  match error {
+    Failure(message) => message
+    _ => error.to_string()
+  }
+}
+
+///|
+fn integer(value : Json) -> Int64 raise {
+  match value {
+    String(text) => @string.parse_int64(text)
+    Number(value, ..) => {
+      guard value >= 0 &&
+        value <= 9007199254740991.0 &&
+        value.to_int64().to_double() == value else {
+        fail("invalid exact nonnegative integer")
+      }
+      value.to_int64()
+    }
+    _ => fail("expected integer or decimal integer string")
+  }
+}
+
+///|
+/// Explicit Json(Some(value)) uses a one-element array. This differs from
+/// derived record fields of type Option, which encode the present value itself.
+fn required_some(value : Json, label : String) -> Json raise {
+  guard value is Array(values) && values.length() == 1 else {
+    fail("required MoonBit Some value missing or malformed: " + label)
+  }
+  values[0]
+}
+
+///|
+/// Keeps the two serializers' different Option representations in regression
+/// coverage without changing either existing training-report schema.
+struct OptionEncodingProbe {
+  value : Json?
+} derive(ToJson)
+
+///|
+async fn bounded_json(path : String, limit : Int64) -> Json {
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("JSON input must be a regular file: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= limit else {
+    fail("JSON input exceeds bound: " + path)
+  }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else {
+    fail("JSON input size changed while reading: " + path)
+  }
+  @json.parse(@utf8.decode(bytes))
+}
+
+///|
+async fn write_json(path : String, value : Json) -> Unit {
+  @fs.write_file(
+    path,
+    value.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+}
+
+///|
+async fn checked_output(program : String, args : Array[String]) -> String {
+  let result = @shell.Cmd(program, args).output(
+    timeout_ms=10000,
+    max_output_bytes=16384,
+  )
+  result.check()
+  result.stdout().trim().to_owned()
+}
+
+///|
+async fn now_unix_ms() -> Int64 {
+  @string.parse_int64(checked_output("/usr/bin/date", ["+%s"])) * 1000L
+}
+
+///|
+/// Keep this gate definition equal to the checked-in N4/microbatch2 config.
+/// The gate deliberately exercises all optimizers once; it is not a curriculum
+/// or throughput benchmark, and does not establish convergence.
+fn gate_config() -> Json {
+  {
+    "profile": "native-tensor-apic-n4-microbatch-ddp-runtime-gate",
+    "scope": "two-rank-N4-compact-replay-bounded-gather-microbatch-stream-v2-one-update; not-convergence",
+    "backend": "isaac",
+    "device": "cuda:0",
+    "physics_device_id": 0,
+    "physics_artifact_sha256": Json(artifact_sha),
+    "precision": "float32",
+    "amp": "none",
+    "reference_storage": "mmap",
+    "observation_mode": "smc",
+    "wm_hidden": [2048, 2048, 2048],
+    "pi_hidden": [2048, 1024, 512, 256],
+    "critic_hidden": [256, 128],
+    "num_envs": 4,
+    "wm_batch": 4,
+    "pi_batch": 4,
+    "wm_microbatch": 2,
+    "pi_microbatch": 2,
+    "buffer_steps": 64,
+    "hist": 10,
+    "goal_frames": 10,
+    "horizon": 32,
+    "wm_window": 8,
+    "warmup_steps": 16,
+    "wm_batches": 1,
+    "wm_only_iters": 0,
+    "critic_epochs": 1,
+    "critic_minibatches": 4,
+    "iterations": 1,
+    "checkpoint_every": 1,
+    "utd": 0.4,
+    "lr": 0.0002,
+    "gamma": 0.99,
+    "lam": 0.95,
+    "lr_decay_iters": 250000,
+    "action_noise": 0.1,
+    "observation_noise": true,
+    "physics_dt": 0.005,
+    "self_collisions": false,
+    "randomization": true,
+    "reset_noise": true,
+    "context_resampling": "environment",
+    "max_episode_steps": 500,
+    "seed": 179,
+  }
+}
+
+///|
+fn verify_ready(
+  receipt : Json,
+  session : String,
+  now : Int64,
+  spec : LaunchSpec,
+) -> Unit raise {
+  guard receipt
+    is {
+      "format": "moonrobo.native-data-ready-coordinator.v1",
+      "session_id": String(actual),
+      "world_size": Number(2.0, ..),
+      ..
+    } &&
+    actual == session else {
+    fail(
+      "start the forwarder with the matching explicit data-ready timeout before either APIC launcher",
+    )
+  }
+  let created = integer(field(receipt, "created_unix_ms"))
+  let expires = integer(field(receipt, "expires_unix_ms"))
+  guard created > 0L &&
+    created <= now + 10000L &&
+    expires - created == spec.data_ready_timeout_seconds.to_int64() * 1000L &&
+    integer(field(receipt, "timeout_seconds")) ==
+    spec.data_ready_timeout_seconds.to_int64() &&
+    expires >= now + 30000L else {
+    fail(
+      "forwarder ready receipt is stale or close to expiry; use a fresh session",
+    )
+  }
+}
+
+///|
+fn verify_report(
+  report : Json,
+  rank : Int32,
+  session : String,
+  spec : LaunchSpec,
+  extra_collection_steps : Int64,
+) -> Unit raise {
+  guard report
+    is {
+      "format": "moonrobo.native-tensor-training-report.v1",
+      "iteration": Number(1.0, ..),
+      "rank": Number(actual, ..),
+      "world_size": Number(2.0, ..),
+      "distributed": True,
+      "resume_kind": "fresh",
+      "precision": "float32",
+      "amp": "none",
+      "learner_execution": {
+        "device": "cuda:0",
+        "backend": "libtorch",
+        "device_resident": True,
+        ..
+      },
+      "physics_execution": {
+        "backend": "isaac-newton-warp-apic-native",
+        "device": "cuda:0",
+        ..
+      },
+      "robot_hardware_execution": False,
+      "training_complete_for_requested_iterations": True,
+      "convergence_verified": False,
+      "distributed_resume_supported": False,
+      "checkpoint_format": "stream-v2",
+      ..
+    } &&
+    actual == rank.to_double() else {
+    fail(
+      "report does not establish the expected native CUDA/APIC rank runtime gate",
+    )
+  }
+  let digest = required_some(
+    field(report, "shared_state_digest"),
+    "report.shared_state_digest",
+  )
+  verify_digest(digest)
+  let receipt = required_some(field(report, "checkpoint"), "report.checkpoint")
+  guard field(receipt, "shared_state_digest") == digest else {
+    fail("report learner attestation differs from checkpoint receipt")
+  }
+  let identity = field(report, "identity")
+  guard field(identity, "config") == gate_config() &&
+    field(identity, "batch_execution") ==
+    ({ "world_microbatch": 2, "actor_microbatch": 2 } : Json) &&
+    field(report, "batch_execution") == field(identity, "batch_execution") &&
+    field(field(identity, "distributed_session"), "session_id") == Json(session) &&
+    integer(field(report, "collection_seed")) == (rank + 179).to_int64() &&
+    field(identity, "manifest_sha256") == Json(manifest_sha) &&
+    field(identity, "physics_artifact_sha256") == Json(artifact_sha) &&
+    field(identity, "physics_library_sha256") == Json(physics_sha) &&
+    field(identity, "scene_sha256") ==
+    Json("34cf0cf3c5fa5452fc24d33d9f31fb4a4435f3050366041e1dc853b39bdd20ee") &&
+    field(identity, "mujoco_library_sha256") ==
+    Json("76845f2712200efaa5a38da7a004e944ecdb7397c41fd8b8ea7684a82d3e4bd0") &&
+    field(identity, "native_executable_sha256") == Json(spec.trainer_sha256) &&
+    field(identity, "tensor_library_sha256") == Json(spec.tensor_library_sha256) else {
+    fail("gate configuration/session/base-plus-rank seed mismatch")
+  }
+  for key in ["memory_plan", "post_catalog_memory_plan"] {
+    verify_memory_plan(field(report, key))
+  }
+  for
+    (label, expected) in [
+      ("counters", [72L + 4L * extra_collection_steps, 128L, 1L, 1L, 4L, 32L]),
+      (
+        "global_counters",
+        [144L + 8L * extra_collection_steps, 256L, 2L, 2L, 8L, 64L],
+      ),
+    ] {
+    for
+      i, key in [
+        "physical_transitions", "imagined_transitions", "actor_updates", "model_updates",
+        "critic_updates", "model_fit_transition_slots",
+      ] {
+      guard integer(field(field(report, label), key)) == expected[i] else {
+        fail("unexpected " + label + "." + key)
+      }
+    }
+  }
+}
+
+///|
+fn verify_memory_plan(plan : Json) -> Unit raise {
+  let host = integer(field(plan, "host_free_bytes"))
+  let cuda = integer(field(plan, "cuda_free_bytes"))
+  let budget = integer(field(plan, "budget_bytes"))
+  let peak = integer(field(plan, "peak_bytes"))
+  guard host > 0L &&
+    cuda > 0L &&
+    host <= 1099511627776L &&
+    cuda <= 1099511627776L &&
+    budget == host.min(cuda) * 65L / 100L &&
+    peak > 0L &&
+    peak <= budget else {
+    fail(
+      "reported memory plan does not preserve the actual-free-memory 65 percent admission guard",
+    )
+  }
+}
+
+///|
+fn verify_actor_readiness(value : Json) -> Int64 raise {
+  let extra = integer(field(value, "extra_collection_steps"))
+  let candidates = integer(field(value, "candidates"))
+  let initial = integer(field(value, "initial_candidates"))
+  let rows = integer(field(value, "replay_rows"))
+  guard extra >= 0L &&
+    extra <= 64L &&
+    extra % 8L == 0L &&
+    integer(field(value, "extra_physical_transitions")) == extra * 4L &&
+    integer(field(value, "horizon")) == 32L &&
+    integer(field(value, "collection_step_budget")) == 64L &&
+    integer(field(value, "max_remaining_steps")) >= 32L &&
+    rows == (18L + extra).min(64L) &&
+    initial >= 0L &&
+    initial <= 72L &&
+    (extra > 0L || initial > 0L) &&
+    candidates > 0L &&
+    candidates <= rows * 4L else {
+    fail(
+      "actor readiness does not establish bounded H32 starts/refill for the N4 gate",
+    )
+  }
+  extra
+}
+
+///|
+/// Collection can legitimately add synchronized vector steps when either rank
+/// only sampled clip endings. Read its bounded evidence instead of treating
+/// extra physical transitions as a different optimizer workload.
+async fn actor_readiness_evidence(output : String) -> Json {
+  let path = output + "/trainer.stdout.log"
+  guard @fs.kind(path, follow_symlink=false) == Regular else {
+    fail("trainer metrics log missing")
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 4194304L else {
+    fail("trainer metrics log exceeds the 4 MiB gate bound")
+  }
+  let mut found : Json? = None
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else {
+    fail("trainer metrics log changed size while reading")
+  }
+  for line in @utf8.decode(bytes).split("\n") {
+    if !line.has_prefix("{") {
+      continue
+    }
+    let row = @json.parse(line.to_owned()) catch { _ => continue }
+    if row
+      is {
+        "iteration": Number(1.0, ..),
+        "world": Object(_),
+        "policy": Object(_),
+        "actor_readiness": readiness,
+        ..
+      } {
+      guard found is None else {
+        fail("multiple optimizer iteration metrics found in one-iteration gate")
+      }
+      let readiness = required_some(readiness, "metrics.actor_readiness")
+      ignore(verify_actor_readiness(readiness))
+      found = Some(readiness)
+    }
+  }
+  guard found is Some(readiness) else {
+    fail(
+      "actor readiness metrics missing; rebuild current native trainer before this gate",
+    )
+  }
+  readiness
+}
+
+///|
+fn verify_digest(value : Json) -> Unit raise {
+  guard value
+    is {
+      "format": "moonrobo.shared-learner-state.v1",
+      "optimizers": Array(optimizers),
+      "host_chunk_values": Number(65536.0, ..),
+      ..
+    } &&
+    optimizers.length() == 3 else {
+    fail("bounded actual weights/Adam/normalizer attestation missing")
+  }
+  for key in ["sha256", "learner_config_sha256", "normalizers_sha256"] {
+    guard field(value, key) is String(hash) &&
+      hash.length() == 64 &&
+      hash.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) else {
+      fail("invalid learner attestation digest: " + key)
+    }
+  }
+}
+
+///|
+struct CgroupSnapshot {
+  format : String
+  files : Map[String, String]
+  errors : Map[String, String]
+} derive(ToJson)
+
+///|
+async fn cgroup_snapshot() -> CgroupSnapshot {
+  let files : Map[String, String] = Map([])
+  let errors : Map[String, String] = Map([])
+  for
+    name in [
+      "memory.max", "memory.current", "memory.peak", "memory.events", "memory.events.local",
+      "memory.swap.max", "memory.swap.current", "memory.swap.peak", "cpu.max",
+    ] {
+    try {
+      let file = @fs.open("/sys/fs/cgroup/" + name, mode=ReadOnly)
+      defer file.close()
+      let bytes = FixedArray::make(16385, b'\x00')
+      let count = file.read_at(bytes, position=0L)
+      guard count > 0 && count <= 16384 else {
+        fail("cgroup metadata missing or exceeds 16 KiB")
+      }
+      files[name] = @utf8.decode(Bytes::makei(count, i => bytes[i]))
+        .trim()
+        .to_owned()
+    } catch {
+      error => errors[name] = error_message(error)
+    }
+  }
+  { format: "moonrobo.cgroup-v2-snapshot.v1", files, errors, }
+}
+
+///|
+fn required_cgroup(snapshot : CgroupSnapshot, key : String) -> String raise {
+  guard snapshot.files.get(key) is Some(value) else {
+    fail("actual cgroup metric missing: " + key)
+  }
+  value
+}
+
+///|
+fn memory_events(text : String) -> Map[String, Int64] raise {
+  let out : Map[String, Int64] = Map([])
+  for line in text.split("\n") {
+    let words = line.trim().split(" ").filter(word => word != "").to_array()
+    guard words.length() == 2 else { fail("invalid memory.events line") }
+    out[words[0].to_owned()] = @string.parse_int64(words[1])
+  }
+  out
+}
+
+///|
+fn verify_cgroup(snapshot : CgroupSnapshot) -> Int64 raise {
+  guard @string.parse_int64(required_cgroup(snapshot, "memory.max")) ==
+    memory_limit &&
+    required_cgroup(snapshot, "memory.swap.max") == "0" else {
+    fail(
+      "APIC runtime gate requires an actual 48 GiB memory limit with no extra swap",
+    )
+  }
+  let cpu = required_cgroup(snapshot, "cpu.max")
+    .split(" ")
+    .filter(word => word != "")
+    .to_array()
+  guard cpu.length() == 2 &&
+    @string.parse_int64(cpu[1]) > 0L &&
+    @string.parse_int64(cpu[1]) <= 1000000L &&
+    @string.parse_int64(cpu[0]) == 4L * @string.parse_int64(cpu[1]) else {
+    fail("native runtime gate requires an actual four-CPU cgroup quota")
+  }
+  let peak = @string.parse_int64(required_cgroup(snapshot, "memory.peak"))
+  let events = memory_events(required_cgroup(snapshot, "memory.events"))
+  guard peak > 0L &&
+    events.get("oom") == Some(0L) &&
+    events.get("oom_kill") == Some(0L) &&
+    events.get("oom_group_kill").unwrap_or(0L) == 0L else {
+    fail("cgroup memory limit/peak/OOM evidence failed")
+  }
+  peak
+}
+
+///|
+fn trainer_arguments(
+  spec : LaunchSpec,
+  rank : Int32,
+  session : String,
+) -> Array[String] {
+  [
+    "--signal=TERM",
+    "--kill-after=5s",
+    "\{spec.data_ready_timeout_seconds + 300}s",
+    "/workspace/moonrobo/" + trainer_relative_path(spec),
+    "train",
+    "--tensor-library",
+    "/workspace/moonrobo/private/native-tensor-nccl/libmoonrobo_learning_tensor.so",
+    "--library",
+    "/opt/isaaclab-venv/lib/python3.12/site-packages/mujoco/libmujoco.so.3.15.0",
+    "--scene",
+    "/workspace/moonrobo/data/g1_description/scene-no-self-collision.xml",
+    "--manifest",
+    "/workspace/moonrobo/data/manifest.json",
+    "--config",
+    "/workspace/moonrobo/" + config_relative,
+    "--physics-library",
+    physics_library,
+    "--physics-artifact",
+    "/workspace/moonrobo/" + spec.artifact_relative_path,
+    "--output",
+    "/gate/train",
+    "--checkpoint-format",
+    "stream-v2",
+    "--distributed",
+    "--rank",
+    rank.to_string(),
+    "--world-size",
+    "2",
+    "--session-id",
+    session,
+    "--nccl-id-file",
+    "/rendezvous/" + session + ".id.json",
+    "--nccl-timeout-ms",
+    "60000",
+    "--data-ready-timeout-seconds",
+    spec.data_ready_timeout_seconds.to_string(),
+  ]
+}
+
+///|
+/// Capture the actual cgroup while the container exists. A killed helper may
+/// miss the final sample; Docker OOM evidence must not be converted into a peak.
+async fn inside(rank : Int32, session : String) -> Unit {
+  guard native_helper_target() else {
+    fail("container helper requires a native build")
+  }
+  guard @fs.realpath("/gate") == "/gate" &&
+    @fs.realpath("/rendezvous") == "/rendezvous" &&
+    @fs.realpath("/workspace/moonrobo") == "/workspace/moonrobo" else {
+    fail("unexpected container mount paths")
+  }
+  let spec = read_spec("/gate/spec.json")
+  let before = cgroup_snapshot()
+  write_json("/gate/cgroup-before.json", Json(before))
+  let command = trainer_arguments(spec, rank, session)
+  let mut failure : String? = None
+  let code = try {
+    ignore(verify_cgroup(before))
+    guard file_sha(physics_library, 268435456L) == physics_sha else {
+      fail(
+        "image APIC physics library differs from the explicitly pinned SHA; no fallback",
+      )
+    }
+    @shell.Cmd(
+      "/usr/bin/timeout",
+      command,
+      stdout=ToFile("/gate/trainer.stdout.log"),
+      stderr=ToFile("/gate/trainer.stderr.log"),
+    ).status(timeout_ms=(spec.data_ready_timeout_seconds + 320) * 1000)
+  } catch {
+    error => {
+      failure = Some(error_message(error))
+      -1
+    }
+  }
+  let after = cgroup_snapshot()
+  write_json("/gate/cgroup-after.json", Json(after))
+  let peak = Some(verify_cgroup(after)) catch {
+    error => {
+      failure = Some(error_message(error))
+      None
+    }
+  }
+  write_json("/gate/inside-result.json", {
+    "format": "moonrobo.native-bounded-ddp-container-result.v1",
+    "rank": rank,
+    "session_id": session,
+    "trainer_exit_code": code,
+    "error": Json(failure),
+    "actual_cgroup_memory_peak_bytes": Json(peak),
+    "memory_metrics_source": "kernel-cgroup-v2-before-helper-exit",
+    "combined_trainer_deadline_seconds": spec.data_ready_timeout_seconds + 300,
+    "data_ready_budget_seconds": spec.data_ready_timeout_seconds,
+    "post_preparation_budget_seconds": 300,
+    "training_phase_deadline_independently_enforced": false,
+    "complete_lifetime_peak_certified": false,
+    "memory_peak_scope": "kernel cumulative cgroup peak observed before helper exit; includes container startup, not a guarantee about activity after this final sample",
+    "kill_grace_seconds": 5,
+    "benchmark": false,
+    "sdk_numerical_parity_verified": false,
+  })
+  guard code == 0 && failure is None else {
+    fail(
+      "bounded native rank failed; retained trainer logs and cgroup evidence",
+    )
+  }
+}
+
+///|
+async fn copy_self(destination : String) -> Unit {
+  let source = @fs.open("/proc/self/exe", mode=ReadOnly)
+  defer source.close()
+  let size = source.size()
+  guard size > 0L && size <= 67108864L else {
+    fail("unexpected native helper executable size")
+  }
+  let output = @fs.open(
+    destination,
+    mode=ReadWrite,
+    create_mode=CreateNew,
+    permission=0o700,
+  )
+  defer output.close()
+  for offset = 0L; offset < size; {
+    let count = (size - offset).min(65536L).to_int()
+    output.write_at(
+      source.read_exactly_at(count, position=offset),
+      position=offset,
+    )
+    continue offset + count.to_int64()
+  }
+  output.sync()
+}
+
+///|
+fn stream_blob(
+  value : Json,
+  name : String,
+  dtype : String,
+  shape : Array[Int32],
+  files : Map[String, Json],
+) -> (String, Int64) raise {
+  let scalar = match dtype {
+    "u8" => 1L
+    "i32le" => 4L
+    "f64le" => 8L
+    _ => fail("unsupported stream dtype")
+  }
+  let mut count = 1L
+  for dimension in shape {
+    guard dimension > 0 && count <= 536870912L / scalar / dimension.to_int64() else {
+      fail("stream blob shape exceeds bounded payload")
+    }
+    count *= dimension.to_int64()
+  }
+  guard field(value, "file") == Json(name) &&
+    field(value, "dtype") == Json(dtype) &&
+    field(value, "shape") == Json(shape) &&
+    integer(field(value, "count")) == count &&
+    integer(field(value, "byte_length")) == count * scalar &&
+    files.get(name) is Some(String(expected)) &&
+    sha_text_valid(expected) &&
+    field(value, "sha256") == Json(expected) else {
+    fail(
+      "stream descriptor shape/type/size/SHA disagrees with receipt: " + name,
+    )
+  }
+  (name, count * scalar)
+}
+
+///|
+/// Metadata and byte integrity validation only; no optimizer decoding, solver
+/// restore or claim of distributed exact resume is performed by this helper.
+fn verify_stream_metadata(
+  saved : Json,
+  files : Map[String, Json],
+  rank : Int32,
+) -> Array[(String, Int64)] raise {
+  let r = field(saved, "runtime")
+  let identity = field(saved, "identity")
+  let replay = field(r, "replay")
+  let env = field(field(saved, "environment"), "metadata")
+  let sampler = field(env, "sampler")
+  let rows = integer(field(replay, "rows"))
+  let bins = integer(field(sampler, "bins"))
+  let catalog = field(r, "catalog")
+  let catalog_bytes = integer(field(catalog, "byte_length"))
+  guard field(saved, "format") ==
+    Json("moonrobo.native-tensor-training-generation.v2") &&
+    field(identity, "config") == gate_config() &&
+    field(identity, "batch_execution") ==
+    ({ "world_microbatch": 2, "actor_microbatch": 2 } : Json) &&
+    field(r, "format") == Json("moonrobo-aligned-gpu-runtime-v2") &&
+    integer(field(r, "num_envs")) == 4L &&
+    integer(field(r, "capacity")) == 64L &&
+    integer(field(r, "iteration")) == 1L &&
+    integer(field(r, "catalog_count")) == 40L &&
+    field(r, "observation_mode") == Json("smc") &&
+    field(r, "source_fps") == Json(30) &&
+    field(r, "distributed")
+    is {
+      "rank": Number(actual_rank, ..),
+      "world_size": Number(2.0, ..),
+      "collection_seed": Number(seed, ..),
+      "exact_distributed_resume_supported": False,
+      ..
+    } &&
+    actual_rank == rank.to_double() &&
+    seed == (179 + rank).to_double() &&
+    field(replay, "format") == Json("moonrobo.replay-stream.v2") &&
+    integer(field(replay, "capacity")) == 64L &&
+    integer(field(replay, "num_envs")) == 4L &&
+    rows >= 18L &&
+    rows <= 64L &&
+    field(env, "format") == Json("moonrobo.aligned.isaac-warm-stream.v2") &&
+    integer(field(env, "num_envs")) == 4L &&
+    field(env, "exact_resume") == Json(false) &&
+    field(env, "replay_refill_required") == Json(true) &&
+    field(sampler, "format") == Json("moonrobo.return-sampler-stream.v2") &&
+    bins > 0L &&
+    bins <= 1000000L &&
+    catalog_bytes > 0L &&
+    catalog_bytes <= 67108864L &&
+    field(r, "catalog_digest") == field(catalog, "sha256") else {
+    fail("stream-v2 metadata differs from bounded N4 DDP profile")
+  }
+  [
+    stream_blob(catalog, "catalog.json", "u8", [catalog_bytes.to_int()], files),
+    stream_blob(
+      field(r, "history_lengths"),
+      "history.lengths.i32le",
+      "i32le",
+      [4],
+      files,
+    ),
+    stream_blob(
+      field(r, "history_values"),
+      "history.values.f64le",
+      "f64le",
+      [4, 10, 99],
+      files,
+    ),
+    stream_blob(
+      field(replay, "values"),
+      "replay.values.f64le",
+      "f64le",
+      [rows.to_int(), 4, 234],
+      files,
+    ),
+    stream_blob(
+      field(replay, "indices"),
+      "replay.indices.i32le",
+      "i32le",
+      [rows.to_int(), 4, 2],
+      files,
+    ),
+    stream_blob(
+      field(replay, "flags"),
+      "replay.flags.u8",
+      "u8",
+      [rows.to_int(), 4, 2],
+      files,
+    ),
+    stream_blob(
+      field(env, "xi"),
+      "environment.xi.f64le",
+      "f64le",
+      [4, 33],
+      files,
+    ),
+    stream_blob(
+      field(sampler, "returns"),
+      "sampler.returns.f64le",
+      "f64le",
+      [bins.to_int()],
+      files,
+    ),
+    stream_blob(
+      field(sampler, "average"),
+      "sampler.average.f64le",
+      "f64le",
+      [bins.to_int()],
+      files,
+    ),
+    stream_blob(
+      field(sampler, "completed"),
+      "sampler.completed.i32le",
+      "i32le",
+      [bins.to_int()],
+      files,
+    ),
+  ]
+}
+
+///|
+async fn verify_checkpoint(output : String, rank : Int32) -> Json {
+  let root = output + "/train/rank-\{rank}"
+  let receipt = bounded_json(root + "/current.json", 65536L)
+  guard receipt
+    is {
+      "format": "moonrobo.native-tensor-checkpoint-pointer.v2",
+      "iteration": Number(1.0, ..),
+      ..
+    } else {
+    fail("unexpected native checkpoint pointer format or iteration")
+  }
+  verify_digest(field(receipt, "shared_state_digest"))
+  guard field(receipt, "generation") is String(generation) &&
+    generation.has_prefix("generation-1-") &&
+    generation.length() <= 128 &&
+    generation
+    .iter()
+    .all(c => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') else {
+    fail("invalid native checkpoint generation")
+  }
+  guard receipt ==
+    bounded_json(root + "/" + generation + "/receipt.json", 65536L) else {
+    fail("checkpoint pointer differs from immutable receipt")
+  }
+  guard field(receipt, "files") is Object(files) && files.length() == 14 else {
+    fail(
+      "stream-v2 checkpoint requires exactly three optimizer archives, state and ten sidecars",
+    )
+  }
+  let directory = root + "/" + generation
+  guard @fs.realpath(directory) == directory else {
+    fail("checkpoint generation path is not canonical")
+  }
+  guard files.get("state.json") is Some(String(state_sha)) &&
+    sha_text_valid(state_sha) &&
+    file_sha(directory + "/state.json", 4194304L) == state_sha else {
+    fail("stream metadata SHA differs from receipt before decode")
+  }
+  let state = bounded_json(directory + "/state.json", 4194304L)
+  guard field(state, "shared_state_digest") ==
+    field(receipt, "shared_state_digest") else {
+    fail("saved stream state differs from receipt held-state digest")
+  }
+  let blobs = verify_stream_metadata(state, files, rank)
+  let sizes : Map[String, Int64] = Map([])
+  for
+    name in [
+      "world.pt", "policy.pt", "critic.pt", "state.json", "catalog.json", "history.lengths.i32le",
+      "history.values.f64le", "replay.values.f64le", "replay.indices.i32le", "replay.flags.u8",
+      "environment.xi.f64le", "sampler.returns.f64le", "sampler.average.f64le", "sampler.completed.i32le",
+    ] {
+    guard files.get(name) is Some(String(expected)) && sha_text_valid(expected) else {
+      fail("missing or malformed checkpoint member SHA: " + name)
+    }
+    guard file_sha(directory + "/" + name, 536870912L) == expected else {
+      fail("checkpoint member bytes differ from immutable receipt SHA: " + name)
+    }
+    let file = @fs.open(directory + "/" + name, mode=ReadOnly)
+    defer file.close()
+    sizes[name] = file.size()
+  }
+  let mut payload = sizes["state.json"]
+  for (name, bytes) in blobs {
+    guard sizes[name] == bytes else {
+      fail("sidecar actual byte length mismatch: " + name)
+    }
+    payload += bytes
+    guard payload <= 536870912L else {
+      fail("stream-v2 payload exceeds retained 512 MiB bound")
+    }
+  }
+  let catalog = bounded_json(directory + "/catalog.json", 67108864L)
+  guard catalog
+    is {
+      "format": "moonrobo.native-runtime-catalog.v2",
+      "motion_names": Array(names),
+      "motion_sha256": Array(hashes),
+      "source_fps": Number(30.0, ..),
+      ..
+    } &&
+    names.length() == 40 &&
+    hashes.length() == 40 &&
+    names.all(value => value is String(_)) &&
+    hashes.all(value => value is String(hash) && sha_text_valid(hash)) else {
+    fail("checkpoint catalog is not the pinned forty-motion catalog")
+  }
+  let global_pointer = bounded_json(root + "/distributed-current.json", 65536L)
+  guard global_pointer
+    is {
+      "format": "moonrobo.native-distributed-checkpoint-pointer.v1",
+      "resume_supported": False,
+      ..
+    } else {
+    fail("unexpected distributed checkpoint pointer schema")
+  }
+  guard field(global_pointer, "manifest") is String(name) &&
+    name.has_prefix("distributed-generation-1-") &&
+    !name.contains("/") &&
+    !name.contains("..") &&
+    name.length() <= 128 else {
+    fail("invalid distributed checkpoint manifest path")
+  }
+  guard field(global_pointer, "manifest_sha256") is String(global_hash) &&
+    sha_text_valid(global_hash) &&
+    file_sha(root + "/" + name, 65536L) == global_hash else {
+    fail("distributed checkpoint manifest bytes differ from pointer SHA")
+  }
+  guard bounded_json(root + "/" + name, 65536L)
+    is {
+      "world_size": Number(2.0, ..),
+      "iteration": Number(1.0, ..),
+      "resume_supported": False,
+      "ranks": Array(ranks),
+      ..
+    } &&
+    ranks.length() == 2 else {
+    fail("distributed checkpoint manifest does not cover both ranks")
+  }
+  for expected_rank in 0..<2 {
+    guard integer(field(ranks[expected_rank], "rank")) ==
+      expected_rank.to_int64() else {
+      fail("distributed checkpoint manifest ranks are not the ordered pair 0,1")
+    }
+  }
+  guard field(ranks[rank], "relative_pointer") ==
+    Json("rank-\{rank}/" + generation + "/receipt.json") &&
+    field(ranks[rank], "pointer_sha256") ==
+    Json(file_sha(root + "/" + generation + "/receipt.json", 65536L)) else {
+    fail(
+      "distributed checkpoint does not attest the local immutable generation",
+    )
+  }
+  receipt
+}
+
+///|
+async fn transport_evidence(output : String) -> Json {
+  let mut ib = false
+  let mut sockets = false
+  let mut gpu_direct_disabled = false
+  let logs = @fs.readdir(output, sort=true).filter(name => {
+    name.has_prefix("nccl.") && name.has_suffix(".log")
+  })
+  guard logs.length() >= 1 && logs.length() <= 16 else {
+    fail("bounded NCCL transport logs missing")
+  }
+  for name in logs {
+    let file = @fs.open(output + "/" + name, mode=ReadOnly)
+    let size = file.size()
+    guard size >= 0L && size <= 4194304L else {
+      file.close()
+      fail("NCCL log exceeds 4 MiB gate bound")
+    }
+    let text = @utf8.decode(file.read_exactly_at(size.to_int(), position=0L))
+    guard file.size() == size else {
+      file.close()
+      fail("NCCL log changed size while reading")
+    }
+    file.close()
+    ib = ib || text.contains("via NET/IB/")
+    sockets = sockets || text.contains("via NET/Socket")
+    gpu_direct_disabled = gpu_direct_disabled ||
+      text.contains("GPU Direct RDMA Disabled")
+  }
+  {
+    "net_ib_channel_observed": ib,
+    "net_socket_channel_observed": sockets,
+    "gpu_direct_rdma_disabled_reported": gpu_direct_disabled,
+    "logs": Json(logs),
+  }
+}
+
+///|
+/// Shared by post-launch validation and offline re-verification. This function
+/// reads evidence only: no Docker, rendezvous, GPU, process launch or mutation.
+async fn verify_saved_evidence(
+  output : String,
+  rank : Int32,
+  session : String,
+) -> Json {
+  let spec = read_spec(output + "/spec.json")
+  let launch = bounded_json(output + "/launch.json", 65536L)
+  guard launch
+    is {
+      "format": "moonrobo.spark-native-bounded-ddp-runtime-gate.v1",
+      "rank": Number(actual_rank, ..),
+      "session_id": String(actual_session),
+      "image_id": String(actual_image),
+      "memory_guard_bypassed": False,
+      "benchmark": False,
+      "cpu_limit": Number(4.0, ..),
+      ..
+    } &&
+    actual_rank == rank.to_double() &&
+    actual_session == session &&
+    actual_image == image_id &&
+    integer(field(launch, "memory_limit_bytes")) == memory_limit &&
+    integer(field(launch, "data_ready_budget_seconds")) ==
+    spec.data_ready_timeout_seconds.to_int64() &&
+    integer(field(launch, "trainer_deadline_seconds")) ==
+    (spec.data_ready_timeout_seconds + 300).to_int64() &&
+    integer(field(launch, "attach_deadline_seconds")) ==
+    (spec.data_ready_timeout_seconds + 345).to_int64() &&
+    integer(field(launch, "memory_admission_percent")) == 65L else {
+    fail(
+      "saved launch receipt does not identify the requested bounded native gate",
+    )
+  }
+  guard bounded_json(output + "/container-state.json", 65536L)
+    is { "Running": False, "OOMKilled": False, "ExitCode": Number(0.0, ..), .. } else {
+    fail("recorded container did not exit cleanly without OOM")
+  }
+  let result = bounded_json(output + "/inside-result.json", 65536L)
+  guard field(result, "format") ==
+    Json("moonrobo.native-bounded-ddp-container-result.v1") &&
+    integer(field(result, "trainer_exit_code")) == 0L &&
+    integer(field(result, "rank")) == rank.to_int64() &&
+    field(result, "session_id") == Json(session) else {
+    fail("recorded trainer exit/rank/session mismatch")
+  }
+  let after = bounded_json(output + "/cgroup-after.json", 65536L)
+  let snapshot : CgroupSnapshot = {
+    format: "moonrobo.cgroup-v2-snapshot.v1",
+    files: @json.from_json(field(after, "files")),
+    errors: @json.from_json(field(after, "errors")),
+  }
+  let peak = verify_cgroup(snapshot)
+  guard integer(
+      required_some(
+        field(result, "actual_cgroup_memory_peak_bytes"),
+        "inside-result.actual_cgroup_memory_peak_bytes",
+      ),
+    ) ==
+    peak else {
+    fail("container result memory peak differs from actual kernel snapshot")
+  }
+  let report = bounded_json(
+    output + "/train/rank-\{rank}/report.json",
+    4194304L,
+  )
+  let readiness = actor_readiness_evidence(output)
+  verify_report(report, rank, session, spec, verify_actor_readiness(readiness))
+  let receipt = verify_checkpoint(output, rank)
+  guard receipt ==
+    required_some(field(report, "checkpoint"), "report.checkpoint") else {
+    fail("report checkpoint differs from saved immutable generation receipt")
+  }
+  let transport = transport_evidence(output)
+  guard field(transport, "net_ib_channel_observed") == Json(true) &&
+    field(transport, "net_socket_channel_observed") == Json(false) else {
+    fail("NCCL channel logs do not establish NET/IB")
+  }
+  {
+    "actual_cgroup_memory_peak_bytes": Json(peak),
+    "transport": transport,
+    "shared_state_digest": required_some(
+      field(report, "shared_state_digest"),
+      "report.shared_state_digest",
+    ),
+    "trainer_exit_code": 0,
+    "container_exit_code": 0,
+    "oom_killed": false,
+    "complete_lifetime_peak_certified": false,
+    "sdk_numerical_parity_verified": false,
+    "actor_readiness": readiness,
+    "checkpoint_member_sha256_verified": true,
+    "checkpoint_semantic_reload_performed": false,
+  }
+}
+
+///|
+async fn verify_existing(
+  output : String,
+  rank : Int32,
+  session : String,
+) -> Unit {
+  guard output.has_prefix("/") &&
+    @fs.kind(output, follow_symlink=false) == Directory &&
+    @fs.realpath(output) == output else {
+    fail("existing output must be a canonical absolute directory")
+  }
+  let checked : Result[Json, Error] = try {
+    let previous = bounded_json(output + "/launcher-result.json", 65536L)
+    guard integer(field(previous, "attach_exit_code")) == 0L &&
+      integer(field(previous, "cleanup_exit_code")) == 0L else {
+      fail("saved launcher did not finish attachment and cleanup successfully")
+    }
+    Ok(verify_saved_evidence(output, rank, session))
+  } catch {
+    error => Err(error)
+  }
+  let evidence = match checked {
+    Ok(value) => value
+    Err(error) => {
+      println(
+        (
+          {
+            "format": "moonrobo.native-bounded-ddp-readonly-reverification.v1",
+            "passed": false,
+            "read_only": true,
+            "trainer_started": false,
+            "output": output,
+            "rank": rank,
+            "session_id": session,
+            "error": error_message(error),
+          } : Json).stringify(indent=2),
+      )
+      raise error
+    }
+  }
+  println(
+    (
+      {
+        "format": "moonrobo.native-bounded-ddp-readonly-reverification.v1",
+        "passed": true,
+        "read_only": true,
+        "trainer_started": false,
+        "original_results_modified": false,
+        "output": output,
+        "rank": rank,
+        "session_id": session,
+        "evidence": evidence,
+        "benchmark": false,
+      } : Json).stringify(indent=2),
+  )
+}
+
+///|
+async fn launch(
+  repo : String,
+  rank : Int32,
+  session : String,
+  spec : LaunchSpec,
+) -> Unit {
+  guard native_helper_target() else {
+    fail(
+      "--launch copies its native executable into the container; invoke moon run --target native",
+    )
+  }
+  validate_spec(spec)
+  validate_route(repo, rank, session)
+  let account = if rank == 0 { "wlc003s" } else { "wlc004s" }
+  guard repo == "/home/" + account + "/moonrobo" &&
+    @fs.realpath(repo) == repo &&
+    @fs.realpath(repo + "/private") == repo + "/private" else {
+    fail("rank-specific canonical Spark repository required")
+  }
+  guard checked_output("uname", ["-s"]) == "Linux" &&
+    checked_output("uname", ["-m"]) == "aarch64" else {
+    fail("native gate requires Linux aarch64 Spark")
+  }
+  let image = checked_output("docker", [
+    "image", "inspect", image_id, "--format", "{{.Id}} {{.Architecture}}",
+  ]) catch {
+    error =>
+      fail(
+        "pinned APIC runtime image cannot be inspected; stage the exact image on this rank; no pull or fallback: " +
+        error_message(error),
+      )
+  }
+  guard image == image_id + " arm64" else {
+    fail(
+      "pinned APIC runtime image is absent or different; stage the exact image on this rank, no pull or CPU fallback",
+    )
+  }
+  let uid = checked_output("id", ["-u"])
+  let gid = checked_output("id", ["-g"])
+  guard @string.parse_int(uid) > 0 &&
+    @string.parse_int(gid) >= 0 &&
+    checked_output("id", ["-un"]) == account else {
+    fail("run under the expected ordinary rank account")
+  }
+  for
+    relative in [
+      trainer_relative_path(spec),
+      "private/native-tensor-nccl/libmoonrobo_learning_tensor.so",
+      "data/manifest.json",
+      "data/g1_description/scene-no-self-collision.xml",
+      config_relative,
+      spec.artifact_relative_path,
+    ] {
+    guard @fs.kind(repo + "/" + relative, follow_symlink=false) == Regular &&
+      @fs.realpath(repo + "/" + relative) == repo + "/" + relative else {
+      fail("missing or noncanonical staged native input: " + relative)
+    }
+  }
+  guard bounded_json(repo + "/" + config_relative, 65536L) == gate_config() else {
+    fail(
+      "only the checked N4 microbatch2 native runtime gate configuration is allowed",
+    )
+  }
+  for
+    (relative, expected, bound) in [
+      (trainer_relative_path(spec), spec.trainer_sha256, 268435456L),
+      (
+        "private/native-tensor-nccl/libmoonrobo_learning_tensor.so",
+        spec.tensor_library_sha256,
+        268435456L,
+      ),
+      (config_relative, config_sha, 1048576L),
+      ("data/manifest.json", manifest_sha, 16777216L),
+      (
+        "data/g1_description/scene-no-self-collision.xml", "34cf0cf3c5fa5452fc24d33d9f31fb4a4435f3050366041e1dc853b39bdd20ee",
+        16777216L,
+      ),
+      (spec.artifact_relative_path, artifact_sha, 4194304L),
+    ] {
+    guard file_sha(repo + "/" + relative, bound) == expected else {
+      fail("explicit staged identity mismatch: " + relative)
+    }
+  }
+  guard bounded_json(repo + "/" + spec.artifact_relative_path, 4194304L)
+    is { "num_envs": Number(4.0, ..), "self_collisions": False, .. } else {
+    fail("only the pinned N4 APIC artifact is allowed")
+  }
+  let ready_path = repo +
+    "/private/" +
+    session +
+    ".id.json.data-ready-coordinator.json"
+  let ready = bounded_json(ready_path, 4096L)
+  verify_ready(ready, session, now_unix_ms(), spec)
+  let id_path = repo + "/private/" + session + ".id.json"
+  guard !@fs.exists(id_path) &&
+    !@fs.exists(id_path + ".data-ready-release.json") &&
+    !@fs.exists(id_path + ".data-ready-aborted.json") &&
+    !@fs.exists(id_path + ".rank-\{rank}.data-ready-failed.json") &&
+    !@fs.exists(id_path + ".rank-\{rank}.data-ready.json") else {
+    fail(
+      "rendezvous/prepared rank record already exists; use a fresh APIC session",
+    )
+  }
+  guard @fs.kind(repo + "/runs", follow_symlink=false) == Directory &&
+    @fs.realpath(repo + "/runs") == repo + "/runs" else {
+    fail("canonical existing runs directory required")
+  }
+  let parent = repo + "/runs/spark-native-bounded-ddp-gate-" + session
+  @fs.mkdir(parent, recursive=true)
+  guard @fs.realpath(parent) == parent else {
+    fail("output path contains a symlink")
+  }
+  let output = parent + "/rank-\{rank}"
+  guard !@fs.exists(output) else {
+    fail("rank output already exists; use a new session")
+  }
+  @fs.mkdir(output)
+  @fs.mkdir(output + "/home")
+  copy_self(output + "/gate-runner")
+  write_json(output + "/data-ready-coordinator.json", ready)
+  write_json(output + "/spec.json", Json(spec))
+  let interface = if rank == 0 { "enp1s0f1np1" } else { "enp1s0f0np0" }
+  let hca = if rank == 0 { "rocep1s0f1:1" } else { "rocep1s0f0:1" }
+  let name = "moonrobo-native-bounded-ddp-" + session + "-rank-\{rank}"
+  let command = [
+    "create",
+    "--pull=never",
+    "--name",
+    name,
+    "--init",
+    "--gpus",
+    "all",
+    "--network",
+    "host",
+    "--memory=48g",
+    "--memory-swap=48g",
+    "--cpus=4",
+    "--shm-size=1g",
+    "--device=/dev/infiniband",
+    "--ulimit",
+    "memlock=-1",
+    "--user",
+    uid + ":" + gid,
+    "--env",
+    "HOME=/gate/home",
+    "--env",
+    "OMP_NUM_THREADS=4",
+    "--env",
+    "MKL_NUM_THREADS=4",
+    "--env",
+    "OPENBLAS_NUM_THREADS=4",
+    "--env",
+    "NCCL_SOCKET_IFNAME==" + interface,
+    "--env",
+    "NCCL_IB_HCA==" + hca,
+    "--env",
+    "NCCL_SOCKET_FAMILY=AF_INET",
+    "--env",
+    "NCCL_IB_ADDR_FAMILY=AF_INET",
+    "--env",
+    "NCCL_IB_ADDR_RANGE=10.0.0.0/24",
+    "--env",
+    "NCCL_NET=IB",
+    "--env",
+    "NCCL_DEBUG=INFO",
+    "--env",
+    "NCCL_DEBUG_SUBSYS=INIT,NET",
+    "--env",
+    "NCCL_DEBUG_FILE=/gate/nccl.%h.%p.log",
+    "--mount",
+    "type=bind,src=" + repo + ",dst=/workspace/moonrobo,readonly",
+    "--mount",
+    "type=bind,src=" + repo + "/private,dst=/rendezvous",
+    "--mount",
+    "type=bind,src=" + output + ",dst=/gate",
+    "--workdir",
+    "/workspace/moonrobo",
+    image_id,
+    "/gate/gate-runner",
+    "--inside",
+    rank.to_string(),
+    session,
+  ]
+  write_json(output + "/launch.json", {
+    "format": "moonrobo.spark-native-bounded-ddp-runtime-gate.v1",
+    "rank": rank,
+    "session_id": session,
+    "image_id": image_id,
+    "output": output,
+    "docker_create_arguments": Json(command),
+    "memory_limit_bytes": Json(memory_limit),
+    "cpu_limit": 4,
+    "trainer_deadline_seconds": spec.data_ready_timeout_seconds + 300,
+    "data_ready_budget_seconds": spec.data_ready_timeout_seconds,
+    "post_preparation_budget_seconds": 300,
+    "training_phase_deadline_independently_enforced": false,
+    "kill_grace_seconds": 5,
+    "attach_deadline_seconds": spec.data_ready_timeout_seconds + 345,
+    "nccl_timeout_seconds": 60,
+    "memory_guard_bypassed": false,
+    "benchmark": false,
+    "ssh_authentication_created": false,
+    "sdk_numerical_parity_verified": false,
+    "memory_admission_percent": 65,
+    "profile_scope": "N4 / microbatch2 / compact replay / bounded gather / stream-v2 / fixed forty-motion LAFAN1 / one optimizer iteration",
+  })
+  println(
+    "Launching native rank \{rank}; peer must start promptly; evidence: " +
+    output,
+  )
+  let created : Result[String, Error] = Ok(checked_output("docker", command)) catch {
+    error => Err(error)
+  }
+  let container = match created {
+    Ok(value) => value
+    Err(error) => {
+      write_json(output + "/launcher-result.json", {
+        "passed": false,
+        "stage": "docker-create",
+        "error": error_message(error),
+        "benchmark": false,
+      })
+      raise error
+    }
+  }
+  // A filesystem/inspection error must not leave this bounded gate running.
+  let mut removed = false
+  errdefer (if !removed {
+    ignore(
+      @shell.Cmd("docker", ["rm", "--force", container]).status(
+        timeout_ms=10000,
+      ),
+    ) catch {
+      _ => ()
+    }
+  })
+  let mut attach_error : String? = None
+  let code = @shell.Cmd(
+    "docker",
+    ["start", "--attach", container],
+    stdout=ToFile(output + "/stdout.log"),
+    stderr=ToFile(output + "/stderr.log"),
+  ).status(timeout_ms=(spec.data_ready_timeout_seconds + 345) * 1000) catch {
+    error => {
+      attach_error = Some(error_message(error))
+      -1
+    }
+  }
+  let inspection = checked_output("docker", [
+    "inspect", "--format", "{{json .State}}", container,
+  ]) catch {
+    error => ({ "inspection_error": error_message(error) } : Json).stringify()
+  }
+  @fs.write_file(
+    output + "/container-state.json",
+    inspection + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+  let cleanup = @shell.Cmd("docker", ["rm", "--force", container]).status(
+    timeout_ms=10000,
+  ) catch {
+    _ => -1
+  }
+  removed = cleanup == 0
+  let mut verification_error : String? = None
+  let mut transport = Json::null()
+  let mut peak : Int64? = None
+  try {
+    guard code == 0 && cleanup == 0 else {
+      fail("container attachment or cleanup failed")
+    }
+    let evidence = verify_saved_evidence(output, rank, session)
+    peak = Some(integer(field(evidence, "actual_cgroup_memory_peak_bytes")))
+    transport = field(evidence, "transport")
+  } catch {
+    error => verification_error = Some(error_message(error))
+  }
+  write_json(output + "/launcher-result.json", {
+    "attach_exit_code": code,
+    "cleanup_exit_code": cleanup,
+    "attach_error": Json(attach_error),
+    "verification_error": Json(verification_error),
+    "actual_cgroup_memory_peak_bytes": Json(peak),
+    "transport": transport,
+    "passed": Json(code == 0 && cleanup == 0 && verification_error is None),
+    "benchmark": false,
+  })
+  guard code == 0 && cleanup == 0 && verification_error is None else {
+    fail(
+      "native rank gate failed; preserve logs/checkpoints/cgroup evidence at " +
+      output,
+    )
+  }
+  println(
+    "Native rank \{rank} passed bounded training/report/checkpoint/NET-IB/cgroup checks; this is not a benchmark",
+  )
+}
+
+///|
+fn self_test() -> Unit raise {
+  let spec = template_spec(
+    trainer_sha, tensor_sha, "runs/apic-n4-20261024-b/g1-4env-apic/manifest.json",
+    600,
+  )
+  let decoded : LaunchSpec = @json.from_json(Json(spec))
+  validate_spec(decoded)
+  assert_eq(
+    trainer_relative_path(decoded),
+    "private/native-bounded-training-20261024-a/trainer",
+  )
+  let versioned = template_spec(
+    spec.trainer_sha256,
+    spec.tensor_library_sha256,
+    spec.artifact_relative_path,
+    600,
+    trainer_path=Some("private/native-bounded-gate/trainer"),
+  )
+  let versioned_roundtrip : LaunchSpec = @json.from_json(Json(versioned))
+  validate_spec(versioned_roundtrip)
+  assert_eq(
+    versioned_roundtrip.format,
+    "moonrobo.spark-native-bounded-ddp-spec.v1",
+  )
+  let versioned_command = trainer_arguments(
+    versioned_roundtrip, 0, "native-gate-20261024-next",
+  )
+  assert_true(
+    versioned_command.contains(
+      "/workspace/moonrobo/private/native-bounded-gate/trainer",
+    ),
+  )
+  assert_false(
+    versioned_command.contains(
+      "/workspace/moonrobo/private/native-tensor-nccl/trainer",
+    ),
+  )
+  for
+    invalid in [
+      { ..spec, memory_limit_bytes: 17179869184L, },
+      { ..spec, image_id: "sha256:" + "c".repeat(64), },
+      { ..spec, manifest_sha256: "c".repeat(64), },
+      { ..spec, config_sha256: "c".repeat(64), },
+      { ..spec, artifact_sha256: "c".repeat(64), },
+      { ..spec, artifact_relative_path: "runs/../private/manifest.json", },
+      { ..spec, physics_library: "/unvalidated/physics.so", },
+      { ..spec, trainer_sha256: "unknown", },
+      { ..spec, data_ready_timeout_seconds: 59, },
+      { ..spec, data_ready_timeout_seconds: 21601, },
+      { ..versioned, format: "moonrobo.spark-native-apic-ddp-spec.v1", },
+      { ..versioned, trainer_relative_path: "private/../trainer-v2", },
+      {
+        ..versioned,
+        trainer_relative_path: "private/native-tensor-nccl/trainer",
+      },
+      { ..spec, trainer_sha256: "a".repeat(64), },
+      { ..spec, tensor_library_sha256: "b".repeat(64), },
+    ] {
+    try validate_spec(invalid) catch {
+      _ => ()
+    } noraise {
+      _ => fail("unvalidated APIC launch spec accepted")
+    }
+  }
+  let plan = launch_plan(
+    spec, "/home/wlc003s/moonrobo", 0, "native-gate-20261024-next",
+  )
+  assert_eq(field(plan, "gpu_allocated"), Json(false))
+  assert_eq(field(plan, "ticket_generated"), Json(false))
+  assert_eq(integer(field(plan, "combined_trainer_deadline_seconds")), 900L)
+  assert_eq(integer(field(plan, "attach_deadline_seconds")), 945L)
+  assert_eq(field(plan, "config"), gate_config())
+  assert_eq(integer(field(gate_config(), "seed")), 179L)
+  assert_eq(integer(field(gate_config(), "num_envs")), 4L)
+  assert_eq(integer(field(gate_config(), "wm_microbatch")), 2L)
+  assert_eq(integer(field(gate_config(), "pi_microbatch")), 2L)
+  assert_eq(integer(field(gate_config(), "wm_batch")), 4L)
+  assert_eq(integer(field(gate_config(), "pi_batch")), 4L)
+  let command = trainer_arguments(spec, 1, "native-gate-20261024-next")
+  assert_true(command.contains("900s"))
+  assert_true(command.contains("--data-ready-timeout-seconds"))
+  assert_true(command.contains("--checkpoint-format"))
+  assert_true(command.contains("stream-v2"))
+  assert_true(command.contains(physics_library))
+  assert_true(
+    command.contains("/workspace/moonrobo/" + spec.artifact_relative_path),
+  )
+  assert_true(safe_session("native-gate-20261024-next"))
+  assert_false(safe_session("native-gate;command"))
+  assert_eq(integer(Json(72L)), 72L)
+  assert_eq(integer(Json(72)), 72L)
+  assert_eq(integer(required_some(Json(Some(72L)), "test integer")), 72L)
+  let present : Json = { "format": "test-present-object" }
+  assert_eq(required_some(Json(Some(present)), "test object"), present)
+  let derived : OptionEncodingProbe = { value: Some(present), }
+  assert_eq(field(Json(derived), "value"), present)
+  let empty : Array[Json] = []
+  for
+    malformed in [Json::null(), Json::empty_object(), Json(empty), Json([1, 2])] {
+    try required_some(malformed, "test invalid") catch {
+      _ => ()
+    } noraise {
+      _ => fail("malformed explicit Some accepted")
+    }
+  }
+  let plan_ok : Json = {
+    "host_free_bytes": "1000000",
+    "cuda_free_bytes": "2000000",
+    "budget_bytes": "650000",
+    "peak_bytes": "500000",
+  }
+  verify_memory_plan(plan_ok)
+  let plan_fields : Map[String, Json] = @json.from_json(plan_ok)
+  for
+    (key, value) in [
+      ("budget_bytes", "650001"),
+      ("peak_bytes", "650001"),
+      ("cuda_free_bytes", "1"),
+    ] {
+    let bad = plan_fields.copy()
+    bad[key] = Json(value)
+    try verify_memory_plan(Json(bad)) catch {
+      _ => ()
+    } noraise {
+      _ => fail("relaxed actual-free-memory admission was accepted")
+    }
+  }
+  let descriptor : Json = {
+    "file": "replay.values.f64le",
+    "dtype": "f64le",
+    "shape": [18, 4, 234],
+    "count": "16848",
+    "byte_length": "134784",
+    "sha256": "a".repeat(64),
+  }
+  let members : Map[String, Json] = {
+    "replay.values.f64le": Json("a".repeat(64)),
+  }
+  assert_eq(
+    stream_blob(
+      descriptor,
+      "replay.values.f64le",
+      "f64le",
+      [18, 4, 234],
+      members,
+    ),
+    ("replay.values.f64le", 134784L),
+  )
+  let descriptor_fields : Map[String, Json] = @json.from_json(descriptor)
+  for
+    (key, value) in [
+      ("file", Json("../replay.values.f64le")),
+      ("dtype", Json("i32le")),
+      ("count", Json("16849")),
+      ("byte_length", Json("134785")),
+      ("sha256", Json("b".repeat(64))),
+      ("shape", Json([18, 2, 234])),
+    ] {
+    let bad = descriptor_fields.copy()
+    bad[key] = value
+    try
+      stream_blob(
+        Json(bad),
+        "replay.values.f64le",
+        "f64le",
+        [18, 4, 234],
+        members,
+      )
+    catch {
+      _ => ()
+    } noraise {
+      _ => fail("invalid bounded checkpoint descriptor accepted")
+    }
+  }
+  for shape in [[0], [2147483647, 2147483647]] {
+    try
+      stream_blob(descriptor, "replay.values.f64le", "f64le", shape, members)
+    catch {
+      _ => ()
+    } noraise {
+      _ => fail("zero/overflow checkpoint shape accepted")
+    }
+  }
+  for extra in [0L, 8L, 64L] {
+    let readiness : Json = {
+      "candidates": 1,
+      "initial_candidates": 1,
+      "replay_rows": Json((18L + extra).min(64L)),
+      "horizon": 32,
+      "max_remaining_steps": 100,
+      "extra_collection_steps": Json(extra),
+      "extra_physical_transitions": Json(extra * 4L),
+      "collection_step_budget": 64,
+    }
+    assert_eq(verify_actor_readiness(readiness), extra)
+  }
+  let invalid_readiness : Json = {
+    "candidates": 1,
+    "initial_candidates": 1,
+    "replay_rows": 18,
+    "horizon": 32,
+    "max_remaining_steps": 100,
+    "extra_collection_steps": 7,
+    "extra_physical_transitions": 28,
+    "collection_step_budget": 64,
+  }
+  try verify_actor_readiness(invalid_readiness) catch {
+    _ => ()
+  } noraise {
+    _ => fail("unbounded or non-window actor refill accepted")
+  }
+  let values : Map[String, String] = {
+    "memory.max": memory_limit.to_string(),
+    "memory.swap.max": "0",
+    "cpu.max": "400000 100000",
+    "memory.peak": "1048576",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0",
+  }
+  let snapshot : CgroupSnapshot = {
+    format: "test",
+    files: values,
+    errors: Map([]),
+  }
+  assert_eq(verify_cgroup(snapshot), 1048576L)
+  // Kernel accounting can exceed a limit by a few pages. Keep the actual value;
+  // OOM evidence, rather than clamping the sample, determines this validation.
+  values["memory.peak"] = (memory_limit + 8192L).to_string()
+  assert_eq(verify_cgroup(snapshot), memory_limit + 8192L)
+  values["memory.events"] = "oom 1\noom_kill 0"
+  try verify_cgroup(snapshot) catch {
+    _ => ()
+  } noraise {
+    _ => fail("OOM event accepted")
+  }
+  let ready : Json = {
+    "format": "moonrobo.native-data-ready-coordinator.v1",
+    "session_id": "native-gate-20261024-next",
+    "source_node": "178",
+    "destination_node": "179",
+    "world_size": 2,
+    "created_unix_ms": "1000000",
+    "expires_unix_ms": "1600000",
+    "timeout_seconds": 600,
+  }
+  verify_ready(ready, "native-gate-20261024-next", 1000000L, spec)
+  try verify_ready(ready, "native-gate-20261024-next", 1600000L, spec) catch {
+    _ => ()
+  } noraise {
+    _ => fail("stale forwarder readiness accepted")
+  }
+  println(
+    "native N4 microbatch DDP gate spec/plan/bounds/Option/cgroup self-test passed; no Docker or GPU execution",
+  )
+}
+
+///|
+async fn run_cli() -> Unit {
+  let args = @env.args()
+  if args.length() == 2 && args[1] == "--self-test" {
+    self_test()
+    guard bounded_json(config_relative, 65536L) == gate_config() &&
+      file_sha(config_relative, 1048576L) == config_sha else {
+      fail("checked-in bounded DDP config differs from embedded gate/SHA")
+    }
+    return
+  }
+  if args.length() == 5 && args[1] == "--verify-existing" {
+    let rank = @string.parse_int(args[3])
+    guard (rank == 0 || rank == 1) && safe_session(args[4]) else {
+      fail("invalid existing rank/session")
+    }
+    verify_existing(args[2], rank, args[4])
+    return
+  }
+  if args.length() >= 5 &&
+    args.length() <= 9 &&
+    args.length() % 2 == 1 &&
+    args[1] == "--template-spec" {
+    let mut seconds = 600
+    let mut seconds_seen = false
+    let mut trainer_path : String? = None
+    for i = 5; i < args.length(); i = i + 2 {
+      match args[i] {
+        "--data-ready-timeout-seconds" => {
+          guard !seconds_seen else {
+            fail("duplicate readiness timeout argument")
+          }
+          seconds_seen = true
+          seconds = @string.parse_int(args[i + 1])
+        }
+        "--trainer-relative-path" => {
+          guard trainer_path is None else {
+            fail("duplicate trainer path argument")
+          }
+          trainer_path = Some(args[i + 1])
+        }
+        _ => fail("unknown template-spec argument: " + args[i])
+      }
+    }
+    println(
+      Json(template_spec(args[2], args[3], args[4], seconds, trainer_path~)).stringify(
+        indent=2,
+      ),
+    )
+    return
+  }
+  if args.length() == 6 && (args[1] == "--plan" || args[1] == "--launch") {
+    let rank = @string.parse_int(args[4])
+    let session = args[5]
+    validate_route(args[3], rank, session)
+    let spec = read_spec(args[2])
+    if args[1] == "--plan" {
+      println(launch_plan(spec, args[3], rank, session).stringify(indent=2))
+    } else {
+      launch(args[3], rank, session, spec)
+    }
+    return
+  }
+  if args.length() == 4 && args[1] == "--inside" {
+    let rank = @string.parse_int(args[2])
+    let session = args[3]
+    guard (rank == 0 || rank == 1) && safe_session(session) else {
+      fail("invalid rank or fresh 16..64 character ASCII session ID")
+    }
+    inside(rank, session)
+    return
+  }
+  fail(
+    "usage: moon run --target native scripts/run_spark_native_bounded_ddp_gate.mbtx -- --plan|--launch SPEC_JSON CANONICAL_REPO RANK_0_OR_1 FRESH_SESSION_ID; --template-spec PINNED_TRAINER_SHA PINNED_TENSOR_SHA N4_ARTIFACT_RELATIVE_MANIFEST [--data-ready-timeout-seconds 60..21600] [--trainer-relative-path private/native-bounded-gate/trainer]; --verify-existing CANONICAL_OUTPUT_DIR RANK SESSION; --self-test. Fixed N4/microbatch2/stream-v2 profile. Start the unchanged data-ready forwarder on178 before either --launch. --plan only reads the bounded spec; no Docker/GPU/ticket operations.",
+  )
+}
+
+///|
+async fn main {
+  let result : Result[Unit, Error] = try {
+    run_cli()
+    Ok(())
+  } catch {
+    error => Err(error)
+  }
+  match result {
+    Ok(_) => ()
+    Err(error) => {
+      println(
+        (
+          {
+            "format": "moonrobo.native-bounded-ddp-launcher-error.v1",
+            "error": error_message(error),
+          } : Json).stringify(),
+      )
+      raise error
+    }
+  }
+}

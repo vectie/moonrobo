@@ -1,0 +1,39 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, amp] && ["none", "bf16"].contains(amp) else {
+    fail("precision")
+  }
+  // Six separate, serialized guarded processes; 10 warmups + 50 steady steps.
+  // Symmetric order controls drift across all three implementations.
+  for
+    (route, round) in [
+      ("eager", "a"),
+      ("aoti", "a"),
+      ("smc", "a"),
+      ("smc", "b"),
+      ("aoti", "b"),
+      ("eager", "b"),
+    ] {
+    assert_eq(
+      @process.run("moon", [
+        "run",
+        "--target",
+        "native",
+        "scripts/run_compiled_mlp.mbtx",
+        "run",
+        route,
+        amp,
+        "0",
+        "aoti-bench-" + route + "-" + amp + "-" + round,
+      ]),
+      0,
+    )
+  }
+}

@@ -1,0 +1,51 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/geometry-cost-20261030-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let mut runner = @fs.read_file(root + "/run_geometry_cost_a.mbtx").text()
+  runner = runner.replace_all(
+    old="run_geometry_cost_a.mbtx",
+    new="run_geometry_cost_c.mbtx",
+  )
+  runner = runner.replace_all(
+    old="geometry_cost_probe_a.py",
+    new="geometry_cost_probe_b.py",
+  )
+  let old = "else{\"/home/wlc004s/moonrobo/runs/hotspot-shared-training-smc-gate-t\"};"
+  assert_eq(runner.split(old).count(), 2)
+  runner = runner.replace_all(
+    old~,
+    new="else if implementation==\"smc-ieee\"{\"/home/wlc004s/moonrobo/runs/hotspot-shared-cost-ieee-events-a\"}else{\"/home/wlc004s/moonrobo/runs/hotspot-shared-training-smc-gate-t\"};",
+  )
+  runner = runner.replace_all(
+    old="  e[\"MOONROBO_SHARED_OBSERVER\"] = Json(observer)",
+    new="  e[\"MOONROBO_SHARED_OBSERVER\"] = Json(observer)\n  if implementation==\"smc-ieee\" {e[\"GEOMETRY_COST_IEEE_REFERENCE\"]=\"/workspace/moonrobo/runs/hotspot-shared-cost-ieee-events-a\"}",
+  )
+  for
+    (name, text) in [
+      ("run_geometry_cost_c.mbtx", runner),
+      (
+        "geometry_cost_probe_b.py",
+        @fs.read_file("providers/motion_learning/geometry_cost_probe.py").text(),
+      ),
+    ] {
+    @fs.write_file(root + "/" + name, text, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-cost-179.sock",
+        root + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+}

@@ -1,0 +1,388 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn get(value : Json, name : String) -> Json raise {
+  guard value is Object(fields) && fields.get(name) is Some(result) else {
+    fail("missing field: " + name)
+  }
+  result
+}
+
+///|
+fn[T : FromJson] field(value : Json, name : String) -> T raise {
+  @json.from_json(get(value, name))
+}
+
+///|
+fn finite(value : Double) -> Bool {
+  !value.is_nan() && !value.is_inf()
+}
+
+///|
+fn sha(bytes : Bytes) -> String {
+  let hash = @crypto.SHA256::new()
+  hash.update(bytes)
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn read_json(path : String) -> (Json, String) {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  guard file.size() > 0L && file.size() <= 16777216L else {
+    fail("comparison input must be at most 16 MiB: " + path)
+  }
+  let bytes = file.read_exactly_at(file.size().to_int(), position=0L)
+  (@json.parse(@utf8.decode(bytes)), sha(bytes))
+}
+
+///|
+struct ParameterDigest {
+  sha256 : String
+  dtype : String
+  shape : Array[Int32]
+  elements : Int64
+} derive(ToJson, FromJson)
+
+///|
+fn actor_parameters(artifact : Json) -> String raise {
+  let rows : Array[ParameterDigest] = field(artifact, "parameters")
+  guard !rows.is_empty() && rows.length() <= 4096 else {
+    fail("invalid actor parameter inventory")
+  }
+  let hash = @crypto.SHA256::new()
+  for i, row in rows {
+    guard row.dtype == "float32" &&
+      row.sha256.length() == 64 &&
+      row.elements > 0L else {
+      fail("invalid actor parameter digest")
+    }
+    let label = "parameter-\{i}"
+    // Exactly learning_aligned_gpu/audit.mbt's parameter aggregation, including
+    // typed field order and Int64 string encoding; no archive pointer IDs.
+    let bytes = @utf8.encode(Json(row).stringify())
+    hash.update(
+      @utf8.encode("\{label.length()}:" + label + ":\{bytes.length()}:"),
+    )
+    hash.update(bytes)
+  }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+fn policy_digest(source : Json) -> String raise {
+  let shared = get(source, "shared_state_digest")
+  guard get(shared, "format") == Json("moonrobo.shared-learner-state.v1") else {
+    fail("missing source attestation")
+  }
+  let optimizers : Array[Json] = field(shared, "optimizers")
+  let policies = optimizers.filter(x => get(x, "name") == Json("policy"))
+  guard policies.length() == 1 else { fail("expected one policy attestation") }
+  field(policies[0], "parameters_sha256")
+}
+
+///|
+fn loaded_archive(actor : Json) -> Json? raise {
+  guard actor is Object(fields) else { fail("native actor must be an object") }
+  let names = [
+    "loaded_archive_kind", "loaded_archive_path", "loaded_archive_sha256", "loaded_metadata_path",
+    "loaded_metadata_sha256",
+  ]
+  let present = names.filter(name => fields.contains(name))
+  if present.is_empty() {
+    return None
+  }
+  guard present.length() == names.length() else {
+    fail("partial loaded archive provenance")
+  }
+  let result : Map[String, Json] = Map([])
+  for name in names {
+    let value : String = field(actor, name)
+    guard !value.is_empty() else { fail("empty loaded archive provenance") }
+    result[name] = Json(value)
+  }
+  Some(Json::object(result))
+}
+
+///|
+fn verify_report(report : Json) -> Json raise {
+  guard get(report, "format") ==
+    Json("moonrobo.supermimic-full-clip-evaluation.v1") else {
+    fail("wrong evaluation schema")
+  }
+  let actor = get(report, "native_actor")
+  guard get(actor, "normalizers_frozen") == Json(true) &&
+    get(actor, "autograd") == Json(false) &&
+    get(report, "training_executed") == Json(false) &&
+    get(report, "hardware_execution") == Json(false) else {
+    fail("not an inference-only simulation report")
+  }
+  let protocol = get(report, "protocol")
+  let physics = get(protocol, "physical_settings")
+  guard get(protocol, "start_frame") == Json(0) &&
+    get(physics, "control_dt_s") == Json(0.02) &&
+    get(physics, "episode_time_limit_disabled") == Json(true) else {
+    fail("not a full-clip 50 Hz protocol")
+  }
+  for
+    key in [
+      "auto_reset", "observation_noise", "action_noise", "domain_randomization",
+      "reset_noise",
+    ] {
+    guard get(physics, key) == Json(false) else {
+      fail("evaluation perturbation enabled: " + key)
+    }
+  }
+  let rows : Array[Json] = field(report, "per_clip")
+  let selected : Array[Int32] = field(report, "selected_clip_indices")
+  guard !rows.is_empty() &&
+    rows.length() == selected.length() &&
+    rows.length() == field(report, "n_clips") else {
+    fail("clip count mismatch")
+  }
+  let catalog_count : Int32 = field(report, "catalog_clip_count")
+  guard catalog_count > 0 && catalog_count <= 200000 else {
+    fail("invalid catalog count")
+  }
+  let seen = Array::make(catalog_count, false)
+  for index in selected {
+    guard index >= 0 && index < catalog_count && !seen[index] else {
+      fail("duplicate or invalid selected clip index")
+    }
+    seen[index] = true
+  }
+  let max_reward : Double = field(protocol, "max_step_reward")
+  guard max_reward == 0.1 else { fail("unexpected reward maximum") }
+  let mut executed = 0
+  let mut completed = 0
+  let mut total = 0.0
+  let mut maximum = 0.0
+  let mut equal_mean = 0.0
+  let failures : Array[String] = []
+  let incomplete : Array[String] = []
+  for i, row in rows {
+    let expected : Int32 = field(row, "expected_steps")
+    let steps : Int32 = field(row, "executed_steps")
+    let ret : Double = field(row, "undiscounted_return")
+    let denom : Double = field(row, "maximum_full_clip_return")
+    let normalized : Double = field(row, "normalized_return")
+    let failed : Bool = field(row, "failed")
+    let name : String = field(row, "clip_id")
+    guard expected > 0 &&
+      steps >= 0 &&
+      steps <= expected &&
+      finite(ret) &&
+      finite(denom) &&
+      finite(normalized) &&
+      (denom - expected.to_double() * max_reward).abs() <=
+      1.0e-12 * denom.max(1.0) &&
+      (normalized - ret / denom).abs() <= 1.0e-12 &&
+      get(row, "completed_full_duration") == Json(steps == expected) &&
+      get(row, "protocol_complete") == Json(steps == expected || failed) &&
+      get(get(row, "metadata"), "clip_index") == Json(selected[i]) &&
+      get(get(row, "metadata"), "start_frame") == Json(0) else {
+      fail("inconsistent full-clip row: " + name)
+    }
+    if failed {
+      guard get(row, "termination_frame") == Json([steps]) ||
+        get(row, "termination_frame") == Json(steps) else {
+        fail("termination frame mismatch")
+      }
+      failures.push(name)
+    } else {
+      guard get(row, "termination_frame") is Null ||
+        get(row, "termination_frame") == Json::array([]) else {
+        fail("unexpected nonfailure termination frame")
+      }
+    }
+    if steps == expected {
+      completed += 1
+    }
+    if steps != expected && !failed {
+      incomplete.push(name)
+    }
+    executed += steps
+    total += ret
+    maximum += denom
+    equal_mean += normalized
+  }
+  let simulated : Int32 = field(report, "evaluation_simulated_physical_steps")
+  let extra : Int64 = field(report, "extra_simulated_physical_steps")
+  guard field(report, "evaluation_physical_steps") == executed &&
+    simulated >= executed &&
+    extra == (simulated - executed).to_int64() &&
+    get(report, "failed") == Json(failures) &&
+    field(report, "n_failed") == failures.length() &&
+    field(report, "n_completed") == completed &&
+    get(report, "incomplete_protocol_clips") == Json(incomplete) &&
+    get(report, "missing_clips") == Json::array([]) &&
+    get(report, "unexpected_clips") == Json::array([]) &&
+    get(report, "benchmark_complete") == Json(incomplete.is_empty()) &&
+    get(report, "full_catalog_evaluated") ==
+    Json(incomplete.is_empty() && rows.length() == catalog_count) &&
+    (field(report, "norm_return") - equal_mean / rows.length().to_double()).abs() <=
+    1.0e-12 &&
+    (field(report, "norm_return_framew") - total / maximum).abs() <= 1.0e-12 else {
+    fail("evaluation aggregate/count mismatch")
+  }
+  {
+    "norm_return": get(report, "norm_return"),
+    "norm_return_framew": get(report, "norm_return_framew"),
+    "n_failed": Json(failures.length()),
+    "failed": Json(failures),
+    "n_completed": Json(completed),
+    "measured_steps": Json(executed),
+    "simulated_steps": Json(simulated),
+    "extra_steps": Json(extra),
+    "per_clip": Json(rows),
+    "full_catalog_evaluated": get(report, "full_catalog_evaluated"),
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 4 || args.length() == 5 else {
+    fail(
+      "usage: compare_native_actor_evaluations.mbtx CHECKPOINT_REPORT ACTOR_REPORT ACTOR_MANIFEST [NEW_OUTPUT_JSON]",
+    )
+  }
+  let (left, left_hash) = read_json(args[1])
+  let (right, right_hash) = read_json(args[2])
+  let (artifact, artifact_hash) = read_json(args[3])
+  guard get(artifact, "format") == Json("moonrobo.native-tensor-actor.v1") else {
+    fail("wrong actor manifest")
+  }
+  let left_metrics = verify_report(left)
+  let right_metrics = verify_report(right)
+  let a = get(left, "native_actor")
+  let b = get(right, "native_actor")
+  let checks : Map[String, Bool] = Map([])
+  for
+    key in [
+      "source", "spec", "contract", "device", "precision", "runtime_tensor_library_sha256",
+      "runtime_executable_sha256",
+    ] {
+    checks[key + "_equal"] = get(a, key) == get(b, key)
+  }
+  for
+    key in [
+      "protocol", "selected_clip_indices", "catalog_clip_count", "evaluation_scope",
+    ] {
+    checks[key + "_equal"] = get(left, key) == get(right, key)
+  }
+  for key in ["source", "spec", "contract"] {
+    checks["export_" + key + "_equal"] = get(a, key) == get(artifact, key)
+  }
+  let parameters = actor_parameters(artifact)
+  checks["exported_parameters_match_checkpoint_attestation"] = parameters ==
+    policy_digest(get(a, "source"))
+  let loaded = match (loaded_archive(a), loaded_archive(b)) {
+    (None, None) => Json::null()
+    (Some(checkpoint), Some(actor)) => {
+      let files = get(get(a, "source"), "checkpoint_files")
+      checks["loaded_archive_kinds_distinct_and_correct"] = get(
+          checkpoint, "loaded_archive_kind",
+        ) ==
+        Json("native_training_checkpoint") &&
+        get(actor, "loaded_archive_kind") == Json("native_actor_export")
+      checks["loaded_checkpoint_archive_matches_receipt"] = get(
+          checkpoint, "loaded_archive_sha256",
+        ) ==
+        get(files, "policy.pt")
+      checks["loaded_checkpoint_metadata_matches_receipt"] = get(
+          checkpoint, "loaded_metadata_sha256",
+        ) ==
+        get(files, "state.json")
+      checks["loaded_actor_archive_matches_manifest"] = get(
+          actor, "loaded_archive_sha256",
+        ) ==
+        get(artifact, "archive_sha256")
+      checks["loaded_actor_metadata_matches_manifest_bytes"] = get(
+          actor, "loaded_metadata_sha256",
+        ) ==
+        Json(artifact_hash)
+      { "checkpoint": checkpoint, "actor": actor }
+    }
+    _ => fail("loaded archive provenance is present in only one report")
+  }
+  let left_rows : Array[Json] = field(left, "per_clip")
+  let right_rows : Array[Json] = field(right, "per_clip")
+  checks["clip_order_and_denominators_equal"] = left_rows.length() ==
+    right_rows.length() &&
+    Array::makei(left_rows.length(), i => {
+      ["clip_id", "expected_steps", "maximum_full_clip_return", "metadata"].all(key => {
+          get(left_rows[i], key) == get(right_rows[i], key)
+        },
+      )
+    }).all(x => x)
+  let deltas = if left_rows.length() == right_rows.length() {
+    Array::makei(left_rows.length(), i => {
+      let l = left_rows[i]
+      let r = right_rows[i]
+      let delta : Double = field(r, "normalized_return") -
+        field(l, "normalized_return")
+      {
+        "clip_id": get(l, "clip_id"),
+        "normalized_return_difference": Json(delta),
+        "undiscounted_return_difference": Json(
+          (field(r, "undiscounted_return") : Double) -
+          field(l, "undiscounted_return"),
+        ),
+        "executed_steps_equal": Json(
+          get(l, "executed_steps") == get(r, "executed_steps"),
+        ),
+        "failure_equal": Json(get(l, "failed") == get(r, "failed")),
+        "termination_frame_equal": Json(
+          get(l, "termination_frame") == get(r, "termination_frame"),
+        ),
+      }
+    })
+  } else {
+    []
+  }
+  let structural_equal = checks.values().all(x => x)
+  let report : Json = {
+    "format": "moonrobo.native-actor-evaluation-comparison.v1",
+    "read_only": true,
+    "training_executed": false,
+    "same_report_input": args[1] == args[2],
+    "checkpoint_report_sha256": left_hash,
+    "actor_report_sha256": right_hash,
+    "actor_manifest_sha256": artifact_hash,
+    "archive_sha256_recorded": get(artifact, "archive_sha256"),
+    "parameter_identity": parameters,
+    "checks": Json(checks),
+    "structural_identity_equal": structural_equal,
+    "metrics_exactly_equal": left_metrics == right_metrics,
+    "checkpoint_metrics": left_metrics,
+    "actor_metrics": right_metrics,
+    "differences": Json(deltas),
+    "numeric_threshold_applied": false,
+    "archive_tensor_bytes_reread": false,
+    "evaluation_report_records_loaded_archive_kind": !(loaded is Null),
+    "loaded_archives": loaded,
+    "interpretation": "Report/manifest identity and arithmetic audit only. GPU physics reductions can vary; metric differences are reported without relaxing thresholds or claiming bitwise trajectory equality. This does not certify APIC/SDK equivalence, convergence, unseen-motion generalization, or robot hardware.",
+  }
+  if args.length() == 5 {
+    @fs.write_file(
+      args[4],
+      report.stringify(indent=2) + "\n",
+      create_mode=CreateNew,
+    )
+  }
+  println(report.stringify(indent=2))
+  guard structural_equal else {
+    fail(
+      "evaluation inputs or exported parameter identity differ; report retained",
+    )
+  }
+}

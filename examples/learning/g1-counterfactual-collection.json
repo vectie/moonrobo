@@ -1,0 +1,13 @@
+{
+  "policy_seeds": [0, 1, 2],
+  "reset_seeds": [800, 810, 820],
+  "snapshot_steps": [50, 75],
+  "branch_steps": 64,
+  "pulse_steps": 8,
+  "pulse_std_rad": 0.04,
+  "pulse_clip_rad": 0.08,
+  "fall_height_m": 0.35,
+  "fall_upright_z": 0.5,
+  "cpu_threads": 2,
+  "scope": "One zero and two antithetic action branches per available training-only origin. Branches run at most 1.28 s, retain parent time and stop on actual falls; no success label or hardware authority."
+}

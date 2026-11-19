@@ -1,0 +1,154 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/world-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let gate = @json.parse(
+    @fs.read_file(out + "/world-reference-smc-gate-f/result.json").text(),
+  )
+  guard gate is { "numerical_comparison": { "passed": True, .. }, .. } else {
+    fail("complete world-update gate required")
+  }
+  let helpers =
+    #|async fn audit_benchmark_cache(dir:String,known:Map[String,Json],added:Array[Json])->Unit {
+    #|  for name in @fs.readdir(dir) {
+    #|    let path=dir+"/"+name;guard @fs.realpath(path)==path else {fail("cache symlink")}
+    #|    if @fs.kind(path,follow_symlink=false)==Directory {audit_benchmark_cache(path,known,added)} else {
+    #|      guard @fs.kind(path,follow_symlink=false)==Regular else {fail("special cache entry")}
+    #|      if known.get(path) is Some(hash) {assert_eq(Json(hash_file(path)),hash)} else {
+    #|        guard path.contains("/inductor-cache/aotautograd/") else {fail("new kernel/selection during frozen benchmark: "+path)}
+    #|        added.push({"path":Json(path),"sha256":Json(hash_file(path))})
+    #|      }
+    #|    }
+    #|  }
+    #|}
+  let after =
+    #|  guard passed else {fail("benchmark update/numerics failed")}
+    #|  if implementation=="smc" {
+    #|    guard field(read_json(root+"/compilation-snapshot.json"),"files") is Array(files) else {fail("cache snapshot")}
+    #|    let known:Map[String,Json]=Map([]);let added:Array[Json]=[]
+    #|    for row in files {let hash=field(row,"sha256");assert_eq(Json(hash_file(text(field(row,"source")))),hash);assert_eq(Json(hash_file(text(field(row,"target")))),hash);known[text(field(row,"target"))]=hash}
+    #|    for name in ["inductor-cache","triton-cache"] {audit_benchmark_cache(root+"/"+name,known,added)}
+    #|    write_json(root+"/compilation-audit.json",{"source_and_copy_unchanged":true,"copied_count":Json(files.length()),"new_kernel_or_selection_files":0,"added_aot_metadata":Json(added)})
+    #|  }
+    #|  guard docker(["ps","--quiet"])=="" && checkpoint_command("nvidia-smi",["--query-compute-apps=pid","--format=csv,noheader"])=="" else {fail("idle completed output advice")}
+    #|  guard read_json(root+"/training-docker-final.json") is [{"Id":String(id),"State":state,..}] && state is {"Running":False,"OOMKilled":False,"Pid":0,..} else {fail("closed job")}
+    #|  assert_eq(@json.parse(docker(["inspect","--format","{{json .State}}",id])),state)
+    #|  let completed_files:Array[String]=[];let mut completed_bytes=0L
+    #|  for name in @fs.readdir(root) {if name.has_suffix(".f64") {let path=root+"/"+name;guard @fs.realpath(path)==path&&@fs.kind(path,follow_symlink=false)==Regular else {fail("output file")};let file=@fs.open(path,mode=ReadOnly);completed_bytes+=file.size();file.close();completed_files.push(path)}}
+    #|  guard completed_bytes<2147483648L else {fail("bounded completed output")}
+    #|  for path in completed_files {ignore(checkpoint_command("sync",["-d",path]));ignore(checkpoint_command("dd",["if="+path,"iflag=nocache,nofollow","count=0","status=none"]))}
+    #|  write_json(root+"/completed-output-advice.json",{"files_deleted":0,"contents_changed":false,"advised_bytes":Json(completed_bytes.to_double()),"files":Json(completed_files)})
+    #|  println("SHARED_COMPLETED " + root)
+  let code = @fs.read_file(out + "/run_world_reference_gate_f.mbtx")
+    .text()
+    .replace_all(
+      old="run_world_reference_gate_f.mbtx",
+      new="run_world_reference_bench_a.mbtx",
+    )
+    .replace_all(old="async fn main {", new=helpers + "\nasync fn main {")
+    .replace_all(
+      old="let source=\"/home/wlc004s/moonrobo/runs/hotspot-mlp-world-boundary-f\"",
+      new="let source=\"/home/wlc004s/moonrobo/runs/hotspot-shared-world-reference-smc-gate-f\"",
+    )
+    .replace_all(old="println(\"SHARED_COMPLETED \" + root)", new=after)
+  @fs.write_file(
+    out + "/run_world_reference_bench_a.mbtx",
+    code,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      out + "/run_world_reference_bench_a.mbtx",
+      host + ":" + base + "/run_world_reference_bench_a.mbtx",
+    ]),
+    0,
+  )
+  for
+    (side, block) in [
+      ("native", "a"),
+      ("smc", "a"),
+      ("smc", "b"),
+      ("native", "b"),
+    ] {
+    let label = "world-reference-bench-" + side + "-" + block
+    let folder = out + "/" + label
+    @fs.mkdir(folder)
+    let status = @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/run_world_reference_bench_a.mbtx -- world " +
+        side +
+        " off 13 " +
+        label +
+        " bf16-chunk",
+      ],
+      stdout=@process.redirect_to_file(
+        folder + "/controller.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        folder + "/controller.stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    for
+      name in [
+        "result.json", "completion.json", "training-guard.json", "training-docker-final.json",
+        "training.stdout.log", "training.stderr.log", "protocol.json", "completed-output-advice.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-" +
+          label +
+          "/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+    if side == "smc" {
+      for name in ["compilation-snapshot.json", "compilation-audit.json"] {
+        ignore(
+          @process.run("scp", [
+            "-q",
+            "-o",
+            "ControlPath=/tmp/moonrobo-operator-179.sock",
+            host +
+            ":/home/wlc004s/moonrobo/runs/hotspot-shared-" +
+            label +
+            "/" +
+            name,
+            folder + "/" + name,
+          ]),
+        )
+      }
+    }
+    assert_eq(status, 0)
+    println(
+      "Completed " +
+      label +
+      " (world update only; excludes actor/physics/sampling)",
+    )
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "policy_seeds": [0, 1, 2],
+  "reset_seeds": [1950, 1951],
+  "snapshot_steps": [0, 25, 50, 75, 100],
+  "sampling_seed": 43,
+  "direction_batch_size": 64,
+  "direction_bootstrap": [true, false],
+  "multipliers": [-1.0, -0.1, -0.01, 0.0, 0.01, 0.1, 1.0],
+  "horizon": 32,
+  "full_horizon": 500,
+  "actor_learning_rate": 0.0003,
+  "fall_height_m": 0.35,
+  "fall_upright_z": 0.5,
+  "cpu_threads": 2,
+  "scope": "Training-only restored origins. Same selected adaptive actors/critics, initial versus paired adapted world models, replay directions with/without terminal critic gradients. Full physical reward stops at fall or ten seconds from origin, without critic bootstrap. No release selection."
+}

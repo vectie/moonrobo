@@ -1,0 +1,188 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+let base = "/home/wlc004s/moonrobo/private/hotspot-optimization-20261025-a"
+
+///|
+let prior = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+
+///|
+async fn run(name : String, program : String, argv : Array[String]) -> Unit {
+  println("Starting " + name)
+  let code = @process.run(
+    program,
+    argv,
+    stdout=@process.redirect_to_file(
+      base + "/" + name + ".stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      base + "/" + name + ".stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  @fs.write_file(
+    base + "/" + name + ".receipt.json",
+    (
+      {
+        "exit_code": code,
+        "program": program,
+        "argv": Json(argv),
+        "gpu_access": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  guard code == 0 else { fail(name + " failed; evidence retained") }
+  println("Completed " + name)
+}
+
+///|
+async fn container(name : String, entry : String, argv : Array[String]) -> Unit {
+  run(
+    name,
+    "docker",
+    [
+      "--host",
+      "unix:///var/run/docker.sock",
+      "run",
+      "--rm",
+      "--network",
+      "none",
+      "--memory",
+      "8g",
+      "--memory-swap",
+      "8g",
+      "--cpus",
+      "2",
+      "--pids-limit",
+      "256",
+      "--cap-drop",
+      "ALL",
+      "--security-opt",
+      "no-new-privileges",
+      "--user",
+      "1000:1000",
+      "--mount",
+      "type=bind,src=" + base + ",dst=/build",
+      "--mount",
+      "type=bind,src=" + base + "/workspace,dst=/workspace",
+      "--mount",
+      "type=bind,src=/home/wlc004s/moonrobo/toolchain,dst=/toolchain,readonly",
+      "--mount",
+      "type=bind,src=" + prior + "/script-cache,dst=/toolchain/cache",
+      "--mount",
+      "type=bind,src=/home/wlc004s/moonrobo/private/mujoco315-headers,dst=/mujoco-headers,readonly",
+      "--mount",
+      "type=bind,src=" +
+      prior +
+      "/compiler-context/cuda-include,dst=/cuda-include,readonly",
+      "--env",
+      "PATH=/toolchain/bin:/usr/bin:/bin",
+      "--env",
+      "MOON_HOME=/toolchain",
+      "--env",
+      "CPATH=/mujoco-headers:/cuda-include",
+      "--env",
+      "OMP_NUM_THREADS=1",
+      "--workdir",
+      "/workspace/moonrobo",
+      "--entrypoint",
+      entry,
+      "sha256:5b1332bafb8e0bd31065cfd4a7ea2d57b81dd68f96c4cb6b4ebac477bf921b23",
+      ..argv,
+    ],
+  )
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] else { fail("stage|apic|trainer|tests") }
+  let ws = base + "/workspace"
+  if mode == "quarantine-metadata" {
+    @fs.mkdir(base + "/appledouble-metadata")
+    for i, path in [
+      "src/learning_aligned/native/._aot_solver.cpp",
+      "src/learning_aligned/native/apic_runtime/._cuda_driver_dynamic.h",
+      "src/learning_aligned/gpu_protocol/._environment.mbt",
+      "src/learning_aligned/gpu_protocol/._checkpoint_v2.mbt",
+      "src/learning_aligned/gpu_protocol/._pre_step_reuse_wbtest.mbt",
+      "src/learning_aligned/gpu_protocol/._isaac_contracts_wbtest.mbt",
+      "src/learning_aligned_gpu/cmd/._runtime_bridge.mbt",
+      "src/learning_aligned_gpu/cmd/._main.mbt",
+    ] {
+      if @fs.exists(ws + "/moonrobo/" + path) {
+        run("metadata-" + i.to_string(), "mv", [ws + "/moonrobo/" + path, base + "/appledouble-metadata/" + i.to_string()])
+      }
+    }
+    return
+  }
+  if mode == "stage" {
+    guard !@fs.exists(ws) else { fail("fresh workspace required") }
+    @fs.mkdir(ws + "/moonrobo", recursive=true)
+    run("source", "tar", [
+      "-xzf",
+      prior + "/source-clean.tar.gz",
+      "-C",
+      ws + "/moonrobo",
+    ])
+    run("deps", "tar", [
+      "-xzf", "/home/wlc004s/moonrobo/private/optimization-adjacent-deps-20261024-a.tar.gz",
+      "-C", ws,
+    ])
+    run("packages", "cp", [
+      "-a",
+      "/home/wlc004s/moonrobo/.mooncakes",
+      ws + "/moonrobo/.mooncakes",
+    ])
+    run("overlay-prior", "tar", [
+      "-xzf",
+      prior + "/phase-b-overlay.tar.gz",
+      "-C",
+      ws + "/moonrobo",
+    ])
+    run("overlay-current", "tar", [
+      "-xzf",
+      base + "/overlay.tar.gz",
+      "-C",
+      ws + "/moonrobo",
+    ])
+    @fs.write_file(
+      ws + "/moonrobo/moon.work",
+      "members = [\".\", \"../moonnum\", \"../moonphys\"]\n",
+      create_mode=CreateNew,
+    )
+    return
+  }
+  if mode == "apic" || mode == "apic-final" {
+    container(mode + "-build", "/usr/bin/g++", [
+      "-std=c++17", "-O2", "-shared", "-fPIC", "-fvisibility=hidden", "-DMOONROBO_APIC_DYNAMIC_CUDA=1",
+      "-I/opt/isaaclab-venv/lib/python3.12/site-packages/nvidia/cu13/include", "-I/opt/isaaclab-venv/lib/python3.12/site-packages/warp/native",
+      "/workspace/moonrobo/src/learning_aligned/native/aot_solver.cpp", "-o", "/build/libmoonrobo_aligned_apic_bulk.so",
+      "-L/opt/isaaclab-venv/lib/python3.12/site-packages/warp/bin", "-Wl,-l:warp.so",
+      "-Wl,-rpath,/opt/isaaclab-venv/lib/python3.12/site-packages/warp/bin", "-Wl,-z,defs",
+      "-ldl",
+    ])
+    return
+  }
+  if mode.has_prefix("trainer") {
+    container(mode + "-build", "/toolchain/bin/moon", [
+      "build", "--release", "--target", "native", "-j", "2", "--frozen", "src/learning_aligned_gpu/cmd",
+    ])
+    run(mode + "-copy", "cp", [
+      ws +
+      "/moonrobo/_build/native/release/build/vectie/moonrobo/src/learning_aligned_gpu/cmd/cmd.exe",
+      base + "/trainer",
+    ])
+    return
+  }
+  guard mode.has_prefix("tests") else { fail("unknown mode") }
+  container(mode + "-protocol", "/toolchain/bin/moon", [
+    "test", "--target", "native", "-j", "2", "--frozen", "src/learning_aligned/gpu_protocol",
+  ])
+}

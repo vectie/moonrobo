@@ -1,0 +1,164 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@utf8.decode(@fs.read_file(path).binary()))
+}
+
+///|
+fn[T : FromJson] field(v : Json, k : String) -> T raise {
+  guard v is Object(m) && m.get(k) is Some(x) else { fail(k) }
+  @json.from_json(x)
+}
+
+///|
+async fn sha(path : String) -> String {
+  let h = @crypto.SHA256::new()
+  h.update(@fs.read_file(path).binary())
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+fn value(b : Bytes, i : Int32) -> Double {
+  let p = 4 * i
+  Float::reinterpret_from_int(
+    b[p].to_int() |
+    (b[p + 1].to_int() << 8) |
+    (b[p + 2].to_int() << 16) |
+    (b[p + 3].to_int() << 24),
+  ).to_double()
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, baseline, cases, panel_path, output] else {
+    fail("prepare_orientation_controls BASELINE CASES PANEL OUTPUT")
+  }
+  let catalog = read(panel_path)
+  let panel : Array[Json] = field(catalog, "clips")
+  let base = read(baseline + "/final.json")
+  let g1 = read(baseline + "/g1.json")
+  let current_refs = read(baseline + "/references.json")
+  let generator : String = field(current_refs, "generator_sha256")
+  let names = ["legacy7", "anatomical7", "legacy14", "anatomical14"]
+  let paths = [cases + "/p7bind0", cases + "/p7", cases + "/bind0", baseline]
+  let refs : Array[Array[Json]] = []
+  let outcomes : Array[Array[Json]] = []
+  let weights : Array[String] = []
+  let runs : Array[Json] = []
+  for j, path in paths {
+    let r = read(path + "/final.json")
+    let ref = read(path + "/references.json")
+    assert_eq(
+      (field(ref, "panel_sha256") : Json),
+      (field(catalog, "panel_sha256") : Json),
+    )
+    assert_eq((field(ref, "generator_sha256") : String), generator)
+    assert_eq(
+      (field(r, "references_sha256") : String),
+      sha(path + "/references.json"),
+    )
+    for
+      key in [
+        "training_dataset_sha256", "mujoco_library_sha256", "tensor_library_sha256",
+        "protocol",
+      ] {
+      assert_eq((field(base, key) : Json), (field(r, key) : Json))
+    }
+    let g = read(path + "/g1.json")
+    for key in ["per_clip", "actor_archive_sha256", "panel_sha256"] {
+      assert_eq((field(g, key) : Json), (field(g1, key) : Json))
+    }
+    refs.push(field(ref, "clips"))
+    outcomes.push(field(r, "per_clip"))
+    weights.push(field(r, "actor_archive_sha256"))
+    runs.push({
+      "name": Json(names[j]),
+      "actor_sha256": Json(weights[j]),
+      "checkpoint_sha256": (field(r, "source_checkpoint_sha256") : Json),
+      "report_sha256": Json(sha(path + "/final.json")),
+      "reference_report_sha256": Json(sha(path + "/references.json")),
+      "generator_sha256": Json(generator),
+    })
+  }
+  assert_eq(weights[0], weights[1])
+  assert_eq(weights[2], weights[3])
+  assert_true(weights[0] != weights[2])
+  assert_eq(refs[0], refs[2])
+  assert_eq(refs[1], refs[3])
+  let clips : Array[Json] = []
+  for i, c in panel {
+    let id : String = field(c, "id")
+    let n : Int32 = field(c, "expected_steps")
+    let mut common : Int32 = field(field(c, "g1"), "steps")
+    let durations = Array::make(4, 0)
+    let returns = Array::make(4, 0.0)
+    for j in 0..<4 {
+      let pin = refs[j][i]
+      assert_eq((field(pin, "id") : String), id)
+      assert_eq(
+        (field(pin, "source_sha256") : Json),
+        (field(refs[3][i], "source_sha256") : Json),
+      )
+      assert_eq(
+        (field(pin, "source_bind") : String),
+        if j == 0 || j == 2 {
+          "joint-zero"
+        } else {
+          "g1-elbows-pi-over-two"
+        },
+      )
+      let r = outcomes[j][i]
+      assert_eq((field(r, "clip_id") : String), id)
+      assert_eq((field(r, "expected_steps") : Int32), n)
+      durations[j] = field(r, "executed_steps")
+      returns[j] = field(r, "normalized_return")
+      common = common.min(durations[j])
+    }
+    let scores : Array[Double] = []
+    for j, path in paths {
+      let b = @fs.read_file(path + "/e1/" + i.to_string() + ".metrics.f32").binary()
+      assert_eq(b.length(), 44 * durations[j])
+      let mut sum = 0.0
+      let mut body = 0.0
+      for k in 0..<durations[j] {
+        sum += value(b, k * 11)
+        if k < common {
+          body += value(b, k * 11 + 4)
+        }
+      }
+      guard (returns[j] - sum / (n.to_double() * 0.1)).abs() < 1.0e-7 else {
+        fail("rollout return mismatch")
+      }
+      scores.push(body / (n.to_double() * 0.1))
+    }
+    clips.push({
+      "id": Json(id),
+      "steps": Json(durations),
+      "common": Json(common),
+      "scores": Json(scores),
+      "returns": Json(returns),
+    })
+  }
+  @fs.write_file(
+    output,
+    @utf8.encode(
+      (
+        {
+          "format": "moonrobo.orientation-controls.v1",
+          "panel_sha256": (field(catalog, "panel_sha256") : Json),
+          "runs": Json(runs),
+          "clips": Json(clips),
+        } : Json).stringify(indent=2),
+    ),
+    create_mode=CreateNew,
+  )
+}

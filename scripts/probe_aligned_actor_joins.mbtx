@@ -1,0 +1,47 @@
+///|
+import {"moonbitlang/async@0.20.2","moonbitlang/async@0.20.2/fs","moonbitlang/async@0.20.2/process","moonbitlang/core/env"}
+
+///|
+async fn main {
+  guard @env.args() is [_,stage,rev]&&["prepare","native","smc","compare"].contains(stage)&&["u","y","z"].contains(rev) else {fail("prepare/native/smc/compare u/y/z")}
+  let out="output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host="wlc004s@192.168.2.179"
+  let runner="run_aligned_actor_joins_"+rev+".mbtx"
+  if stage=="prepare" {
+    let code=@fs.read_file(out+"/run_aligned_training_s.mbtx").text()
+      .replace_all(old="run_aligned_training_s.mbtx",new=runner)
+      .replace_all(old="aligned_training_reference_s.py",new="aligned_actor_joins_"+rev+".py")
+      .replace_all(old="ignore(e.remove(\"MOONROBO_AOTI_ADJOINTS\"))",new="if implementation==\"native\" {e[\"MOONROBO_AOTI_ADJOINTS\"]=\"/pair\"}")
+      .replace_all(old="hotspot-shared-training-smc-gate-n",new="hotspot-shared-training-smc-gate-t")
+    let code=if rev=="y" {code.replace_all(old="libmoonrobo_actor_numeric_d.so",new="libmoonrobo_actor_numeric_e.so")} else {code}
+    for (name,value) in [(runner,code),("aligned_actor_joins_"+rev+".py",@fs.read_file("providers/motion_learning/aligned_actor_join_probe.py").text())] {
+      @fs.write_file(out+"/"+name,value,create_mode=CreateNew)
+      assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",out+"/"+name,host+":"+base+"/"+name]),0)
+    }
+    return
+  }
+  if stage=="compare" {
+    let name="aligned_actor_joins_compare_"+rev
+    let prefix=@fs.read_file(out+"/build_actor_boundary_a.mbtx").text().split("async fn main {").to_array()[0].to_owned()
+      .replace_all(old="      \"--workdir\",",new="      \"--mount\",\"type=bind,src=/home/wlc004s/moonrobo/runs,dst=/data,readonly\",\n      \"--workdir\",")
+    let target=if rev!="u" {"training-actor-tail-x"} else {"training-actor-joins-smc-u"}
+    let native_rev=if rev=="z" {"y"} else {rev}
+    let code=prefix+"async fn main {container(\""+name+"\",\"/opt/isaaclab-venv/bin/python\",[\"/build/"+name+".py\",\"/data/hotspot-shared-training-actor-joins-native-"+native_rev+"\",\"/data/hotspot-shared-"+target+"\",\"/build/"+name+".json\"])}\n"
+    let adapter=if rev!="u" {"compare_actual_actor_heads.py"} else {"compare_actor_joined_cotangents.py"}
+    for (file,value) in [(name+".mbtx",code),(name+".py",@fs.read_file("providers/motion_learning/"+adapter).text())] {
+      @fs.write_file(out+"/"+file,value,create_mode=CreateNew)
+      assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",out+"/"+file,host+":"+base+"/"+file]),0)
+    }
+    let status=@process.run("ssh",["-S","/tmp/moonrobo-operator-179.sock",host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/"+name+".mbtx"],stdout=@process.redirect_to_file(out+"/"+name+".stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(out+"/"+name+".stderr.log",create_mode=CreateNew))
+    ignore(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",host+":"+base+"/"+name+".json",out+"/"+name+".json"]))
+    assert_eq(status,0);return
+  }
+  let label="training-actor-joins-"+stage+"-"+rev
+  let folder=out+"/"+label;@fs.mkdir(folder)
+  let status=@process.run("ssh",["-S","/tmp/moonrobo-operator-179.sock",host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/"+runner+" -- train "+stage+" off 1 "+label+" bf16-full"],stdout=@process.redirect_to_file(folder+"/controller.stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(folder+"/controller.stderr.log",create_mode=CreateNew))
+  for name in ["result.json","final.json","completion.json","training-guard.json","training-docker-final.json","training.stdout.log","training.stderr.log","protocol.json","frozen-decisions.json","observer-control.json"] {
+    ignore(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",host+":/home/wlc004s/moonrobo/runs/hotspot-shared-"+label+"/"+name,folder+"/"+name]))
+  }
+  assert_eq(status,0)
+}

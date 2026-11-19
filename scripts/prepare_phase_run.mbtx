@@ -1,0 +1,265 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+let base = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+
+///|
+let mapped = "/workspace/moonrobo/private/operator-diagnostic-20261025-a"
+
+///|
+fn obj(j : Json) -> Map[String, Json] raise {
+  guard j is Object(o) else { fail("object required") }
+  o
+}
+
+///|
+fn get(j : Json, key : String) -> Json raise {
+  guard obj(j).get(key) is Some(v) else { fail("missing " + key) }
+  v
+}
+
+///|
+fn str(j : Json) -> String raise {
+  guard j is String(s) else { fail("string required") }
+  s
+}
+
+///|
+fn arr(j : Json) -> Array[Json] raise {
+  guard j is Array(a) else { fail("array required") }
+  a
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (reader, redirect) = @process.read_from_process()
+  defer reader.close()
+  @async.with_task_group() <| group => {
+    let child = group.spawn(() => {
+      @process.run("sha256sum", [path], stdout=redirect)
+    })
+    let bytes = FixedArray::make(2048, b'\x00')
+    let n = reader.read(bytes)
+    guard n >= 64 && n < 2048 && child.wait() == 0 else {
+      fail("SHA command failed")
+    }
+    @utf8.decode(Bytes::from_array(bytes[:64]))
+  }
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn write(path : String, j : Json) -> Unit {
+  @fs.write_file(path, j.stringify(indent=2) + "\n", create_mode=CreateNew)
+}
+
+///|
+fn replace(source : String, old : String, new : String) -> String raise {
+  guard source.contains(old) else { fail("missing source anchor " + old) }
+  source.replace_all(old~, new~)
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, label, phase, observer, collector] &&
+    label.length() <= 40 &&
+    label.all(c => c is ('a'..<='z' | '0'..<='9' | '-')) &&
+    [
+      "collection", "world", "actor_critic", "actor_chunk", "probe", "microgate",
+      "microgate64",
+    ].contains(phase) &&
+    ["off", "ranges", "aten"].contains(observer) &&
+    ["off", "nsys"].contains(collector) else {
+    fail("LABEL collection|world|actor_critic|probe off|ranges|aten off|nsys")
+  }
+  let old = base + "/specs41-solo-j"
+  let next = base + "/specs41-phase-" + label
+  guard !@fs.exists(next) else { fail("fresh derived scope required") }
+  let trainer = if phase == "probe" {
+    "operator-probe-phase-c"
+  } else {
+    "trainer-phase-c"
+  }
+  let trainer_sha = sha(base + "/" + trainer)
+  let plugin = "libmoonrobo_learning_tensor_phase_b.so"
+  let plugin_sha = sha(base + "/" + plugin)
+  let runner_sha = sha(base + "/run-phase-timeline")
+  let smc_source = base +
+    (if phase == "actor_chunk" { "/smc-phase-chunk-d" } else { "/smc-phase-b" })
+  let train_sha = sha(smc_source + "/supermimic/train.py")
+  let gate_file = if phase == "microgate64" {
+    "policy_microbatch_gate_d.py"
+  } else {
+    "policy_microbatch_gate_c.py"
+  }
+  let review = read(old + "/review.json")
+  guard arr(get(review, "original_pins_unchanged")).length() == 265 else {
+    fail("265 original pins required")
+  }
+  let pins = arr(get(review, "additional_host_pins"))
+  for
+    (path, digest) in [
+      (base + "/" + trainer, trainer_sha),
+      (base + "/" + plugin, plugin_sha),
+      (base + "/run-phase-timeline", runner_sha),
+      (smc_source + "/supermimic/train.py", train_sha),
+    ] {
+    pins.push({ "path": path, "sha256": digest })
+  }
+  if phase == "actor_chunk" {
+    let path = smc_source + "/supermimic/policy_microbatch_fullcritic.py"
+    pins.push({ "path": path, "sha256": sha(path) })
+  }
+  if phase == "microgate" || phase == "microgate64" {
+    for
+      path in [
+        base + "/" + gate_file,
+        base + "/smc-phase-b/supermimic/policy_microbatch_fullcritic.py",
+        base + "/smc-original-train.py",
+      ] {
+      pins.push({ "path": path, "sha256": sha(path) })
+    }
+  }
+  let journal : Json = {
+    "phase": phase,
+    "observer": observer,
+    "collector": collector,
+    "same_training_binary_across_observer_controls": true,
+    "original_265_pins_unchanged": true,
+    "instrumentation_reserve_bytes": "4294967296",
+    "capture_trigger_legacy_name": "moonrobo.actor_critic.capture",
+    "actual_phase_is_explicit": true,
+    "new_artifacts": Json(pins[pins.length() - 4:].to_array()),
+    "no_throughput_claim_from_single_window": true,
+  }
+  obj(review)["phase_comparison"] = journal
+  @fs.mkdir(next)
+  write(next + "/review.json", review)
+  @fs.write_file(
+    next + "/native-config.json",
+    @fs.read_file(old + "/native-config.json").binary(),
+    create_mode=CreateNew,
+  )
+  let mut outer = @fs.read_file(base + "/run_operator_trace41_solo_j.mbtx").text()
+  outer = replace(outer, sha(old + "/review.json"), sha(next + "/review.json"))
+  for kind in ["native", "smc-compiled", "smc-eager"] {
+    let timeline = read(old + "/" + kind + "-timeline.json")
+    let member = read(old + "/" + kind + "-member.json")
+    let env = obj(get(member, "env"))
+    env["MOONROBO_OPERATOR_PHASE"] = Json(
+      if phase == "probe" || phase == "actor_chunk" {
+        "actor_critic"
+      } else {
+        phase
+      },
+    )
+    env["MOONROBO_OPERATOR_OBSERVER"] = Json(observer)
+    env["MOONROBO_OPERATOR_COLLECTOR"] = Json(collector)
+    let arguments = arr(get(member, "argv"))
+    arguments[3] = Json(mapped + "/run-phase-timeline")
+    arguments[4] = Json(runner_sha)
+    obj(timeline)["session"] = Json("moonrobo-op-phase-" + label + "-" + kind)
+    if kind == "native" || phase == "probe" {
+      obj(timeline)["program"] = Json(mapped + "/" + trainer)
+      obj(timeline)["program_sha256"] = Json(trainer_sha)
+      let args = arr(get(timeline, "args"))
+      for i, arg in args {
+        if arg == Json(mapped + "/libmoonrobo_learning_tensor.so") {
+          args[i] = Json(mapped + "/" + plugin)
+        }
+      }
+      let pinned = obj(get(timeline, "pinned_files"))
+      pinned.remove(mapped + "/libmoonrobo_learning_tensor.so") |> ignore
+      pinned[mapped + "/" + plugin] = Json(plugin_sha)
+      if phase == "probe" {
+        obj(timeline)["protocol"] = Json("tiny-probe")
+        obj(timeline)["args"] = Json([mapped + "/" + plugin])
+        obj(timeline)["cwd"] = Json("/workspace/moonrobo")
+        obj(timeline)["environment"] = Json({})
+        let probe_pins : Map[String, Json] = Map([])
+        probe_pins[mapped + "/" + plugin] = Json(plugin_sha)
+        obj(timeline)["pinned_files"] = Json(probe_pins)
+        obj(member)["image_id"] = get(
+          read(old + "/native-member.json"),
+          "image_id",
+        )
+        obj(member)["mounts"] = get(read(old + "/native-member.json"), "mounts")
+        obj(member)["workdir"] = Json("/workspace/moonrobo")
+        obj(member)["label"] = Json("tiny-math-" + observer + "-" + collector)
+      }
+    } else {
+      obj(get(timeline, "pinned_files"))["/workspace/supermimic/supermimic/train.py"] = Json(
+        train_sha,
+      )
+      for mount in arr(get(member, "mounts")) {
+        if get(mount, "target") == Json("/workspace/supermimic") {
+          obj(mount)["source"] = Json(smc_source)
+        }
+      }
+      if phase == "actor_chunk" {
+        env["SMC_ACTOR_MICROBATCH"] = Json("512")
+        obj(get(timeline, "pinned_files"))["/workspace/supermimic/supermimic/policy_microbatch_fullcritic.py"] = Json(
+          sha(smc_source + "/supermimic/policy_microbatch_fullcritic.py"),
+        )
+      }
+      if phase == "microgate" || phase == "microgate64" {
+        obj(timeline)["protocol"] = Json("tiny-probe")
+        obj(timeline)["args"] = Json([mapped + "/" + gate_file])
+        obj(get(timeline, "pinned_files"))[mapped + "/" + gate_file] = Json(
+          sha(base + "/" + gate_file),
+        )
+        obj(get(timeline, "pinned_files"))["/workspace/supermimic/supermimic/policy_microbatch_fullcritic.py"] = Json(
+          sha(base + "/smc-phase-b/supermimic/policy_microbatch_fullcritic.py"),
+        )
+        obj(get(timeline, "pinned_files"))[mapped + "/smc-original-train.py"] = Json(
+          sha(base + "/smc-original-train.py"),
+        )
+        env["MICRO_GATE_MOTIONS"] = Json("/workspace/supermimic/data/lafan1_g1")
+        env["MICRO_GATE_ORIGINAL"] = Json(mapped + "/smc-original-train.py")
+        env["PYTHONPATH"] = Json("/workspace/supermimic")
+        obj(member)["label"] = Json("smc-small-fixed-noise-gate-no-simulator")
+      }
+    }
+    write(next + "/" + kind + "-timeline.json", timeline)
+    write(next + "/" + kind + "-member.json", member)
+    for suffix in ["-timeline.json", "-member.json"] {
+      outer = replace(
+        outer,
+        sha(old + "/" + kind + suffix),
+        sha(next + "/" + kind + suffix),
+      )
+    }
+  }
+  outer = replace(outer, "solo-j", "phase-" + label)
+  outer = replace(outer, "trainer-keyfix-b", trainer)
+  outer = replace(
+    outer, "5ce6b29728e25c9052b967c51f17fa82f87dccdc54683c5f689893b18956cfae", trainer_sha,
+  )
+  // The inner receipt holds up to7200 bounded samples. Its own metadata read
+  // needs2MiB; input specs keep their original64/128KiB limits. Training and
+  // trace memory, file, time and reserve guards are unchanged.
+  outer = replace(
+    outer, "small(root+\"/run/\"+kind+\"/inner-receipt.json\")", "phase_inner_metadata(root+\"/run/\"+kind+\"/inner-receipt.json\")",
+  )
+  outer += "\n///|\nasync fn phase_inner_metadata(path : String) -> String {\n  let f = @fs.open(path, mode=ReadOnly)\n  defer f.close()\n  let n = f.size()\n  guard n > 0L && n <= 2097152L else { fail(\"bounded inner receipt exceeds2MiB\") }\n  @utf8.decode(f.read_exactly_at(n.to_int(), position=0L))\n}\n"
+  @fs.write_file(
+    base + "/run_phase_" + label + ".mbtx",
+    outer,
+    create_mode=CreateNew,
+  )
+  write(next + "/derivation.json", journal)
+  println("Prepared " + label + "; no hardware launched")
+}

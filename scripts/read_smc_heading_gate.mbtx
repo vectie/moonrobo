@@ -1,0 +1,26 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/json" }
+async fn main {
+  let out = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-heading-20261027"
+  for label in ["heading-actor-gate-a","heading-smc-eager-gate-a"] {
+    let dest=out+"/"+label
+    @fs.mkdir(dest,recursive=true)
+    for file in ["result.json","training-guard.json","training-docker-final.json"] {
+      if !@fs.exists(dest+"/"+file) {
+        guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/runs/hotspot-shared-"+label+"/"+file,dest+"/"+file])==0 else {fail(file)}
+      }
+    }
+    let result=@json.parse(@fs.read_file(dest+"/result.json").text())
+    guard result is Object(m) else {fail(label)}
+    println(label)
+    if m.get("numerical_comparison") is Some(Object(c)) {
+      for key,value in c { if key!="details" && key!="tensors" { println(key+": "+value.stringify()) } }
+      for key in ["details","tensors"] {
+        if c.get(key) is Some(Array(rows)) {
+          for row in rows {
+            if row is {"name":String(name),..} && (name=="policy-18-gradient" || name=="metrics") {println(row.stringify())}
+          }
+        }
+      }
+    }
+  }
+}

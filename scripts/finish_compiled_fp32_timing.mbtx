@@ -1,0 +1,61 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  for side in ["smc", "aoti"] {
+    let label = "aoti-final2-" +
+      (if side == "smc" { "smc" } else { "native" }) +
+      "-none-bench"
+    let folder = root + "/" + label
+    @fs.mkdir(folder)
+    let code = @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179",
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/run_compiled_contracts_final2.mbtx -- " +
+        side +
+        " none 0 " +
+        label,
+      ],
+      stdout=@process.redirect_to_file(
+        folder + "/controller.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        folder + "/controller.stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    for
+      file in [
+        "result.json", "protocol.json", "completion.json", "training-guard.json",
+        "training-docker-final.json", "training.stdout.log", "training.stderr.log",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/runs/hotspot-mlp-" +
+          label +
+          "/" +
+          file,
+          folder + "/" + file,
+        ]),
+      )
+    }
+    println(label + " exit=" + code.to_string())
+    assert_eq(code, 0)
+  }
+}

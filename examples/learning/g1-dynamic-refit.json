@@ -1,0 +1,11 @@
+{
+  "seeds": [0, 1, 2],
+  "updates": 2000,
+  "batch_size": 128,
+  "learning_rate": 0.0003,
+  "evaluate_every": 200,
+  "sampling_seed": 7300,
+  "late_validation_weight": 0.5,
+  "cpu_threads": 2,
+  "scope": "Same incoming sustained world-model seed zero, weights, architecture, frozen normalization, update count and batch size. Old-only control versus 50/50 old/new actual-action replay; new data is all 36 teacher and 1296 temporal student episodes, no teacher labels. Canonical validation-only selection includes update zero; unchanged test arrays and saved dynamic origins never select weights. Three refit sampling seeds; no policy-efficiency or physical qualification claim."
+}

@@ -1,0 +1,82 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x/crypto",
+}
+
+///|
+fn hash(bytes : Bytes) -> String {
+  @crypto.sha256(bytes).map(byte => byte.to_hex()).join("")
+}
+
+///|
+/// Explicit historical execution only. No default native entry calls this
+/// unless the user has selected the reference backend for a nested old script.
+async fn main {
+  let args = @env.args()
+  guard args.length() >= 3 else {
+    fail(
+      "usage: run_python_reference.mbtx REPO ORIGINAL_SCRIPT.mbtx [ORIGINAL_ARGS_AFTER_REPO...]",
+    )
+  }
+  let root = if args[1].has_prefix("/") {
+    args[1]
+  } else {
+    @env.current_dir().unwrap() + "/" + args[1]
+  }
+  let name = args[2]
+  guard name.has_suffix(".mbtx") &&
+    !name.contains("/") &&
+    !name.contains("\\") &&
+    !name.contains("\u{0}") else {
+    fail("preserved script basename required")
+  }
+  let folder = root + "/scripts/python_reference"
+  let digest = hash(@fs.read_file(folder + "/" + name).binary())
+  let mut recorded = false
+  for manifest in @fs.readdir(folder, sort=true) {
+    if !manifest.has_suffix("-sources.json") {
+      continue
+    }
+    let data = @json.parse(@fs.read_file(folder + "/" + manifest).text())
+    guard data is Array(entries) else {
+      fail("invalid preserved launcher identity manifest")
+    }
+    for entry in entries {
+      if entry is { "script": String(script), "sha256": String(expected), .. } &&
+        script == name {
+        guard digest == expected else {
+          fail("preserved script differs from original SHA: " + name)
+        }
+        recorded = true
+      }
+    }
+  }
+  guard recorded else {
+    fail("historical launcher lacks a preserved source identity: " + name)
+  }
+  let code = @process.run(
+    "moon",
+    [
+      "run",
+      "--quiet",
+      "--warn-list",
+      "-a",
+      "--target",
+      "native",
+      "scripts/python_reference/" + name,
+      "--",
+      root,
+      ..args[3:].to_owned(),
+    ],
+    cwd=root,
+    extra_env={ "MOONROBO_LEARNING_BACKEND": "python-reference" },
+  )
+  guard code == 0 else {
+    fail("historical Python workflow exited with code " + code.to_string())
+  }
+}

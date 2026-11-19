@@ -1,0 +1,145 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    3,
+    msg="usage: verify_g1_goal_candidate.mbtx REPO GOAL_DYNAMICS",
+  )
+  let root = args[1]
+  let source = args[2]
+  let output = source + "/candidate-followup"
+  @fs.mkdir(output, recursive=true)
+  let config = @json.parse(
+    @fs.read_file(root + "/examples/learning/g1-policy-goal-fit.json").text(),
+  )
+  guard config is Object(config_fields) else { fail("expected policy config") }
+  config_fields.set("test_seeds", [500, 501, 502])
+  let config_path = output + "/fresh-config.json"
+  @fs.write_file(
+    config_path,
+    config.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let experiment = @json.parse(
+    @fs.read_file(root + "/examples/learning/g1-cpu-experiment.json").text(),
+  )
+  guard experiment is Object(experiment_fields) else {
+    fail("expected experiment")
+  }
+  experiment_fields.set("duration_s", 10)
+  let extended_path = output + "/ten-second-experiment.json"
+  @fs.write_file(
+    extended_path,
+    experiment.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let policy_report = @json.parse(
+    @fs.read_file(source + "/policy/report.json").text(),
+  )
+  guard field(policy_report, "runs") is Array(runs) else {
+    fail("missing policy runs")
+  }
+  let checked : Array[Json] = []
+  for run in runs {
+    if field(run, "qualifies") != true.to_json() {
+      continue
+    }
+    guard field(run, "seed") is Number(seed, ..) else { fail("expected seed") }
+    let seed = seed.to_int()
+    let trials : Array[Json] = []
+    for mode in ["repeat-two-second", "fresh-two-second", "fresh-ten-second"] {
+      let destination = output + "/seed-\{seed}-" + mode
+      let selected_config = if mode == "repeat-two-second" {
+        root + "/examples/learning/g1-policy-goal-fit.json"
+      } else {
+        config_path
+      }
+      let selected_experiment = if mode == "fresh-ten-second" {
+        extended_path
+      } else {
+        root + "/examples/learning/g1-cpu-experiment.json"
+      }
+      let (code, stdout, stderr) = @process.collect_output(
+        root + "/target/learning-venv/bin/python",
+        [
+          root + "/providers/motion_learning/policy.py",
+          "evaluate",
+          "--checkpoint",
+          source + "/policy/actor-seed-\{seed}.pt",
+          "--scene",
+          root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+          "--config",
+          selected_config,
+          "--experiment",
+          selected_experiment,
+          "--output",
+          destination,
+        ],
+      )
+      assert_eq(code, 0, msg=stderr.text() + stdout.text())
+      let result = @json.parse(
+        @fs.read_file(destination + "/physics.json").text(),
+      )
+      let summary = field(field(result, "candidate"), "summary")
+      if mode == "repeat-two-second" {
+        let previous = @json.parse(
+          @fs.read_file(source + "/policy/physics-seed-\{seed}.json").text(),
+        )
+        assert_eq(field(field(previous, "candidate"), "summary"), summary)
+        guard field(field(previous, "candidate"), "trials") is Array(old_trials) &&
+          field(field(result, "candidate"), "trials") is Array(new_trials) else {
+          fail("missing replay trials")
+        }
+        assert_eq(old_trials.length(), 9)
+        assert_eq(new_trials.length(), 9)
+        for i, trial in old_trials {
+          assert_eq(field(trial, "replay"), field(new_trials[i], "replay"))
+        }
+      }
+      trials.push({
+        "mode": mode.to_json(),
+        "summary": summary,
+        "physics_path": (destination + "/physics.json").to_json(),
+        "checkpoint_sha256": field(result, "checkpoint_sha256"),
+      })
+      println("Seed \{seed} " + mode + ": " + summary.stringify())
+    }
+    checked.push({ "seed": seed.to_json(), "evaluations": trials.to_json() })
+  }
+  assert_true(
+    !checked.is_empty(),
+    msg="no provider-qualified candidates to re-evaluate",
+  )
+  let report : Json = {
+    "format": "moonrobo.g1-candidate-followup.v1",
+    "original_duration_s": 2,
+    "fresh_evaluation_seeds": [500, 501, 502],
+    "extended_duration_s": 10,
+    "candidates": checked.to_json(),
+    "physical_execution_allowed": false,
+    "scope": "Original qualification covers nine two-second procedural simulator trials only. Fresh and extended results are separate evidence; no hardware qualification.",
+  }
+  @fs.write_file(
+    source + "/policy/qualification-followup.json",
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

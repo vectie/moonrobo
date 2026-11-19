@@ -1,0 +1,147 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode, rev] &&
+    ["prepare", "run"].contains(mode) &&
+    ["a", "b", "c", "d", "e", "f", "g", "h"].contains(rev) else {
+    fail("prepare/run revision")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let runner = "run_actor_frozen_reference_" + rev + ".mbtx"
+  if mode == "prepare" {
+    let code = @fs.read_file(out + "/run_actor_loaded_a.mbtx")
+      .text()
+      .replace_all(old="run_actor_loaded_a.mbtx", new=runner)
+      .replace_all(
+        old="actor_loaded_a.py",
+        new="actor_frozen_reference_" + rev + ".py",
+      )
+      .replace_all(
+        old="  write_json(root + \"/protocol.json\"",
+        new="  pins[base+\"/compiler_reference_contract_f.py\"]=Json(hash_file(base+\"/compiler_reference_contract_f.py\"))\n  write_json(root + \"/protocol.json\"",
+      )
+    let code = if rev != "a" {
+      code.replace_all(
+        old="  e[\"ACTOR_NATIVE_BOUNDARIES\"]",
+        new="  e[\"ACTOR_NATIVE_FINAL\"]=\"/workspace/moonrobo/runs/hotspot-shared-actor-aligned-native-a\"\n  e[\"ACTOR_NATIVE_BOUNDARIES\"]",
+      )
+    } else {
+      code
+    }
+    let code = if ["d", "e", "f"].contains(rev) {
+      code.replace_all(
+        old="  e[\"ACTOR_NATIVE_BOUNDARIES\"]",
+        new="  e[\"ACTOR_CAPTURE_ADJOINTS\"]=\"1\"\n  e[\"ACTOR_NATIVE_BOUNDARIES\"]",
+      )
+    } else {
+      code
+    }
+    let code = if rev == "g" {
+      code.replace_all(
+        old="hotspot-shared-actor-aligned-native-a",
+        new="hotspot-shared-actor-reward-reference-native-a",
+      )
+    } else {
+      code
+    }
+    let code = if rev=="h" {
+      code.replace_all(old="hotspot-shared-actor-aligned-native-a",new="hotspot-shared-actor-geometry-native-e")
+        .replace_all(old="  e[\"ACTOR_NATIVE_BOUNDARIES\"]",new="  e[\"ACTOR_CAPTURE_FINAL\"]=\"1\"\n  e[\"ACTOR_NATIVE_BOUNDARIES\"]")
+    } else {code}
+    for
+      (name, content) in [
+        (runner, code),
+        (
+          "actor_frozen_reference_" + rev + ".py",
+          @fs.read_file(
+            "providers/motion_learning/actor_frozen_reference_probe.py",
+          ).text(),
+        ),
+        (
+          "compiler_reference_contract_f.py",
+          @fs.read_file(
+            "providers/motion_learning/compiler_reference_contract.py",
+          ).text(),
+        ),
+      ] {
+      if name == "compiler_reference_contract_f.py" &&
+        @fs.exists(out + "/" + name) {
+        assert_eq(@fs.read_file(out + "/" + name).text(), content)
+        continue
+      }
+      @fs.write_file(out + "/" + name, content, create_mode=CreateNew)
+      if name == runner {
+        assert_eq(
+          @process.run("moon", ["check", "--target", "native", out + "/" + name]),
+          0,
+        )
+      }
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/frozen-reference-" + rev
+  @fs.mkdir(folder)
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      runner +
+      " -- actor smc off 1 actor-frozen-reference-" +
+      rev +
+      " bf16-full",
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  for
+    name in [
+      "result.json", "boundaries.json", "frozen-decisions.json", "frozen-source-hashes.json",
+      "completion.json", "training-guard.json", "training-docker-final.json", "training.stdout.log",
+      "training.stderr.log", "protocol.json", "compilation-audit.json",
+    ] {
+    ignore(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host +
+        ":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-frozen-reference-" +
+        rev +
+        "/" +
+        name,
+        folder + "/" + name,
+      ]),
+    )
+  }
+  assert_eq(code, 0)
+}

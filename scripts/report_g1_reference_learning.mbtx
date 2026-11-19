@@ -1,0 +1,678 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(result) else {
+    fail("missing " + key)
+  }
+  result
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn str(value : Json) -> String raise {
+  guard value is String(s) else { fail("expected string") }
+  s
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+fn resolved(study : String, path : String) -> String {
+  if path.has_prefix("/") {
+    path
+  } else {
+    study + "/" + path
+  }
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (code, out, err) = @process.collect_output("/usr/bin/shasum", [
+    "-a", "256", path,
+  ])
+  assert_eq(code, 0, msg=err.text())
+  out.text().split(" ").to_array()[0].to_owned()
+}
+
+///|
+fn check_quality(result : Json, quality : Json) -> Unit raise {
+  let trials = array(field(result, "trials"))
+  let summary = field(result, "summary")
+  let assessed = field(result, "quality")
+  assert_eq(trials.length(), 27)
+  let cells : Map[String, Bool] = Map([])
+  let mut falls = 0
+  let mut steps = 0.0
+  let mut survival = 0.0
+  let mut failed_quality = 0
+  guard field(quality, "maximum_per_trial") is Object(limits) else {
+    fail("expected limits")
+  }
+  for trial in trials {
+    let case_id = str(field(trial, "case_id"))
+    assert_true(array(field(quality, "reference_ids")).contains(Json(case_id)))
+    let origin = num(field(trial, "reference_start_step"))
+    assert_true([0.0, 500.0, 1000.0].contains(origin))
+    let key = case_id + ":\{origin}"
+    assert_false(cells.contains(key))
+    cells[key] = true
+    assert_true(
+      (num(field(trial, "requested_seconds")) - (30.0 - origin * 0.02)).abs() <
+      1.0e-12,
+    )
+    let count = num(field(trial, "steps"))
+    let elapsed = num(field(trial, "simulated_seconds"))
+    assert_true((elapsed - count * 0.02).abs() < 1.0e-12)
+    let fall = field(trial, "failed") == (true : Json)
+    if fall {
+      falls += 1
+    }
+    let mut failed = fall ||
+      (elapsed - num(field(trial, "requested_seconds"))).abs() > 1.0e-12
+    for metric, limit in limits {
+      if num(field(trial, metric)) > num(limit) {
+        failed = true
+      }
+    }
+    if failed {
+      failed_quality += 1
+    }
+    steps += count
+    survival += elapsed
+  }
+  assert_eq(field(summary, "trials"), 27)
+  assert_eq(num(field(summary, "falls")).to_int(), falls)
+  assert_eq(num(field(summary, "steps")), steps)
+  assert_true(
+    (num(field(summary, "mean_survival_s")) - survival / 27.0).abs() < 1.0e-12,
+  )
+  for metric, _ in limits {
+    let mut squared = 0.0
+    for trial in trials {
+      let e = num(field(trial, metric))
+      squared += e * e * num(field(trial, "steps"))
+    }
+    assert_true(
+      (num(field(summary, metric)) - (squared / steps).sqrt()).abs() < 1.0e-12,
+    )
+  }
+  assert_eq(field(assessed, "coverage_complete"), true)
+  assert_eq(
+    num(field(assessed, "failed_quality_trials")).to_int(),
+    failed_quality,
+  )
+  assert_eq(field(assessed, "quality_passed"), Json(failed_quality == 0))
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: report_g1_reference_learning.mbtx REPO STUDY OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let report = read(study + "/report.json")
+  let charter = read(study + "/charter.json")
+  let config = field(report, "config")
+  let is_anchor = field(config, "format") ==
+    Json("moonrobo.g1-reference-replay-anchor-charter.v1")
+  let is_extended = is_anchor ||
+    field(config, "format") ==
+    Json("moonrobo.g1-reference-extended-training-charter.v1")
+  let baseline_method = if is_anchor {
+    "replay-prefix-extended"
+  } else if is_extended {
+    "replay-prefix"
+  } else {
+    "prefix-only"
+  }
+  let is_origin = is_extended ||
+    field(config, "format") ==
+    Json("moonrobo.g1-reference-state-origin-charter.v1")
+  let is_tail = is_origin ||
+    field(config, "format") ==
+    Json("moonrobo.g1-reference-tail-training-charter.v1")
+  let expected_records = if is_anchor {
+    927
+  } else if is_extended {
+    684
+  } else if is_tail {
+    603
+  } else {
+    333
+  }
+  let quality = field(report, "quality_target")
+  assert_eq(
+    field(report, "format"),
+    "moonrobo.g1-reference-learning-comparison.v1",
+  )
+  assert_eq(config, field(charter, "config"))
+  assert_eq(quality, field(charter, "quality"))
+  assert_eq(field(report, "physical_execution_allowed"), false)
+  assert_eq(field(report, "release_qualified"), false)
+  assert_eq(
+    field(report, "initialization_sha256"),
+    Json(sha(study + "/initial/actor-zero-output.pt")),
+  )
+  let references = str(field(charter, "references"))
+  assert_eq(
+    field(report, "reference_manifest_sha256"),
+    Json(sha(references + "/manifest.json")),
+  )
+  for
+    (key, name) in [
+      ("provider_sha256", "reference_learning_study.py"),
+      ("learning_provider_sha256", "reference_learning.py"),
+      ("task_provider_sha256", "reference_task.py"),
+      ("actor_provider_sha256", "reference_actor.py"),
+    ] {
+    assert_eq(field(report, key), Json(sha(native_source(study, name))))
+  }
+  let records = array(field(report, "physical_records"))
+  assert_eq(records.length(), expected_records)
+  let reused : Map[String, Json] = Map([])
+  if is_origin {
+    let parent = str(field(report, "reused_source_study"))
+    let parent_report = read(parent + "/report.json")
+    assert_eq(
+      field(config, "reused_source_report_sha256"),
+      Json(sha(parent + "/report.json")),
+    )
+    assert_eq(
+      field(report, "reused_physical_records"),
+      if is_anchor {
+        603
+      } else {
+        360
+      },
+    )
+    assert_eq(
+      field(report, "new_physical_records"),
+      if is_extended {
+        324
+      } else {
+        243
+      },
+    )
+    let keep : Map[String, Bool] = Map([])
+    for run in array(field(parent_report, "runs")) {
+      if field(run, "method") != Json(baseline_method) {
+        continue
+      }
+      for trial in array(field(run, "trials")) {
+        keep[str(field(trial, "episode_id"))] = true
+      }
+      for cycle in array(field(run, "cycles")) {
+        for id in array(field(cycle, "training_episode_ids")) {
+          keep[str(id)] = true
+        }
+      }
+    }
+    for r in array(field(parent_report, "physical_records")) {
+      if ["initial", "common-first-collection", "model-diagnostic"].contains(
+          str(field(r, "role")),
+        ) ||
+        keep.contains(str(field(r, "episode_id"))) {
+        reused[str(field(r, "episode_id"))] = r
+      }
+    }
+    assert_eq(reused.length(), if is_anchor { 603 } else { 360 })
+    for run in array(field(report, "runs")) {
+      if field(run, "method") != Json(baseline_method) {
+        continue
+      }
+      let old = array(field(parent_report, "runs")).filter(r => {
+        field(r, "method") == Json(baseline_method) &&
+        field(r, "seed") == field(run, "seed")
+      })
+      assert_eq(old.length(), 1)
+      assert_eq(field(run, "summary"), field(old[0], "summary"))
+      assert_eq(field(run, "quality"), field(old[0], "quality"))
+      assert_eq(field(run, "trials"), field(old[0], "trials"))
+    }
+  }
+  let by_id : Map[String, Json] = Map([])
+  let role_counts : Map[String, Int32] = Map([])
+  for record in records {
+    let id = str(field(record, "episode_id"))
+    assert_false(by_id.contains(id))
+    by_id[id] = record
+    if reused.get(id) is Some(original) {
+      for
+        key in [
+          "sha256", "steps", "role", "seed", "cycle", "clip_index", "origin_step",
+        ] {
+        assert_eq(field(record, key), field(original, key))
+      }
+    }
+    let role = str(field(record, "role"))
+    role_counts[role] = role_counts.get(role).unwrap_or(0) + 1
+    assert_eq(field(record, "split"), "train")
+    if ["common-first-collection", "model-diagnostic", "training"].contains(
+        role,
+      ) {
+      let cycle = num(field(record, "cycle")).to_int()
+      if is_tail {
+        let allowed = if role == "model-diagnostic" {
+          [Json(0)]
+        } else {
+          array(array(field(config, "collection_origins_per_cycle_s"))[cycle])
+        }
+        assert_true(
+          allowed.contains(Json(num(field(record, "origin_step")) * 0.02)),
+        )
+      } else {
+        let expected_origin = num(
+            array(field(config, "collection_origins_s"))[cycle],
+          ) /
+          0.02
+        assert_eq(num(field(record, "origin_step")), expected_origin)
+      }
+    }
+    assert_eq(
+      field(record, "sha256"),
+      Json(sha(resolved(study, str(field(record, "file"))))),
+    )
+  }
+  for
+    (role, count) in [
+      ("initial", 27),
+      ("common-first-collection", if is_tail { 81 } else { 27 }),
+      ("model-diagnostic", 9),
+      (
+        "training",
+        if is_anchor {
+          648
+        } else if is_extended {
+          405
+        } else if is_tail {
+          324
+        } else {
+          108
+        },
+      ),
+      ("final", 162),
+    ] {
+    assert_eq(role_counts[role], count)
+  }
+  check_quality(field(report, "initial"), quality)
+  assert_eq(
+    field(field(field(report, "initial"), "quality"), "quality_passed"),
+    false,
+  )
+  let runs = array(field(report, "runs"))
+  assert_eq(runs.length(), 6)
+  let result_summary : Array[Json] = []
+  for run in runs {
+    check_quality(run, quality)
+    let algorithm = str(field(run, "method"))
+    let cycles = array(field(run, "cycles"))
+    assert_eq(
+      cycles.length(),
+      if is_anchor || (is_extended && algorithm != baseline_method) {
+        6
+      } else {
+        3
+      },
+    )
+    if is_extended && algorithm != baseline_method {
+      let reconstruction = array(field(run, "baseline_reconstruction"))
+      assert_eq(reconstruction.length(), 3)
+      for step in reconstruction {
+        assert_eq(field(step, "all_tensors_identical"), true)
+      }
+    }
+    let mut updates = 0
+    for cycle in cycles {
+      let training = array(field(cycle, "training_episode_ids"))
+      assert_eq(training.length(), if is_tail { 27 } else { 9 })
+      for item in training {
+        let record = by_id[str(item)]
+        assert_true(
+          ["common-first-collection", "training"].contains(
+            str(field(record, "role")),
+          ),
+        )
+        assert_eq(field(record, "seed"), field(run, "seed"))
+      }
+      let actor = field(cycle, "actor")
+      let count = num(field(actor, "actor_steps")).to_int()
+      assert_true(count > 0 && count <= 12)
+      updates += count
+      if algorithm != "ppo" {
+        assert_eq(count, 12)
+        assert_eq(field(actor, "frozen_model_unchanged"), true)
+        assert_eq(
+          field(field(cycle, "model"), "updates"),
+          field(config, "model_updates_per_cycle"),
+        )
+        if is_tail {
+          assert_eq(
+            field(actor, "critic_tail_used"),
+            Json(algorithm == "model-based"),
+          )
+          let calibrated = array(field(actor, "logit_step_calibration"))
+          assert_eq(calibrated.length(), count)
+          for step in calibrated {
+            assert_true(
+              num(field(step, "applied_logit_rms")) <=
+              num(field(config, "actor_logit_rms_cap")),
+            )
+            assert_true(num(field(step, "parameter_step_scale")) > 0.0)
+            assert_true(num(field(step, "parameter_step_scale")) <= 1.0)
+          }
+        }
+      } else {
+        assert_eq(field(cycle, "model"), Json::null())
+      }
+      assert_eq(field(field(cycle, "critic"), "updates"), 128)
+      let cp = field(cycle, "checkpoint")
+      assert_eq(
+        field(cp, "sha256"),
+        Json(sha(resolved(study, str(field(cp, "checkpoint"))))),
+      )
+    }
+    assert_eq(num(field(run, "actor_optimizer_steps")).to_int(), updates)
+    let reached = field(field(run, "quality"), "quality_passed") ==
+      (true : Json)
+    assert_eq(
+      field(field(run, "cost_to_target"), "status"),
+      if reached {
+        "observed-passed-at-final-check"
+      } else {
+        "not-reached"
+      },
+    )
+    assert_eq(
+      field(field(run, "cost_to_target"), "exact_first_crossing_measured"),
+      false,
+    )
+    result_summary.push({
+      "method": field(run, "method"),
+      "seed": field(run, "seed"),
+      "actor_steps": Json(updates),
+      "summary": field(run, "summary"),
+      "quality_passed": Json(reached),
+    })
+  }
+  for shared in array(field(report, "common")) {
+    let pair = runs.filter(r => field(r, "seed") == field(shared, "seed"))
+    assert_eq(pair.length(), 2)
+    let first = array(field(pair[0], "cycles"))[0]
+    let second = array(field(pair[1], "cycles"))[0]
+    assert_eq(
+      field(first, "training_episode_ids"),
+      field(shared, "first_collection_episode_ids"),
+    )
+    assert_eq(
+      field(first, "training_episode_ids"),
+      field(second, "training_episode_ids"),
+    )
+    assert_eq(
+      field(field(first, "critic"), "state_sha256"),
+      field(field(second, "critic"), "state_sha256"),
+    )
+  }
+  for name in ["reference_learning_export.py", "reference_learning_probe.py"] {
+    @fs.write_file(
+      study + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let probe_args = [
+    study + "/provider-sources/reference_learning_probe.py",
+    "--study",
+    study,
+  ]
+  if is_origin {
+    probe_args.append(["--method", baseline_method])
+  }
+  let (probe_code, probe_out, probe_err) = @process.collect_output(
+    "moon",
+    native_command(root, probe_args),
+  )
+  assert_eq(probe_code, 0, msg=probe_err.text())
+  let probe = @json.parse(probe_out.text())
+  assert_eq(field(probe, "passed"), true)
+  let mut prefix_probe = Json::null()
+  if is_tail {
+    let next_args = [
+      study + "/provider-sources/reference_learning_probe.py",
+      "--study",
+      study,
+      "--method",
+      if is_anchor {
+        "replay-prefix-anchor"
+      } else if is_extended {
+        "replay-prefix-extended"
+      } else if is_origin {
+        "replay-prefix"
+      } else {
+        "prefix-only"
+      },
+    ]
+    if is_origin {
+      next_args.append([
+        "--offset",
+        field(config, "gradient_probe_offset_steps").stringify(),
+      ])
+    }
+    let (code, out, err) = @process.collect_output(
+      "moon",
+      native_command(root, next_args),
+    )
+    assert_eq(code, 0, msg=err.text())
+    prefix_probe = @json.parse(out.text())
+    assert_eq(field(prefix_probe, "passed"), true)
+  }
+  let seen : Map[String, Bool] = Map([])
+  let maxima : Map[String, Double] = Map([])
+  let mut transitions = 0
+  let mut new_transitions = 0
+  let mut reused_count = 0
+  @async.with_task_group() <| group => {
+    let (reader, out) = @process.read_from_process()
+    let child = @process.spawn(
+      group,
+      "moon",
+      native_command(root, [
+        study + "/provider-sources/reference_learning_export.py",
+        "--study",
+        study,
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      ]),
+      stdout=out,
+      stderr=@process.redirect_to_file(
+        study + "/verification-stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    )
+    while reader.read_until("\n") is Some(line) {
+      let entry = @json.parse(line)
+      let record = field(entry, "record")
+      let id = str(field(record, "episode_id"))
+      assert_false(seen.contains(id))
+      assert_eq(record, by_id[id])
+      seen[id] = true
+      let dataset = field(entry, "dataset")
+      let episodes = array(field(dataset, "episodes"))
+      assert_eq(episodes.length(), 1)
+      assert_eq(field(episodes[0], "id"), Json(id))
+      let steps = array(field(episodes[0], "steps"))
+      assert_eq(steps.length(), num(field(record, "steps")).to_int())
+      let proof = field(entry, "verification")
+      assert_eq(
+        field(proof, "storage_dtype"),
+        if record is { "storage_dtype": String(dtype), .. } {
+          Json(dtype)
+        } else {
+          Json("float32")
+        },
+      )
+      for
+        key in [
+          "feature_error", "reference_feature_error", "actor_mean_error", "applied_action_error_rad",
+          "reward_error", "maximum_quality_metric_reconstruction_difference",
+        ] {
+        let error = num(field(proof, key))
+        maxima[key] = maxima.get(key).unwrap_or(0.0).max(error)
+      }
+      let scratch = study + "/native-episode.json"
+      @fs.write_file(scratch, dataset.stringify(), create_mode=CreateOrTruncate)
+      let (code, bytes, err) = @process.collect_output(
+        root +
+        "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+        [scratch, "train", "1", "1000000"],
+      )
+      assert_eq(code, 0, msg=err.text())
+      assert_eq(field(@json.parse(bytes.text()), "window_length"), 1)
+      @fs.remove(scratch)
+      transitions += steps.length()
+      if reused.contains(id) {
+        reused_count += 1
+      } else {
+        new_transitions += steps.length()
+      }
+      if seen.length() % 27 == 0 {
+        println(
+          "Verified \{seen.length()}/\{expected_records} physical records",
+        )
+      }
+    }
+    reader.close()
+    assert_eq(child.wait(), 0)
+  }
+  assert_eq(seen.length(), records.length())
+  if is_origin {
+    assert_eq(reused_count, if is_anchor { 603 } else { 360 })
+  }
+  guard report is Object(fields) else { fail("expected report object") }
+  fields["source_report_sha256"] = Json(sha(study + "/report.json"))
+  fields["native_verification"] = {
+    "episodes": Json(seen.length()),
+    "transitions": Json(transitions),
+    "new_episodes": Json(seen.length() - reused_count),
+    "new_transitions": Json(new_transitions),
+    "reused_episodes": Json(reused_count),
+    "all_records_validated": true,
+    "physics_archive_dtype": "float32; scalar original quality from float64 MuJoCo",
+    "maxima": Json(maxima),
+    "gradient_probe": probe,
+    "prefix_gradient_probe": if is_origin {
+      Json::null()
+    } else {
+      prefix_probe
+    },
+    "trajectory_gradient_probe": if is_origin {
+      prefix_probe
+    } else {
+      Json::null()
+    },
+    "actor_origin_sampling": if is_origin {
+      read(study + "/actor-origin-verification.json")
+    } else {
+      Json::null()
+    },
+    "common_first_fit": if is_tail {
+      read(study + "/common-fit-verification.json")
+    } else {
+      Json::null()
+    },
+    "baseline_reconstruction": if is_extended {
+      read(study + "/reconstruction-verification.json")
+    } else {
+      Json::null()
+    },
+    "model_replay": if is_anchor {
+      let proof = read(study + "/model-replay-verification.json")
+      assert_eq(field(proof, "pool_counts_verified"), true)
+      assert_eq(field(proof, "seeded_model_draws_verified"), true)
+      proof
+    } else {
+      Json::null()
+    },
+    "export_provider_sha256": Json(
+      sha(native_source(study, "reference_learning_export.py")),
+    ),
+  }
+  @fs.write_file(
+    args[3],
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    (
+      {
+        "summary": Json(result_summary),
+        "native_verification": field(report, "native_verification"),
+      } : Json).stringify(),
+  )
+}
+
+///|
+fn native_command(root : String, original : Array[String]) -> Array[String] {
+  let command = [
+    "-C", root, "run", "--quiet", "--warn-list", "-a", "--target", "native", "cmd/reference_scripts",
+    "--", root,
+  ]
+  command.append(original)
+  command
+}
+
+///|
+/// Hash the archived native implementation; Python copies are historical evidence.
+fn native_source(study : String, original : String) -> String raise {
+  let path = match original {
+    "reference_initialization.py" =>
+      "src/learning_reference/reference_initialization_study.mbt"
+    "reference_actor.py" => "src/learning_reference/reference_actor.mbt"
+    "reference_learning.py" => "src/learning_reference/reference_learning.mbt"
+    "reference_task.py" => "src/learning_reference/reference_task.mbt"
+    "reference_learning_study.py" =>
+      "src/learning_reference/reference_learning_study.mbt"
+    "full_body_reference.py" => "src/learning_balance/physics/reference.mbt"
+    "full_body_reference_study.py" =>
+      "src/learning_balance/reference_study/run.mbt"
+    "reference_root_integration.py" =>
+      "src/learning_reference_roots/integration.mbt"
+    "reference_tail_directions.py" => "src/learning_reference_routes/tail.mbt"
+    "reference_initialization_export.py" =>
+      "src/learning_reference/reference_initialization_export.mbt"
+    "reference_learning_export.py"
+    | "reference_learning_export-final-verify.py" =>
+      "src/learning_reference/reference_learning_export.mbt"
+    "reference_feedback_response_export.py" =>
+      "src/learning_reference_directions/export.mbt"
+    "reference_root_export.py" => "src/learning_reference_roots/export.mbt"
+    _ => fail("no native provider mapping: " + original)
+  }
+  study + "/native-provider-sources/" + path
+}

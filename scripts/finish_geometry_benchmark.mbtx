@@ -1,0 +1,102 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  guard @json.parse(
+      @fs.read_file(out + "/geometry-math-snapshot-gate-r2/result.json").text(),
+    )
+    is { "passed": True, .. } else {
+    fail("full update gate required")
+  }
+  let history = @fs.read_file("scripts/reclaim_geometry_history.mbtx").text()
+  let lines = history
+    .split("\n")
+    .filter(x => x.contains("let names=["))
+    .to_array()
+  assert_eq(lines.length(), 1)
+  let socket = "/tmp/moonrobo-math-179.sock"
+  let host = "wlc004s@192.168.2.179"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  for
+    (tag, kind, label, owners) in [
+      (
+        "reverse_smc_a",
+        "smc",
+        "geometry-math-original-smc-bench-b2",
+        [
+          "geometry-math-native-bench-a", "geometry-math-original-smc-bench-a", "training-native-gate-ap",
+          "world-reference-native-gate-f", "geometry-math-native-gate-r2", "geometry-math-reference-gate-p",
+        ],
+      ),
+      (
+        "reverse_native_a",
+        "native",
+        "geometry-math-native-bench-b",
+        [
+          "geometry-math-original-smc-bench-b2", "training-native-gate-ap", "world-reference-native-gate-f",
+        ],
+      ),
+    ] {
+    let replacement = "    #| let names=" + Json(owners).stringify()
+    let cleanup = history
+      .replace_all(old=lines[0].to_owned(), new=replacement)
+      .replace_all(old="history_b", new=tag)
+      .replace_all(old="history-advice-b", new=tag + "-advice")
+    let script = out + "/reclaim_" + tag + ".mbtx"
+    @fs.write_file(script, cleanup, create_mode=CreateNew)
+    assert_eq(@process.run("moon", ["run", "--target", "native", script]), 0)
+    let folder = out + "/" + label
+    @fs.mkdir(folder)
+    let status = @process.run(
+      "ssh",
+      [
+        "-S",
+        socket,
+        host,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/run_geometry_math_training_r.mbtx -- train " +
+        kind +
+        " off 13 " +
+        label +
+        " bf16-full",
+      ],
+      stdout=@process.redirect_to_file(
+        folder + "/controller.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        folder + "/controller.stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    for
+      name in [
+        "result.json", "final.json", "completion.json", "training-guard.json", "training-docker-final.json",
+        "training.stdout.log", "training.stderr.log", "protocol.json", "compiled-packages.json",
+        "compilation-audit.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=" + socket,
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-" +
+          label +
+          "/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+    assert_eq(status, 0)
+  }
+}

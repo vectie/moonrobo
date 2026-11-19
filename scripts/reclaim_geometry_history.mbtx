@@ -1,0 +1,109 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let prefix = @fs.read_file(out + "/advise_heading_inputs_source.mbtx")
+  .text()
+  .split("async fn main {")
+  .to_array()[0].to_owned()
+  let main =
+    #|async fn main {
+    #| idle("")
+    #| let receipts:Array[Json]=[]
+    #| let report=base+"/geometry-history-advice-b.json"
+    #| guard !@fs.exists(report) else {fail("fresh receipt")}
+    #| @fs.write_file(report,"{}",create_mode=CreateNew)
+    #| let names=["actor-frozen-reference-e","actor-frozen-reference-d","actor-adjoints-e","actor-reward-call-ai","actor-reward-saved-ad","training-actor-joins-smc-u","actor-geometry-native-j","actor-geometry-native-h","actor-geometry-native-i","actor-geometry-native-f","actor-geometry-native-e","actor-geometry-native-g","actor-adjoints-c","actor-adjoints-a","training-actor-joins-native-y","training-actor-joins-native-u","actor-first-step-e","actor-first-step-d","actor-reward-reference-native-a","actor-geometry-native-c2","actor-geometry-native-b","actor-step-native-g","actor-aligned-native-a"]
+    #| let mut reclaimed=0L
+    #| for name in names {
+    #|  idle("")
+    #|  let root="/home/wlc004s/moonrobo/runs/hotspot-shared-"+name
+    #|  guard read_json(root+"/training-docker-final.json") is [saved] else {fail("closed receipt")}
+    #|  let actual=inspect(text(field(saved,"Id")));stopped(actual)
+    #|  for key in ["Id","Image","Config","State"] {assert_eq(field(actual,key),field(saved,key))}
+    #|  guard field(actual,"Mounts") is Array(mounts)&&mounts.any(m=>field(m,"Source")==Json(root)&&field(m,"Destination")==Json("/pair")&&field(m,"RW")==Json(true)) else {fail("owned output")}
+    #|  assert_eq(@fs.realpath(root),root)
+    #|  let entries=inventory(command("find",["-P",root,"-xdev","-maxdepth","14","-printf","%y\t%s\t%n\t%U\t%D\t%i\t%T@\t%C@\t%P\\0"]))
+    #|   .filter(e=>e.path.has_suffix(".f64")||e.path.has_suffix(".f64le")||e.path.has_suffix(".pt")||e.path.has_prefix("cuda-cache/")||e.path.has_prefix("inductor-cache/"))
+    #|  for start=0;start<entries.length();start=start+32 {
+    #|   idle("");stopped(inspect(text(field(actual,"Id"))))
+    #|   let end=if start+32<entries.length(){start+32}else{entries.length()}
+    #|   let paths=entries[start:end].map(e=>root+"/"+e.path)
+    #|   let before=read_json_fincore(paths)
+    #|   for i in 0..<paths.length() {
+    #|    let path=paths[i];let b=before[i]
+    #|    if num(field(b,"res"))==0L {continue}
+    #|    assert_eq(field(b,"file"),Json(path));assert_eq(num(field(b,"size")),entries[start+i].size)
+    #|    assert_eq(@fs.realpath(path),path);assert_eq(@fs.kind(path,follow_symlink=false),Regular)
+    #|    let stamp=command("stat",["-c","%u:%h:%d:%i:%s:%Y:%Z",path])
+    #|    ignore(command("sync",["--data","--",path]))
+    #|    ignore(command("dd",["if="+path,"iflag=nocache,nofollow","count=0","status=none"]))
+    #|    assert_eq(command("stat",["-c","%u:%h:%d:%i:%s:%Y:%Z",path]),stamp)
+    #|   }
+    #|   let after=read_json_fincore(paths)
+    #|   for i in 0..<paths.length() {reclaimed+=num(field(before[i],"res"))-num(field(after[i],"res"))}
+    #|   receipts.push({"owner":field(actual,"Id"),"before":Json(before),"after":Json(after),"identity_preserved":true})
+    #|  }
+    #|  println("CLOSED_CACHE "+name+" reclaimed_total="+reclaimed.to_string())
+    #|  @fs.write_file(report,Json({"reclaimed_resident_bytes":Json(reclaimed),"files":Json(receipts),"no_deletion":true,"no_global_cache_drop":true}).stringify(indent=2))
+    #| }
+    #| idle("")
+    #|}
+    #|///|
+    #|async fn read_json_fincore(paths:Array[String])->Array[Json] {
+    #| let j=@json.parse(command(fincore,["--json","--bytes","--output","FILE,SIZE,RES"]+paths))
+    #| guard field(j,"fincore") is Array(rows)&&rows.length()==paths.length() else{fail("residency")}
+    #| rows
+    #|}
+  @fs.write_file(
+    out + "/advise_geometry_history_b.mbtx",
+    prefix + main,
+    create_mode=CreateNew,
+  )
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-math-179.sock",
+      out + "/advise_geometry_history_b.mbtx",
+      "wlc004s@192.168.2.179:" + base + "/advise_geometry_history_b.mbtx",
+    ]),
+    0,
+  )
+  let status = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-math-179.sock",
+      "wlc004s@192.168.2.179",
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/advise_geometry_history_b.mbtx",
+    ],
+    stdout=@process.redirect_to_file(
+      out + "/history-advice-b.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      out + "/history-advice-b.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  ignore(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-math-179.sock",
+      "wlc004s@192.168.2.179:" + base + "/geometry-history-advice-b.json",
+      out + "/history-advice-b.json",
+    ]),
+  )
+  assert_eq(status, 0)
+}

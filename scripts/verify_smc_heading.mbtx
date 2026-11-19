@@ -1,0 +1,13 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+async fn main {
+  let root="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-heading-20261027"
+  for (label,args) in [
+    ("moon-check",["check","--target","native","--warn-list","-a","src/learning_aligned_gpu"]),
+    ("moon-info",["info","--target","native","src/learning_aligned_gpu"]),
+    ("moon-fmt",["fmt","src/learning_aligned_gpu"]),
+  ] {
+    let code=@process.run("moon",args,stdout=@process.redirect_to_file(root+"/"+label+".stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(root+"/"+label+".stderr.log",create_mode=CreateNew))
+    guard code==0 else {fail(label)}
+    println(label+" passed")
+  }
+}

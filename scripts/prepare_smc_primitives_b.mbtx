@@ -1,0 +1,30 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process" }
+fn replace(s : String,a : String,b : String) -> String raise {guard s.contains(a) else {fail(a)};s.replace_all(old=a,new=b)}
+async fn run(cmd : String,args : Array[String]) -> Unit {guard @process.run(cmd,args)==0 else {fail(cmd)}}
+async fn main {
+  let repo="/Users/kq/Workspace/moonrobo"
+  let out=repo+"/output/spark-runtime-20261024/smc-primitives-20261028"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host="wlc004s@192.168.2.179"
+  let socket="/tmp/moonrobo-operator-179.sock"
+  let fixture=replace(@fs.read_file(out+"/primitives_fixture_a.mbt").text(),"      reuse_geometry: true,","      detached_rotation_constants: @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") == Some(\"constants\") || @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") == Some(\"both\"),\n      reuse_geometry: true,")
+  @fs.write_file(out+"/primitives_fixture_b.mbt",fixture,create_mode=CreateNew)
+  let mut builder=@fs.read_file(out+"/build_primitives_a.mbtx").text()
+  for (a,b) in [("moonrobo-smc-primitives-a","moonrobo-smc-primitives-b"),("smc-primitives-gate-a","smc-primitives-gate-b"),("smc-primitives-tensor-a","smc-primitives-tensor-b"),("smc-primitives-runtime-a","smc-primitives-runtime-b"),("smc-primitives-tests-a","smc-primitives-tests-b"),("-cpu-a","-cpu-b")] {builder=replace(builder,a,b)}
+  builder=replace(builder,"    container(\"smc-primitives-config-cpu-b\"","    container(\"smc-primitives-constants-cpu-b\", \"/workspace/moonrobo-smc-primitives-b/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/geometry/geometry.blackbox_test.exe\", [\"rotation_constants_test.mbt:0-1\"])\n    container(\"smc-primitives-config-cpu-b\"")
+  @fs.write_file(out+"/build_primitives_b.mbtx",builder,create_mode=CreateNew)
+  let mut driver=@fs.read_file(out+"/run_primitives_a.mbtx").text()
+  for (a,b) in [("smc-primitives-gate-a","smc-primitives-gate-b"),("run_primitives_a.mbtx","run_primitives_b.mbtx"),("build_primitives_a.mbtx","build_primitives_b.mbtx"),("primitives_fixture_a.mbt","primitives_fixture_b.mbt"),("\"cross\", \"snapshot\", \"both\"","\"cross\", \"snapshot\", \"constants\", \"both\"")] {driver=replace(driver,a,b)}
+  @fs.write_file(out+"/run_primitives_b.mbtx",driver,create_mode=CreateNew)
+  @fs.write_file(out+"/invoke_primitives_b.mbtx",replace(@fs.read_file(out+"/invoke_primitives_a.mbtx").text(),"run_primitives_a.mbtx","run_primitives_b.mbtx"),create_mode=CreateNew)
+  for file in ["primitives_fixture_b.mbt","build_primitives_b.mbtx","run_primitives_b.mbtx","invoke_primitives_b.mbtx"] {run("scp",["-o","ControlPath="+socket,out+"/"+file,host+":"+base+"/"+file])}
+  run("ssh",["-S",socket,host,"test ! -e "+base+"/workspace/moonrobo-smc-primitives-b"])
+  run("ssh",["-S",socket,host,"cp -a --reflink=auto "+base+"/workspace/moonrobo-smc-primitives-a "+base+"/workspace/moonrobo-smc-primitives-b"])
+  for path in ["execution_optimizations.mbt","learning.mbt","microbatch.mbt","actor_microbatch.mbt","geometry/state.mbt","geometry/rotations.mbt","geometry/rotation_constants_test.mbt","geometry/moon.pkg","cmd/optimizations.mbt","cmd/optimizations_wbtest.mbt"] {
+    run("scp",["-o","ControlPath="+socket,repo+"/src/learning_aligned_gpu/"+path,host+":"+base+"/workspace/moonrobo-smc-primitives-b/src/learning_aligned_gpu/"+path])
+  }
+  run("ssh",["-S",socket,host,"cp "+base+"/primitives_fixture_b.mbt "+base+"/workspace/moonrobo-smc-primitives-b/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"])
+  for mode in ["gate-build-smc-primitives-b","smc-primitives-tests-b"] {
+    run("ssh",["-S",socket,host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/build_primitives_b.mbtx -- "+mode])
+  }
+}

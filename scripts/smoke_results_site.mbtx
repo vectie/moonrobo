@@ -1,0 +1,219 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(result) else {
+    fail("Missing field: " + key)
+  }
+  result
+}
+
+///|
+fn string(value : Json) -> String raise {
+  guard value is String(result) else { fail("Expected string") }
+  result
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(result) else { fail("Expected array") }
+  result
+}
+
+///|
+async fn run(executable : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(executable, args)
+  assert_eq(code, 0, msg=err.text())
+  out.text()
+}
+
+///|
+async fn get(host : String, route : String) -> Json {
+  @json.parse(
+    run("/usr/bin/curl", [
+      "--fail",
+      "--silent",
+      "--show-error",
+      "--max-time",
+      "45",
+      host + route,
+    ]),
+  )
+}
+
+///|
+// Reopens sealed evidence only. No training, simulation or hardware commands.
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="smoke_results_site.mbtx REPO HOST BOOK OUTPUT",
+  )
+  let repo = args[1]
+  let host = args[2]
+  let book = args[3]
+  let output = args[4]
+  let health = get(host, "/__moonrobo_health")
+  assert_eq(field(health, "ok"), true)
+  assert_eq(field(health, "read_only"), true)
+  let snapshot = get(host, "/api/cockpit/snapshot")
+  assert_eq(field(snapshot, "read_only"), true)
+  let listing = get(host, "/api/moondata/learning-experiments")
+  assert_eq(field(listing, "physical_execution_allowed"), false)
+  let experiments = array(field(listing, "experiments"))
+  assert_true(!experiments.is_empty())
+  for experiment in experiments {
+    assert_eq(field(experiment, "physical_execution_allowed"), false)
+  }
+  let checks : Array[Json] = [
+    { "name": "Local service", "status": "passed" },
+    { "name": "Read-only cockpit", "status": "passed" },
+    {
+      "name": "Experiment registry",
+      "status": "passed",
+      "count": Json(experiments.length()),
+    },
+  ]
+  let aligned = experiments.filter(e => {
+    field(e, "experiment_id") == Json("supermimic-aligned-smoke")
+  })
+  assert_eq(aligned.length(), 1)
+  let evidence : Map[String, Json] = Map([])
+  let sources : Array[Json] = []
+  for name in ["report.json", "evaluation.json"] {
+    let payloads = array(field(aligned[0], "payloads"))
+    let payload = payloads.filter(p => field(p, "relative_path") == Json(name))
+    assert_eq(payload.length(), 1)
+    let reference = field(payload[0], "data_ref")
+    let checksum = string(field(reference, "checksum"))
+    let digest = checksum[7:].to_owned()
+    let path = book +
+      "/moondata/blobs/sha256/" +
+      digest[:2].to_owned() +
+      "/" +
+      digest
+    let actual = run("/usr/bin/shasum", ["-a", "256", path])
+    .split(" ")
+    .to_array()[0].to_owned()
+    assert_eq(actual, digest)
+    let content = @fs.read_file(path).text()
+    evidence[name] = @json.parse(content)
+    @fs.write_file(output + "/" + name, content, create_mode=CreateOrTruncate)
+    sources.push({
+      "file": Json(name),
+      "sha256": Json(digest),
+      "experiment": "supermimic-aligned-smoke",
+    })
+  }
+  let evaluation = evidence["evaluation.json"]
+  assert_eq(field(evaluation, "benchmark_complete"), true)
+  assert_eq(
+    field(evaluation, "n_clips"),
+    Json(array(field(evaluation, "per_clip")).length()),
+  )
+  checks.push({
+    "name": "Sealed smoke evaluation",
+    "status": "passed",
+    "count": field(evaluation, "n_clips"),
+  })
+  let evaluations : Array[Json] = [
+    {
+      "experiment_id": "supermimic-aligned-smoke",
+      "evaluation": evaluation,
+      "file": "evaluation.json",
+    },
+  ]
+  for experiment in experiments {
+    let id = string(field(experiment, "experiment_id"))
+    if id == "supermimic-aligned-smoke" {
+      continue
+    }
+    let payloads = array(field(experiment, "payloads"))
+    let matches = payloads.filter(p => {
+      field(p, "relative_path") == Json("evaluation.json")
+    })
+    if matches.is_empty() {
+      continue
+    }
+    let reference = field(matches[0], "data_ref")
+    let digest = string(field(reference, "checksum"))[7:].to_owned()
+    let path = book +
+      "/moondata/blobs/sha256/" +
+      digest[:2].to_owned() +
+      "/" +
+      digest
+    assert_eq(
+      run("/usr/bin/shasum", ["-a", "256", path]).split(" ").to_array()[0].to_owned(),
+      digest,
+    )
+    let content = @fs.read_file(path).text()
+    let other = @json.parse(content)
+    assert_eq(field(other, "benchmark_complete"), true)
+    let filename = id + "-evaluation.json"
+    @fs.write_file(
+      output + "/" + filename,
+      content,
+      create_mode=CreateOrTruncate,
+    )
+    evaluations.push({
+      "experiment_id": Json(id),
+      "evaluation": other,
+      "file": Json(filename),
+    })
+    sources.push({
+      "file": Json(filename),
+      "sha256": Json(digest),
+      "experiment": Json(id),
+    })
+    checks.push({
+      "name": Json("Sealed evaluation: " + id),
+      "status": "passed",
+      "count": field(other, "n_clips"),
+    })
+  }
+  let replay_ids = array(field(listing, "replay_experiment_ids"))
+  for replay_id in replay_ids {
+    let id = string(replay_id)
+    let envelope = get(
+      host,
+      "/api/moondata/learning-experiments/" + id + "/replay",
+    )
+    assert_eq(field(envelope, "physical_execution_allowed"), false)
+    checks.push({ "name": Json("3D replay: " + id), "status": "passed" })
+  }
+  let now = run("/bin/date", ["-u", "+%Y-%m-%dT%H:%M:%SZ"]).trim().to_owned()
+  let result : Json = {
+    "format": "moonrobo.results-site-smoke.v1",
+    "checked_at": Json(now),
+    "mode": "read-only-smoke",
+    "training_started": false,
+    "simulation_started": false,
+    "physical_execution_allowed": false,
+    "checks": Json(checks),
+    "experiments": Json(experiments),
+    "replay_experiment_ids": Json(replay_ids),
+    "evaluation": evaluation,
+    "evaluations": Json(evaluations),
+    "recorded_training": evidence["report.json"],
+    "sources": Json(sources),
+    "reference_site": "https://supermimic.github.io/",
+    "scope": "Fresh read-only service smoke with previously recorded experimental results. No new training or scientific replication.",
+  }
+  @fs.write_file(
+    output + "/smoke.json",
+    result.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "\{checks.length()} read-only checks passed; \{experiments.length()} experiments exported. No training started. Repository: " +
+    repo,
+  )
+}

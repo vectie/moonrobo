@@ -1,0 +1,167 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn sha(bytes : Bytes) -> String {
+  let h = @crypto.SHA256::new()
+  h.update(bytes)
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+async fn read(path : String, limit : Int64) -> Bytes {
+  let f = @fs.open(path, mode=ReadOnly)
+  defer f.close()
+  guard f.size() > 0L && f.size() <= limit else {
+    fail("file size out of bounds: " + path)
+  }
+  f.read_exactly_at(f.size().to_int(), position=0L)
+}
+
+///|
+async fn store(path : String, bytes : Bytes) -> Unit {
+  if @fs.exists(path) {
+    guard read(path, bytes.length().to_int64()) == bytes else {
+      fail("existing file differs: " + path)
+    }
+  } else {
+    @fs.write_file(path, bytes, create_mode=CreateNew)
+  }
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, root, bones_cache, lafan_cache, manifest, menu] else {
+    fail(
+      "BUNDLE_ROOT BONES_CACHE LAFAN_CACHE LAFAN_MANIFEST SHOWCASE_MOTIONS_JSON",
+    )
+  }
+  let src = root + "/source"
+  guard @json.parse(@utf8.decode(read(menu, 1048576L)))
+    is {
+      "catalogSha256": catalog_pin,
+      "lafanManifestSha256": lafan_pin,
+      "clips": Array(rows),
+      ..
+    } &&
+    rows.length() == 36 else {
+    fail("invalid showcase selection")
+  }
+  let catalog = read(src + "/catalog.json", 67108864L)
+  let lafan = read(manifest, 1048576L)
+  guard @json.parse(@utf8.decode(read(src + "/receipt.json", 1048576L)))
+    is { "files": { "catalog.json": pin, .. }, .. } &&
+    pin == catalog_pin &&
+    Json(sha(catalog)) == pin &&
+    Json(sha(lafan)) == lafan_pin else {
+    fail("source catalog digest mismatch")
+  }
+  guard @json.parse(@utf8.decode(catalog))
+    is {
+      "motion_names": Array(names),
+      "motion_sha256": Array(hashes),
+      "source_fps": Number(120, ..),
+      ..
+    } &&
+    @json.parse(@utf8.decode(lafan))
+    is { "clips": Array(external), "source_fps": Number(30, ..), .. } else {
+    fail("invalid source catalog")
+  }
+  let dest = src + "/showcase-clips"
+  let ready = @fs.exists(dest)
+  let stage = if ready { dest } else { dest + ".incoming" }
+  let seen : Map[Int32, Bool] = Map([])
+  for row in rows {
+    guard row
+      is {
+        "index": index,
+        "name": name,
+        "source": String(hash),
+        "sha256": target,
+        "fps": rate,
+        "frames": count,
+        ..
+      } else {
+      fail("invalid selection row")
+    }
+    let i : Int32 = @json.from_json(index)
+    let fps : Int32 = @json.from_json(rate)
+    let frames : Int32 = @json.from_json(count)
+    guard !seen.contains(i) && frames >= 2 && frames <= 16777216 / 608 else {
+      fail("invalid index/frame count")
+    }
+    seen[i] = true
+    let cache = if i >= 0 {
+      guard i < names.length() &&
+        i < hashes.length() &&
+        names[i] == name &&
+        hashes[i] == Json(hash) &&
+        fps == 120 else {
+        fail("BONES clip identity mismatch")
+      }
+      bones_cache
+    } else {
+      let j = -1 - i
+      guard j >= 0 &&
+        j < external.length() &&
+        external[j]
+        is {
+          "id": expected_name,
+          "sha256": expected_hash,
+          "fps": expected_rate,
+          ..
+        } &&
+        expected_name == name &&
+        expected_hash == Json(hash) &&
+        expected_rate == rate &&
+        fps == 30 &&
+        !hashes.contains(Json(hash)) else {
+        fail("LAFAN1 clip identity mismatch")
+      }
+      lafan_cache
+    }
+    let key = sha(
+      @utf8.encode(
+        "moonrobo.motion-shard.f64le.v1:" + hash + ":" + fps.to_string(),
+      ),
+    )
+    let folder = "/" + key[:2].to_owned()
+    let rel = folder + "/" + key + ".f64"
+    let meta = read(cache + rel + ".json", 65536L)
+    guard @json.parse(@utf8.decode(meta))
+      is {
+        "format": String("moonrobo.motion-shard.f64le.v1"),
+        "source_sha256": source_hash,
+        "source_fps": source_fps,
+        "frames": n,
+        "state_sha256": state,
+        ..
+      } &&
+      source_hash == Json(hash) &&
+      source_fps == rate &&
+      n == count &&
+      state == target else {
+      fail("shard metadata mismatch: " + rel)
+    }
+    let bytes = read(cache + rel, frames.to_int64() * 608L)
+    guard bytes.length() == frames * 608 && Json(sha(bytes)) == target else {
+      fail("shard byte count or digest mismatch: " + rel)
+    }
+    if !@fs.exists(stage + folder) {
+      @fs.mkdir(stage + folder, recursive=true)
+    }
+    store(stage + rel, bytes)
+    store(stage + rel + ".json", meta)
+  }
+  if !ready {
+    @fs.rename(stage, dest, replace=false)
+  }
+  println("Verified " + rows.length().to_string() + " showcase references")
+}

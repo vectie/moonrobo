@@ -1,0 +1,66 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn replace(s : String, a : String, b : String) -> String raise {
+  guard s.contains(a) else { fail("missing source anchor: " + a) }
+  s.replace_all(old=a, new=b)
+}
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo/src/learning_aligned_gpu/"
+  let path = root + "geometry/state.mbt"
+  let mut s = @fs.read_file(path).text()
+  guard !s.contains("heading_mode~ : HeadingMode") else { fail("heading wiring already applied; do not rewrite the preserved implementation") }
+  for name in ["invariant_features", "world_inputs", "world_targets", "state_error", "world_integrate"] {
+    let start = "pub fn " + name + "("
+    let parts = s.split(start).to_array()
+    guard parts.length() == 2 else { fail(name) }
+    let rest = parts[1].to_string()
+    let end = if name == "world_integrate" { ") -> State raise {" } else { ") -> @tensor.Tensor raise {" }
+    let segments = rest.split(end).to_array()
+    guard segments.length() >= 2 else { fail(name + " signature") }
+    s = parts[0].to_string() + start + segments[0].to_string() +
+      "  heading_mode~ : HeadingMode = StableFallback,\n" + end +
+      rest.substring(start=segments[0].length()+end.length()).to_string()
+  }
+  for (a,b) in [
+    ("yaw_mat(backend, s.rotation)", "yaw_mat(backend, s.rotation, mode=heading_mode)"),
+    ("invariant_features(backend, s)", "invariant_features(backend, s, heading_mode~)"),
+    ("world_targets(backend, target, predicted)", "world_targets(backend, target, predicted, heading_mode~)"),
+  ] { s = replace(s,a,b) }
+  @fs.write_file(path,s)
+  let path = root + "geometry/context.mbt"
+  let mut s = @fs.read_file(path).text()
+  for (a,b) in [
+    ("  rotation_error_mode : RotationErrorMode", "  rotation_error_mode : RotationErrorMode\n  heading_mode : HeadingMode"),
+    ("    rotation_error_mode: QuaternionLog,", "    rotation_error_mode: QuaternionLog,\n    heading_mode: StableFallback,"),
+    ("invariant_features(self.backend, state)", "invariant_features(self.backend, state, heading_mode=self.heading_mode)"),
+    ("yaw_mat(self.backend, state.rotation)", "yaw_mat(self.backend, state.rotation, mode=self.heading_mode)"),
+    ("yaw_mat(self.backend, state.rotation.matmul(tr(reference.rotation)))", "yaw_mat(self.backend, state.rotation.matmul(tr(reference.rotation)), mode=self.heading_mode)"),
+  ] { s = replace(s,a,b) }
+  s += "\n///|\npub fn Context::with_heading_mode(self : Context, mode : HeadingMode) -> Context {\n  { ..self, heading_mode: mode }\n}\n"
+  @fs.write_file(path,s)
+  for file in ["learning.mbt", "microbatch.mbt", "actor_microbatch.mbt"] {
+    let path = root + file
+    let mut s = @fs.read_file(path).text()
+    for name in ["world_inputs", "world_integrate", "state_error"] {
+      let old = match name {
+        "world_inputs" => "@geometry.world_inputs(self.backend, state, action, xi_n)"
+        "world_integrate" => "@geometry.world_integrate(self.backend, state, delta)"
+        _ => "@geometry.state_error(self.backend, state, target)"
+      }
+      if s.contains(old) {
+        s = replace(s,old,old.substring(end=old.length()-1).to_string()+", heading_mode=self.optimizations.heading_mode)")
+      }
+    }
+    if file == "learning.mbt" {
+      s = replace(s,".with_rotation_error_mode(optimizations.rotation_error_mode)",".with_rotation_error_mode(optimizations.rotation_error_mode)\n    .with_heading_mode(optimizations.heading_mode)")
+      s = replace(s,"@geometry.normalize_xi(self.backend, xi),\n    )", "@geometry.normalize_xi(self.backend, xi),\n      heading_mode=self.optimizations.heading_mode,\n    )")
+      s = replace(s,"@geometry.world_targets(self.backend, s, s1)","@geometry.world_targets(self.backend, s, s1, heading_mode=self.optimizations.heading_mode)")
+    }
+    @fs.write_file(path,s)
+  }
+  let path = root + "world_error_batched.mbt"
+  let s = replace(@fs.read_file(path).text(),"      packed_targets,", "      packed_targets,\n      heading_mode=self.optimizations.heading_mode,")
+  @fs.write_file(path,s)
+  let path = root + "audit.mbt"
+  let s = replace(@fs.read_file(path).text(),"  let learner_config_sha256 =", "  if metadata.heading_mode.unwrap_or(@geometry.StableFallback) != @geometry.StableFallback {\n    guard config is Object(fields) else { fail(\"invalid audit config object\") }\n    fields[\"heading_mode\"] = Json(metadata.heading_mode.unwrap_or(@geometry.StableFallback))\n  }\n  let learner_config_sha256 =")
+  @fs.write_file(path,s)
+}

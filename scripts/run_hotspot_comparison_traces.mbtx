@@ -1,0 +1,78 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_] else { fail("fixed serial diagnostic series only") }
+  let base = "/home/wlc004s/moonrobo/private/hotspot-smc4096-20261026-a"
+  let old = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+  let pair = "/home/wlc004s/moonrobo/runs/native-hotspot-vs-smc512-20261026-b"
+  guard @json.parse(@fs.read_file(pair + "/summary.json").text())
+    is { "accepted": True, .. } else {
+    fail("complete accepted fresh ABBA before diagnostics")
+  }
+  async fn run(name : String, script : String, args : Array[String]) -> Unit {
+    println("Starting " + name)
+    let status = @process.run(
+      "/home/wlc004s/moonrobo/toolchain/bin/moon",
+      ["run", "--target", "native", script, "--", ..args],
+      stdout=@process.redirect_to_file(
+        base + "/" + name + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        base + "/" + name + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    )
+    guard status == 0 else {
+      fail(
+        name + " failed; evidence retained, no automatic retry or guard changes",
+      )
+    }
+    println("Completed " + name)
+  }
+  // Keep native windows ahead of new compiler caches. No numerical or memory
+  // settings depend on order; wall-time observer deltas remain single-window
+  // diagnostics, never a causal steady-throughput estimate.
+  for (kind, prefix) in [("native", "n"), ("smc-compiled", "s")] {
+    for
+      (phase, tag) in [
+        ("actor_critic", "actor"),
+        ("world", "world"),
+        ("collection", "collect"),
+      ] {
+      for
+        (observer, collector, suffix) in [
+          ("off", "off", "off"),
+          ("aten", "nsys", "trace"),
+        ] {
+        let label = "combo26-" + prefix + "-" + tag + "-" + suffix
+        run(
+          label + "-prepare",
+          base + "/prepare_hotspot_comparison_traces.mbtx",
+          [label, phase, observer, collector],
+        )
+        let runner = old + "/run_phase_" + label + ".mbtx"
+        if kind == "native" {
+          run(
+            label + "-image-pages",
+            base + "/advise_closed_smc_small_image_pages.mbtx",
+            ["--advise", "cache-" + label + ".json"],
+          )
+          run(label + "-preflight", runner, ["--preflight", kind])
+        }
+        run(label + "-run", runner, ["--run", kind])
+      }
+    }
+  }
+  println(
+    "Twelve completed independent phase/observer windows; CPU export/analysis still required",
+  )
+}

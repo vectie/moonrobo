@@ -1,0 +1,187 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=stderr.text())
+  stdout.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() == 4 || args.length() == 5,
+    msg="usage: fit_g1_policy.mbtx ABSOLUTE_REPO DYNAMICS_RUN NEW_OUTPUT [PRIOR_POLICY_DIR]",
+  )
+  let root = args[1]
+  let source = args[2]
+  let output = args[3]
+  @fs.mkdir(output, recursive=true)
+  let python = root + "/target/learning-venv/bin/python"
+  let policy = root + "/providers/motion_learning/policy.py"
+  let scene = root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml"
+  let physics = root + "/examples/learning/g1-cpu-experiment.json"
+  let collect_config = root + "/examples/learning/g1-dynamics-collection.json"
+  let config = root + "/examples/learning/g1-policy-fit.json"
+  let executable = root +
+    "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe"
+  println("Checking terminal and time-limit return targets")
+  ignore(
+    run(python, [
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      root + "/providers/motion_learning",
+      "-p",
+      "test_policy.py",
+    ]),
+  )
+  println("Fitting actor/critic and evaluating in MuJoCo")
+  let fit_command = [
+    policy,
+    "fit",
+    "--train",
+    source + "/train-batch.json",
+    "--dynamics",
+    source + "/fit/dynamics-seed-0.pt",
+    "--scene",
+    scene,
+    "--config",
+    config,
+    "--experiment",
+    physics,
+    "--output",
+    output + "/policy",
+  ]
+  if args.length() == 5 {
+    fit_command.append(["--warm-start-policy", args[4]])
+  }
+  let fit_log = run(python, fit_command)
+  @fs.write_file(output + "/policy.log", fit_log, create_mode=CreateOrTruncate)
+  let report = @json.parse(@fs.read_file(output + "/policy/report.json").text())
+  assert_eq(
+    field(report, "checkpoint_selection"),
+    "validation-physics-only".to_json(),
+  )
+  let runs = array(field(report, "runs"))
+  assert_eq(runs.length(), 3)
+  for result in runs {
+    assert_eq(field(result, "actor_changed"), true.to_json())
+    assert_eq(field(result, "dynamics_unchanged"), true.to_json())
+    assert_eq(field(result, "reload_matches"), true.to_json())
+    println(
+      (
+        {
+          "seed": field(result, "seed"),
+          "selected_update": field(result, "selected_update"),
+          "baseline": field(result, "baseline"),
+          "candidate": field(result, "candidate"),
+          "qualifies": field(result, "qualifies"),
+        } : Json).stringify(),
+    )
+  }
+  println("Collecting fresh train-family trajectories from the latest actor")
+  println(
+    run(python, [
+      policy,
+      "collect",
+      "--checkpoint",
+      output + "/policy/latest-actor-seed-0.pt",
+      "--scene",
+      scene,
+      "--experiment",
+      collect_config,
+      "--output",
+      output + "/recollection",
+    ]),
+  )
+  let original = @json.parse(
+    @fs.read_file(source + "/collection/dataset.json").text(),
+  )
+  let fresh = @json.parse(
+    @fs.read_file(output + "/recollection/dataset.json").text(),
+  )
+  let fresh_episodes = array(field(fresh, "episodes"))
+  assert_eq(fresh_episodes.length(), 36)
+  for episode in fresh_episodes {
+    assert_eq(field(episode, "split"), "train".to_json())
+  }
+  assert_eq(field(fresh, "state_axes"), field(original, "state_axes"))
+  assert_eq(field(fresh, "action_axes"), field(original, "action_axes"))
+  let combined = array(field(original, "episodes")).copy()
+  combined.append(fresh_episodes)
+  guard original is Object(fields) else { fail("expected dataset") }
+  guard field(original, "dataset_id") is String(original_id) else {
+    fail("expected dataset id")
+  }
+  fields["dataset_id"] = (original_id + "-policy-round").to_json()
+  fields["provenance"] = ("Derived from initial dynamics collection plus " +
+  field(fresh, "provenance").stringify()).to_json()
+  fields["episodes"] = combined.to_json()
+  @fs.mkdir(output + "/collection", recursive=true)
+  let merged = output + "/collection/dataset.json"
+  @fs.write_file(merged, original.stringify(), create_mode=CreateOrTruncate)
+  for split in ["train", "validation", "test"] {
+    let batch = run(executable, [merged, split, "8"])
+    @fs.write_file(
+      output + "/" + split + "-batch.json",
+      batch,
+      create_mode=CreateOrTruncate,
+    )
+    if split != "train" {
+      assert_eq(
+        field(@json.parse(batch), "state"),
+        field(
+          @json.parse(
+            @fs.read_file(source + "/" + split + "-batch.json").text(),
+          ),
+          "state",
+        ),
+      )
+    }
+  }
+  println("Refitting dynamics with the fresh policy transitions")
+  let refit_log = run(python, [
+    root + "/providers/motion_learning/dynamics.py",
+    "--train",
+    output + "/train-batch.json",
+    "--validation",
+    output + "/validation-batch.json",
+    "--test",
+    output + "/test-batch.json",
+    "--config",
+    root + "/examples/learning/g1-dynamics-fit.json",
+    "--output",
+    output + "/fit",
+  ])
+  @fs.write_file(output + "/refit.log", refit_log, create_mode=CreateOrTruncate)
+  let refit = @json.parse(@fs.read_file(output + "/fit/report.json").text())
+  println(
+    "Refitted dynamics diagnostic passed: " +
+    field(refit, "all_passed").stringify(),
+  )
+  println("Controller qualified: " + field(report, "any_qualified").stringify())
+}

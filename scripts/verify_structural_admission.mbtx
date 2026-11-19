@@ -1,0 +1,36 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/json" }
+fn replace(s : String,a : String,b : String) -> String raise {guard s.contains(a) else {fail(a)};s.replace_all(old=a,new=b)}
+async fn run(p : String,args : Array[String]) -> Unit {guard @process.run(p,args)==0 else {fail(p)}}
+async fn main {
+  let repo="/Users/kq/Workspace/moonrobo";let dir=repo+"/output/spark-runtime-20261024/smc-structural-20261028"
+  let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a";let host="wlc004s@192.168.2.179";let sock="/tmp/moonrobo-operator-179.sock"
+  let mut b=@fs.read_file(dir+"/build_structural_a.mbtx").text()
+  for (a,v) in [("moonrobo-smc-structural-a","moonrobo-smc-structural-b"),("smc-structural-gate-a","smc-structural-gate-b"),("smc-structural-tensor-a","smc-structural-tensor-b"),("smc-structural-runtime-a","smc-structural-runtime-b"),("smc-structural-tests-a","smc-structural-tests-b"),("-structural-cpu-a","-structural-cpu-b")] {b=replace(b,a,v)}
+  @fs.write_file(dir+"/build_structural_b.mbtx",b,create_mode=CreateNew)
+  let f=@fs.read_file(dir+"/structural_fixture_a.mbt").text()
+  let f=replace(replace(f,"[Some(\"axis\"),Some(\"structural\")]","[Some(\"axis\"),Some(\"structural\"),Some(\"fk\")]"),"[Some(\"static\"),Some(\"structural\")]","[Some(\"static\"),Some(\"structural\"),Some(\"fk\")]")
+  let f=replace(replace(f,"factor == \"axis\" || factor == \"structural\"","factor == \"axis\" || factor == \"structural\" || factor == \"fk\""),"factor == \"static\" || factor == \"structural\"","factor == \"static\" || factor == \"structural\" || factor == \"fk\"")
+  @fs.write_file(dir+"/structural_fixture_b.mbt",f,create_mode=CreateNew)
+  let mut driver=@fs.read_file(dir+"/run_structural_a.mbtx").text()
+  for (a,v) in [("smc-structural-gate-a","smc-structural-gate-b"),("run_structural_a.mbtx","run_structural_b.mbtx"),("build_structural_a.mbtx","build_structural_b.mbtx"),("structural_fixture_a.mbt","structural_fixture_b.mbt"),("\"abba-structural\"","\"abba-structural\", \"fk\", \"abba-fk\"")] {driver=replace(driver,a,v)}
+  @fs.write_file(dir+"/run_structural_b.mbtx",driver,create_mode=CreateNew)
+  @fs.write_file(dir+"/invoke_structural_b.mbtx",replace(@fs.read_file(dir+"/invoke_structural_a.mbtx").text(),"run_structural_a.mbtx","run_structural_b.mbtx"),create_mode=CreateNew)
+  for file in ["structural_fixture_b.mbt","run_structural_b.mbtx","invoke_structural_b.mbtx"] {run("scp",["-o","ControlPath="+sock,dir+"/"+file,host+":"+base+"/"+file])}
+  run("scp",["-o","ControlPath="+sock,dir+"/build_structural_b.mbtx",host+":"+base+"/build_structural_b.mbtx"])
+  run("ssh",["-S",sock,host,"test ! -e "+base+"/workspace/moonrobo-smc-structural-b"])
+  run("ssh",["-S",sock,host,"cp -a --reflink=auto "+base+"/workspace/moonrobo-smc-structural-a "+base+"/workspace/moonrobo-smc-structural-b"])
+  for file in ["cmd/optimizations.mbt","cmd/optimizations_wbtest.mbt","geometry/context.mbt"] {run("scp",["-o","ControlPath="+sock,repo+"/src/learning_aligned_gpu/"+file,host+":"+base+"/workspace/moonrobo-smc-structural-b/src/learning_aligned_gpu/"+file])}
+  run("ssh",["-S",sock,host,"cp "+base+"/structural_fixture_b.mbt "+base+"/workspace/moonrobo-smc-structural-b/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt"])
+  for mode in ["gate-build-smc-structural-b","smc-structural-tests-b"] {run("ssh",["-S",sock,host,"env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native "+base+"/build_structural_b.mbtx -- "+mode])}
+  let results=[]
+  for (suite,n) in [("primitive",1),("geometry",2),("pivot",1),("constants",1),("config",8),("resume",1),("inference",1)] {
+    let name="smc-primitives-"+suite+"-structural-cpu-b"
+    run("scp",["-o","ControlPath="+sock,host+":"+base+"/"+name+".stdout.log",dir+"/"+name+".stdout.log"])
+    let log=@fs.read_file(dir+"/"+name+".stdout.log").text();guard !log.contains("SKIP")else{fail("skipped")};let mut found=0
+    for line in log.split("\n"){if line.has_prefix("{"){let j=@json.parse(line);if j is {"type":"result","message":String(message),..}{guard message==""else{fail(message)};found+=1}}}
+    guard found==n else{fail(name+" count")};results.push({"suite":Json(suite),"passed_count":Json(n)})
+  }
+  @fs.write_file(dir+"/cpu-admission-gates.json",Json(results).stringify(indent=2),create_mode=CreateNew)
+  run("scp",["-o","ControlPath="+sock,dir+"/cpu-admission-gates.json",host+":"+base+"/structural-cpu-gates-b.json"])
+  println("Admission-only follow-up: CPU gates passed; benchmark math/plugin unchanged")
+}

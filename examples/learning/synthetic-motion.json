@@ -1,0 +1,30 @@
+{
+  "format": "moonrobo.motion-dataset.v1",
+  "dataset_id": "synthetic-scalar-motion",
+  "model_ref": "synthetic-scalar-model",
+  "provenance": "Original numeric plumbing fixture; no robot or physics simulation evidence",
+  "frame_convention": "scalar coordinate; no spatial frame or quaternion",
+  "dt_s": 0.02,
+  "state_axes": [{"name": "position", "unit": "rad"}],
+  "observation_axes": [{"name": "position", "unit": "rad"}],
+  "action_axes": [{"name": "setpoint", "unit": "rad"}],
+  "goal_axes": [{"name": "target", "unit": "rad"}],
+  "context_axes": [],
+  "episodes": [
+    {
+      "id": "train-a", "source_family": "synthetic-a", "split": "train", "context": [],
+      "steps": [
+        {"time_s": 0.0, "state": [0.0], "observation": [0.0], "applied_action": [0.1], "next_state": [0.1], "goal": [0.3], "reward": 0.1, "terminated": false, "truncated": false},
+        {"time_s": 0.02, "state": [0.1], "observation": [0.1], "applied_action": [0.2], "next_state": [0.2], "goal": [0.3], "reward": 0.2, "terminated": false, "truncated": false},
+        {"time_s": 0.04, "state": [0.2], "observation": [0.2], "applied_action": [0.3], "next_state": [0.3], "goal": [0.3], "reward": 0.3, "terminated": false, "truncated": true}
+      ]
+    },
+    {
+      "id": "test-b", "source_family": "synthetic-b", "split": "test", "context": [],
+      "steps": [
+        {"time_s": 0.0, "state": [0.3], "observation": [0.3], "applied_action": [0.4], "next_state": [0.4], "goal": [0.5], "reward": 0.1, "terminated": false, "truncated": false},
+        {"time_s": 0.02, "state": [0.4], "observation": [0.4], "applied_action": [0.5], "next_state": [0.5], "goal": [0.5], "reward": 0.2, "terminated": true, "truncated": false}
+      ]
+    }
+  ]
+}

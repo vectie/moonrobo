@@ -1,0 +1,159 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] && ["prepare", "build", "run"].contains(mode) else {
+    fail("prepare/build/run")
+  }
+  let out = "output/spark-runtime-20261024/actor-backward-boundaries-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  if mode == "prepare" {
+    let source = @fs.read_file(out + "/actor_step_fixture_d.mbt").text()
+    let prefix = source.split("  let package=\"").to_array()[0].to_owned()
+    let code = prefix +
+      (
+        #|  let source="/workspace/moonrobo/runs/hotspot-shared-actor-step-native-d"
+        #|  let manifest=@json.parse(@fs.read_file(source+"/boundaries.json").text())
+        #|  guard manifest is {"records":records,..} else {fail("boundary records")}
+        #|  let snapshot : SharedFixture = {..fixture,records:@json.from_json(records)}
+        #|  let component = (name:String) => {
+        #|    let rows=[]
+        #|    for t in 0..<32 {rows.push(shared_read(source,snapshot,backend,"step-\{t}-\{name}"))}
+        #|    backend.concat(rows)
+        #|  }
+        #|  let all : @geometry.State = {p:component("p"),rotation:component("r"),v:component("v"),w:component("w"),q:component("q"),qd:component("qd")}
+        #|  let ref : @geometry.State = {p:backend.concat(references[1:].map(r=>r.p).to_owned()),rotation:backend.concat(references[1:].map(r=>r.rotation).to_owned()),v:backend.concat(references[1:].map(r=>r.v).to_owned()),w:backend.concat(references[1:].map(r=>r.w).to_owned()),q:backend.concat(references[1:].map(r=>r.q).to_owned()),qd:backend.concat(references[1:].map(r=>r.qd).to_owned())}
+        #|  let actions=component("action")
+        #|  let previous=backend.concat([policy.previous,actions.narrow(0,0,31*4096)])
+        #|  let geometry=learner.context.tracking_geometry_cached(all,ref,Some(packed.narrow(0,1,32).reshape([-1,context.reference_body_width()])))
+        #|  let terms=geometry.reward_terms(actions,previous)
+        #|  let expected=shared_read(source,snapshot,backend,"rewards").reshape([-1])
+        #|  assert_true(terms.reward.sub(expected).values().all(v=>v==0.0))
+        #|  let records=[]
+        #|  for (name,value) in [("reward",terms.reward),("track",terms.track),("e_body_pos",terms.body_pos),("e_body_ori",terms.body_ori),("e_body_linvel",terms.body_linvel),("e_body_angvel",terms.body_angvel),("e_root_pos",terms.root_pos),("e_root_ori",terms.root_ori),("action_rate",terms.action_rate),("joint_limit",terms.joint_limit)] {records.push(shared_write(output,name,value))}
+        #|  hotspot_gate_memory(backend,"reward-detail-after")
+        #|  shared_json(output+"/result.json",{"diagnostic_only":true,"same_trajectory":true,"native_reward_reproduced_bitwise":true,"records":Json(records)})
+        #|}
+      )
+    @fs.write_file(
+      out + "/actor_reward_fixture_a.mbt",
+      code,
+      create_mode=CreateNew,
+    )
+    @fs.write_file(
+      out + "/actor_reward_tracking_a.mbt",
+      @fs.read_file("src/learning_aligned_gpu/geometry/tracking_reuse.mbt"),
+      create_mode=CreateNew,
+    )
+    let builder = @fs.read_file(out + "/build_actor_step_d.mbtx")
+      .text()
+      .replace_all(old="moonrobo-actor-step-d", new="moonrobo-actor-reward-a")
+      .replace_all(
+        old="actor_step_fixture_d.mbt",
+        new="actor_reward_fixture_a.mbt",
+      )
+    let mut builder = builder
+    for
+      stem in [
+        "copy", "overlay", "fixture", "source", "helper", "build", "cpu-tests", "binary",
+        "gate",
+      ] {
+      builder = builder.replace_all(
+        old="actor-step-" + stem + "-d",
+        new="actor-reward-" + stem + "-a",
+      )
+    }
+    builder = builder.replace_all(
+      old="  container(\"actor-reward-build-a\"",
+      new="  run(\"actor-reward-tracking-a\",\"cp\",[base+\"/actor_reward_tracking_a.mbt\",ws+\"/src/learning_aligned_gpu/geometry/tracking_reuse.mbt\"])\n  container(\"actor-reward-build-a\"",
+    )
+    @fs.write_file(
+      out + "/build_actor_reward_a.mbtx",
+      builder,
+      create_mode=CreateNew,
+    )
+    let runner = @fs.read_file(out + "/run_actor_step_gate_d.mbtx")
+      .text()
+      .replace_all(
+        old="run_actor_step_gate_d.mbtx",
+        new="run_actor_reward_native_a.mbtx",
+      )
+      .replace_all(old="actor-step-gate-d", new="actor-reward-gate-a")
+    @fs.write_file(
+      out + "/run_actor_reward_native_a.mbtx",
+      runner,
+      create_mode=CreateNew,
+    )
+    for
+      name in [
+        "actor_reward_fixture_a.mbt", "actor_reward_tracking_a.mbt", "build_actor_reward_a.mbtx",
+        "run_actor_reward_native_a.mbtx",
+      ] {
+      assert_eq(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          out + "/" + name,
+          host + ":" + base + "/" + name,
+        ]),
+        0,
+      )
+    }
+    return
+  }
+  let folder = out + "/reward-native-" + mode + "-a"
+  @fs.mkdir(folder)
+  let command = if mode == "build" {
+    "build_actor_reward_a.mbtx"
+  } else {
+    "run_actor_reward_native_a.mbtx -- actor native off 1 actor-reward-native-a bf16-full"
+  }
+  let code = @process.run(
+    "ssh",
+    [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/" +
+      command,
+    ],
+    stdout=@process.redirect_to_file(
+      folder + "/controller.stdout.log",
+      create_mode=CreateNew,
+    ),
+    stderr=@process.redirect_to_file(
+      folder + "/controller.stderr.log",
+      create_mode=CreateNew,
+    ),
+  )
+  if mode == "run" {
+    for
+      name in [
+        "result.json", "completion.json", "training-guard.json", "training-docker-final.json",
+        "training.stdout.log", "training.stderr.log", "protocol.json",
+      ] {
+      ignore(
+        @process.run("scp", [
+          "-q",
+          "-o",
+          "ControlPath=/tmp/moonrobo-operator-179.sock",
+          host +
+          ":/home/wlc004s/moonrobo/runs/hotspot-shared-actor-reward-native-a/" +
+          name,
+          folder + "/" + name,
+        ]),
+      )
+    }
+  }
+  assert_eq(code, 0)
+}

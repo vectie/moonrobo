@@ -1,0 +1,109 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+///|
+fn obj(j : Json) -> Map[String, Json] raise {
+  guard j is Object(o) else { fail("object required") }
+  o
+}
+
+///|
+fn get(j : Json, k : String) -> Json raise {
+  guard obj(j).get(k) is Some(v) else { fail("missing " + k) }
+  v
+}
+
+///|
+fn arr(j : Json) -> Array[Json] raise {
+  guard j is Array(a) else { fail("array required") }
+  a
+}
+
+///|
+async fn sha(path : String) -> String {
+  let b = @fs.read_file(path).binary()
+  guard b.length() <= 1048576 else { fail("small source bound") }
+  let h = @crypto.SHA256::new()
+  h.update(b)
+  @crypto.bytes_to_hex_string(h.finalize())
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, output] &&
+    output.has_prefix("/home/wlc004s/moonrobo/private/") &&
+    !@fs.exists(output) else {
+    fail("fresh remote spec path required")
+  }
+  let parent = "/home/wlc004s/moonrobo/private/smc-native-g2-confirmation-prepared/spec-six-vs-smc4096.json"
+  guard sha(parent) ==
+    "40ae4d4a3f6959876ab18ee82cd9a30e055b0927848c0c07dc5fcc7be9ff0b1c" else {
+    fail("exact accepted baseline required")
+  }
+  let old = @json.parse(@fs.read_file(parent).text())
+  let spec = @json.parse(old.stringify())
+  let original = get(old, "b")
+  let base = "/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a"
+  let source = base + "/smc-benchmark-c"
+  guard get(original, "kind") == Json("smc") &&
+    arr(get(spec, "pins")).length() == 265 else {
+    fail("original SMC and265 pins required")
+  }
+  obj(spec)["name"] = Json(
+    "smc-original-vs-eight512-actor-accumulation-fp32-logical4096-abba",
+  )
+  obj(spec).remove("native_g2_confirmation") |> ignore
+  for (side, micro) in [("a", "0"), ("b", "512")] {
+    let member = @json.parse(original.stringify())
+    obj(get(member, "env"))["SMC_ACTOR_MICROBATCH"] = Json(micro)
+    obj(member)["label"] = Json("smc-compiled-logical4096-actor-micro" + micro)
+    for mount in arr(get(member, "mounts")) {
+      if get(mount, "target") == Json("/workspace/supermimic") {
+        obj(mount)["source"] = Json(source)
+      }
+    }
+    obj(spec)[side] = member
+  }
+  let pins = arr(get(spec, "pins"))
+  for
+    filename in [
+      "LICENSE", "supermimic/buffer.py", "supermimic/env.py", "supermimic/evaluate.py",
+      "supermimic/kinematics.py", "supermimic/mdp.py", "supermimic/motion.py", "supermimic/networks.py",
+      "supermimic/robot.py", "supermimic/rotations.py", "supermimic/train.py", "supermimic/policy_microbatch.py",
+    ] {
+    pins.push({
+      "path": source + "/" + filename,
+      "sha256": sha(source + "/" + filename),
+      "role": "independent-smc-microbatch-experiment-source",
+    })
+  }
+  obj(spec)["batch_layout"] = {
+    "logical_actor_batch": 4096,
+    "a_actor_microbatch": 4096,
+    "b_actor_microbatch": 512,
+    "a_actor_backward_calls": 1,
+    "b_actor_backward_calls": 8,
+    "actor_adam_per_iteration": 1,
+    "critic_normalizer_updates_per_iteration": 1,
+    "critic_adam_per_iteration": 20,
+  }
+  obj(spec)["known_differences"] = Json([
+    "A executes the original policy_update. B samples the same logical4096 once, accumulates eight512 actor backwards scaled by1/4096, clips once and executes one actor Adam. Full-batch critic normalizer, GAE and5x4 optimizer schedule are retained.",
+    "Both sides use the same independently preserved source tree and compiled function definitions; only SMC_ACTOR_MICROBATCH0 versus512 differs. Original265 pins are preserved, with12 new source pins.",
+    "Per-step noise generation order and batch-shaped compiled kernels differ. Equal seed does not imply equal trajectories, floating-point gradients or parameters. Fixed-noise semantic checks are separately recorded and must be reviewed before execution.",
+    "Detached raw states are assembled along batch BEFORE time-major flattening. Critic feature construction uses the original full logical shape after the one actor optimizer update; full-logical normalizer, GAE and critic schedule are retained.",
+    "Fixed-noise two-update high-precision algorithm check passed at rtol1e-7/atol1e-9. FP32 rtol2e-4/atol2e-6 stress gate failed critic parameter equivalence despite tiny actor/input/loss differences. This is a scheduling performance experiment, not an approved numerical replacement or learning-quality result.",
+    "Original logging and checkpointing remain; final microbatch receipt is outside the steady iteration timing window. Fresh processes and caches, iterations1-60 with41-60 steady, ABBA order.",
+    "Original100GiB cgroup,zero container swap,12CPU,16GiB headroom and fail-closed bounds are unchanged. No native trainer is launched by this pair.",
+  ])
+  @fs.write_file(output, spec.stringify(indent=2) + "\n", create_mode=CreateNew)
+  println("Prepared SMC microbatch pair only; no hardware launched")
+}

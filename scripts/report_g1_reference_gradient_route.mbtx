@@ -1,0 +1,356 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) else { fail("expected object") }
+  fields[key]
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn str(value : Json) -> String raise {
+  guard value is String(text) else { fail("expected string") }
+  text
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(number, ..) else { fail("expected number") }
+  number
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (code, bytes, error) = @process.collect_output("/usr/bin/shasum", [
+    "-a", "256", path,
+  ])
+  assert_eq(code, 0, msg=error.text())
+  bytes.text().split(" ").to_array()[0].to_owned()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: report_g1_reference_gradient_route.mbtx REPO STUDY OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let report = read(study + "/report.json")
+  assert_eq(field(report, "physical_execution_allowed"), false)
+  assert_eq(field(report, "release_qualified"), false)
+  for
+    (path, hash) in [
+      ("source_study", "source_report_sha256"),
+      ("baseline_study", "baseline_report_sha256"),
+      ("diagnostic_study", "diagnostic_source_sha256"),
+    ] {
+    assert_eq(
+      Json(sha(str(field(report, path)) + "/report.json")),
+      field(report, hash),
+    )
+  }
+  let original = read(str(field(report, "baseline_study")) + "/report.json")
+  let original_records : Map[String, Json] = Map([])
+  for record in array(field(original, "physical_records")) {
+    original_records[str(field(record, "episode_id"))] = record
+  }
+  let expected_returns : Map[String, Json] = Map([])
+  let baseline_returns : Map[String, Json] = Map([])
+  for run in array(field(original, "runs")) {
+    for comparison in array(field(run, "comparisons")) {
+      let id = str(field(comparison, "before_episode_id"))
+      expected_returns[id] = field(comparison, "actual_before")
+      let key = str(field(run, "before_sha256")) +
+        ":" +
+        field(comparison, "clip_index").stringify()
+      baseline_returns[key] = field(comparison, "actual_before")
+    }
+  }
+  let records = array(field(report, "physical_records"))
+  let runs = array(field(report, "runs"))
+  assert_eq(records.length(), 162)
+  assert_eq(runs.length(), 12)
+  let by_id : Map[String, Json] = Map([])
+  for record in records {
+    let id = str(field(record, "episode_id"))
+    assert_false(by_id.contains(id))
+    by_id[id] = record
+    if original_records.get(id) is Some(old) {
+      assert_eq(field(record, "sha256"), field(old, "sha256"))
+      assert_eq(field(record, "role"), "last-cycle-before")
+    }
+  }
+  let peers : Map[String, Json] = Map([])
+  for run in runs {
+    assert_eq(field(run, "equal_forward_objective"), true)
+    let key = str(field(run, "method")) + ":" + field(run, "seed").stringify()
+    if peers.get(key) is Some(peer) {
+      for
+        name in [
+          "forward_objective", "active_imagined_steps", "training_episode_ids", "gradient_origin_indices",
+          "calibration_origin_indices", "base_actor_sha256", "model_sha256",
+        ] {
+        assert_eq(field(run, name), field(peer, name))
+      }
+      assert_true(field(run, "gradient_route") != field(peer, "gradient_route"))
+    } else {
+      peers[key] = run
+    }
+    assert_eq(array(field(run, "gradient_origin_indices")).length(), 256)
+    assert_eq(array(field(run, "calibration_origin_indices")).length(), 256)
+    assert_eq(
+      Json(sha(str(field(run, "base_actor")))),
+      field(run, "base_actor_sha256"),
+    )
+    assert_eq(
+      Json(sha(str(field(run, "model_checkpoint")))),
+      field(run, "model_sha256"),
+    )
+    assert_eq(
+      Json(sha(study + "/" + str(field(run, "direction_file")))),
+      field(run, "direction_sha256"),
+    )
+    assert_eq(array(field(run, "outcomes")).length(), 4)
+    for outcome in array(field(run, "outcomes")) {
+      let target = num(field(outcome, "target_logit_rms"))
+      assert_true(
+        (num(field(outcome, "achieved_logit_rms")) - target).abs() <=
+        0.001 * target,
+      )
+      let trials = array(field(outcome, "trials"))
+      let returns = array(field(outcome, "returns"))
+      assert_eq(trials.length(), 3)
+      assert_eq(returns.length(), 3)
+      for i in 0..<3 {
+        let id = str(field(trials[i], "episode_id"))
+        assert_false(expected_returns.contains(id))
+        expected_returns[id] = returns[i]
+        assert_eq(
+          field(by_id[id], "clip_index"),
+          field(returns[i], "clip_index"),
+        )
+        assert_eq(
+          field(field(by_id[id], "behavior"), "coefficient"),
+          field(outcome, "coefficient"),
+        )
+        assert_eq(
+          field(field(by_id[id], "behavior"), "sha256"),
+          field(run, "base_actor_sha256"),
+        )
+        assert_eq(
+          field(field(by_id[id], "behavior"), "direction_sha256"),
+          field(run, "direction_sha256"),
+        )
+      }
+    }
+  }
+  assert_eq(peers.length(), 6)
+  let seen : Map[String, Bool] = Map([])
+  let maxima : Map[String, Double] = Map([])
+  let mut transitions = 0
+  let mut new_transitions = 0
+  let mut reused = 0
+  @async.with_task_group() <| group => {
+    let (reader, out) = @process.read_from_process()
+    let child = @process.spawn(
+      group,
+      "moon",
+      native_command(root, [
+        study + "/provider-sources/reference_learning_export.py",
+        "--study",
+        study,
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      ]),
+      stdout=out,
+      stderr=@process.redirect_to_file(
+        study + "/verification-stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    )
+    while reader.read_until("\n") is Some(line) {
+      let entry = @json.parse(line)
+      let record = field(entry, "record")
+      let id = str(field(record, "episode_id"))
+      assert_eq(record, by_id[id])
+      assert_false(seen.contains(id))
+      seen[id] = true
+      let dataset = field(entry, "dataset")
+      let episodes = array(field(dataset, "episodes"))
+      assert_eq(episodes.length(), 1)
+      let steps = array(field(episodes[0], "steps"))
+      assert_eq(steps.length(), num(field(record, "steps")).to_int())
+      let mut full_return = 0.0
+      let mut prefix_return = 0.0
+      let mut weight = 1.0
+      for i, step in steps {
+        let reward = num(field(step, "reward")) * weight
+        full_return += reward
+        if i < 32 {
+          prefix_return += reward
+        }
+        weight *= 0.99
+      }
+      assert_true(
+        (full_return - num(field(expected_returns[id], "full_return"))).abs() <
+        1.0e-10,
+      )
+      assert_true(
+        (prefix_return - num(field(expected_returns[id], "prefix_return"))).abs() <
+        1.0e-10,
+      )
+      guard field(entry, "verification") is Object(errors) else {
+        fail("expected verification")
+      }
+      for key, value in errors {
+        if value is Number(_, ..) {
+          maxima[key] = maxima.get(key).unwrap_or(0.0).max(num(value))
+        }
+      }
+      let scratch = study + "/native-episode.json"
+      @fs.write_file(scratch, dataset.stringify(), create_mode=CreateOrTruncate)
+      let (code, bytes, error) = @process.collect_output(
+        root +
+        "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+        [scratch, "train", "1", "1000000"],
+      )
+      assert_eq(code, 0, msg=error.text())
+      assert_eq(field(@json.parse(bytes.text()), "window_length"), 1)
+      @fs.remove(scratch)
+      transitions += steps.length()
+      if original_records.contains(id) {
+        reused += 1
+      } else {
+        new_transitions += steps.length()
+      }
+      if seen.length() % 18 == 0 {
+        println("Verified \{seen.length()}/162 physical episodes")
+      }
+    }
+    reader.close()
+    assert_eq(child.wait(), 0)
+  }
+  assert_eq(seen.length(), 162)
+  assert_eq(reused, 18)
+  let summary : Array[Json] = []
+  for method_id in ["replay-prefix-extended", "replay-prefix-anchor"] {
+    for route in ["full", "stop-policy-inputs"] {
+      for amplitude in [0.001, 0.005] {
+        for sign in [-1, 1] {
+          let mut count = 0
+          let mut falls = 0
+          let mut full_gains = 0
+          let mut prefix_gains = 0
+          let mut full_change = 0.0
+          let mut prefix_change = 0.0
+          let mut survival = 0.0
+          let mut model_change = 0.0
+          for run in runs {
+            if field(run, "method") != Json(method_id) ||
+              field(run, "gradient_route") != Json(route) {
+              continue
+            }
+            for outcome in array(field(run, "outcomes")) {
+              if num(field(outcome, "target_logit_rms")) != amplitude ||
+                num(field(outcome, "sign")) != sign.to_double() {
+                continue
+              }
+              model_change += num(field(outcome, "predicted_change"))
+              let trials = array(field(outcome, "trials"))
+              let returns = array(field(outcome, "returns"))
+              for i in 0..<3 {
+                let key = str(field(run, "base_actor_sha256")) +
+                  ":" +
+                  field(returns[i], "clip_index").stringify()
+                let old = baseline_returns[key]
+                let f = num(field(returns[i], "full_return")) -
+                  num(field(old, "full_return"))
+                let p = num(field(returns[i], "prefix_return")) -
+                  num(field(old, "prefix_return"))
+                full_change += f
+                prefix_change += p
+                count += 1
+                if f > 0 {
+                  full_gains += 1
+                }
+                if p > 0 {
+                  prefix_gains += 1
+                }
+                if field(trials[i], "failed") == (true : Json) {
+                  falls += 1
+                }
+                survival += num(field(trials[i], "simulated_seconds"))
+              }
+            }
+          }
+          assert_eq(count, 9)
+          summary.push({
+            "method": Json(method_id),
+            "gradient_route": Json(route),
+            "logit_rms": Json(amplitude),
+            "sign": Json(sign),
+            "trials": Json(count),
+            "falls": Json(falls),
+            "full_return_gains": Json(full_gains),
+            "prefix_return_gains": Json(prefix_gains),
+            "mean_full_return_change": Json(full_change / count.to_double()),
+            "mean_prefix_return_change": Json(prefix_change / count.to_double()),
+            "mean_survival_s": Json(survival / count.to_double()),
+            "mean_training_model_objective_change": Json(model_change / 3.0),
+          })
+        }
+      }
+    }
+  }
+  guard report is Object(fields) else { fail("expected report") }
+  fields["native_verification"] = {
+    "all_records_validated": true,
+    "episodes": 162,
+    "transitions": Json(transitions),
+    "new_episodes": 144,
+    "new_transitions": Json(new_transitions),
+    "reused_episodes": Json(reused),
+    "discounted_returns_reconstructed": true,
+    "equal_forward_and_origin_batches_checked": true,
+    "maxima": Json(maxima),
+  }
+  fields["diagnostic_report_sha256"] = Json(sha(study + "/report.json"))
+  fields["summary"] = Json(summary)
+  @fs.write_file(
+    args[3],
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(Json(summary).stringify(indent=2))
+}
+
+///|
+fn native_command(root : String, original : Array[String]) -> Array[String] {
+  let command = [
+    "-C", root, "run", "--quiet", "--warn-list", "-a", "--target", "native", "cmd/reference_scripts",
+    "--", root,
+  ]
+  command.append(original)
+  command
+}

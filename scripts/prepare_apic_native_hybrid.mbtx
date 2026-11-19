@@ -1,0 +1,29 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+/// One-time source preparation. Only the two exact retained bridge copies
+/// may be rewritten; later hand edits cause a refusal rather than overwriting.
+async fn main {
+  for name in ["loader.c", "python_objects.mbt"] {
+    let original = @fs.read_file("src/learning_aligned/producer/" + name).text()
+    let renamed = original.replace_all(
+      old="mr_mbt_apic_py_",
+      new="mr_mbt_apic_hybrid_py_",
+    )
+    let path = "src/learning_aligned/producer_native/hybrid/" + name
+    let current = @fs.read_file(path).text()
+    guard current == original || current == renamed else {
+      fail("refuse to overwrite edited native hybrid bridge: " + path)
+    }
+    if current != renamed {
+      @fs.write_file(path, renamed, create_mode=CreateOrTruncate)
+    }
+  }
+  println(
+    "Prepared only the isolated hybrid bridge symbol namespace; no interpreter or native SDK loaded",
+  )
+}

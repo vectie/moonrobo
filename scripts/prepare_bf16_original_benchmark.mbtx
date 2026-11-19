@@ -1,0 +1,218 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+fn replace_once(s : String, old : String, next : String) -> String raise {
+  assert_eq(s.split(old).count(), 2)
+  s.replace_all(old~, new=next)
+}
+
+///|
+async fn run(p : String, a : Array[String]) -> Unit {
+  guard @process.run(p, a) == 0 else { fail(p) }
+}
+
+///|
+async fn main {
+  let root = "/Users/kq/Workspace/moonrobo"
+  let old = root + "/output/spark-runtime-20261024/coefficient-full-20261028"
+  let dir = root + "/output/spark-runtime-20261024/bf16-original-20261028"
+  let b = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let sock = "/tmp/moonrobo-operator-179.sock"
+  guard @env.args() is [_, mode] else { fail("prepare|stage|build") }
+  if mode == "prepare" {
+    @fs.mkdir(dir)
+    let mut f = @fs.read_file(old + "/coefficient_full_fixture_a.mbt").text()
+    f = replace_once(
+      f, "  let learner = @gpu.Learner::new(", "  let amp = @env.get_env_var(\"MOONROBO_SHARED_AMP\").unwrap()\n  guard amp == \"bf16\" || amp == \"none\" else { fail(\"precision\") }\n  let chunk = @env.get_env_var(\"MOONROBO_SHARED_CHUNK\").unwrap()\n  guard chunk == \"4096\" || chunk == \"512\" else { fail(\"actor chunk\") }\n  let learner = @gpu.Learner::new(",
+    )
+    f = replace_once(
+      f, "actor_microbatch=if @env.get_env_var(\"MOONROBO_TOP3_VARIANT\") == Some(\"actor1024\") { 1024 } else { 512 },",
+      "actor_microbatch=if chunk == \"4096\" { 0 } else { 512 },",
+    )
+    f = replace_once(
+      f, "      ..@gpu.ExecutionOptimizations::default(),", "      ..@gpu.ExecutionOptimizations::default(),\n      mlp_precision: if amp == \"bf16\" { @gpu.Bf16 } else { @gpu.Fp32 },",
+    )
+    f = replace_once(
+      f, "{ ..fixture.metadata, world_layer_norm_mode:", "{ ..fixture.metadata, mlp_precision: Some(learner.optimizations.mlp_precision), world_layer_norm_mode:",
+    )
+    f = replace_once(
+      f, "    \"implementation\": \"moonbit\",", "    \"implementation\": \"moonbit\",\n    \"amp\": Json(amp),\n    \"actor_chunk\": Json(chunk),\n    \"fp32_checkpoint_converted_explicitly\": true,",
+    )
+    @fs.write_file(
+      dir + "/bf16_original_fixture_a.mbt",
+      f,
+      create_mode=CreateNew,
+    )
+    let mut r = @fs.read_file(old + "/run_coefficient_full_a.mbtx").text()
+    r = r
+      .replace_all(old="coefficient-full-gate-a", new="bf16-original-gate-a")
+      .replace_all(
+        old="shared_smc_probe_v18.py",
+        new="shared_smc_probe_bf16_original.py",
+      )
+      .replace_all(
+        old="run_coefficient_full_a.mbtx",
+        new="run_bf16_original_a.mbtx",
+      )
+      .replace_all(
+        old="coefficient_full_fixture_a.mbt",
+        new="bf16_original_fixture_a.mbt",
+      )
+      .replace_all(
+        old="build_coefficient_full_a.mbtx",
+        new="build_bf16_original_a.mbtx",
+      )
+    r = replace_once(
+      r, "guard [\"forward\", \"abba-forward\",", "guard [\"bf16-full\", \"bf16-chunk\", \"fp32-full\", \"fp32-chunk\", \"forward\", \"abba-forward\",",
+    )
+    r = replace_once(
+      r, "  let collector = observation", "  let amp = if variant.has_prefix(\"bf16-\") { \"bf16\" } else { \"none\" }\n  let chunk = if variant.has_suffix(\"-full\") { \"4096\" } else { \"512\" }\n  let collector = observation",
+    )
+    r = replace_once(
+      r, "  if implementation != \"native\" {", "  if field(side, \"expected_config\") is Object(c) { c[\"amp\"] = Json(amp); c[\"pi_batch\"] = 4096; if implementation == \"native\" { c[\"pi_microbatch\"] = Json(if chunk == \"4096\" {0} else {512}) } }\n  e[\"MOONROBO_SHARED_AMP\"] = Json(amp)\n  e[\"MOONROBO_SHARED_CHUNK\"] = Json(chunk)\n  if implementation != \"native\" {",
+    )
+    r = replace_once(
+      r, "Json(\"/workspace/moonrobo/runs/hotspot-shared-primitives-baseline-\" + phase + \"-gate-a\")",
+      "Json(\"/workspace/moonrobo/runs/hotspot-shared-bf16-native-\" + phase + \"-\" + variant + \"-gate-a\")",
+    )
+    r = replace_once(
+      r, "\"trained_checkpoint_fixed_input_microbenchmark\": true,", "\"trained_checkpoint_fixed_input_microbenchmark\": true, \"actual_amp\": Json(amp), \"actual_actor_chunk\": Json(chunk), \"original_smc_policy_ast\": Json(chunk == \"4096\"),",
+    )
+    @fs.write_file(dir + "/run_bf16_original_a.mbtx", r, create_mode=CreateNew)
+    let builder = @fs.read_file(old + "/build_coefficient_full_a.mbtx")
+      .text()
+      .replace_all(
+        old="moonrobo-coefficient-full-a",
+        new="moonrobo-bf16-original-a",
+      )
+      .replace_all(old="coefficient-full-gate-a", new="bf16-original-gate-a")
+      .replace_all(
+        old="coefficient-full-tensor-a",
+        new="bf16-original-tensor-a",
+      )
+      .replace_all(
+        old="coefficient-full-runtime-a",
+        new="bf16-original-runtime-a",
+      )
+    @fs.write_file(
+      dir + "/build_bf16_original_a.mbtx",
+      builder,
+      create_mode=CreateNew,
+    )
+    let invoke = @fs.read_file(old + "/invoke_coefficient_full_a.mbtx")
+      .text()
+      .replace_all(
+        old="run_coefficient_full_a.mbtx",
+        new="run_bf16_original_a.mbtx",
+      )
+    @fs.write_file(
+      dir + "/invoke_bf16_original_a.mbtx",
+      invoke,
+      create_mode=CreateNew,
+    )
+    // This is a retained numerical adapter, not an orchestration script. All
+    // process, resource and experiment management remains in MoonBit.
+    let mut p = @fs.read_file("/tmp/moonrobo-shared-smc-v18-bf16-source.py").text()
+    p = replace_once(
+      p, "        networks.AMP_DTYPE = None", "        self.amp = os.environ[\"MOONROBO_SHARED_AMP\"]\n        assert self.amp in (\"none\", \"bf16\")\n        self.chunk = int(os.environ[\"MOONROBO_SHARED_CHUNK\"])\n        assert self.chunk in (512, 4096)\n        networks.AMP_DTYPE = torch.bfloat16 if self.amp == \"bf16\" else None",
+    )
+    let original_actor =
+      #|        if self.chunk == 4096:
+      #|            source = Path(os.environ["SHARED_SMC_TRAIN"]).read_text()
+      #|            definitions = [n for n in ast.parse(source).body if isinstance(n, ast.FunctionDef) and n.name == "policy_update"]
+      #|            assert len(definitions) == 1
+      #|            # Only replace exogenous permutation draws with shared inputs.
+      #|            # Original full-batch forward, backward and critic are intact.
+      #|            class FixedOrders(ast.NodeTransformer):
+      #|                replacements = 0
+      #|                def visit_Assign(self, node):
+      #|                    if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) and node.targets[0].id == "perm":
+      #|                        assert ast.unparse(node.value) == "torch.randperm(n, device=dev)"
+      #|                        node.value = ast.parse("orders[_]", mode="eval").body
+      #|                        self.replacements += 1
+      #|                    return node
+      #|            rewrite = FixedOrders()
+      #|            module = ast.fix_missing_locations(rewrite.visit(ast.Module(body=definitions, type_ignores=[])))
+      #|            assert rewrite.replacements == 1
+      #|            exec(compile(module, "original-smc-policy-update-fixed-orders", "exec"), self.ctx)
+      #|            self.actor = self.ctx["policy_update"]
+      #|            self.actor_ready = True
+      #|            return
+      #|
+    p = replace_once(
+      p,
+      "        # Use the independently retained 8x512 implementation",
+      original_actor +
+      "        # Use the independently retained 8x512 implementation",
+    )
+    p = replace_once(
+      p, "        out = self.actor(self.ctx, 512)", "        out = self.actor() if self.chunk == 4096 else self.actor(self.ctx, 512)",
+    )
+    p = replace_once(
+      p, "                  compiled=probe.compiled,", "                  amp=probe.amp, actor_chunk=probe.chunk, original_policy_ast=probe.chunk == 4096,\n                  compiled=probe.compiled,",
+    )
+    @fs.write_file(
+      dir + "/shared_smc_probe_bf16_original.py",
+      p,
+      create_mode=CreateNew,
+    )
+    return
+  }
+  if mode == "stage" {
+    for
+      name in [
+        "bf16_original_fixture_a.mbt", "run_bf16_original_a.mbtx", "build_bf16_original_a.mbtx",
+        "invoke_bf16_original_a.mbtx", "shared_smc_probe_bf16_original.py",
+      ] {
+      run("scp", [
+        "-o",
+        "ControlPath=" + sock,
+        dir + "/" + name,
+        host + ":" + b + "/" + name,
+      ])
+    }
+    run("ssh", [
+      "-S",
+      sock,
+      host,
+      "test ! -e " + b + "/workspace/moonrobo-bf16-original-a",
+    ])
+    run("ssh", [
+      "-S",
+      sock,
+      host,
+      "cp -a --reflink=auto " +
+      b +
+      "/workspace/moonrobo-coefficient-full-a " +
+      b +
+      "/workspace/moonrobo-bf16-original-a",
+    ])
+    run("ssh", [
+      "-S",
+      sock,
+      host,
+      "cp " +
+      b +
+      "/bf16_original_fixture_a.mbt " +
+      b +
+      "/workspace/moonrobo-bf16-original-a/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt",
+    ])
+    return
+  }
+  assert_eq(mode, "build")
+  run("ssh", [
+    "-S",
+    sock,
+    host,
+    "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+    b +
+    "/build_bf16_original_a.mbtx -- gate-build-bf16-original-a",
+  ])
+}

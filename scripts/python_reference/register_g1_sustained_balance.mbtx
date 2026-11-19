@@ -1,0 +1,181 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> Json {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=out.text() + err.text())
+  @json.parse(out.text())
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (code, out, err) = @process.collect_output("/usr/bin/shasum", [
+    "-a", "256", path,
+  ])
+  assert_eq(code, 0, msg=err.text())
+  out.text().split(" ").to_array()[0].to_owned()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    7,
+    msg="usage: register_g1_sustained_balance.mbtx REPO STUDY EXPORTED ROBOBOOK NOW_MS OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let exported = args[3]
+  let book = args[4]
+  let store = book + "/moondata"
+  let report = read(study + "/report.json")
+  let native = read(root + "/output/research/g1-sustained-balance-study.json")
+  assert_eq(
+    field(native, "source_report_sha256"),
+    Json(sha(study + "/report.json")),
+  )
+  assert_eq(array(field(native, "native_archives")).length(), 3)
+  assert_eq(
+    field(field(native, "refit_verification"), "all_tensors_exact"),
+    true,
+  )
+  let export_report = read(exported + "/export.json")
+  assert_eq(
+    field(export_report, "source_report_sha256"),
+    field(native, "source_report_sha256"),
+  )
+  assert_eq(
+    field(export_report, "provider_sha256"),
+    Json(sha(exported + "/provider-sources/sustained_balance_export.py")),
+  )
+  for command in ["learning_experiment", "moondata"] {
+    assert_eq(
+      @process.run(
+        "moon",
+        ["build", "cmd/" + command, "--target", "native"],
+        stdout=@process.redirect_to_file(
+          exported + "/build-" + command + ".log",
+          create_mode=CreateOrTruncate,
+        ),
+        stderr=@process.redirect_to_file(
+          exported + "/build-" + command + "-stderr.log",
+          create_mode=CreateOrTruncate,
+        ),
+      ),
+      0,
+    )
+  }
+  let cli = root +
+    "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe"
+  let imported = run(cli, [
+    "import",
+    store,
+    exported,
+    "balance-sustained",
+    args[5],
+  ])
+  assert_eq(field(imported, "physical_execution_allowed"), false)
+  let candidates = array(field(imported, "candidates"))
+  assert_eq(candidates.length(), 3)
+  for candidate in candidates {
+    assert_eq(field(candidate, "producer_qualified"), true)
+    assert_eq(field(field(candidate, "candidate"), "falls"), 0)
+    assert_eq(field(field(candidate, "candidate"), "trials"), 9)
+  }
+  let payloads = array(field(imported, "payloads"))
+  for
+    (kind, key) in [
+      ("learning-balance-training", "training_sha256"),
+      ("learning-balance-selection", "selection_sha256"),
+      ("learning-balance-evaluation", "evaluation_sha256"),
+    ] {
+    let matching = payloads.filter(p => {
+      field(field(p, "data_ref"), "kind") == Json(kind)
+    })
+    assert_eq(matching.length(), 1)
+    guard field(report, key) is String(digest) else {
+      fail("missing archive digest")
+    }
+    assert_eq(
+      field(field(matching[0], "data_ref"), "checksum"),
+      Json("sha256:" + digest),
+    )
+  }
+  assert_eq(run(cli, ["inspect", store, "balance-sustained"]), imported)
+  let main_cli = root + "/_build/native/debug/build/cmd/main/main.exe"
+  let prefix = "/api/moondata/learning-experiments"
+  let listed = run(main_cli, ["api-route", book, "GET", prefix])
+  let matching = array(field(listed, "experiments")).filter(e => {
+    field(e, "experiment_id") == ("balance-sustained" : Json)
+  })
+  assert_eq(matching.length(), 1)
+  let views : Array[Json] = []
+  for seed in [0, 1, 2] {
+    let evidence = run(main_cli, [
+      "api-route",
+      book,
+      "GET",
+      prefix + "/balance-sustained/physics/\{seed}",
+    ])
+    assert_eq(field(evidence, "physical_execution_allowed"), false)
+    assert_eq(field(evidence, "original_duration_s"), 30)
+    assert_eq(
+      field(evidence, "report"),
+      read(exported + "/policy/physics-seed-\{seed}.json"),
+    )
+    views.push({
+      "seed": Json(seed),
+      "duration_s": 30,
+      "data_ref": field(evidence, "data_ref"),
+    })
+  }
+  let validation = run(
+    root + "/_build/native/debug/build/cmd/moondata/moondata.exe",
+    ["validate", store, args[5]],
+  )
+  assert_eq(field(validation, "status"), "passed")
+  assert_eq(field(validation, "finding_count"), 0)
+  @fs.write_file(
+    args[6],
+    (
+      {
+        "format": "moonrobo.g1-sustained-balance-registration.v1",
+        "export": export_report,
+        "experiment": imported,
+        "api_views": Json(views),
+        "validation": validation,
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "Registered the three sustained learners, reopened their physics through the existing API, and validated MoonData.",
+  )
+}

@@ -1,0 +1,21 @@
+{
+  "seeds": [0, 1, 2],
+  "updates": 200,
+  "batch_size": 64,
+  "horizon": 32,
+  "hidden_width": 128,
+  "actor_learning_rate": 0.0003,
+  "critic_learning_rate": 0.001,
+  "critic_epochs": 2,
+  "gamma": 0.99,
+  "gae_lambda": 0.95,
+  "action_delta_rad": 0.3,
+  "target_height_m": 0.783675,
+  "evaluate_every": 50,
+  "validation_seeds": [30, 31, 32],
+  "test_seeds": [700, 701, 702],
+  "max_mean_joint_rmse_rad": 0.15,
+  "cpu_threads": 2,
+  "evaluation_experiment": "examples/learning/g1-long-experiment.json",
+  "physical_qualification": "All nine ten-second canonical physics trials must have zero falls and mean joint RMSE at most 0.15 rad. Weights-only refinement, frozen dynamics, no exact resume or hardware authority."
+}

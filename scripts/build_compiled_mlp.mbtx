@@ -1,0 +1,156 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+  "moonbitlang/core/env",
+}
+
+///|
+let dir = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+
+///|
+let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+
+///|
+let ssh = ["-S", "/tmp/moonrobo-operator-179.sock", "wlc004s@192.168.2.179"]
+
+///|
+async fn send(source : String, remote : String) -> Unit {
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      source,
+      "wlc004s@192.168.2.179:" + remote,
+    ]),
+    0,
+  )
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, mode] else { fail("prepare|build") }
+  if mode == "prepare" {
+    let parent = @fs.read_file(
+      "output/spark-runtime-20261024/precision-scaling-20261028-a/build_precision_mlp_a.mbtx",
+    ).text()
+    let head = parent[:parent.find("async fn main {").unwrap()].to_owned()
+    let body =
+      #|async fn main {
+      #|  require_idle()
+      #|  let ws=base+"/workspace/moonrobo-compiled-mlp-a"
+      #|  if !@fs.exists(ws) {run("aoti-workspace-copy-a","cp",["-a","--reflink=auto",base+"/workspace/moonrobo-precision-mlp-a",ws])}
+      #|  run("aoti-overlay-a","tar",["-xzf",base+"/compiled-mlp-overlay-a.tar.gz","-C",ws])
+      #|  container("aoti-plugin-build-a","/usr/bin/g++",[
+      #|    "-std=c++17","-O1","-shared","-fPIC","-D_GLIBCXX_USE_CXX11_ABI=1","-DMR_ENABLE_CUDA_GRAPH=1","-DMR_ENABLE_GEOMETRY_FUSION=1","-DMR_ENABLE_NVTX3=1","-DMR_ENABLE_OPERATOR_DIAGNOSTICS=1","-DMR_ENABLE_AOTI=1",
+      #|    "-I/cuda-toolkit/include","-I/cuda-include","-I/opt/isaaclab-venv/lib/python3.12/site-packages/torch/include","-I/opt/isaaclab-venv/lib/python3.12/site-packages/torch/include/torch/csrc/api/include",
+      #|    "/workspace/moonrobo-compiled-mlp-a/src/learning_tensor/adapter.cpp","/build/compact_heading_a.o","/build/fused_rotation_a.o","/build/geometry_tail_a.o","/build/coefficient_full_a.o","-o","/build/libmoonrobo_compiled_mlp_a.so",
+      #|    "-L/opt/isaaclab-venv/lib/python3.12/site-packages/torch/lib","-L/opt/isaaclab-venv/lib/python3.12/site-packages/nvidia/cu13/lib","-Wl,-rpath,/opt/isaaclab-venv/lib/python3.12/site-packages/torch/lib","-Wl,-rpath,/opt/isaaclab-venv/lib/python3.12/site-packages/nvidia/cu13/lib","-Wl,--no-as-needed","-ltorch","-ltorch_cpu","-lc10","-ltorch_cuda","-lc10_cuda","-l:libcudart.so.13","-ldl"
+      #|  ])
+      #|  container("aoti-native-build-a","/toolchain/bin/moon",["test","--build-only","--release","--target","native","-j","2","--frozen","src/learning_aligned_gpu/cmd"],workdir="/workspace/moonrobo-compiled-mlp-a")
+      #|  run("aoti-binary-copy-a","cp",[ws+"/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/cmd/cmd.whitebox_test.exe",base+"/compiled-mlp-gate-a"])
+      #|}
+    @fs.write_file(
+      dir + "/build_compiled_mlp_a.mbtx",
+      head + body,
+      create_mode=CreateNew,
+    )
+    assert_eq(
+      @process.run("tar", [
+        "-czf",
+        dir + "/compiled-mlp-overlay-a.tar.gz",
+        "src/learning_tensor/adapter.cpp",
+        "src/learning_tensor/loader.c",
+        "src/learning_tensor/moon.pkg",
+        "src/learning_tensor/compiled_block.inc",
+        "src/learning_tensor/compiled_block_loader.inc",
+        "src/learning_tensor/compiled_block.mbt",
+        "src/learning_aligned_gpu/cmd/compiled_mlp_wbtest.mbt",
+      ]),
+      0,
+    )
+    send(
+      dir + "/compiled-mlp-overlay-a.tar.gz",
+      base + "/compiled-mlp-overlay-a.tar.gz",
+    )
+    send(
+      dir + "/build_compiled_mlp_a.mbtx",
+      base + "/build_compiled_mlp_a.mbtx",
+    )
+    return
+  }
+  if mode == "retry-native" {
+    let parent = @fs.read_file(dir + "/build_compiled_mlp_a.mbtx").text()
+    let code = parent[:parent.find("async fn main {").unwrap()].to_owned() +
+      (
+        #|async fn main {
+        #|  require_idle()
+        #|  let ws=base+"/workspace/moonrobo-compiled-mlp-a"
+        #|  for name in ["src/learning_tensor/._adapter.cpp","src/learning_tensor/._loader.c","src/learning_tensor/._moon.pkg","src/learning_tensor/._compiled_block.inc","src/learning_tensor/._compiled_block_loader.inc","src/learning_tensor/._compiled_block.mbt","src/learning_aligned_gpu/cmd/._compiled_mlp_wbtest.mbt"] {
+        #|    if @fs.exists(ws+"/"+name) {run("aoti-appledouble-"+name.split("/").last().unwrap().to_owned(),"rm",["--",ws+"/"+name])}
+        #|  }
+        #|  container("aoti-native-build-b","/toolchain/bin/moon",["test","--build-only","--release","--target","native","-j","2","--frozen","src/learning_aligned_gpu/cmd"],workdir="/workspace/moonrobo-compiled-mlp-a")
+        #|  run("aoti-binary-copy-b","cp",[ws+"/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/cmd/cmd.whitebox_test.exe",base+"/compiled-mlp-gate-a"])
+        #|}
+      )
+    @fs.write_file(
+      dir + "/build_compiled_mlp_b.mbtx",
+      code,
+      create_mode=CreateNew,
+    )
+    send(
+      "src/learning_aligned_gpu/cmd/compiled_mlp_wbtest.mbt",
+      base +
+      "/workspace/moonrobo-compiled-mlp-a/src/learning_aligned_gpu/cmd/compiled_mlp_wbtest.mbt",
+    )
+    send(
+      dir + "/build_compiled_mlp_b.mbtx",
+      base + "/build_compiled_mlp_b.mbtx",
+    )
+    assert_eq(
+      @process.run(
+        "ssh",
+        [
+          ..ssh,
+          "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+          base +
+          "/build_compiled_mlp_b.mbtx",
+        ],
+        stdout=@process.redirect_to_file(
+          dir + "/build-b.stdout.log",
+          create_mode=CreateNew,
+        ),
+        stderr=@process.redirect_to_file(
+          dir + "/build-b.stderr.log",
+          create_mode=CreateNew,
+        ),
+      ),
+      0,
+    )
+    return
+  }
+  guard mode == "build" else { fail("mode") }
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        ..ssh,
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/build_compiled_mlp_a.mbtx",
+      ],
+      stdout=@process.redirect_to_file(
+        dir + "/build.stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        dir + "/build.stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+}

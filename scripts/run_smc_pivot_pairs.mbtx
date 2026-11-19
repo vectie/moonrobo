@@ -1,0 +1,50 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/json" }
+let base="/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+let runs="/home/wlc004s/moonrobo/runs/hotspot-shared-"
+async fn run(script : String, args : Array[String], label : String, diagnostic_failure~ : Bool = false) -> Unit {
+  println("Starting "+label)
+  let code=@process.run("/home/wlc004s/moonrobo/toolchain/bin/moon",["run","--target","native",base+"/"+script+".mbtx","--",..args],stdout=@process.redirect_to_file(base+"/"+label+".stdout.log",create_mode=CreateNew),stderr=@process.redirect_to_file(base+"/"+label+".stderr.log",create_mode=CreateNew))
+  @fs.write_file(base+"/"+label+".exit.json",({"exit_code":Json(code)}:Json).stringify(),create_mode=CreateNew)
+  guard code==0 || diagnostic_failure else {fail(label)}
+  println("Completed "+label+" exit="+code.to_string())
+}
+async fn check_result(label : String, reps : Int) -> Unit {
+  let j=@json.parse(@fs.read_file(runs+label+"/result.json").text())
+  guard j is {"rows":Array(rows),..} && rows.length()==reps else {fail("incomplete "+label)}
+  guard @json.parse(@fs.read_file(runs+label+"/training-docker-final.json").text()) is [{"State":{"OOMKilled":False,"Running":False,..},..}] else {fail("OOM/running "+label)}
+}
+async fn main {
+  // Native test executables can exit zero on a failed test. Parse actual results.
+  for (label,expected) in [("geometry",1),("pivot",1),("config",4),("resume",1),("inference",1)] {
+    let text=@fs.read_file(base+"/smc-heading-"+label+"-cpu-b.stdout.log").text()
+    guard !text.contains("SKIP") else {fail("skipped "+label)}
+    let mut count=0
+    for line in text.split("\n") {
+      if line.has_prefix("{\"type\":\"result\"") {
+        guard @json.parse(line.to_owned()) is {"message":"",..} else {fail("test failed "+label)}
+        count+=1
+      }
+    }
+    assert_eq(count,expected)
+  }
+  run("advise_heading_a",["heading-before-pivot-a"],"heading-before-pivot-cache-a")
+  run("run_heading_b",["actor","native","off","1","pivot-actor-gate-b","pivot"],"pivot-actor-gate-b")
+  check_result("pivot-actor-gate-b",1)
+  let report=base+"/pivot-actor-gate-b.numeric.json"
+  run("compare_top3_snapshots",[runs+"heading-actor-gate-a",runs+"pivot-actor-gate-b",report],"pivot-actor-gate-b-compare")
+  guard @json.parse(@fs.read_file(report).text()) is {"passed":True,..} else {fail("pivot numerical gate: no promotion or throughput claim")}
+  for i,variant in ["heading","pivot","pivot","heading"] {
+    let label="pivot-pair-"+i.to_string()
+    run("run_heading_b",["actor","native","off","13",label,variant],label)
+    check_result(label,13)
+    if i==1 {run("advise_heading_a",["heading-mid-pair-a"],"heading-mid-pair-cache-a")}
+  }
+  run("advise_heading_a",["heading-before-smc-a"],"heading-before-smc-cache-a")
+  run("run_heading_b",["actor","smc","off","13","heading-smc-actor-off-a","heading"],"heading-smc-actor-off-a",diagnostic_failure=true)
+  check_result("heading-smc-actor-off-a",13)
+  run("run_heading_b",["world","native","off","13","heading-world-gate-a","heading"],"heading-world-gate-a")
+  check_result("heading-world-gate-a",13)
+  run("run_heading_b",["world","smc","off","13","heading-smc-world-off-a","heading"],"heading-smc-world-off-a",diagnostic_failure=true)
+  check_result("heading-smc-world-off-a",13)
+  @fs.write_file(base+"/heading-pivot-completed.json","{\"completed\":true,\"guards_unchanged\":true}",create_mode=CreateNew)
+}

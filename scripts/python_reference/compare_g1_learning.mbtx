@@ -1,0 +1,180 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn number(value : Json) -> Double raise {
+  guard value is Number(value, ..) else { fail("expected number") }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() == 5 ||
+    (
+      args.length() == 6 &&
+      (args[5] == "action-range" || args[5] == "goal-coverage")
+    ),
+    msg="usage: compare_g1_learning.mbtx REPO PPO_RUN MODEL_BASED_RUN OUTPUT | REPO FIRST_PPO SECOND_PPO OUTPUT action-range|goal-coverage",
+  )
+  let ablation = args.length() == 6
+  let goals = ablation && args[5] == "goal-coverage"
+  let root = args[1]
+  let output = args[4]
+  @fs.mkdir(output, recursive=true)
+  let ppo_runs = if ablation {
+    []
+  } else {
+    let ppo = @json.parse(
+      @fs.read_file(args[2] + "/canonical-evaluation.json").text(),
+    )
+    array(field(ppo, "runs"))
+  }
+  let config_path = root +
+    "/examples/learning/" +
+    (if goals {
+      "g1-ppo-goal-fit.json"
+    } else if ablation {
+      "g1-ppo-wide-fit.json"
+    } else {
+      "g1-ppo-fit.json"
+    })
+  let config = @json.parse(@fs.read_file(config_path).text())
+  let groups = if goals {
+    [("ppo-standing", args[2]), ("ppo-goals", args[3])]
+  } else if ablation {
+    [("ppo-narrow", args[2]), ("ppo-wide", args[3])]
+  } else {
+    [("ppo", args[2]), ("model-based-warm", args[3] + "/policy")]
+  }
+  let runs : Array[Json] = []
+  for (algorithm, folder) in groups {
+    for seed in 0..<3 {
+      let destination = output + "/" + algorithm + "-seed-\{seed}"
+      let (code, stdout, stderr) = @process.collect_output(
+        root + "/target/learning-venv/bin/python",
+        [
+          root + "/providers/motion_learning/policy.py",
+          "evaluate",
+          "--checkpoint",
+          folder + "/actor-seed-\{seed}.pt",
+          "--scene",
+          root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+          "--experiment",
+          root + "/examples/learning/g1-cpu-experiment.json",
+          "--config",
+          config_path,
+          "--output",
+          destination,
+        ],
+      )
+      assert_eq(code, 0, msg=stderr.text() + stdout.text())
+      let bytes = @fs.read_file(destination + "/physics.json")
+      let result = @json.parse(bytes.text())
+      let summary = field(field(result, "candidate"), "summary")
+      assert_eq(field(summary, "trials"), (9 : Json))
+      let actual_config = field(result, "policy_config")
+      for key in ["hidden_width", "target_height_m"] {
+        assert_eq(field(actual_config, key), field(config, key))
+      }
+      let expected_range = if algorithm == "ppo-narrow" {
+        (0.08 : Json)
+      } else {
+        field(config, "action_delta_rad")
+      }
+      assert_eq(field(actual_config, "action_delta_rad"), expected_range)
+      if ablation {
+        for
+          key in [
+            "updates", "episodes_per_update", "max_training_steps", "max_training_seconds",
+            "actor_learning_rate", "critic_learning_rate", "epochs", "minibatch_size",
+            "clip_ratio", "target_kl", "raw_action_std", "gamma", "gae_lambda",
+          ] {
+          assert_eq(field(actual_config, key), field(config, key))
+        }
+      }
+      if algorithm == "ppo" {
+        let previous = field(ppo_runs[seed], "candidate")
+        for key in ["trials", "falls", "mean_survival_s", "mean_joint_rmse_rad"] {
+          assert_true(
+            (number(field(previous, key)) - number(field(summary, key))).abs() <
+            1.0e-12,
+          )
+        }
+      }
+      let row : Json = {
+        "algorithm": algorithm.to_json(),
+        "seed": seed.to_json(),
+        "baseline": field(field(result, "baseline"), "summary"),
+        "candidate": summary,
+        "checkpoint_sha256": field(result, "checkpoint_sha256"),
+        "physics_path": (destination + "/physics.json").to_json(),
+        "physics_sha256": @crypto.bytes_to_hex_string(
+          @crypto.sha256(bytes.binary()),
+        ).to_json(),
+        "action_delta_rad": field(actual_config, "action_delta_rad"),
+      }
+      if ablation {
+        let source = @json.parse(@fs.read_file(folder + "/report.json").text())
+        let training = array(field(source, "runs"))[seed]
+        guard row is Object(fields) else { fail("expected comparison row") }
+        for
+          key in [
+            "training_steps", "training_seconds", "completed_update", "selected_update",
+            "stop_reason",
+          ] {
+          fields.set(key, field(training, key))
+        }
+      }
+      runs.push(row)
+      println("\{algorithm} seed \{seed}: " + summary.stringify())
+    }
+  }
+  let report : Json = {
+    "format": if goals {
+      "moonrobo.g1-goal-coverage-ablation.v1"
+    } else if ablation {
+      "moonrobo.g1-action-range-ablation.v1"
+    } else {
+      "moonrobo.g1-learning-quality-comparison.v1"
+    },
+    "evaluation_seeds": field(config, "test_seeds"),
+    "case_ids": ["stand", "sway", "wave"],
+    "physical_execution_allowed": false,
+    "comparison_scope": if goals {
+      "PPO standing-only versus independent per-episode pose goals; same maximum budgets, action range and latent exploration. Actual steps and selected updates differ; no learning-speed claim."
+    } else if ablation {
+      "PPO action-range ablation with matched maximum budgets. Actual collected steps/updates differ. Fixed latent Gaussian scale means physical exploration changes with the action range; no isolated capacity or learning-speed claim."
+    } else {
+      "Final checkpoint quality on the same physics suite. Training histories, budgets, normalization data and warm starts differ; no learning-speed comparison."
+    },
+    "runs": runs.to_json(),
+  }
+  @fs.write_file(
+    output + "/report.json",
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

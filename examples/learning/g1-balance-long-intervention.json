@@ -1,0 +1,12 @@
+{
+  "seeds": [0, 1, 2],
+  "modes": ["learned_full", "derived_fixed_ankle", "oracle_ankle", "oracle_ankle_waist", "oracle_lower"],
+  "wave_reset_seeds": [9900, 10000],
+  "sine_reset_seed_base": 6600,
+  "duration_s": 30,
+  "fall_height_m": 0.35,
+  "fall_upright_z": 0.5,
+  "diagnostic_stride": 5,
+  "cpu_threads": 2,
+  "scope": "Frozen full-memory learned heads and parent actors. Five predeclared channel/feature variants on two repeated wave resets and three independent-joint-sine cases per parent. Complete privileged teacher runs the two unique wave conditions once and all nine unique sine conditions once. Record same-state action/feature errors, geometry and saturation without fitting or selecting gains/checkpoints. Reproduce all six prior learned long wave episodes and nine prior learned sine episodes/prefixes exactly. Development diagnostics only, no release or physical authority."
+}

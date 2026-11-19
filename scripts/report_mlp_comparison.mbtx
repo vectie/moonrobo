@@ -1,0 +1,216 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/core/env",
+  "moonbitlang/core/string",
+}
+
+///|
+fn field(v : Json, key : String) -> Json raise {
+  guard v is Object(m) && m.get(key) is Some(x) else { fail("missing " + key) }
+  x
+}
+
+///|
+fn num(v : Json) -> Double raise {
+  match v {
+    Number(x, ..) => x
+    String(x) => @string.parse_double(x)
+    _ => fail("number")
+  }
+}
+
+///|
+fn arr(v : Json) -> Array[Json] raise {
+  guard v is Array(x) else { fail("array") }
+  x
+}
+
+///|
+fn str(v : Json) -> String raise {
+  guard v is String(x) else { fail("string") }
+  x
+}
+
+///|
+fn median(x : Array[Double]) -> Double raise {
+  guard !x.is_empty() else { fail("empty median") }
+  let a = x.copy()
+  a.sort()
+  (a[a.length() / 2] + a[(a.length() - 1) / 2]) / 2.0
+}
+
+///|
+fn event_sum(row : Json, key : String, implementation : String) -> Double raise {
+  if implementation == "smc" || implementation == "compiled" {
+    return num(field(row, key + "_ms"))
+  }
+  let profile = field(row, "profile")
+  guard field(profile, "dropped_spans") == Json(0) &&
+    field(profile, "open_spans") == Json(0) else {
+    fail("incomplete event spans")
+  }
+  let spans = arr(field(profile, "spans"))
+  let mut sum = 0.0
+  for span in spans {
+    if field(span, "label") == Json("mlp." + key) {
+      sum += num(field(span, "gpu_elapsed_ms"))
+    }
+  }
+  sum
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, stage] && ["off", "final", "matched"].contains(stage) else {
+    fail("off|final|matched")
+  }
+  let root = "/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/layernorm-mlp-20261026"
+  let read = path => @json.parse(@fs.read_file(root + "/" + path).text())
+  let groups = match stage {
+    "off" => ["off"]
+    "matched" => ["matched-off", "matched-events"]
+    _ => ["off", "events"]
+  }
+  let summaries : Array[Json] = []
+  let runs : Array[Json] = []
+  let mut max_allocated = 0.0
+  let mut max_reserved = 0.0
+  let mut min_free = 1.0e30
+  let mut min_host_free = 1.0e30
+  let mut min_host_available = 1.0e30
+  let mut max_cgroup = 0.0
+  for group in groups {
+    let entries = arr(read(group + "-runs.json"))
+    for entry in entries {
+      let label = str(field(entry, "label"))
+      let implementation = str(field(entry, "implementation"))
+      let phase = str(field(entry, "phase"))
+      let result = read(label + "/result.json")
+      let rows = arr(field(arr(field(result, "cases"))[0], "rows")).filter(r => {
+        field(r, "steady") == Json(true)
+      })
+      assert_eq(rows.length(), 50)
+      let wall = median(rows.map(r => num(field(r, "wall_ms"))))
+      let item : Json = {
+        "label": Json(label),
+        "group": Json(group),
+        "implementation": Json(implementation),
+        "phase": Json(phase),
+        "wall_median_ms": Json(wall),
+        "submit_median_ms": Json(
+          median(rows.map(r => num(field(r, "submit_ms")))),
+        ),
+        "forward_median_ms": if group.has_suffix("events") {
+          Json(median(rows.map(r => event_sum(r, "forward", implementation))))
+        } else {
+          Json::null()
+        },
+        "backward_median_ms": if group.has_suffix("events") {
+          Json(median(rows.map(r => event_sum(r, "backward", implementation))))
+        } else {
+          Json::null()
+        },
+      }
+      runs.push(item)
+      let mem = field(result, "memory")
+      let python = implementation == "smc" || implementation == "compiled"
+      max_allocated = max_allocated.max(
+        num(
+          field(
+            mem,
+            if python {
+              "allocated_peak"
+            } else {
+              "allocated_peak_bytes"
+            },
+          ),
+        ),
+      )
+      max_reserved = max_reserved.max(
+        num(
+          field(
+            mem,
+            if python {
+              "reserved_peak"
+            } else {
+              "reserved_peak_bytes"
+            },
+          ),
+        ),
+      )
+      min_free = min_free.min(
+        num(field(mem, if python { "free" } else { "cuda_free_bytes" })),
+      )
+      let guard_record = read(label + "/training-guard.json")
+      assert_eq(field(guard_record, "passed"), Json(true))
+      for sample in arr(field(guard_record, "samples")) {
+        assert_eq(field(sample, "cgroup_swap_bytes"), Json(0))
+        min_host_free = min_host_free.min(num(field(sample, "host_free_kib")))
+        min_host_available = min_host_available.min(
+          num(field(sample, "host_available_kib")),
+        )
+        max_cgroup = max_cgroup.max(num(field(sample, "cgroup_peak_bytes")))
+      }
+    }
+    for phase in ["world", "actor"] {
+      for
+        implementation in (if stage == "matched" {
+          ["expanded", "ln-only", "native", "smc"]
+        } else {
+          ["expanded", "ln-only", "native", "smc", "compiled"]
+        }) {
+        let pair = runs.filter(r => {
+          field(r, "group") == Json(group) &&
+          field(r, "phase") == Json(phase) &&
+          field(r, "implementation") == Json(implementation)
+        })
+        assert_eq(pair.length(), 2)
+        let mean = key => {
+          (num(field(pair[0], key)) + num(field(pair[1], key))) / 2.0
+        }
+        let summary : Json = {
+          "group": Json(group),
+          "phase": Json(phase),
+          "implementation": Json(implementation),
+          "wall_ms": Json(mean("wall_median_ms")),
+          "forward_ms": if group.has_suffix("events") {
+            Json(mean("forward_median_ms"))
+          } else {
+            Json::null()
+          },
+          "backward_ms": if group.has_suffix("events") {
+            Json(mean("backward_median_ms"))
+          } else {
+            Json::null()
+          },
+          "runs": Json(pair),
+        }
+        summaries.push(summary)
+        println(summary.stringify())
+      }
+    }
+  }
+  let result : Json = {
+    "summaries": Json(summaries),
+    "resources": {
+      "max_allocated_bytes": Json(max_allocated),
+      "max_reserved_bytes": Json(max_reserved),
+      "min_end_cuda_free_bytes": Json(min_free),
+      "min_sampled_host_free_kib": Json(min_host_free),
+      "min_sampled_host_available_kib": Json(min_host_available),
+      "max_sampled_cgroup_peak_bytes": Json(max_cgroup),
+    },
+    "run_count": Json(runs.length()),
+    "scope": "one MLP step with fixed trained weights and synthetic shared x/dy; actor is 8x512 input-gradient-only, not 32-step BPTT",
+    "numerical_reference": "native LN+Linear passes SMC eager exactly; compiled MLP fails unchanged strict gate and remains diagnostic only",
+    "statistic": "average of two run medians, each excludes ten warmups and retains fifty repetitions; mirrored run order",
+  }
+  @fs.write_file(
+    root + "/" + stage + "-summary.json",
+    result.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+}

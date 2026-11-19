@@ -1,0 +1,93 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: fit_g1_behavior_cloning.mbtx REPO TEACHER_DATA OUTPUT",
+  )
+  let root = args[1]
+  let output = args[3]
+  assert_true(!@fs.exists(output), msg="choose a fresh training directory")
+  @fs.mkdir(output + "/provider-sources", recursive=true)
+  for
+    name in [
+      "behavior_cloning.py", "policy.py", "dynamics.py", "cpu_physics.py",
+    ] {
+    @fs.write_file(
+      output + "/provider-sources/" + name,
+      @fs.read_file(root + "/providers/motion_learning/" + name).binary(),
+      create_mode=CreateOrTruncate,
+    )
+  }
+  @fs.write_file(
+    output + "/config.json",
+    @fs.read_file(root + "/examples/learning/g1-bc-fit.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/experiment.json",
+    @fs.read_file(root + "/examples/learning/g1-long-experiment.json").binary(),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.write_file(
+    output + "/charter.json",
+    (
+      {
+        "format": "moonrobo.g1-bc-charter.v1",
+        "teacher_data": Json(args[2]),
+        "selection": "Physics validation seeds 30-32 at update 0/100/500/1000/2000/3000. Fresh final seeds 8400-8402 never select weights.",
+        "kind": "behavior-cloning-initialization",
+        "physical_execution_allowed": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  let (code, out, err) = @process.collect_output(
+    root + "/target/learning-venv/bin/python",
+    [
+      output + "/provider-sources/behavior_cloning.py",
+      "--train",
+      args[2] + "/train-batch.json",
+      "--scene",
+      root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      "--config",
+      output + "/config.json",
+      "--experiment",
+      output + "/experiment.json",
+      "--output",
+      output + "/policy",
+    ],
+  )
+  @fs.write_file(
+    output + "/train.log",
+    out.text() + err.text(),
+    create_mode=CreateOrTruncate,
+  )
+  assert_eq(code, 0, msg=err.text())
+  let report = @json.parse(@fs.read_file(output + "/policy/report.json").text())
+  guard report is Object(fields) && fields.get("runs") is Some(Array(runs)) else {
+    fail("missing runs")
+  }
+  for row in runs {
+    guard row is Object(r) else { fail("expected result") }
+    println(
+      (
+        {
+          "seed": r["seed"],
+          "selected_update": r["selected_update"],
+          "candidate": r["candidate"],
+          "qualifies": r["qualifies"],
+          "training_action_rmse_rad": r["training_action_rmse_rad"],
+        } : Json).stringify(),
+    )
+  }
+}

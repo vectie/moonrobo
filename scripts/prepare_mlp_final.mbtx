@@ -1,0 +1,94 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn run(program : String, args : Array[String]) -> Unit {
+  guard @process.run(program, args) == 0 else { fail(program + " failed") }
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let root = repo + "/output/spark-runtime-20261024/layernorm-mlp-20261026"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179"
+  let socket = "/tmp/moonrobo-operator-179.sock"
+  let runner = @fs.read_file(root + "/run_mlp_comparison_b.mbtx")
+    .text()
+    .replace_all(old="mlp-gate-b", new="mlp-gate-c")
+    .replace_all(old="native-gate-b", new="native-gate-c")
+    .replace_all(old="run_mlp_comparison_b", new="run_mlp_comparison_c")
+  let builder = @fs.read_file(root + "/build_mlp_comparison_b.mbtx")
+    .text()
+    .replace_all(old="moonrobo-mlp-b", new="moonrobo-mlp-c")
+    .replace_all(old="mlp-gate-b", new="mlp-gate-c")
+    .replace_all(old="mlp-tensor-gate-b", new="mlp-tensor-gate-c")
+    .replace_all(old="mlp-runtime-gate-b", new="mlp-runtime-gate-c")
+    .replace_all(
+      old="\"src/learning_tensor\", \"src/learning_aligned_gpu/runtime\",",
+      new="\"src/learning_tensor\", \"src/learning_aligned_gpu/runtime\", \"src/learning_aligned_gpu\",",
+    )
+    .replace_all(
+      old="\"OMP_NUM_THREADS=1\",",
+      new="\"OMP_NUM_THREADS=1\", \"--env\", \"MOONROBO_TENSOR_LIBRARY=/build/libmoonrobo_mlp_b.so\",",
+    )
+    .replace_all(
+      old="  if mode == \"fixture-stage-b\" {",
+      new="  if mode == \"mlp-tests-c\" {\n    container(\"mlp-linear-cpu-c\", \"/build/mlp-tensor-gate-c\", [\"linear_test.mbt:0-1\"])\n    container(\"mlp-frozen-cpu-c\", \"/workspace/moonrobo-mlp-c/_build/native/release/test/vectie/moonrobo/src/learning_aligned_gpu/learning_aligned_gpu.blackbox_test.exe\", [\"layer_norm_test.mbt:0-1\"])\n    container(\"mlp-config-c\", \"/build/mlp-gate-c\", [\"optimizations_wbtest.mbt:0-2\"])\n    return\n  }\n  if mode == \"fixture-stage-b\" {",
+    )
+  for
+    (name, contents) in [
+      ("run_mlp_comparison_c.mbtx", runner),
+      ("build_mlp_comparison_c.mbtx", builder),
+    ] {
+    @fs.write_file(root + "/" + name, contents, create_mode=CreateNew)
+    run("scp", [
+      "-o",
+      "ControlPath=" + socket,
+      root + "/" + name,
+      host + ":" + base + "/" + name,
+    ])
+  }
+  run("ssh", [
+    "-S",
+    socket,
+    host,
+    "cp -a --reflink=auto " +
+    base +
+    "/workspace/moonrobo-mlp-b " +
+    base +
+    "/workspace/moonrobo-mlp-c",
+  ])
+  for
+    path in [
+      "src/learning_aligned_gpu/cmd/mlp_comparison_wbtest.mbt", "src/learning_aligned_gpu/cmd/optimizations.mbt",
+      "src/learning_aligned_gpu/cmd/optimizations_wbtest.mbt", "src/learning_aligned_gpu/networks.mbt",
+      "src/learning_aligned_gpu/execution_optimizations.mbt", "src/learning_aligned_gpu/learning.mbt",
+      "src/learning_aligned_gpu/checkpoint.mbt", "src/learning_aligned_gpu/audit.mbt",
+      "src/learning_aligned_gpu/audit_wbtest.mbt", "src/learning_aligned_gpu/precision_wbtest.mbt",
+      "src/learning_aligned_gpu/inference/actor_wbtest.mbt", "src/learning_aligned_gpu/layer_norm_test.mbt",
+      "src/learning_tensor/linear_test.mbt", "src/learning_tensor/moon.pkg",
+    ] {
+    run("scp", [
+      "-o",
+      "ControlPath=" + socket,
+      repo + "/" + path,
+      host + ":" + base + "/workspace/moonrobo-mlp-c/" + path,
+    ])
+  }
+  for mode in ["gate-build-mlp-c", "mlp-tests-c"] {
+    run("ssh", [
+      "-S",
+      socket,
+      host,
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      base +
+      "/build_mlp_comparison_c.mbtx -- " +
+      mode,
+    ])
+  }
+}

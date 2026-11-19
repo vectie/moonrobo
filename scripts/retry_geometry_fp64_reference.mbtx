@@ -1,0 +1,43 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let script = @fs.read_file("scripts/run_geometry_fp64_reference.mbtx")
+    .text()
+    .replace_all(
+      old="geometry_training_reference_m.py",
+      new="geometry_training_reference_n.py",
+    )
+    .replace_all(
+      old="run_geometry_math_gate_m.mbtx",
+      new="run_geometry_math_gate_n.mbtx",
+    )
+    .replace_all(
+      old="geometry-math-reference-gate-m",
+      new="geometry-math-reference-gate-n",
+    )
+    .replace_all(
+      old="  let put = async fn(name : String, content : String) {",
+      new="  let put = async fn(name : String, content : String) {\n    if @fs.exists(out+\"/\"+name) { assert_eq(@fs.read_file(out+\"/\"+name).text(),content);return }",
+    )
+  @fs.write_file(
+    out + "/retry_fp64_reference_n.mbtx",
+    script,
+    create_mode=CreateNew,
+  )
+  assert_eq(
+    @process.run("moon", [
+      "run",
+      "--target",
+      "native",
+      out + "/retry_fp64_reference_n.mbtx",
+    ]),
+    0,
+  )
+}

@@ -1,0 +1,51 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+/// Source preservation only. Does not invoke a learning, export or SDK entry.
+async fn main {
+  if @fs.exists("docs/PYTHON_DEPENDENCIES.json") {
+    fail(
+      "One-off source migration is already audited; do not rerun its rewrite recipe",
+    )
+  }
+  let folder = "scripts/python_reference"
+  @fs.mkdir(folder, recursive=true)
+  let entries : Array[Json] = []
+  for name in @fs.readdir("scripts", sort=true) {
+    if name.has_suffix(".mbtx") &&
+      name != "archive_temporal_balance_launchers.mbtx" &&
+      (
+        name.contains("temporal") ||
+        name.contains("balance") ||
+        name.contains("sustained") ||
+        name.contains("teacher")
+      ) {
+      let destination = folder + "/" + name
+      assert_false(
+        @fs.exists(destination),
+        msg="refuse to overwrite historical launcher: " + name,
+      )
+      let bytes = @fs.read_file("scripts/" + name).binary()
+      let mut digest = ""
+      for byte in @crypto.sha256(bytes) {
+        digest += byte.to_hex()
+      }
+      @fs.write_file(destination, bytes, create_mode=CreateOrTruncate)
+      entries.push({ "script": Json(name), "sha256": Json(digest) })
+    }
+  }
+  @fs.write_file(
+    folder + "/temporal-balance-sources.json",
+    Json(entries).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    "Archived \{entries.length()} historical source scripts; no experiment executed",
+  )
+}

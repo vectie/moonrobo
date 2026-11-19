@@ -1,0 +1,74 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(m) && m.get(k) is Some(v) else { fail(k) }
+  v
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, label] else { fail("native result label") }
+  let root = "output/spark-runtime-20261024/geometry-cost-20261030-a/" + label
+  let after = @json.parse(@fs.read_file(root + "/final.json").text())
+  guard field(after, "records") is Array(actual_records) else {
+    fail("records")
+  }
+  let reference = if actual_records.length() == 160 {
+    "geometry-math-native-gate-r2"
+  } else {
+    "geometry-math-native-bench-a"
+  }
+  let before = @json.parse(
+    @fs.read_file(
+      "output/spark-runtime-20261024/geometry-math-20261029-a/" +
+      reference +
+      "/final.json",
+    ).text(),
+  )
+  guard field(before, "records") is Array(expected) &&
+    field(after, "records") is Array(actual) else {
+    fail("records")
+  }
+  assert_eq(expected.length(), actual.length())
+  let hashes : Map[String, Json] = Map([])
+  for row in expected {
+    guard field(row, "name") is String(name) else { fail("name") }
+    hashes[name] = field(row, "blob")
+  }
+  for row in actual {
+    guard field(row, "name") is String(name) else { fail("name") }
+    let blob = field(row, "blob")
+    for key in ["sha256", "shape", "count", "dtype"] {
+      assert_eq(field(blob, key), field(hashes[name], key))
+    }
+  }
+  assert_eq(field(before, "metadata"), field(after, "metadata"))
+  assert_eq(
+    field(before, "optimizer_metadata"),
+    field(after, "optimizer_metadata"),
+  )
+  let report : Json = {
+    "passed": true,
+    "bitwise_tensor_files": Json(actual.length()),
+    "normalizers_and_optimizers_unchanged": true,
+    "reference": Json(reference),
+    "scope": "timer-only or execution candidate vs validated corrected native; recorded payload SHA256 matches",
+  }
+  @fs.write_file(
+    root + "/unchanged-snapshot.json",
+    report.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(
+    "all " +
+    actual.length().to_string() +
+    " tensor digests and metadata unchanged",
+  )
+}

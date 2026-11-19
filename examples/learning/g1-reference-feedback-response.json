@@ -1,0 +1,20 @@
+{
+  "format": "moonrobo.g1-reference-feedback-response-charter.v1",
+  "source_report_sha256": "88c753f4485773ab66629cc868875255a0a1cbffbbdc2e760f8135abbae88404",
+  "horizon": 32,
+  "direction_sources": ["open-tape", "feedback"],
+  "execution_modes": ["open-tape", "feedback"],
+  "action_rms_amplitudes_rad": [0.0001, 0.001],
+  "finite_difference_epsilon_rad": 0.000001,
+  "model_finite_difference_epsilons_rad": [0.000001, 0.0000001, 0.00000001],
+  "model_finite_difference_reporting": "The preliminary run stopped at a feedback direction whose 1e-6 central difference differed from autodiff by 1.4 percent. Preserve that scale and uniformly report 1e-6/1e-7/1e-8 checks for every direction/execution pair. Flag agreement at the smallest scale; do not omit a physical condition or stop collection because a local nonsmooth/finite-step diagnostic fails. Failed checks remain visible and do not qualify a physical gradient. The preliminary incomplete directory is excluded from complete-run metrics and cost.",
+  "gamma": 0.99,
+  "expected_conditions": 36,
+  "expected_counterfactual_episodes": 576,
+  "direction_feasibility": "Use one common coordinate mask per condition: retain only tape coordinates whose original, model-feedback-baseline and physics-feedback-baseline controls all lie more than sqrt(32*29)*0.001 rad from both actuator limits. Normalize each masked gradient to unit RMS over all 928 control coordinates. Apply identical actuator clipping in every model and physical rollout; feedback can still change saturation after a perturbation.",
+  "controller_restore": "Use the recorded cycle-5 actor's causal H10 observation history and actual/reference balance features at each original offset, promoted from archived float32 to float64. Both model and physical feedback rollouts start with exactly those same tensors. Subsequently advance history and full EMA memory from their own state-derived observations. Reference goals and planned observer features use the existing schedule, promoted from float32. External tape perturbations are added after the policy's own bounded output, then actuator-clipped.",
+  "comparison": "Keep all 36 solver snapshots and six frozen cycle-6 models from the preceding first-action study. Compute one H32 whole-tape gradient for fixed recorded controls and one through the restored cycle-5 policy's closed-loop feedback. Evaluate BOTH frozen directions under BOTH execution modes, at both fixed amplitudes and signs. Reuse the 36 exact open-tape physical baselines; collect 36 feedback baselines and 576 new physical branches. Each mode uses its own unperturbed baseline. Baseline actions after the first decision and optimized directions differ by mode, so this is a crossed local response diagnostic, not a causal effect size for feedback or a full actor parameter update.",
+  "precision": "Float64 controller/model/reward computation and physics archives, using promoted frozen float32 learned artifacts and reference reward targets. This is a precision-defined diagnostic controller, not claimed bit-identical to the original float32 runner.",
+  "scope": "Known development states, no fitting, actor optimization, checkpoint selection, unseen-motion test, policy qualification, successful compute-to-target or physical execution authority. Report both amplitudes, directions and modes without selecting a favorable cell.",
+  "physical_execution_allowed": false
+}

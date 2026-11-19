@@ -1,0 +1,311 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/math",
+  "moonbitlang/core/string",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+let g1_joints : Array[String] = [
+  "left_hip_pitch_joint", "left_hip_roll_joint", "left_hip_yaw_joint", "left_knee_joint",
+  "left_ankle_pitch_joint", "left_ankle_roll_joint", "right_hip_pitch_joint", "right_hip_roll_joint",
+  "right_hip_yaw_joint", "right_knee_joint", "right_ankle_pitch_joint", "right_ankle_roll_joint",
+  "waist_yaw_joint", "waist_roll_joint", "waist_pitch_joint", "left_shoulder_pitch_joint",
+  "left_shoulder_roll_joint", "left_shoulder_yaw_joint", "left_elbow_joint", "left_wrist_roll_joint",
+  "left_wrist_pitch_joint", "left_wrist_yaw_joint", "right_shoulder_pitch_joint",
+  "right_shoulder_roll_joint", "right_shoulder_yaw_joint", "right_elbow_joint", "right_wrist_roll_joint",
+  "right_wrist_pitch_joint", "right_wrist_yaw_joint",
+]
+
+///|
+fn find_column(header : Array[String], name : String) -> Int32 raise {
+  for i, value in header {
+    if value.trim() == name {
+      return i
+    }
+  }
+  fail("BONES-SEED CSV missing column: " + name)
+}
+
+///|
+fn joint_column(header : Array[String], name : String) -> Int32 raise {
+  let direct = name + "_dof"
+  for i, value in header {
+    if value.trim() == direct ||
+      value.trim() == name[:name.length() - 6] + "_dof" {
+      return i
+    }
+  }
+  fail("BONES-SEED G1 joint order cannot be established for " + name)
+}
+
+///|
+fn radians(degrees : Double) -> Double {
+  degrees * 0.017453292519943295
+}
+
+///|
+fn parse_finite(value : StringView) -> Double raise {
+  let parsed = @string.parse_double(value.trim())
+  guard !parsed.is_nan() && !parsed.is_inf() else {
+    fail("BONES-SEED CSV contains a nonfinite motion value")
+  }
+  parsed
+}
+
+///|
+fn convert_row(
+  columns : Array[StringView],
+  indices : Array[Int32],
+) -> String raise {
+  guard columns.length() >= 36 else { fail("short BONES-SEED CSV row") }
+  let x = radians(parse_finite(columns[indices[3]])) * 0.5
+  let y = radians(parse_finite(columns[indices[4]])) * 0.5
+  let z = radians(parse_finite(columns[indices[5]])) * 0.5
+  let sx = @math.sin(x)
+  let cx = @math.cos(x)
+  let sy = @math.sin(y)
+  let cy = @math.cos(y)
+  let sz = @math.sin(z)
+  let cz = @math.cos(z)
+  // NVIDIA ProtoMotions documents the source as extrinsic XYZ degrees:
+  // https://github.com/NVlabs/ProtoMotions/blob/main/docs/source/getting_started/seed_g1_csv_preparation.rst
+  // Extrinsic XYZ means Rz * Ry * Rx. Output quaternion is xyzw.
+  let qx = cz * cy * sx - sz * sy * cx
+  let qy = cz * sy * cx + sz * cy * sx
+  let qz = sz * cy * cx - cz * sy * sx
+  let qw = cz * cy * cx + sz * sy * sx
+  let row : Array[String] = []
+  for j in 0..<3 {
+    row.push((parse_finite(columns[indices[j]]) / 100.0).to_string())
+  }
+  for value in [qx, qy, qz, qw] {
+    row.push(value.to_string())
+  }
+  for j in 6..<indices.length() {
+    row.push(radians(parse_finite(columns[indices[j]])).to_string())
+  }
+  row.join(",")
+}
+
+///|
+fn sha256(bytes : Bytes) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(bytes))
+}
+
+///|
+fn exact_count_json(count : Int64) -> Json raise {
+  // JSON numbers are represented by Double internally. Keep the original
+  // integer token so large aggregate byte counts remain exact in the manifest.
+  guard count >= 0L && count <= 9007199254740991L else {
+    fail("BONES-SEED aggregate count exceeds exact JSON integer range")
+  }
+  Json::number(count.to_double(), repr=count.to_string())
+}
+
+///|
+async fn archive_sha256(path : String) -> String {
+  // A source archive exceeds 23 GB; let sha256sum stream it from disk.
+  let (code, out, err) = @process.collect_output("sha256sum", [path])
+  assert_eq(code, 0, msg=err.text())
+  let value = out.text().split(" ").to_array()[0].to_owned()
+  assert_eq(value.length(), 64, msg="archive SHA256 output is malformed")
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_true(
+    args.length() == 4 || args.length() == 7,
+    msg="usage: import_bones_seed_g1.mbtx EXTRACTED_BONES_ROOT PRIVATE_OUTPUT HF_METADATA_REVISION [MODELSCOPE_REVISION G1_ARCHIVE_PATH EXPECTED_ARCHIVE_SHA256]",
+  )
+  let source = args[1]
+  let output = args[2]
+  let revision = args[3]
+  assert_true(
+    revision.length() == 40,
+    msg="pin the Hugging Face metadata commit SHA",
+  )
+  let acquisition : Json = if args.length() == 7 {
+    let mirror_revision = args[4]
+    let archive_path = args[5]
+    let expected_archive_sha256 = args[6]
+    assert_true(
+      mirror_revision.length() == 40 && expected_archive_sha256.length() == 64,
+      msg="ModelScope revision and expected archive SHA256 must be complete",
+    )
+    assert_true(@fs.exists(archive_path), msg="missing downloaded G1 archive")
+    let actual_sha256 = archive_sha256(archive_path)
+    assert_eq(
+      actual_sha256,
+      expected_archive_sha256,
+      msg="ModelScope G1 archive SHA256 mismatch",
+    )
+    {
+      "repository": "https://modelscope.cn/datasets/bones-studio/seed",
+      "revision": Json(mirror_revision),
+      "g1_archive_sha256": Json(actual_sha256),
+      "archive_hash_verified": true,
+      "equivalent_to_hf_revision_verified": false,
+    }
+  } else {
+    {
+      "repository": "operator-supplied local dataset",
+      "archive_hash_verified": false,
+      "equivalent_to_hf_revision_verified": false,
+    }
+  }
+  let csv_root = source + "/g1/csv"
+  assert_true(
+    @fs.exists(csv_root),
+    msg="extract the authorized g1.tar.gz first",
+  )
+  assert_true(
+    @fs.exists(source + "/LICENSE.md"),
+    msg="keep the source LICENSE.md with the private dataset",
+  )
+  assert_true(
+    !@fs.exists(output + "/manifest.json"),
+    msg="refusing to overwrite an existing catalog",
+  )
+  if !@fs.exists(output + "/clips") {
+    @fs.mkdir(output + "/clips", recursive=true)
+  }
+  let clips : Array[Json] = []
+  let ids : Array[Json] = []
+  let mut total_frames = 0L
+  let mut source_bytes = 0L
+  let mut converted_bytes = 0L
+  for date in @fs.readdir(csv_root, sort=true) {
+    let folder = csv_root + "/" + date
+    for name in @fs.readdir(folder, sort=true) {
+      if !name.has_suffix(".csv") {
+        continue
+      }
+      let src = folder + "/" + name
+      let source_data = @fs.read_file(src)
+      let raw = source_data.text()
+      let lines = raw.split("\n").to_array()
+      guard lines.length() >= 3 else { fail("empty BONES-SEED clip: " + src) }
+      let header = lines[0]
+        .split(",")
+        .map(item => item.trim().to_owned())
+        .to_array()
+      assert_eq(header[0], "Frame", msg=src)
+      let indices : Array[Int32] = []
+      for
+        field in [
+          "root_translateX", "root_translateY", "root_translateZ", "root_rotateX",
+          "root_rotateY", "root_rotateZ",
+        ] {
+        indices.push(find_column(header, field))
+      }
+      for joint in g1_joints {
+        indices.push(joint_column(header, joint))
+      }
+      assert_eq(indices.length(), 35)
+      let rows : Array[String] = []
+      for line in lines[1:] {
+        if line.trim() == "" {
+          continue
+        }
+        let columns = line.split(",").to_array()
+        assert_eq(columns.length(), header.length(), msg=src)
+        rows.push(convert_row(columns, indices))
+      }
+      assert_true(rows.length() >= 2, msg="clip needs two frames: " + src)
+      let id = date + "/" + name[:name.length() - 4].to_owned()
+      let out_dir = output + "/clips/" + date
+      if !@fs.exists(out_dir) {
+        @fs.mkdir(out_dir, recursive=true)
+      }
+      let destination = out_dir + "/" + name
+      let temporary = destination + ".partial"
+      let converted = rows.join("\n") + "\n"
+      if @fs.exists(destination) {
+        assert_eq(
+          @fs.read_file(destination).text(),
+          converted,
+          msg="existing conversion differs: " + destination,
+        )
+      } else {
+        // Each clip is published only after a complete write. A terminated run
+        // may leave a .partial file; rebuilding it makes restarts deterministic.
+        if @fs.exists(temporary) {
+          @fs.remove(temporary)
+        }
+        @fs.write_file(temporary, converted, create_mode=CreateNew)
+        @fs.rename(temporary, destination, replace=false)
+      }
+      let output_data = @fs.read_file(destination).binary()
+      let size = output_data.length()
+      let source_size = source_data.binary().length()
+      clips.push({
+        "id": Json(id),
+        "path": Json("clips/" + date + "/" + name),
+        "sha256": Json(sha256(output_data)),
+        "source_sha256": Json(sha256(source_data.binary())),
+        "source_path": Json("g1/csv/" + date + "/" + name),
+        "source_frames": Json(rows.length()),
+        "bytes": Json(size),
+        "source_bytes": Json(source_size),
+        "fps": 120.0,
+        "layout": "root_xyz+quaternion_xyzw+g1_29_joint_angles",
+      })
+      ids.push(Json(id))
+      total_frames += rows.length().to_int64()
+      source_bytes += source_size.to_int64()
+      converted_bytes += size.to_int64()
+    }
+    println("Converted BONES-SEED G1 clips: \{clips.length()}")
+  }
+  let manifest : Json = {
+    "format": "moonrobo.aligned-motion-catalog.v1",
+    "dataset": "BONES-SEED Unitree G1",
+    "source_repository": "https://huggingface.co/datasets/bones-studio/seed",
+    "source_revision": Json(revision),
+    "source_revision_scope": "official Hugging Face metadata pin; not an assertion that the G1 archive was downloaded from or equals this revision",
+    "acquisition": acquisition,
+    "source_license_sha256": Json(
+      sha256(@fs.read_file(source + "/LICENSE.md").binary()),
+    ),
+    "source_fps": 120.0,
+    "control_dt": 0.02,
+    "quaternion_order": "xyzw",
+    "joint_order": "Unitree G1 29 joints mapped by source CSV header to aligned SDK order",
+    "conversion": "cm to m; extrinsic xyz Euler degrees to xyzw quaternion; joint degrees to radians; no interpolation before 50 Hz MotionLibrary resampling",
+    "license": "BONES-SEED custom license; source access and eligibility must be held by operator; no redistribution of source or converted clips",
+    "clip_count": Json(clips.length()),
+    "full_source_release": Json(clips.length() == 142220),
+    "expected_full_release_clips": 142220,
+    "source_frames": exact_count_json(total_frames),
+    "source_bytes": exact_count_json(source_bytes),
+    "converted_bytes": exact_count_json(converted_bytes),
+    "clips": Json(clips),
+    "splits": { "train": Json(ids), "evaluation": Json(ids) },
+    "evaluation_scope": "same training motions for paper protocol; no unseen-motion generalization claim",
+    "filter_status": "unfiltered BONES-SEED G1 release; paper Appendix E filters are not yet applied",
+    "paper_exact_motion_set": false,
+    "bones_seed_acquired": true,
+  }
+  let manifest_path = output + "/manifest.json"
+  let manifest_temporary = manifest_path + ".partial"
+  if @fs.exists(manifest_temporary) {
+    @fs.remove(manifest_temporary)
+  }
+  @fs.write_file(
+    manifest_temporary,
+    manifest.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+  )
+  @fs.rename(manifest_temporary, manifest_path, replace=false)
+  println(
+    "BONES-SEED G1 catalog: \{clips.length()} clips, \{total_frames} source frames",
+  )
+}

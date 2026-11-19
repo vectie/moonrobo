@@ -1,0 +1,12 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let dir="output/spark-runtime-20261024/fused-rotation-20261028/"
+  let mut r=@fs.read_file(dir+"run_fused_rotation_b.mbtx").text()
+  r=rep(r,"run_fused_rotation_b.mbtx","run_fused_rotation_c.mbtx")
+  r=rep(r,"/home/wlc004s/moonrobo/runs/hotspot-shared-heading-body-smc-\"+phase+\"-off-c","/home/wlc004s/moonrobo/runs/hotspot-shared-heading-body-fused-smc-\"+phase+\"-off-after-a")
+  @fs.write_file(dir+"run_fused_rotation_c.mbtx",r,create_mode=CreateNew)
+  @fs.write_file(dir+"invoke_fused_rotation_c.mbtx",rep(@fs.read_file(dir+"invoke_fused_rotation_b.mbtx").text(),"run_fused_rotation_b.mbtx","run_fused_rotation_c.mbtx"),create_mode=CreateNew)
+  let s=rep(rep(@fs.read_file(dir+"fused_suite_b.mbtx").text(),"fused_suite_b.mbtx","fused_suite_c.mbtx"),"invoke_fused_rotation_b.mbtx","invoke_fused_rotation_c.mbtx")
+  @fs.write_file(dir+"fused_suite_c.mbtx",s,create_mode=CreateNew)
+}

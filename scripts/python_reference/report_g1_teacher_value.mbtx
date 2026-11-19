@@ -1,0 +1,238 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+async fn run(exe : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=out.text() + err.text())
+  out.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    7,
+    msg="usage: report_g1_teacher_value.mbtx REPO TEACHER_STUDY PRIOR_VALUE_STUDY TEMPORAL_STUDY MOONDATA_ROOT OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let charter = read(study + "/charter.json")
+  guard field(charter, "direction_probe") is String(probe) else {
+    fail("missing direction probe")
+  }
+  @fs.write_file(
+    study + "/provider-sources/teacher_step_verification.py",
+    @fs.read_file(
+      root + "/providers/motion_learning/teacher_step_verification.py",
+    ).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  ignore(
+    run(root + "/target/learning-venv/bin/python", [
+      study + "/provider-sources/teacher_step_verification.py",
+      "--study",
+      study,
+      "--incoming",
+      args[4],
+      "--probe",
+      probe,
+      "--output",
+      study + "/first-step-verification.json",
+    ]),
+  )
+  let cells : Array[Json] = []
+  for variant in ["frame", "preview"] {
+    let source = study + "/" + variant
+    let report = read(source + "/policy/report.json")
+    let prior = read(args[3] + "/" + variant + "-value-on/policy/report.json")
+    assert_eq(
+      field(field(report, "config"), "actor_replay_distribution"),
+      "teacher",
+    )
+    assert_eq(field(report, "dynamics_sha256"), field(prior, "dynamics_sha256"))
+    assert_eq(
+      field(report, "shared_teacher_points_sha256"),
+      field(prior, "shared_teacher_points_sha256"),
+    )
+    let rows : Array[Json] = []
+    let previous = array(field(prior, "runs"))
+    for result in array(field(report, "runs")) {
+      let seed = num(field(result, "seed")).to_int()
+      let destination = source + "/prior-mixed-evaluation-seed-\{seed}"
+      ignore(
+        run(root + "/target/learning-venv/bin/python", [
+          study + "/provider-sources/temporal_training.py",
+          "evaluate",
+          "--checkpoint",
+          args[3] + "/" + variant + "-value-on/policy/actor-seed-\{seed}.pt",
+          "--scene",
+          root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+          "--collection",
+          args[4] + "/collection.json",
+          "--teacher",
+          args[4] + "/teacher.json",
+          "--experiment",
+          args[4] + "/experiment.json",
+          "--config",
+          source + "/config.json",
+          "--output",
+          destination,
+        ]),
+      )
+      let mixed = read(destination + "/physics.json")
+      let a = array(field(field(result, "critic_physics"), "batches"))
+      let b = array(field(field(previous[seed], "critic_physics"), "batches"))
+      assert_eq(a.length(), 5)
+      for
+        key in [
+          "actor_state_sha256", "dataset_sha256", "reset_seed", "episodes", "transitions",
+          "falls", "time_limits", "training", "independent_audit_before", "independent_audit_after",
+        ] {
+        assert_eq(
+          field(a[0], key),
+          field(b[0], key),
+          msg="initial teacher/mixed calibration differs: " + key,
+        )
+      }
+      assert_eq(
+        field(array(field(result, "history"))[0], "validation"),
+        field(array(field(previous[seed], "history"))[0], "validation"),
+      )
+      assert_eq(field(result, "dynamics_unchanged"), true)
+      assert_eq(field(result, "reload_matches"), true)
+      if field(previous[seed], "selected_update") == (0 : Json) {
+        assert_eq(field(mixed, "summary"), field(result, "baseline"))
+      }
+      let actual = read(source + "/policy/physics-seed-\{seed}.json")
+      assert_eq(
+        field(field(actual, "candidate"), "summary"),
+        field(result, "candidate"),
+      )
+      let counts : Array[Json] = []
+      for case_id in ["stand", "sway", "wave"] {
+        let trials = array(field(field(actual, "candidate"), "trials")).filter(t => {
+          field(t, "case_id") == Json(case_id)
+        })
+        assert_eq(trials.length(), 3)
+        counts.push({
+          "case": Json(case_id),
+          "trials": 3,
+          "falls": Json(
+            trials.filter(t => field(t, "failed") == (true : Json)).length(),
+          ),
+        })
+      }
+      let log = source + "/policy/critic-physics-seed-\{seed}.jsonl.gz"
+      ignore(run("gzip", ["-t", log]))
+      assert_eq(
+        field(field(result, "critic_physics"), "sha256"),
+        Json(digest(log)),
+      )
+      let row : Json = {
+        "seed": Json(seed),
+        "selected_update": field(result, "selected_update"),
+        "incoming": field(result, "baseline"),
+        "prior_mixed": field(mixed, "summary"),
+        "teacher_only": field(result, "candidate"),
+        "case_counts": Json(counts),
+        "qualifies": field(result, "qualifies"),
+        "validation_history": field(result, "history"),
+        "critic_physics": field(result, "critic_physics"),
+        "selected_value": field(result, "temporal_value"),
+      }
+      rows.push(row)
+      println(
+        (
+          {
+            "variant": Json(variant),
+            "seed": Json(seed),
+            "selected_update": field(result, "selected_update"),
+            "prior_mixed": field(mixed, "summary"),
+            "teacher_only": field(result, "candidate"),
+            "case_counts": Json(counts),
+          } : Json).stringify(),
+      )
+    }
+    let imported = @json.parse(
+      run(
+        root +
+        "/_build/native/debug/build/cmd/learning_experiment/learning_experiment.exe",
+        [
+          "import",
+          args[5],
+          source,
+          "temporal-teacher-value-" + variant,
+          @env.now().reinterpret_as_int64().to_string(),
+        ],
+      ),
+    )
+    assert_eq(field(imported, "physical_execution_allowed"), false)
+    cells.push({
+      "variant": Json(variant),
+      "config": field(report, "config"),
+      "runs": Json(rows),
+      "registered": imported,
+    })
+  }
+  let validation = @json.parse(
+    run(root + "/_build/native/debug/build/cmd/moondata/moondata.exe", [
+      "validate",
+      args[5],
+    ]),
+  )
+  assert_eq(field(validation, "status"), "passed")
+  assert_eq(field(validation, "finding_count"), 0)
+  @fs.write_file(
+    args[6],
+    (
+      {
+        "format": "moonrobo.g1-teacher-value-study.v1",
+        "cells": Json(cells),
+        "initial_calibrations_match_prior_mixed": true,
+        "first_step": read(study + "/first-step-verification.json"),
+        "validation": validation,
+        "physical_execution_allowed": false,
+        "scope": "Teacher-only replay versus prior mixed replay with same initial actor/value/model and fitting/refresh budgets. Prior selected mixed policies re-scored at fresh 9200-9202. Policy-dependent later physics data diverges; no matched efficiency or physical qualification claim.",
+      } : Json).stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

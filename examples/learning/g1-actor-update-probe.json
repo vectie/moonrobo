@@ -1,0 +1,13 @@
+{
+  "policy_seeds": [0, 1, 2],
+  "reset_seeds": [930, 931],
+  "snapshot_steps": [0, 25, 50, 75],
+  "sampling_seed": 43,
+  "multipliers": [-1.0, 0.0, 0.01, 0.1, 1.0],
+  "horizon": 32,
+  "actor_learning_rate": 0.0003,
+  "fall_height_m": 0.35,
+  "fall_upright_z": 0.5,
+  "cpu_threads": 2,
+  "scope": "Training-only constant-goal origins. Compare equally sized replay and recent-state batches. Probe real Adam parameter directions including a reverse direction; do not choose a release from these measurements."
+}

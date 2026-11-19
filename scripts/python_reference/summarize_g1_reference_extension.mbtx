@@ -1,0 +1,226 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, name : String) -> Json raise {
+  guard value is Object(fields) && fields.get(name) is Some(result) else {
+    fail("missing " + name)
+  }
+  result
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(items) else { fail("expected array") }
+  items
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(value, ..) else { fail("expected number") }
+  value
+}
+
+///|
+fn passing(trial : Json, limits : Json) -> Bool raise {
+  if field(trial, "failed") == Json(true) ||
+    (num(field(trial, "simulated_seconds")) -
+    num(field(trial, "requested_seconds"))).abs() >
+    1.0e-12 {
+    return false
+  }
+  guard limits is Object(fields) else { fail("expected limits") }
+  for metric, limit in fields {
+    if num(field(trial, metric)) > num(limit) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    3,
+    msg="usage: summarize_g1_reference_extension.mbtx VERIFIED_REPORT OUTPUT",
+  )
+  let report = @json.parse(@fs.read_file(args[1]).text())
+  let config = field(report, "config")
+  let is_anchor = field(config, "format") ==
+    Json("moonrobo.g1-reference-replay-anchor-charter.v1")
+  let baseline_method = field(config, "reused_baseline_method")
+  let candidate_method = array(field(config, "methods")).filter(m => {
+      m != baseline_method
+    })[0]
+  let proof = field(report, "native_verification")
+  assert_eq(field(proof, "all_records_validated"), true)
+  assert_eq(
+    field(
+      field(proof, "baseline_reconstruction"),
+      "all_actor_model_value_tensors_identical",
+    ),
+    true,
+  )
+  let runs = array(field(report, "runs"))
+  let records : Map[String, Json] = Map([])
+  for record in array(field(report, "physical_records")) {
+    guard field(record, "episode_id") is String(id) else {
+      fail("expected episode ID")
+    }
+    records[id] = record
+  }
+  let limits = field(field(report, "quality_target"), "maximum_per_trial")
+  let pairs : Array[Json] = []
+  for seed in [0, 1, 2] {
+    let baseline = runs.filter(r => {
+        field(r, "seed") == Json(seed) && field(r, "method") == baseline_method
+      })[0]
+    let extended = runs.filter(r => {
+        field(r, "seed") == Json(seed) && field(r, "method") == candidate_method
+      })[0]
+    let summarize = fn(run : Json) -> Json raise {
+      let trials = array(field(run, "trials"))
+      let quality = field(run, "quality")
+      let mut reconstruction_fit_seconds = 0.0
+      let mut later_fit_seconds = 0.0
+      let mut later_collection_seconds = 0.0
+      let cycle_trace : Array[Json] = []
+      for cycle in array(field(run, "cycles")) {
+        let ids = array(field(cycle, "training_episode_ids"))
+        let mut steps = 0.0
+        for id in ids {
+          guard id is String(id) else { fail("expected training ID") }
+          steps += num(field(records[id], "steps"))
+        }
+        let actor = field(cycle, "actor")
+        let mut rescaled = 0
+        let mut maximum_rms = 0.0
+        for step in array(field(actor, "logit_step_calibration")) {
+          if num(field(step, "parameter_step_scale")) < 1.0 {
+            rescaled += 1
+          }
+          maximum_rms = maximum_rms.max(num(field(step, "applied_logit_rms")))
+        }
+        cycle_trace.push({
+          "cycle": field(cycle, "cycle"),
+          "noisy_training_mean_duration_s_before_update": Json(
+            steps * 0.02 / ids.length().to_double(),
+          ),
+          "fixed_initial_diagnostic_model_errors": field(
+            cycle, "model_diagnostics",
+          ),
+          "model_replay_windows": field(field(cycle, "model"), "windows"),
+          "model_fitting": field(cycle, "model"),
+          "actor_rescaled_steps": Json(rescaled),
+          "maximum_local_logit_rms": Json(maximum_rms),
+        })
+      }
+      if field(run, "method") == candidate_method {
+        for cycle in array(field(run, "cycles")) {
+          let fitting = num(field(field(cycle, "actor"), "seconds")) +
+            num(field(field(cycle, "model"), "seconds")) +
+            num(field(field(cycle, "critic"), "seconds"))
+          if num(field(cycle, "cycle")) <= 3.0 {
+            reconstruction_fit_seconds += fitting
+          } else {
+            later_fit_seconds += fitting
+            later_collection_seconds += num(field(cycle, "collection_seconds"))
+          }
+        }
+      }
+      {
+        "summary": field(run, "summary"),
+        "quality": {
+          "coverage_complete": field(quality, "coverage_complete"),
+          "failed_quality_trials": field(quality, "failed_quality_trials"),
+          "quality_passed": field(quality, "quality_passed"),
+        },
+        "individual_passes": Json(
+          trials.filter(t => passing(t, limits)).length(),
+        ),
+        "completed_trials": Json(
+          trials.filter(t => field(t, "failed") == Json(false)).length(),
+        ),
+        "completed_cells": Json(
+          trials
+          .filter(t => field(t, "failed") == Json(false))
+          .map(t => {
+            "case_id": field(t, "case_id"),
+            "origin_s": Json(num(field(t, "reference_start_step")) * 0.02),
+            "duration_s": field(t, "simulated_seconds"),
+            "quality_passed": Json(passing(t, limits)),
+            "joint_rmse_rad": field(t, "joint_rmse_rad"),
+            "body_position_rmse_m": field(t, "body_position_rmse_m"),
+            "root_position_rmse_m": field(t, "root_position_rmse_m"),
+            "root_orientation_rmse_rad": field(t, "root_orientation_rmse_rad"),
+          }),
+        ),
+        "actor_steps": field(run, "actor_optimizer_steps"),
+        "cycle_trace": Json(cycle_trace),
+        "cost_to_target": field(run, "cost_to_target"),
+        "cost_components": {
+          "reconstruction_fit_seconds": Json(reconstruction_fit_seconds),
+          "later_fit_seconds": Json(later_fit_seconds),
+          "later_collection_seconds": Json(later_collection_seconds),
+          "all_measured_costs": field(run, "costs"),
+        },
+      }
+    }
+    let pair : Json = {
+      "seed": Json(seed),
+      "mean_survival_change_s": Json(
+        num(field(field(extended, "summary"), "mean_survival_s")) -
+        num(field(field(baseline, "summary"), "mean_survival_s")),
+      ),
+      "reconstruction": field(extended, "baseline_reconstruction"),
+      "additional_cycle_origin_sampling": Json(
+        array(field(field(proof, "actor_origin_sampling"), "cycles")).filter(row => {
+          field(row, "method") == candidate_method &&
+          field(row, "seed") == Json(seed) &&
+          num(field(row, "cycle")) > 3.0
+        }),
+      ),
+    }
+    guard pair is Object(fields) else { fail("expected pair") }
+    fields[if is_anchor { "recent_fifo" } else { "three_cycles" }] = summarize(
+      baseline,
+    )
+    fields[if is_anchor { "initial_anchor" } else { "six_cycles" }] = summarize(
+      extended,
+    )
+    pairs.push(pair)
+  }
+  let result : Json = {
+    "format": if is_anchor {
+      "moonrobo.g1-reference-replay-anchor-summary.v1"
+    } else {
+      "moonrobo.g1-reference-extended-training-summary.v1"
+    },
+    "source_report_sha256": field(report, "source_report_sha256"),
+    "pairs": Json(pairs),
+    "native_verification": proof,
+    "new_provider_seconds": field(report, "provider_seconds"),
+    "clock": "time.perf_counter elapsed on local CPU; not summed CPU core-seconds or GPU-hours",
+    "reused_physical_records": field(report, "reused_physical_records"),
+    "new_physical_records": field(report, "new_physical_records"),
+    "scope": if is_anchor {
+      "Six-cycle model-replay retention comparison with equal episode/update budgets; known references, no successful matched efficiency or generalization claim"
+    } else {
+      "Three-versus-six-cycle same-recipe training on known references; larger budget, no matched-efficiency or generalization claim"
+    },
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    args[2],
+    result.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(Json(pairs).stringify(indent=2))
+}

@@ -1,0 +1,61 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs", "moonbitlang/async@0.20.2/process", "moonbitlang/core/env", "moonbitlang/core/json", "moonbitlang/core/string" }
+let out="/Users/kq/Workspace/moonrobo/output/spark-runtime-20261024/smc-structural-20261028"
+fn field(j : Json,k : String) -> Json raise {guard j is Object(m)&&m.get(k) is Some(v) else{fail(k)};v}
+fn number(j : Json) -> Double raise {match j{Number(n,..)=>n;String(s)=>@string.parse_double(s);_=>fail("number")}}
+fn median(a : Array[Double]) -> Double raise {guard !a.is_empty() else{fail("empty")};let b=a.copy();b.sort();(b[(b.length()-1)/2]+b[b.length()/2])/2.0}
+fn label(phase : String,variant : String,kind : String) -> String {"primitives-struct-"+variant+"-"+phase+"-"+kind+(if phase=="actor"&&variant=="smc"&&kind=="off" {"-b"}else{"-a"})}
+async fn fetch(remote : String,path : String) -> Json {
+  if !@fs.exists(path){guard @process.run("scp",["-o","ControlPath=/tmp/moonrobo-operator-179.sock","wlc004s@192.168.2.179:/home/wlc004s/moonrobo/"+remote,path])==0 else{fail(remote)}}
+  @json.parse(@fs.read_file(path).text())
+}
+async fn result(name : String) -> Json {
+  let dir=out+"/"+name;@fs.mkdir(dir,recursive=true);let prefix="runs/hotspot-shared-"+name+"/"
+  let r=fetch(prefix+"result.json",dir+"/result.json");let g=fetch(prefix+"training-guard.json",dir+"/training-guard.json")
+  let state=fetch(prefix+"training-docker-final.json",dir+"/training-docker-final.json")
+  ignore(fetch(prefix+"protocol.json",dir+"/protocol.json"));ignore(fetch(prefix+"completion.json",dir+"/completion.json"))
+  guard field(g,"reason")==Json("completed")&&field(g,"error")==Json::null()&&state is [{"State":{"OOMKilled":False,"Running":False,..},..}]else{fail("guard "+name)}
+  r
+}
+async fn main {
+  guard @env.args() is [_,mode] else{fail("gates|report")}
+  let cpu=fetch("private/shared-compute-20261026-a/structural-cpu-gates.json",out+"/cpu-gates.json")
+  let gates=[];let passed : Map[String,Bool]=Map([])
+  for (phase,variants) in [("world",["skew","structural"]),("actor",["axis","static","skew","structural","fk"])] {
+    for v in variants {
+      let name=label(phase,v,"gate");let r=fetch("private/shared-compute-20261026-a/"+name+".numeric.json",out+"/"+name+".numeric.json")
+      passed[phase+"-"+v]=field(r,"passed")==Json(true)
+      gates.push({"phase":Json(phase),"variant":Json(v),"passed":field(r,"passed"),"values":field(r,"values"),"mismatches":field(r,"mismatches"),"metadata_mismatches":field(r,"metadata_mismatches"),"metric_mismatches":field(r,"metric_mismatches")})
+    }
+  }
+  if mode=="gates"{println(Json(gates).stringify(indent=2));return}
+  guard mode=="report"else{fail("mode")}
+  let pairs=[];let runs=[];let mut reserved=0.0;let mut cg=0.0;let mut avail=1.0e30
+  for (phase,variant) in [("actor","axis"),("actor","static"),("world","skew"),("actor","skew"),("actor","structural"),("world","structural"),("actor","fk")] {
+    if !passed[phase+"-"+variant]{continue}
+    let name=label(phase,variant,"abba");let r=result(name)
+    let validation=fetch("private/shared-compute-20261026-a/"+name+".block-validation.json",out+"/"+name+"/block-validation.json")
+    assert_eq(field(validation,"passed"),Json(true))
+    guard field(r,"observer")==Json("off")&&field(r,"rows") is Array(rows)&&rows.length()==52 else{fail("ABBA count")}
+    let times=[]
+    for i in 0..<4 {
+      let ts=rows.filter(r=>field(r,"steady")==Json(true)&&field(r,"abba_block")==Json(i)).map(r=>number(field(r,"wall_ms")))
+      assert_eq(ts.length(),10);times.push(median(ts))
+    }
+    let a=(times[0]+times[3])/2.0;let b=(times[1]+times[2])/2.0
+    pairs.push({"phase":Json(phase),"variant":Json(variant),"baseline_ms":Json(a),"candidate_ms":Json(b),"saved_ms":Json(a-b),"saved_percent":Json((a-b)/a*100.0),"forward_pair_saved_ms":Json(times[0]-times[1]),"reverse_pair_saved_ms":Json(times[3]-times[2]),"block_medians_ms":Json(times)})
+    let memory=field(r,"memory");reserved=reserved.max(number(field(memory,"reserved_peak_bytes")))
+    let g=@json.parse(@fs.read_file(out+"/"+name+"/training-guard.json").text());guard field(g,"samples") is Array(samples)else{fail("samples")}
+    for s in samples{cg=cg.max(number(field(s,"cgroup_peak_bytes")));avail=avail.min(number(field(s,"host_available_kib"))*1024.0);assert_eq(number(field(s,"cgroup_swap_bytes")),0.0)}
+    runs.push({"label":Json(name),"memory":memory})
+  }
+  let smc=[]
+  for phase in ["world","actor"] {
+    let name=label(phase,"smc","off");let r=result(name)
+    guard field(r,"observer")==Json("off")&&field(r,"rows") is Array(rows)else{fail("smc")}
+    let ts=rows.filter(r=>field(r,"steady")==Json(true)).map(r=>number(field(r,"wall_ms")));assert_eq(ts.length(),10)
+    smc.push({"phase":Json(phase),"compiled_ms":Json(median(ts)),"numerical_comparison":field(r,"numerical_comparison")})
+  }
+  let report : Json={"scope":"Fixed iteration60 checkpoint/inputs restored before each sample. Actor4096=8x512,H32,20critic updates; world one2048x8 update. No sampling/upload/export time; not full round.","method":"Serial single-agent GPU. Native single-factor/combination ABBA in one process, four blocks each3warm+10samples, no profiler. SMC fresh single-order reference after native factors; cross-language numerical gate retained, unresolved.","baseline":"Previously passed preserve-forward cross + detached rotation constants + world norm snapshot, in addition to aligned LN/Linear/heading/FK baseline.","cpu":cpu,"gates":Json(gates),"pairs":Json(pairs),"smc":Json(smc),"runs":Json(runs),"memory":{"guards_unchanged":true,"max_torch_reserved_bytes":Json(reserved),"max_cgroup_peak_bytes":Json(cg),"min_host_available_bytes":Json(avail),"counters_overlap_on_UMA":true,"oom":false,"swap_bytes":0},"default_changed":false}
+  @fs.write_file(out+"/results.json",report.stringify(indent=2),create_mode=CreateNew)
+  println(Json(pairs).stringify(indent=2));println(field(report,"memory").stringify(indent=2))
+}

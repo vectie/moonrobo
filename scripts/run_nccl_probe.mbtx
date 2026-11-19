@@ -1,0 +1,27 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+/// Invoke an already built native probe with a 58-second wall-time deadline
+/// and a 2-second forced-kill grace. It never builds, transfers IDs or SSHs.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 7 else {
+    fail(
+      "usage: run_nccl_probe.mbtx ABSOLUTE_PROBE_BINARY RANK ID_FILE LIBNCCL LIBCUDART FLOAT_ELEMENTS",
+    )
+  }
+  guard args[1].has_prefix("/") else { fail("probe binary must be absolute") }
+  let command = ["--signal=TERM", "--kill-after=2s", "58s"]
+  for argument in args[1:] {
+    command.push(argument)
+  }
+  let code = @process.run("timeout", command)
+  guard code == 0 else {
+    fail("NCCL probe exited \{code}; inspect both rank logs")
+  }
+}

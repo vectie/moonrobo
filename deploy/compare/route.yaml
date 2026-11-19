@@ -1,0 +1,10 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: moonrobo-compare}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - kind: Rule
+      match: 'Host(`suanli.kechuangfuwu.com`) && (Path(`/robo`) || PathPrefix(`/robo/`))'
+      services: [{name: moonrobo-compare, port: 8080}]
+  tls: {secretName: lunanexa-public-suanli-tls}

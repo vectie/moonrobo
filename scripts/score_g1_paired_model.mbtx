@@ -1,0 +1,110 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn number(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    3,
+    msg="usage: score_g1_paired_model.mbtx SUMMARY_JSON OUTPUT_JSON",
+  )
+  let bytes = @fs.read_file(args[1])
+  let source = @json.parse(bytes.text())
+  guard field(source, "summaries") is Array(rows) else {
+    fail("missing summaries")
+  }
+  let all_end_in_falls = rows.all(row => {
+    field(row, "origins") == field(row, "full_baseline_falls") &&
+    field(row, "origins") == field(row, "full_candidate_falls")
+  })
+  let centered : Array[Json] = []
+  for seed in [0, 1, 2] {
+    for model in ["initial", "adapted"] {
+      for bootstrap in [true, false] {
+        let subset = rows.filter(row => {
+          field(row, "policy_seed") == Json(seed) &&
+          field(row, "model") == Json(model) &&
+          field(row, "direction_bootstrap") == Json(bootstrap)
+        })
+        assert_eq(subset.length(), 7)
+        for scale in [0.01, 0.1, 1.0] {
+          let positive = subset.filter(row => {
+            number(field(row, "multiplier")) == scale
+          })
+          let negative = subset.filter(row => {
+            number(field(row, "multiplier")) == -scale
+          })
+          assert_eq(positive.length(), 1)
+          assert_eq(negative.length(), 1)
+          let slopes : Map[String, Json] = Map([])
+          for
+            key in [
+              "predicted_recent_reward_change", "predicted_recent_bootstrapped_change",
+              "physical_reward_change", "physical_bootstrapped_change", "full_physical_reward_change",
+            ] {
+            slopes.set(
+              key,
+              Json(
+                (
+                  number(field(positive[0], key)) -
+                  number(field(negative[0], key))
+                ) /
+                (2 * scale),
+              ),
+            )
+          }
+          let result : Json = {
+            "seed": Json(seed),
+            "model": Json(model),
+            "direction_bootstrap": Json(bootstrap),
+            "scale": Json(scale),
+            "origins": field(positive[0], "origins"),
+            "centered_slopes": Json(slopes),
+          }
+          centered.push(result)
+          if scale == 0.1 {
+            println(result.stringify())
+          }
+        }
+      }
+    }
+  }
+  let result : Json = {
+    "format": "moonrobo.g1-paired-model-centered.v1",
+    "source": Json(args[1]),
+    "source_sha256": Json(
+      @crypto.bytes_to_hex_string(@crypto.sha256(bytes.binary())),
+    ),
+    "bindings": field(source, "bindings"),
+    "all_full_rollouts_end_in_falls": Json(all_end_in_falls),
+    "centered_directions": Json(centered),
+    "scope": "Mean centered physical differences along fresh Adam parameter deltas. Scale is a multiplier of that saved delta, not radians or a complete physical gradient. Full-return slopes have no critic bootstrap; shared origins are correlated.",
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    args[2],
+    result.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+}

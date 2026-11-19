@@ -1,0 +1,58 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    3,
+    msg="usage: summarize_g1_ablation.mbtx ABLATION_RUN SUMMARY_JSON",
+  )
+  let report = @json.parse(@fs.read_file(args[1] + "/summary.json").text())
+  guard field(report, "cells") is Array(cells) else { fail("missing cells") }
+  let output : Array[Json] = []
+  for cell in cells {
+    guard field(cell, "runs") is Array(runs) else { fail("missing runs") }
+    let results : Array[Json] = []
+    for run in runs {
+      guard field(run, "history") is Array(history) else {
+        fail("missing history")
+      }
+      results.push({
+        "seed": field(run, "seed"),
+        "selected_update": field(run, "selected_update"),
+        "training_seconds": field(run, "training_seconds"),
+        "candidate": field(run, "candidate"),
+        "qualifies": field(run, "qualifies"),
+        "initial_validation": field(history[0], "validation"),
+        "last_validation": field(history[history.length() - 1], "validation"),
+      })
+    }
+    output.push({ "label": field(cell, "label"), "runs": results.to_json() })
+  }
+  let summary : Json = {
+    "format": "moonrobo.g1-horizon-bootstrap-summary.v1",
+    "cells": output.to_json(),
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    args[2],
+    summary.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(summary.stringify(indent=2))
+}

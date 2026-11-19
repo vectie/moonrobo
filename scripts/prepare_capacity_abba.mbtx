@@ -1,0 +1,12 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let dir="output/spark-runtime-20261024/fused-rotation-20261028/"
+  let mut f=@fs.read_file(dir+"fused_capacity_fixture_a.mbt").text()
+  f=rep(f,"let axis = enabled && (factor == \"axis\" || factor == \"both\")","let capacity = factor.has_prefix(\"capacity\")\n      let axis = capacity || (enabled && (factor == \"axis\" || factor == \"both\"))")
+  f=rep(f,"let skew = enabled && (factor == \"skew\" || factor == \"both\")","let skew = capacity || (enabled && (factor == \"skew\" || factor == \"both\"))\n      let microbatch = if enabled && capacity { match factor { \"capacity1024\" => 1024; \"capacity2048\" => 2048; \"capacity4096\" => 4096; _ => 512 } } else { 512 }")
+  f=rep(f,"      { ..learner,\n        optimizations:","      { ..learner,\n        execution: { ..learner.execution, actor_microbatch: microbatch, },\n        optimizations:")
+  @fs.write_file(dir+"fused_capacity_fixture_a.mbt",f)
+  let r=@fs.read_file(dir+"run_fused_capacity_a.mbtx").text()
+  @fs.write_file(dir+"run_fused_capacity_a.mbtx",rep(r,"\"capacity1024\", \"capacity2048\", \"capacity4096\", \"baseline\"","\"abba-capacity1024\", \"abba-capacity2048\", \"abba-capacity4096\", \"capacity1024\", \"capacity2048\", \"capacity4096\", \"baseline\""))
+}

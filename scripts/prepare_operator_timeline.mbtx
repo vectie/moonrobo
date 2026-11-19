@@ -1,0 +1,180 @@
+///|
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+struct ProbePins {
+  nsys_path : String
+  nsys_sha256 : String
+  probe_path : String
+  probe_sha256 : String
+  tensor_library_path : String
+  tensor_sha256 : String
+} derive(FromJson)
+
+///|
+fn sha(value : String) -> Bool {
+  value.length() == 64 && value.all(c => c is ('0'..<='9' | 'a'..<='f'))
+}
+
+///|
+fn path(value : String) -> Bool {
+  value.has_prefix("/") &&
+  !value.contains("..") &&
+  value.all(c => {
+    c is ('a'..<='z' | 'A'..<='Z' | '0'..<='9' | '_' | '-' | '.' | '/')
+  })
+}
+
+///|
+fn probe_spec(pins : ProbePins, external_stop : Bool) -> Json raise {
+  guard sha(pins.nsys_sha256) &&
+    sha(pins.probe_sha256) &&
+    sha(pins.tensor_sha256) &&
+    path(pins.nsys_path) &&
+    path(pins.probe_path) &&
+    path(pins.tensor_library_path) else {
+    fail("probe requires actual completed build/tool paths and SHA256 pins")
+  }
+  let args = [pins.tensor_library_path]
+  if external_stop {
+    args.push("external-stop")
+  }
+  let kind = if external_stop { "external-stop" } else { "math" }
+  let pinned_files : Map[String, Json] = {}
+  pinned_files[pins.tensor_library_path] = Json(pins.tensor_sha256)
+  {
+    "format": "moonrobo.operator-timeline-launch.v1",
+    "protocol": if external_stop {
+      "tiny-external-stop-probe"
+    } else {
+      "tiny-probe"
+    },
+    "nsys": Json(pins.nsys_path),
+    "nsys_sha256": Json(pins.nsys_sha256),
+    "program": Json(pins.probe_path),
+    "program_sha256": Json(pins.probe_sha256),
+    "args": Json(args),
+    "cwd": "/workspace/moonrobo",
+    "output_directory": Json("/run/operator-tiny-" + kind),
+    "session": Json("moonrobo-op-tiny-20261025-a-" + kind),
+    "environment": { "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1" },
+    "pinned_files": Json(pinned_files),
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args is [_, "--self-test"] {
+    let pins : ProbePins = {
+      nsys_path: "/opt/nsys",
+      probe_path: "/workspace/operator-probe",
+      tensor_library_path: "/workspace/plugin.so",
+      nsys_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      probe_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      tensor_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    }
+    assert_true(
+      probe_spec(pins, false)
+      is {
+        "protocol": String("tiny-probe"),
+        "args": Array([String("/workspace/plugin.so")]),
+        ..
+      },
+    )
+    assert_true(
+      probe_spec(pins, true)
+      is {
+        "protocol": String("tiny-external-stop-probe"),
+        "args": Array([String("/workspace/plugin.so"), String("external-stop")]),
+        ..
+      },
+    )
+    try probe_spec({ ..pins, probe_sha256: "unbuilt", }, false) catch {
+      _ => ()
+    } noraise {
+      _ => fail("unbuilt probe accepted")
+    }
+    println("operator probe spec self-test passed; no process/GPU launched")
+    return
+  }
+  guard args is [_, "--probe-specs", pin_file, directory] else {
+    fail(
+      "usage: prepare_operator_timeline.mbtx --probe-specs COMPLETED_BUILD_PINS.json FRESH_DIRECTORY; or --self-test",
+    )
+  }
+  let file = @fs.open(pin_file, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= 65536L else { fail("build pins size bound") }
+  let pins : ProbePins = @json.from_json(
+    @json.parse(@utf8.decode(file.read_exactly_at(size.to_int(), position=0L))),
+  )
+  guard !@fs.exists(directory) else {
+    fail("probe spec directory must be fresh")
+  }
+  @fs.mkdir(directory, recursive=true)
+  for
+    (name, external_stop) in [
+      ("tiny-math.json", false),
+      ("tiny-external-stop.json", true),
+    ] {
+    @fs.write_file(
+      directory + "/" + name,
+      probe_spec(pins, external_stop).stringify(indent=2) + "\n",
+      create_mode=CreateNew,
+    )
+  }
+  let review : Json = {
+    "format": "moonrobo.operator-probe-review.v1",
+    "gpu_execution_authorized_by_this_file": false,
+    "outer_owner_required": true,
+    "one_gpu_process_at_a_time": true,
+    "container_memory_bytes": "107374182400",
+    "container_swap_bytes": "0",
+    "outer_cgroup_stop_bytes": "90194313216",
+    "outer_host_minimum_available_bytes": "25769803776",
+    "outer_cuda_minimum_free_bytes": "17179869184",
+    "outer_guard_scope": "launch through target exit, Nsight finalization and SDK teardown; export has independent CPU-only cgroup",
+    "container_network": "none",
+    "container_user": "1000:1000",
+    "container_cpus": 2,
+    "container_pids_limit": 256,
+    "container_gpus": "one selected GPU",
+    "read_only_mounts": [
+      "pinned complete Nsight2025.3.2 ARM64 tree", "new independent diagnostic binaries/plugin",
+      "probe specs",
+    ],
+    "writable_mounts": ["one fresh owned /run directory"],
+    "expected_checks": [
+      "tiny-math: actual NVTX observer off/on exact same-input loss, gradients, parameters and Adam state",
+      "tiny-math: one real capture marker containing ATen, autograd sequence labels, CUDA API, kernels and correlation; inspect exported SQLite independently",
+      "both: post-capture target sentinel and exit code0; no checkpoint/model/data/physics allocation",
+      "tiny-external-stop: wrapper sends nsys stop --session at1s, target waits5s then executes backward/Adam and exits; stop status must be0, partial trace explicitly retained",
+      "bounded resource observations are probe evidence, never an upper bound for full4096 profiling",
+      "SMC compiled full trace must identify any observer-induced Dynamo/Inductor recompilation separately; do not call such work steady-state or split fused kernels into fictitious per-op times",
+    ],
+    "export_policy": {
+      "gpu_access": false,
+      "memory_bytes": "4294967296",
+      "swap_bytes": "0",
+      "timeout_seconds": 600,
+      "input_read_only": true,
+      "fresh_output": true,
+    },
+  }
+  @fs.write_file(
+    directory + "/review.json",
+    review.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+  )
+  println(
+    "Prepared probe specs; owner must review actual pins and outer guards before any GPU launch",
+  )
+}

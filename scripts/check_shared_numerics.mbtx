@@ -1,0 +1,47 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+/// Discover migration packages without compiling unrelated application code.
+async fn packages(directory : String, result : Array[String]) -> Unit {
+  if @fs.exists(directory + "/moon.pkg") {
+    result.push(directory)
+  }
+  for name in @fs.readdir(directory, sort=true) {
+    let path = directory + "/" + name
+    if @fs.kind(path, follow_symlink=false) is Directory {
+      packages(path, result)
+    }
+  }
+}
+
+///|
+/// Typecheck source and test bodies only. This invokes no test executable,
+/// numeric example, training, simulation or benchmark.
+async fn main {
+  let selected : Array[String] = []
+  for name in @fs.readdir("src", sort=true) {
+    if name.has_prefix("learning_") || name == "sdk_e1_native" {
+      packages("src/" + name, selected)
+    }
+  }
+  packages("cmd/learning_compare", selected)
+  for name in @fs.readdir("cmd", sort=true) {
+    if name.has_prefix("reference_") {
+      packages("cmd/" + name, selected)
+    }
+  }
+  let args = ["check", "--target", "native", "--warn-list", "-a"]
+  args.append(selected)
+  let (code, stdout, stderr) = @process.collect_output("moon", args)
+  println(stdout.text())
+  println(stderr.text())
+  assert_eq(code, 0, msg="shared numerics migration package typecheck failed")
+  println(
+    "Typechecked \{selected.length()} migration packages; no tests executed",
+  )
+}

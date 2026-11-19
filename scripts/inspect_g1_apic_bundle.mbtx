@@ -1,0 +1,45 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+/// Read-only APIC file/hash/contract inspection; does not open a CUDA context.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 6 else {
+    fail(
+      "usage: inspect_g1_apic_bundle.mbtx REPO SCENE MANIFEST ADAPTER_LIBRARY EXPECTED_MANIFEST_SHA256",
+    )
+  }
+  for path in [args[1] + "/moon.mod", args[2], args[3], args[4]] {
+    guard @fs.exists(path) else { fail("missing local input: " + path) }
+  }
+  let command = [
+    "run",
+    "--quiet",
+    "--target",
+    "native",
+    "src/learning_aligned/cmd",
+    "--",
+    "inspect-bundle",
+    "--scene",
+    args[2],
+    "--physics-artifact",
+    args[3],
+    "--physics-library",
+    args[4],
+    "--manifest-sha256",
+    args[5],
+    "--disable-self-collisions",
+  ]
+  let result = @process.run("moon", command, cwd=args[1])
+  guard result == 0 else {
+    fail(
+      "native read-only APIC inspection failed with code " + result.to_string(),
+    )
+  }
+}

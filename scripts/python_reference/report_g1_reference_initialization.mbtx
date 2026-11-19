@@ -1,0 +1,328 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(values) && values.get(key) is Some(result) else {
+    fail("missing " + key)
+  }
+  result
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+fn num(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+fn str(value : Json) -> String raise {
+  guard value is String(s) else { fail("expected string") }
+  s
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn sha(path : String) -> String {
+  let (code, out, err) = @process.collect_output("/usr/bin/shasum", [
+    "-a", "256", path,
+  ])
+  assert_eq(code, 0, msg=err.text())
+  out.text().split(" ").to_array()[0].to_owned()
+}
+
+///|
+fn check_evaluation(value : Json, quality : Json) -> Unit raise {
+  let trials = array(field(value, "trials"))
+  let summary = field(value, "summary")
+  let assessed = field(value, "quality")
+  let expected : Map[String, Bool] = Map([])
+  for case in array(field(quality, "reference_ids")) {
+    for origin in array(field(quality, "origins_s")) {
+      let i = (num(origin) / num(field(quality, "dt_s"))).to_int()
+      expected[str(case) + ":\{i}"] = true
+    }
+  }
+  let seen : Map[String, Bool] = Map([])
+  let failures : Map[String, Bool] = Map([])
+  let mut falls = 0
+  let mut seconds = 0.0
+  let mut steps = 0.0
+  guard field(quality, "maximum_per_trial") is Object(limits) else {
+    fail("expected limits")
+  }
+  for trial in trials {
+    let origin = num(field(trial, "reference_start_step")).to_int()
+    let key = str(field(trial, "case_id")) + ":\{origin}"
+    assert_true(expected.contains(key))
+    assert_false(seen.contains(key))
+    seen[key] = true
+    let id = str(field(trial, "episode_id"))
+    if field(trial, "failed") == (true : Json) {
+      falls += 1
+      failures[id] = true
+    }
+    let simulated = num(field(trial, "simulated_seconds"))
+    let count = num(field(trial, "steps"))
+    assert_true(
+      (simulated - count * num(field(quality, "dt_s"))).abs() < 1.0e-10,
+    )
+    if (simulated - num(field(trial, "requested_seconds"))).abs() > 1.0e-10 {
+      failures[id] = true
+    }
+    for metric, limit in limits {
+      if num(field(trial, metric)) > num(limit) {
+        failures[id] = true
+      }
+    }
+    steps += count
+    seconds += simulated
+  }
+  assert_eq(seen.length(), expected.length())
+  assert_eq(num(field(summary, "trials")).to_int(), trials.length())
+  assert_eq(num(field(summary, "falls")).to_int(), falls)
+  assert_eq(num(field(summary, "steps")), steps)
+  assert_true(
+    (num(field(summary, "mean_survival_s")) -
+    seconds / trials.length().to_double()).abs() <
+    1.0e-12,
+  )
+  for metric, _ in limits {
+    let mut square_error = 0.0
+    for trial in trials {
+      let error = num(field(trial, metric))
+      square_error += error * error * num(field(trial, "steps"))
+    }
+    assert_true(
+      (num(field(summary, metric)) - (square_error / steps).sqrt()).abs() <
+      1.0e-12,
+    )
+  }
+  assert_eq(field(assessed, "coverage_complete"), true)
+  assert_eq(
+    num(field(assessed, "failed_quality_trials")).to_int(),
+    failures.length(),
+  )
+  assert_eq(field(assessed, "quality_passed"), Json(failures.is_empty()))
+  assert_eq(field(assessed, "physical_execution_allowed"), false)
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: report_g1_reference_initialization.mbtx REPO STUDY OUTPUT_JSON",
+  )
+  let root = args[1]
+  let study = args[2]
+  let charter = read(study + "/charter.json")
+  let report = read(study + "/report.json")
+  assert_eq(field(report, "format"), "moonrobo.g1-reference-initialization.v1")
+  assert_eq(field(report, "config"), field(charter, "config"))
+  let quality = field(report, "quality_target")
+  assert_eq(quality, field(charter, "quality"))
+  assert_eq(field(report, "physical_execution_allowed"), false)
+  assert_eq(field(report, "release_qualified"), false)
+  let references = str(field(charter, "references"))
+  let manifest = read(references + "/manifest.json")
+  assert_eq(
+    field(report, "reference_manifest_sha256"),
+    Json(sha(references + "/manifest.json")),
+  )
+  assert_eq(field(report, "quality_sha256"), Json(sha(study + "/quality.json")))
+  assert_eq(
+    field(report, "feedback_checkpoint_sha256"),
+    Json(sha(str(field(charter, "feedback_checkpoint")))),
+  )
+  for
+    (key, name) in [
+      ("provider_sha256", "reference_initialization.py"),
+      ("actor_provider_sha256", "reference_actor.py"),
+      ("harness_sha256", "full_body_reference.py"),
+    ] {
+    assert_eq(
+      field(report, key),
+      Json(sha(study + "/provider-sources/" + name)),
+    )
+  }
+  let fits = array(field(report, "fits"))
+  let evaluations = array(field(report, "evaluations"))
+  assert_eq(fits.length(), 3)
+  assert_eq(evaluations.length(), 3)
+  assert_eq(field(report, "training_points"), 13500)
+  for fit in fits {
+    assert_eq(field(fit, "updates"), field(field(report, "config"), "updates"))
+    assert_eq(
+      field(fit, "checkpoint_sha256"),
+      Json(sha(study + "/" + str(field(fit, "checkpoint")))),
+    )
+  }
+  let expected : Map[String, Json] = Map([])
+  for evaluation in evaluations + [field(report, "baseline")] {
+    check_evaluation(evaluation, quality)
+    let trials = array(field(evaluation, "trials"))
+    let records = array(field(evaluation, "records"))
+    assert_eq(trials.length(), 27)
+    assert_eq(records.length(), 27)
+    for trial in trials {
+      let id = str(field(trial, "episode_id"))
+      assert_false(expected.contains(id))
+      expected[id] = trial
+    }
+    for record in records {
+      assert_eq(field(record, "split"), "train")
+      assert_eq(
+        field(record, "sha256"),
+        Json(sha(study + "/" + str(field(record, "file")))),
+      )
+      assert_true(expected.contains(str(field(record, "episode_id"))))
+    }
+  }
+  assert_eq(expected.length(), 108)
+  let export_provider = study +
+    "/provider-sources/reference_initialization_export.py"
+  @fs.write_file(
+    export_provider,
+    @fs.read_file(
+      root + "/providers/motion_learning/reference_initialization_export.py",
+    ).binary(),
+    create_mode=CreateOrTruncate,
+  )
+  let mut transitions = 0
+  let mut metric_difference = 0.0
+  let mut native_joint_difference = 0.0
+  let seen : Map[String, Bool] = Map([])
+  let q_indices = array(field(field(manifest, "layout"), "q_indices")).map(v => {
+    num(v).to_int()
+  })
+  let model_checks : Array[Json] = []
+  @async.with_task_group() <| group => {
+    let (reader, output) = @process.read_from_process()
+    let process = @process.spawn(
+      group,
+      root + "/target/learning-venv/bin/python",
+      [
+        export_provider,
+        "--study",
+        study,
+        "--references",
+        references,
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+      ],
+      stdout=output,
+      stderr=@process.redirect_to_file(
+        study + "/export-stderr.log",
+        create_mode=CreateOrTruncate,
+      ),
+    )
+    while reader.read_until("\n") is Some(line) {
+      let record = @json.parse(line)
+      if model_checks.is_empty() {
+        model_checks.append(array(field(record, "model_checks")))
+      }
+      assert_eq(field(record, "model_checks"), Json(model_checks))
+      let dataset = field(record, "dataset")
+      let batch = array(field(dataset, "episodes"))
+      assert_eq(batch.length(), 1)
+      let episode = batch[0]
+      let id = str(field(episode, "id"))
+      assert_false(seen.contains(id))
+      assert_eq(field(record, "trial"), expected[id])
+      assert_eq(field(episode, "split"), "train")
+      assert_eq(field(dataset, "model_ref"), field(manifest, "model_ref"))
+      assert_eq(
+        field(dataset, "goal_axes"),
+        field(field(manifest, "layout"), "goal_axes"),
+      )
+      let steps = array(field(episode, "steps"))
+      assert_eq(num(field(expected[id], "steps")).to_int(), steps.length())
+      assert_eq(
+        field(expected[id], "failed"),
+        field(steps.last().unwrap(), "terminated"),
+      )
+      let mut error = 0.0
+      for step in steps {
+        let actual = array(field(step, "next_state"))
+        let target = array(field(step, "goal"))
+        for i, q in q_indices {
+          let e = num(actual[q]) - num(target[i])
+          error += e * e
+        }
+      }
+      let difference = ((error /
+      (steps.length() * q_indices.length()).to_double()).sqrt() -
+      num(field(expected[id], "joint_rmse_rad"))).abs()
+      assert_true(difference < 1.0e-12)
+      native_joint_difference = native_joint_difference.max(difference)
+      guard field(record, "recomputed_metric_differences")
+        is Object(differences) else {
+        fail("missing metric verification")
+      }
+      for _, value in differences {
+        assert_true(num(value) < 1.0e-10)
+        metric_difference = metric_difference.max(num(value))
+      }
+      let scratch = study + "/native-episode.json"
+      @fs.write_file(scratch, dataset.stringify(), create_mode=CreateOrTruncate)
+      let (code, out, err) = @process.collect_output(
+        root +
+        "/_build/native/debug/build/cmd/motion_dataset/motion_dataset.exe",
+        [scratch, "train", "1", "1000000"],
+      )
+      assert_eq(code, 0, msg=err.text())
+      assert_eq(field(@json.parse(out.text()), "window_length"), 1)
+      @fs.remove(scratch)
+      seen[id] = true
+      transitions += steps.length()
+      if seen.length() % 27 == 0 {
+        println("Native checked \{seen.length()}/108 reference-policy episodes")
+      }
+    }
+    reader.close()
+    assert_eq(process.wait(), 0)
+  }
+  assert_eq(seen.length(), 108)
+  guard report is Object(fields) else { fail("expected report object") }
+  fields["native_verification"] = {
+    "episodes": 108,
+    "transitions": Json(transitions),
+    "maximum_native_joint_rmse_difference_rad": Json(native_joint_difference),
+    "maximum_reconstructed_tracking_metric_difference": Json(metric_difference),
+    "export_provider_sha256": Json(sha(export_provider)),
+    "model_checks": Json(model_checks),
+    "all_episodes_validated": true,
+  }
+  fields["source_report_sha256"] = Json(sha(study + "/report.json"))
+  @fs.write_file(
+    args[3],
+    report.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(
+    (
+      {
+        "native_verification": field(report, "native_verification"),
+        "summary": Json(evaluations.map(e => field(e, "summary"))),
+      } : Json).stringify(),
+  )
+}

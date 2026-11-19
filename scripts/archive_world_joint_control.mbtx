@@ -1,0 +1,80 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn main {
+  let out = "output/spark-runtime-20261024/world-backward-boundaries-20261029-a"
+  let host = "wlc004s@192.168.2.179"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a/"
+  let kernels : Array[(String, String)] = [
+    (
+      "native-normalize", "/home/wlc004s/moonrobo/runs/hotspot-mlp-world-boundary-j/triton-cache/5N3APFXDSRNWKZHVSDNCMEIYTXSWULQ5XWKZCEJ2NG3DHOKZHONQ/triton_poi_fused_add_convert_element_type_div_sqrt_14.cubin",
+    ),
+    (
+      "native-combine", "/home/wlc004s/moonrobo/runs/hotspot-mlp-world-boundary-j/triton-cache/SGCRDVCKH64HPEQEANMJVLNTLYHJYYJYGDIBXAJATEFXO27AYKHA/triton_poi_fused_add_cat_convert_element_type_div_expand_mul_select_slice_sqrt_squeeze_sum_17.cubin",
+    ),
+    (
+      "smc-fused", "/home/wlc004s/moonrobo/runs/hotspot-mlp-world-boundary-f/triton-cache/VM4O7KQD6XQY5DEO24AA5SL52EXLDGA3HSGFUSTOA74J2XK4IB7A/triton_poi_fused__to_copy_add_cat_div_expand_mm_mul_select_slice_sqrt_squeeze_sum_18.cubin",
+    ),
+  ]
+  let manifest : Map[String, Json] = Map([])
+  for (name, path) in kernels {
+    assert_eq(
+      @process.run(
+        "ssh",
+        [
+          "-S",
+          "/tmp/moonrobo-operator-179.sock",
+          host,
+          "/usr/local/cuda-13.0/bin/cuobjdump --dump-sass " + path,
+        ],
+        stdout=@process.redirect_to_file(
+          out + "/world-boundary-j/" + name + ".sass",
+          create_mode=CreateNew,
+        ),
+      ),
+      0,
+    )
+    assert_eq(
+      @process.run(
+        "ssh",
+        ["-S", "/tmp/moonrobo-operator-179.sock", host, "sha256sum " + path],
+        stdout=@process.redirect_to_file(
+          out + "/world-boundary-j/" + name + ".sha256",
+          create_mode=CreateNew,
+        ),
+      ),
+      0,
+    )
+    manifest[name] = Json(path)
+  }
+  for
+    name in [
+      "compiled_world_boundaries_i.py", "compiled_world_boundaries_j.py", "world_joint_boundary_control_a.py",
+      "world_joint_boundary_control_b.py",
+    ] {
+    guard !@fs.exists(out + "/frozen-sources/" + name) else {
+      fail("retain archived sources")
+    }
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        host + ":" + base + name,
+        out + "/frozen-sources/" + name,
+      ]),
+      0,
+    )
+  }
+  @fs.write_file(
+    out + "/world-boundary-j/disassembly-inputs.json",
+    Json(manifest).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+}

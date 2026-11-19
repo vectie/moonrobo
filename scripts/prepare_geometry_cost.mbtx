@@ -1,0 +1,114 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+fn once(s : String, old : String, new : String) -> String raise {
+  assert_eq(s.split(old).count(), 2)
+  s.replace_all(old~, new~)
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/geometry-cost-20261030-a"
+  let previous = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let put = async fn(name : String, content : String) {
+    @fs.write_file(root + "/" + name, content, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-cost-179.sock",
+        root + "/" + name,
+        "wlc004s@192.168.2.179:" + base + "/" + name,
+      ]),
+      0,
+    )
+  }
+  let mut learn = @fs.read_file(root + "/learning_r.mbt").text()
+  learn = once(
+    learn, "  self.opt_world.zero_grad()\n  self.opt_critic.zero_grad()", "  let setup_timing=@tensor.profile_begin(\"actor.setup\")\n  self.opt_world.zero_grad()\n  self.opt_critic.zero_grad()",
+  )
+  learn = once(
+    learn, "  let actor_forward_timing = @tensor.profile_begin(\"actor.forward\")",
+    "  @tensor.profile_end(setup_timing)\n  let actor_forward_timing = @tensor.profile_begin(\"actor.forward\")",
+  )
+  learn = once(
+    learn, "  let all_states = concat_states", "  let pack_timing=@tensor.profile_begin(\"actor.pack\")\n  let all_states = concat_states",
+  )
+  learn = once(
+    learn, "  let reward_range = @tensor.operator_range_begin(\"diag.actor.reward.batch\")",
+    "  @tensor.profile_end(pack_timing)\n  let reward_timing=@tensor.profile_begin(\"actor.reward\")\n  let reward_range = @tensor.operator_range_begin(\"diag.actor.reward.batch\")",
+  )
+  learn = once(
+    learn, "@tensor.profile_span(\"actor.reward\"", "@tensor.profile_span(\"actor.reward.result_view\"",
+  )
+  learn = once(
+    learn, "  let return_range = @tensor.operator_range_begin(\"diag.actor.return\")",
+    "  @tensor.profile_end(reward_timing)\n  let return_timing=@tensor.profile_begin(\"actor.return\")\n  let return_range = @tensor.operator_range_begin(\"diag.actor.return\")",
+  )
+  learn = once(
+    learn, "  let tail_range = @tensor.operator_range_begin(\"diag.critic.tail\")",
+    "  @tensor.profile_end(return_timing)\n  let tail_range = @tensor.operator_range_begin(\"diag.critic.tail\")",
+  )
+  learn = once(
+    learn, "  let packed_return = if self.optimizations.smc_actor_return {", "  let final_return_timing=@tensor.profile_begin(\"actor.return\")\n  let packed_return = if self.optimizations.smc_actor_return {",
+  )
+  learn = once(
+    learn, "  @tensor.operator_span(\"diag.actor.backward\", () => {", "  @tensor.profile_end(final_return_timing)\n  @tensor.operator_span(\"diag.actor.backward\", () => {",
+  )
+  learn = once(
+    learn, "            let prediction_range = @tensor.operator_range_begin(", "            let critic_forward_timing=@tensor.profile_begin(\"critic.forward\")\n            let prediction_range = @tensor.operator_range_begin(",
+  )
+  learn = once(
+    learn, "@tensor.profile_span(\"critic.forward\"", "@tensor.profile_span(\"critic.network\"",
+  )
+  learn = once(
+    learn, "            self.opt_critic.zero_grad()", "            @tensor.profile_end(critic_forward_timing)\n            self.opt_critic.zero_grad()",
+  )
+  put("geometry_cost_learning_a.mbt", learn)
+  let mut build = @fs.read_file(previous + "/build_geometry_math_r.mbtx").text()
+  build = build.replace_all(old="geometry-math-r", new="geometry-cost-a")
+  build = once(
+    build, "for (source,dest) in [(\"geometry_math_fixture_r.mbt\"", "for (source,dest) in [(\"geometry_cost_learning_a.mbt\",\"learning.mbt\"),(\"geometry_math_fixture_r.mbt\"",
+  )
+  put("build_geometry_cost_a.mbtx", build)
+  put(
+    "geometry_cost_probe_a.py",
+    @fs.read_file("providers/motion_learning/geometry_cost_probe.py").text(),
+  )
+  let mut runner = @fs.read_file(
+    previous + "/run_geometry_math_training_r.mbtx",
+  ).text()
+  runner = runner.replace_all(
+    old="\"smc-eager\"",
+    new="\"smc-corrected\", \"smc-ieee\", \"smc-eager\"",
+  )
+  runner = runner.replace_all(
+    old="actor-step-gate-geometry-math-r",
+    new="actor-step-gate-geometry-cost-a",
+  )
+  runner = runner.replace_all(
+    old="run_geometry_math_training_r.mbtx",
+    new="run_geometry_cost_a.mbtx",
+  )
+  runner = runner.replace_all(
+    old="aligned_training_reference_am.py",
+    new="geometry_cost_probe_a.py",
+  )
+  runner = once(
+    runner, "  e[\"MOONROBO_SHARED_OBSERVER\"] = Json(observer)", "  e[\"MOONROBO_SHARED_OBSERVER\"] = Json(observer)\n  e[\"GEOMETRY_COST_CONTROL\"]=Json(if implementation==\"smc-corrected\"{\"corrected\"}else if implementation==\"smc-ieee\"{\"ieee\"}else{\"original\"})",
+  )
+  runner = once(
+    runner, "if implementation==\"smc\" {let cache_source=\"/home/wlc004s/moonrobo/runs/hotspot-shared-training-smc-gate-t\";",
+    "if implementation!=\"native\" {let cache_source=if implementation==\"smc-corrected\"{\"/home/wlc004s/moonrobo/runs/hotspot-shared-geometry-math-reference-gate-i\"}else{\"/home/wlc004s/moonrobo/runs/hotspot-shared-training-smc-gate-t\"};",
+  )
+  runner = once(
+    runner, "  let pins : Map[String, Json] = {}", "  let pins : Map[String, Json] = {}\n  for name in [\"geometry_math_revision.py\",\"geometry_reference_constants_b.py\"] {let path=base+\"/\"+name;pins[path]=Json(hash_file(path))}",
+  )
+  put("run_geometry_cost_a.mbtx", runner)
+}

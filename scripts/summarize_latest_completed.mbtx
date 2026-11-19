@@ -1,0 +1,100 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let destination = repo +
+    "/output/spark-runtime-20261024/layernorm-full-retest-20261026"
+  let source = @fs.read_file(
+    repo + "/scripts/summarize_smc_microbatch_pairs.mbtx",
+  ).text()
+  let parts = source.split("async fn main {").to_array()
+  guard parts.length() == 2 else { fail("expected one existing main") }
+  let suffix =
+    #|async fn main {
+    #|  let root = "/home/wlc004s/moonrobo/runs/native-full-ln-vs-smc512-20261026-d"
+    #|  let spec = read_json(root + "/spec.json")
+    #|  validate_protocol(spec)
+    #|  let digest = hash_file(root + "/spec.json")
+    #|  let plan = read_json(root + "/plan.json")
+    #|  guard field(plan,"spec_sha256") == Json(digest) else { fail("plan digest") }
+    #|  let runs : Array[Json] = []
+    #|  for (index, key) in [(0,"a"),(1,"b"),(2,"b")] {
+    #|    runs.push(run_report(root,index,key,spec,digest))
+    #|  }
+    #|  let missing = read_json(root + "/run-3/result.json")
+    #|  guard field(missing,"passed") == Json(false) else { fail("expected failed fourth preflight") }
+    #|  let native : Array[Double] = []
+    #|  let smc : Array[Double] = []
+    #|  for run in runs {
+    #|    guard field(run,"rows") is Array(rows) else { fail("rows") }
+    #|    for row in rows[40:60] {
+    #|      if field(run,"kind") == Json("native") { native.push(number(field(row,"total_ms"))) }
+    #|      else { smc.push(number(field(row,"total_ms"))) }
+    #|    }
+    #|  }
+    #|  guard native.length()==20 && smc.length()==40 else { fail("complete steady windows") }
+    #|  let a = stats(native)
+    #|  let b = stats(smc)
+    #|  let am = number(field(a,"mean_ms"))
+    #|  let bm = number(field(b,"mean_ms"))
+    #|  let output : Json = {
+    #|    "format":"moonrobo.latest-completed-timing.v1",
+    #|    "complete_abba":false,"completed_native_runs":1,"completed_smc_runs":2,
+    #|    "scope":"User requested immediate timings from completed runs; fourth native rejected before training, not silently discarded as a slow result; no further runs.",
+    #|    "spec_sha256":Json(digest),"protocol":field(spec,"protocol"),
+    #|    "native":a,"smc":b,"native_over_smc":Json(am/bm),"gap_ms":Json(am-bm),
+    #|    "previous_native_ms":4457.55,"previous_smc_ms":1971.4444361863302,
+    #|    "native_improvement_ms":Json(4457.55-am),
+    #|    "native_time_reduction_percent":Json((4457.55-am)/4457.55*100.0),
+    #|    "native_speedup_over_previous":Json(4457.55/am),
+    #|    "historical_comparison_not_single_factor_ablation":true,
+    #|    "numeric_promotion":false,"full_actor_numeric_gate_still_failed":true,
+    #|    "known_differences":field(spec,"known_differences"),
+    #|    "runs":Json(runs),"fourth_attempt":missing,
+    #|  }
+    #|  @fs.write_file(root+"/latest-completed-timing.json",output.stringify(indent=2),create_mode=CreateNew)
+    #|  println(Json({"native":a,"smc":b,"ratio":Json(am/bm),"gap_ms":Json(am-bm),"improvement_ms":Json(4457.55-am),"reduction_percent":Json((4457.55-am)/4457.55*100.0)}).stringify(indent=2))
+    #|}
+  let name = "latest_completed_timing_a.mbtx"
+  @fs.write_file(
+    destination + "/" + name,
+    parts[0].to_owned() + suffix,
+    create_mode=CreateNew,
+  )
+  let remote = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a/" +
+    name
+  guard @process.run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      destination + "/" + name,
+      "wlc004s@192.168.2.179:" + remote,
+    ]) ==
+    0 else {
+    fail("upload")
+  }
+  guard @process.run("ssh", [
+      "-S",
+      "/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179",
+      "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+      remote,
+    ]) ==
+    0 else {
+    fail("summary")
+  }
+  guard @process.run("scp", [
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/runs/native-full-ln-vs-smc512-20261026-d/latest-completed-timing.json",
+      destination + "/latest-completed-timing.json",
+    ]) ==
+    0 else {
+    fail("fetch")
+  }
+}

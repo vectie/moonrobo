@@ -1,0 +1,90 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, revision, runner_letter, gate_letter] &&
+    [revision, runner_letter, gate_letter].all(s => {
+      s.length() == 1 && s.all(c => c is ('a'..<='z'))
+    }) else {
+    fail("revision letters")
+  }
+  let out = "output/spark-runtime-20261024/compiled-mlp-20261028-a"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let name = "build_compiled_window_plugin_" + revision + ".mbtx"
+  let build = @fs.read_file(out + "/build_compiled_window_plugin_b.mbtx")
+    .text()
+    .replace_all(
+      old="aoti-window-plugin-build-b",
+      new="aoti-window-plugin-build-" + revision,
+    )
+    .replace_all(
+      old="libmoonrobo_compiled_window_b.so",
+      new="libmoonrobo_compiled_window_" + revision + ".so",
+    )
+  let runner_name = "run_compiled_window_" + runner_letter + ".mbtx"
+  let runner = @fs.read_file(out + "/run_compiled_window_j.mbtx")
+    .text()
+    .replace_all(old="run_compiled_window_j.mbtx", new=runner_name)
+    .replace_all(
+      old="libmoonrobo_compiled_window_b.so",
+      new="libmoonrobo_compiled_window_" + revision + ".so",
+    )
+    .replace_all(
+      old="+amp+\"-gate-d\"",
+      new="+amp+\"-gate-" + gate_letter + "\"",
+    )
+  for (file, code) in [(name, build), (runner_name, runner)] {
+    @fs.write_file(out + "/" + file, code, create_mode=CreateNew)
+    assert_eq(
+      @process.run("scp", [
+        "-q",
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        out + "/" + file,
+        "wlc004s@192.168.2.179:" + base + "/" + file,
+      ]),
+      0,
+    )
+  }
+  assert_eq(
+    @process.run("scp", [
+      "-q",
+      "-o",
+      "ControlPath=/tmp/moonrobo-operator-179.sock",
+      "src/learning_tensor/compiled_block.inc",
+      "wlc004s@192.168.2.179:" +
+      base +
+      "/workspace/moonrobo-compiled-window-a/src/learning_tensor/compiled_block.inc",
+    ]),
+    0,
+  )
+  assert_eq(
+    @process.run(
+      "ssh",
+      [
+        "-S",
+        "/tmp/moonrobo-operator-179.sock",
+        "wlc004s@192.168.2.179",
+        "env PATH=/home/wlc004s/moonrobo/toolchain/bin:/usr/bin:/bin MOON_HOME=/home/wlc004s/moonrobo/toolchain /home/wlc004s/moonrobo/toolchain/bin/moon run --target native " +
+        base +
+        "/" +
+        name,
+      ],
+      stdout=@process.redirect_to_file(
+        out + "/window-plugin-" + revision + ".stdout.log",
+        create_mode=CreateNew,
+      ),
+      stderr=@process.redirect_to_file(
+        out + "/window-plugin-" + revision + ".stderr.log",
+        create_mode=CreateNew,
+      ),
+    ),
+    0,
+  )
+}

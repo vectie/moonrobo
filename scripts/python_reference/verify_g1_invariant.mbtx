@@ -1,0 +1,110 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn run_command(exe : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = @process.collect_output(exe, args)
+  assert_eq(code, 0, msg=stderr.text() + stdout.text())
+  stdout.text()
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: verify_g1_invariant.mbtx REPO WARM_POLICY INVARIANT_RUN SUMMARY_JSON",
+  )
+  let root = args[1]
+  let study = args[3]
+  let policy = read(study + "/policy/report.json")
+  guard field(policy, "runs") is Array(runs) else { fail("missing runs") }
+  let comparisons : Array[Json] = []
+  for run in runs {
+    guard field(run, "seed") is Number(seed_number, ..) else {
+      fail("missing seed")
+    }
+    let seed = seed_number.to_int()
+    let output = study + "/incoming-evaluation-\{seed}"
+    ignore(
+      run_command(root + "/target/learning-venv/bin/python", [
+        root + "/providers/motion_learning/policy.py",
+        "evaluate",
+        "--checkpoint",
+        args[2] + "/actor-seed-\{seed}.pt",
+        "--scene",
+        root + "/target/mujoco_menagerie/unitree_g1/scene_mjx.xml",
+        "--config",
+        study + "/policy-config.json",
+        "--experiment",
+        root + "/examples/learning/g1-long-experiment.json",
+        "--output",
+        output,
+      ]),
+    )
+    let incoming = read(output + "/physics.json")
+    let selected = read(study + "/policy/physics-seed-\{seed}.json")
+    let old_candidate = field(incoming, "candidate")
+    let new_candidate = field(selected, "candidate")
+    if field(run, "selected_update") == (0 : Json) {
+      guard field(old_candidate, "trials") is Array(before) &&
+        field(new_candidate, "trials") is Array(after) else {
+        fail("missing physics trials")
+      }
+      assert_eq(before.length(), after.length())
+      for i in 0..<before.length() {
+        for
+          key in [
+            "case_id", "seed", "replay", "failed", "end_reason", "simulated_seconds",
+            "joint_rmse_rad",
+          ] {
+          assert_eq(
+            field(before[i], key),
+            field(after[i], key),
+            msg="update-zero replay changed: " + key,
+          )
+        }
+      }
+    }
+    comparisons.push({
+      "seed": seed.to_json(),
+      "selected_update": field(run, "selected_update"),
+      "incoming": field(old_candidate, "summary"),
+      "selected": field(new_candidate, "summary"),
+      "qualifies": field(run, "qualifies"),
+    })
+  }
+  let summary : Json = {
+    "format": "moonrobo.g1-invariant-comparison.v1",
+    "comparisons": comparisons.to_json(),
+    "tail_probe": read(study + "/tail-probe/summary.json"),
+    "translation_probe": read(study + "/translation-probe/summary.json"),
+    "physical_execution_allowed": false,
+  }
+  @fs.write_file(
+    args[4],
+    summary.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(comparisons.to_json().stringify(indent=2))
+}

@@ -1,0 +1,238 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+fn field(j : Json, k : String) -> Json raise {
+  guard j is Object(m) && m.get(k) is Some(v) else { fail(k) }
+  v
+}
+
+///|
+fn number(j : Json) -> Double raise {
+  match j {
+    Number(v, ..) => v
+    String(v) => @string.parse_double(v)
+    _ => fail("number")
+  }
+}
+
+///|
+fn numbers(j : Json) -> Array[Double] raise {
+  guard j is Array(rows) && rows.length() == 13 else { fail("13 iterations") }
+  let out : Array[Double] = []
+  for i, row in rows {
+    assert_eq(field(row, "iteration"), Json(i))
+    assert_eq(field(row, "steady"), Json(i >= 3))
+    if i >= 3 {
+      out.push(number(field(row, "wall_ms")))
+    }
+  }
+  out
+}
+
+///|
+fn stats(xs : Array[Double]) -> Json {
+  let sorted = xs.copy()
+  sorted.sort()
+  let mean = xs.fold(init=0.0, (s, x) => s + x) / xs.length().to_double()
+  {
+    "count": Json(xs.length()),
+    "mean_ms": Json(mean),
+    "median_ms": Json(
+      (sorted[(xs.length() - 1) / 2] + sorted[xs.length() / 2]) / 2.0,
+    ),
+    "min_ms": Json(sorted[0]),
+    "max_ms": Json(sorted[sorted.length() - 1]),
+  }
+}
+
+///|
+async fn main {
+  let root = "output/spark-runtime-20261024/geometry-math-20261029-a"
+  let read = async fn(path : String) -> Json {
+    @json.parse(@fs.read_file(root + "/" + path).text())
+  }
+  let gate = read("geometry-math-snapshot-gate-r2/result.json")
+  assert_eq(field(gate, "passed"), Json(true))
+  let reference = read("geometry-math-reference-gate-p/result.json")
+  assert_eq(field(reference, "independent_reward_accuracy_gate"), Json(false))
+  assert_eq(field(read("independent-math.receipt.json"), "exit_code"), Json(0))
+  assert_eq(
+    field(read("geometry-math-heads-c/result.json"), "numerical_pass"),
+    Json(true),
+  )
+  let labels = [
+    "geometry-math-native-bench-a", "geometry-math-original-smc-bench-a", "geometry-math-original-smc-bench-b2",
+    "geometry-math-native-bench-b",
+  ]
+  let native : Array[Double] = []
+  let smc : Array[Double] = []
+  let blocks : Array[Json] = []
+  let mut native_binary : Json = Json::null()
+  let mut native_reserved = 0.0
+  let mut smc_reserved = 0.0
+  let mut native_allocated = 0.0
+  let mut smc_allocated = 0.0
+  let means : Array[Double] = []
+  for i, label in labels {
+    let result = read(label + "/result.json")
+    let guard_report = read(label + "/training-guard.json")
+    assert_eq(field(guard_report, "reason"), Json("completed"))
+    assert_eq(field(guard_report, "error"), Json::null())
+    guard read(label + "/training-docker-final.json") is [docker] else {
+      fail("docker")
+    }
+    assert_eq(field(field(docker, "State"), "OOMKilled"), Json(false))
+    assert_eq(field(field(docker, "State"), "ExitCode"), Json(0))
+    let protocol = read(label + "/protocol.json")
+    assert_eq(field(protocol, "actual_amp"), Json("bf16"))
+    assert_eq(field(protocol, "actual_actor_chunk"), Json("4096"))
+    assert_eq(field(protocol, "observer"), Json("off"))
+    let times = numbers(field(result, "rows"))
+    let block = stats(times)
+    means.push(number(field(block, "mean_ms")))
+    let is_native = i == 0 || i == 3
+    if is_native {
+      assert_eq(field(result, "same_initial_state_each_repeat"), Json(true))
+      let hash = field(
+        field(protocol, "pins"),
+        "/home/wlc004s/moonrobo/private/shared-compute-20261026-a/actor-step-gate-geometry-math-r",
+      )
+      if i == 0 {
+        native_binary = hash
+      } else {
+        assert_eq(hash, native_binary)
+      }
+      native.append(times)
+      native_reserved = native_reserved.max(
+        number(field(field(result, "memory"), "reserved_peak_bytes")),
+      )
+      native_allocated = native_allocated.max(
+        number(field(field(result, "memory"), "allocated_peak_bytes")),
+      )
+    } else {
+      smc.append(times)
+      smc_reserved = smc_reserved.max(
+        number(field(field(result, "memory"), "torch_reserved_peak_bytes")),
+      )
+      smc_allocated = smc_allocated.max(
+        number(field(field(result, "memory"), "torch_allocated_peak_bytes")),
+      )
+      assert_eq(field(result, "passed"), Json(true))
+      assert_eq(
+        field(result, "original_reference_update_bitwise_unchanged"),
+        Json(true),
+      )
+      assert_eq(field(result, "artifacts_fixed_during_steady"), Json(true))
+      assert_eq(
+        field(read(label + "/compilation-audit.json"), "changed"),
+        Json::array([]),
+      )
+    }
+    blocks.push({ "label": Json(label), "statistics": block })
+  }
+  let ns = stats(native)
+  let ss = stats(smc)
+  let nm = number(field(ns, "mean_ms"))
+  let sm = number(field(ss, "mean_ms"))
+  guard field(gate, "comparison") is Array(checks) else { fail("checks") }
+  let evidence : Json = {
+    "schema": "moonrobo.geometry-math-revision.v1",
+    "revision": "orthonormal-atlas-geodesic-squared-v1",
+    "mathematical_checks": {
+      "independent_python_tests": 8,
+      "native_math_tests_after_heading_join_change": 2,
+      "includes": "vertical, full roll/pitch, identity, near pi both sides, local finite differences, 32-step analytic gradient",
+      "heading_seam": "piecewise charts; seam may jump; no global differentiability claim",
+      "pi": "principal-angle cut locus has no unique two-sided derivative",
+    },
+    "full_update_gate": {
+      "passed": true,
+      "checks": Json(checks.length()),
+      "bitwise_checks": Json(
+        checks.filter(row => field(row, "unequal") == Json(0)).length(),
+      ),
+      "parameter_gradient_adam_tensor_records": 160,
+      "normalizer_records": 10,
+      "absolute_tolerance": field(gate, "atol"),
+      "relative_tolerance": field(gate, "rtol"),
+      "reference_snapshot_sha256": field(gate, "reference_snapshot_sha256"),
+      "scope": "runtime wiring with shared fixed reward executable; independent reward mathematics and VJPs checked separately",
+      "natural_separately_compiled_control_not_bitwise": true,
+    },
+    "causal_evidence": {
+      "centered_xi": "removed the sole normalizer mean discrepancy; did not fix actor/critic drift",
+      "shared_reward": "all world and critic parameter/gradient/Adam tensors became bitwise identical",
+      "heading_gradient_join": "changing only the corrected heading's square to x*x removed the remaining actor discrepancy under the shared artifact control",
+      "no_native_gradient_or_target_replay": true,
+    },
+    "benchmark": {
+      "order": "native/smc/smc/native",
+      "batch": 4096,
+      "actor_microbatch": 4096,
+      "world_updates": 10,
+      "world_batch": 2048,
+      "world_window": 8,
+      "horizon": 32,
+      "critic_updates": 20,
+      "amp": "bf16",
+      "native_geometry_fp32": "ieee",
+      "smc": "original source and precision retained",
+      "observer": "off",
+      "warmups_per_process": 3,
+      "measured_per_process": 10,
+      "same_initial_weights_optimizer_and_inputs_each_repeat": true,
+      "native_binary_sha256": native_binary,
+      "native": ns,
+      "original_smc": ss,
+      "native_over_smc": Json(nm / sm),
+      "difference_ms": Json(nm - sm),
+      "ab_difference_ms": Json(means[0] - means[1]),
+      "ba_difference_ms": Json(means[3] - means[2]),
+      "blocks": Json(blocks),
+      "scope": "complete 10 world + actor + 20 critic compute update; excludes simulation, sampling, uploads, restore, compilation and validation I/O",
+      "interpretation": "matched workload and fixed artifacts, but corrected native geometry differs intentionally from original SMC; not a same-objective optimization speedup claim",
+    },
+    "memory": {
+      "guards_lowered": false,
+      "startup_cuda_free_gib": 24,
+      "runtime_cuda_free_gib": 16,
+      "reserved_cap_gib": 32,
+      "host_startup_available_gib": 32,
+      "host_startup_free_gib": 24,
+      "host_runtime_available_gib": 24,
+      "host_runtime_free_gib": 12,
+      "docker_cap_gib": 100,
+      "cgroup_stop_gib": 84,
+      "native_peak_allocated_bytes": Json(native_allocated),
+      "native_peak_reserved_bytes": Json(native_reserved),
+      "smc_peak_allocated_bytes": Json(smc_allocated),
+      "smc_peak_reserved_bytes": Json(smc_reserved),
+      "benchmark_oom": false,
+      "prior_guard_aborts_retained": true,
+      "cache_reclaim": "only verified closed task outputs/builds, no deletion or global drop_caches",
+    },
+    "config_overlay": {
+      "heading_mode": "orthonormal_atlas",
+      "rotation_error_mode": "geodesic_squared",
+      "amp": "bf16",
+      "allow_tf32": false,
+      "smc_xi_normalization": true,
+    },
+    "old_implementations_retained": true,
+    "original_smc_modified": false,
+    "existing_checkpoint_defaults_changed": false,
+    "long_run_training_convergence_tested": false,
+  }
+  @fs.write_file(
+    root + "/validated-result.json",
+    evidence.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(evidence.stringify(indent=2))
+}

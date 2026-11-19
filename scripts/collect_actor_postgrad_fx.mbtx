@@ -1,0 +1,20 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let out="output/spark-runtime-20261024/actor-backward-boundaries-20261029-a/postgrad-fx-a"
+  @fs.mkdir(out)
+  let remote="wlc004s@192.168.2.179:/home/wlc004s/moonrobo/runs/hotspot-shared-original-actor-fx-b/compile-debug/torchinductor/"
+  for (branch,folder) in [("initial-forward","model__0_forward_1.0"),("recurrent-forward","model__1_forward_4.1"),("reward-forward","model__2_forward_7.2"),("reward-backward","model__2_backward_9.3"),("recurrent-backward","model__1_backward_10.4"),("initial-backward","model__0_backward_11.5"),("critic-features","model__3_inference_12.6")] {
+    for (file,suffix) in [("fx_graph_readable.py","fx.py"),("output_code.py","code.py")] {
+      let target=out+"/"+branch+"."+suffix
+      guard !@fs.exists(target) else {fail("immutable copy exists")}
+      assert_eq(@process.run("scp",["-q","-o","ControlPath=/tmp/moonrobo-operator-179.sock",remote+folder+"/"+file,target]),0)
+    }
+  }
+}

@@ -1,0 +1,104 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn runs(value : Json) -> Array[Json] raise {
+  guard field(value, "runs") is Array(values) else { fail("missing runs") }
+  values
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@fs.read_file(path).text())
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    5,
+    msg="usage: report_g1_long_study.mbtx REPO LONG_PPO LONG_REFINEMENT SUMMARY_JSON",
+  )
+  let ppo = read(args[2] + "/report.json")
+  let data = read(args[3] + "/feedback-report.json")
+  let dynamics = read(args[3] + "/fit/report.json")
+  let policy = read(args[3] + "/policy/report.json")
+  let ppo_runs : Array[Json] = []
+  for run in runs(ppo) {
+    ppo_runs.push({
+      "seed": field(run, "seed"),
+      "selected_update": field(run, "selected_update"),
+      "completed_update": field(run, "completed_update"),
+      "training_steps": field(run, "training_steps"),
+      "training_seconds": field(run, "training_seconds"),
+      "candidate": field(run, "candidate"),
+      "qualifies": field(run, "qualifies"),
+    })
+  }
+  let model_runs : Array[Json] = []
+  for run in runs(dynamics) {
+    let metrics = field(run, "metrics")
+    model_runs.push({
+      "seed": field(run, "seed"),
+      "selected_update": field(run, "selected_update"),
+      "training_seconds": field(run, "training_seconds"),
+      "validation": field(metrics, "validation"),
+      "test": field(metrics, "test"),
+      "gradient_probe": field(run, "gradient_probe"),
+      "reload_matches": field(run, "reload_matches"),
+      "sampling": field(run, "sampling"),
+    })
+  }
+  let policy_runs : Array[Json] = []
+  for run in runs(policy) {
+    assert_eq(field(run, "dynamics_unchanged"), true.to_json())
+    assert_eq(field(run, "reload_matches"), true.to_json())
+    guard field(run, "checkpoint") is String(checkpoint) else {
+      fail("missing checkpoint")
+    }
+    policy_runs.push({
+      "seed": field(run, "seed"),
+      "selected_update": field(run, "selected_update"),
+      "training_seconds": field(run, "training_seconds"),
+      "initialization": field(run, "initialization"),
+      "candidate": field(run, "candidate"),
+      "qualifies": field(run, "qualifies"),
+      "checkpoint_sha256": @crypto.bytes_to_hex_string(
+        @crypto.sha256(
+          @fs.read_file(args[3] + "/policy/" + checkpoint).binary(),
+        ),
+      ).to_json(),
+    })
+  }
+  let result : Json = {
+    "format": "moonrobo.g1-long-study-summary.v1",
+    "duration_s": 10,
+    "ppo": ppo_runs.to_json(),
+    "data": data,
+    "dynamics": model_runs.to_json(),
+    "refined_policy": policy_runs.to_json(),
+    "physical_execution_allowed": false,
+    "limits": "Development evidence on procedural G1 cases. Late windows overlap and are sparse; no matched cost-to-target comparison or E1/hardware qualification.",
+  }
+  @fs.write_file(
+    args[4],
+    result.stringify(indent=2),
+    create_mode=CreateOrTruncate,
+  )
+  println(result.stringify(indent=2))
+}

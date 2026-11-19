@@ -1,0 +1,532 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+///|
+async fn file_sha256(path : String) -> String {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let hash = @crypto.SHA256::new()
+  let size = file.size()
+  for offset = 0L; offset < size; {
+    let n = (size - offset).min(65536L).to_int()
+    hash.update(file.read_exactly_at(n, position=offset))
+    continue offset + n.to_int64()
+  }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+async fn require_file_size(path : String, maximum : Int64) -> Unit {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  guard file.size() <= maximum else {
+    fail("training preflight input exceeds per-file memory limit: " + path)
+  }
+}
+
+///|
+fn parent(path : String) -> String {
+  let parts = path.split("/").to_array()
+  let dirs : Array[String] = []
+  for i in 0..<(parts.length() - 1) {
+    dirs.push(parts[i].to_owned())
+  }
+  let result = dirs.join("/")
+  if result == "" {
+    "."
+  } else {
+    result
+  }
+}
+
+///|
+/// Same sorted, bounded, no-symlink directory digest as the filter and the
+/// native CUDA runner. It pins MJCF includes and meshes next to the scene.
+async fn scene_assets_hash(root : String) -> String {
+  let pending = [""]
+  let hash = @crypto.SHA256::new()
+  let mut count = 0
+  let mut bytes = 0L
+  while !pending.is_empty() {
+    let relative = pending.pop().unwrap()
+    let path = if relative == "" { root } else { root + "/" + relative }
+    match @fs.kind(path, follow_symlink=false) {
+      Directory => {
+        let names = @fs.readdir(path, sort=true)
+        guard names.length() <= 8192 &&
+          pending.length() + names.length() <= 8192 else {
+          fail("scene asset tree exceeds bounded metadata limit")
+        }
+        for name in names.rev() {
+          pending.push(
+            if relative == "" {
+              name
+            } else {
+              relative + "/" + name
+            },
+          )
+        }
+      }
+      Regular => {
+        count += 1
+        let file = @fs.open(path, mode=ReadOnly)
+        bytes += file.size()
+        file.close()
+        guard count <= 8192 && bytes <= 17179869184L else {
+          fail("scene asset tree exceeds 8192 files / 16 GiB")
+        }
+        hash.update(
+          @utf8.encode(
+            "\{relative.length()}:" + relative + ":" + file_sha256(path) + "\n",
+          ),
+        )
+      }
+      _ =>
+        fail("scene asset tree contains a symlink or unsupported file: " + path)
+    }
+  }
+  guard count > 0 else { fail("scene asset tree is empty") }
+  @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
+fn safe_relative(path : String) -> Bool {
+  !path.has_prefix("/") &&
+  path.split("/").all(part => part != "" && part != "." && part != "..")
+}
+
+///|
+async fn verify_bones_partial_filter(
+  catalog : Map[String, Json],
+  clips : Array[Json],
+  catalog_path : String,
+  root : String,
+  scene : String,
+) -> Unit {
+  guard catalog.get("paper_exact_motion_set") == Some(Json(false)) &&
+    catalog.get("filter_provenance") is Some(Object(provenance)) &&
+    provenance.get("version") ==
+    Some(Json("moonrobo.bones-seed-partial-filter.v1")) &&
+    provenance.get("source_manifest_name") == Some(Json("manifest.json")) &&
+    provenance.get("sampling_hz") == Some(Json(50)) &&
+    provenance.get("floor_z_m") == Some(Json(0.0)) &&
+    provenance.get("floating_feet_rule_applied") == Some(Json(false)) &&
+    provenance.get("paper_name_list_verified") == Some(Json(false)) &&
+    provenance.get("paper_exact_motion_set") == Some(Json(false)) &&
+    provenance.get("source_clip_count") == Some(Json(142220)) &&
+    provenance.get("accepted_count") == Some(Json(clips.length())) &&
+    provenance.get("rejections") is Some(Array(rejections)) &&
+    provenance.get("rejected_count") == Some(Json(rejections.length())) &&
+    clips.length() + rejections.length() == 142220 &&
+    provenance.get("source_manifest_sha256") is Some(String(source_sha)) &&
+    provenance.get("config_sha256") is Some(String(config_sha)) &&
+    provenance.get("scene_sha256") is Some(String(scene_sha)) &&
+    provenance.get("scene_assets_sha256") is Some(String(scene_assets_sha)) &&
+    provenance.get("mujoco_library_sha256") is Some(String(library_sha)) &&
+    provenance.get("g1_archive_sha256") is Some(String(archive_sha)) &&
+    provenance.get("config") is Some(saved_config) else {
+    fail("BONES-SEED partial filter provenance is missing or inconsistent")
+  }
+  guard source_sha.length() == 64 &&
+    config_sha.length() == 64 &&
+    scene_sha.length() == 64 &&
+    scene_assets_sha.length() == 64 &&
+    library_sha.length() == 64 &&
+    archive_sha.length() == 64 &&
+    file_sha256(scene) == scene_sha &&
+    scene_assets_hash(parent(scene)) == scene_assets_sha else {
+    fail("BONES-SEED filter scene or provenance hash differs")
+  }
+  let config_path = @env.get_env_var("MOONROBO_BONES_FILTER_CONFIG").unwrap_or(
+    root + "/examples/learning/bones-paper-partial-filter.json",
+  )
+  let library_path = @env.get_env_var("MOONROBO_MUJOCO_LIBRARY").unwrap_or("")
+  guard @fs.exists(config_path) &&
+    @fs.exists(library_path) &&
+    file_sha256(config_path) == config_sha &&
+    file_sha256(library_path) == library_sha else {
+    fail(
+      "BONES-SEED filter config/library bytes differ; set MOONROBO_BONES_FILTER_CONFIG and MOONROBO_MUJOCO_LIBRARY",
+    )
+  }
+  require_file_size(config_path, 1048576L)
+  guard @json.parse(@fs.read_file(config_path).text()) == saved_config else {
+    fail("BONES-SEED filter config content differs")
+  }
+  let catalog_root = parent(catalog_path)
+  let archive_path = @env.get_env_var("MOONROBO_BONES_ARCHIVE").unwrap_or(
+    parent(catalog_root) + "/g1.tar.gz",
+  )
+  guard @fs.exists(archive_path) && file_sha256(archive_path) == archive_sha else {
+    fail("original BONES-SEED G1 archive changed; set MOONROBO_BONES_ARCHIVE")
+  }
+  let source_path = catalog_root + "/manifest.json"
+  require_file_size(source_path, 536870912L)
+  guard @fs.exists(source_path) &&
+    file_sha256(source_path) == source_sha &&
+    @json.parse(@fs.read_file(source_path).text()) is Object(source) &&
+    source.get("format") == Some(Json("moonrobo.aligned-motion-catalog.v1")) &&
+    source.get("source_repository") ==
+    Some(Json("https://huggingface.co/datasets/bones-studio/seed")) &&
+    source.get("full_source_release") == Some(Json(true)) &&
+    source.get("acquisition") is Some(Object(acquisition)) &&
+    acquisition.get("g1_archive_sha256") == Some(Json(archive_sha)) &&
+    source.get("clip_count") == Some(Json(142220)) &&
+    source.get("clips") is Some(Array(source_clips)) &&
+    source_clips.length() == 142220 else {
+    fail("original full BONES-SEED manifest is missing or changed")
+  }
+  let accepted : Map[String, Json] = Map([])
+  for clip in clips {
+    guard clip is Object(fields) &&
+      fields.get("id") is Some(String(id)) &&
+      !accepted.contains(id) else {
+      fail("duplicate accepted BONES-SEED clip")
+    }
+    accepted[id] = clip
+  }
+  let rejected : Map[String, Json] = Map([])
+  for row in rejections {
+    guard row is Object(fields) &&
+      fields.get("id") is Some(String(id)) &&
+      fields.get("reasons") is Some(Array(reasons)) &&
+      !reasons.is_empty() &&
+      !rejected.contains(id) &&
+      !accepted.contains(id) &&
+      reasons.all(reason => {
+        reason is String(code) &&
+        [
+          "configured_name_exclusion", "elevated_link_30_consecutive_50hz_frames",
+          "link_height_below_minus_0_12_m", "link_height_below_minus_0_08_m_more_than_80_percent",
+        ].contains(code)
+      }) else {
+      fail("invalid or duplicate BONES-SEED rejection")
+    }
+    rejected[id] = Json(reasons)
+  }
+  let source_ids : Map[String, Bool] = Map([])
+  for index, original in source_clips {
+    guard original is Object(fields) &&
+      fields.get("id") is Some(String(id)) &&
+      fields.get("path") is Some(String(relative)) &&
+      fields.get("sha256") is Some(String(clip_sha)) &&
+      fields.get("source_sha256") is Some(String(source_clip_sha)) &&
+      !source_ids.contains(id) &&
+      safe_relative(relative) &&
+      relative.has_prefix("clips/") &&
+      file_sha256(catalog_root + "/" + relative) == clip_sha else {
+      fail("source converted BONES-SEED clip changed")
+    }
+    source_ids[id] = true
+    let kept = accepted.get(id) is Some(row) && row == original
+    guard kept || rejected.contains(id) else {
+      fail("BONES-SEED partial filter has an unknown or altered decision")
+    }
+    let receipt_path = catalog_root +
+      "/paper-partial-decisions-v1/" +
+      (index / 1000).to_string() +
+      "/" +
+      index.to_string() +
+      ".json"
+    require_file_size(receipt_path, 65536L)
+    guard @fs.exists(receipt_path) &&
+      @json.parse(@fs.read_file(receipt_path).text()) is Object(receipt) &&
+      receipt.get("version") ==
+      Some(Json("moonrobo.bones-seed-partial-decision.v1")) &&
+      receipt.get("id") == Some(Json(id)) &&
+      receipt.get("clip_sha256") == Some(Json(clip_sha)) &&
+      receipt.get("source_clip_sha256") == Some(Json(source_clip_sha)) &&
+      receipt.get("source_manifest_sha256") == Some(Json(source_sha)) &&
+      receipt.get("config_sha256") == Some(Json(config_sha)) &&
+      receipt.get("scene_sha256") == Some(Json(scene_sha)) &&
+      receipt.get("scene_assets_sha256") == Some(Json(scene_assets_sha)) &&
+      receipt.get("library_sha256") == Some(Json(library_sha)) &&
+      receipt.get("g1_archive_sha256") == Some(Json(archive_sha)) &&
+      receipt.get("accepted") == Some(Json(kept)) &&
+      receipt.get("reasons") ==
+      Some(if kept { Json::array([]) } else { rejected[id] }) else {
+      fail("BONES-SEED filter receipt missing or changed: " + id)
+    }
+  }
+}
+
+///|
+/// Read-only launch preflight for independent or two-host Python/CUDA SMC training.
+/// It never imports Python, touches a GPU, creates output, or starts training.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 12 else {
+    fail(
+      "usage: preflight_g1_smc_node.mbtx NODE(178|179) MODE(independent|ddp) REPO PYTHON CONFIG MOTION_DIR SCENE USD OUTPUT_DIR ISAACLAB_ROOT MOTION_MANIFEST",
+    )
+  }
+  let node = args[1]
+  guard node == "178" || node == "179" else {
+    fail("training node must be 178 or 179")
+  }
+  let mode = args[2]
+  guard mode == "independent" || mode == "ddp" else {
+    fail("training mode must be independent or ddp")
+  }
+  let root = args[3]
+  let python = args[4]
+  let config = args[5]
+  let motion = args[6]
+  let scene = args[7]
+  let usd = args[8]
+  let output = args[9]
+  let isaaclab = args[10]
+  let catalog_path = args[11]
+  for
+    path in [
+      root + "/moon.mod",
+      python,
+      config,
+      motion,
+      scene,
+      usd,
+      isaaclab,
+      catalog_path,
+    ] {
+    guard @fs.exists(path) else { fail("missing local input: " + path) }
+  }
+  guard @fs.exists(root + "/providers/motion_learning/aligned/train.py") else {
+    fail("preserved Python aligned learner is absent")
+  }
+  guard !@fs.exists(output + "/checkpoint.pt") &&
+    !@fs.exists(output + "/checkpoint.rank0000.pt") &&
+    !@fs.exists(output + "/checkpoint.rank0001.pt") else {
+    fail("checkpoint already exists; inspect it and use --resume explicitly")
+  }
+  guard @json.parse(@fs.read_file(config).text()) is Object(settings) else {
+    fail("configuration must be a JSON object")
+  }
+  let reference_config = if settings.get("profile") ==
+    Some(Json("smc-spark-memory-stage")) {
+    root + "/examples/learning/g1-smc-spark-stage.json"
+  } else if settings.get("profile") == Some(Json("smc-reference-scale")) {
+    root + "/examples/learning/g1-smc-scale.json"
+  } else {
+    fail("unsupported aligned training profile")
+  }
+  guard @json.parse(@fs.read_file(reference_config).text()) is Object(expected) else {
+    fail("missing aligned reference config")
+  }
+  if mode == "independent" {
+    expected["seed"] = @json.parse(node)
+  }
+  guard Json(settings) == Json(expected) else {
+    fail("node seed or aligned reference protocol differs")
+  }
+  require_file_size(catalog_path, 536870912L)
+  guard @json.parse(@fs.read_file(catalog_path).text()) is Object(catalog) &&
+    catalog.get("format") == Some(Json("moonrobo.aligned-motion-catalog.v1")) &&
+    catalog.get("clips") is Some(Array(clips)) &&
+    !clips.is_empty() else {
+    fail("expected a nonempty hashed G1 motion catalog")
+  }
+  let is_bones = catalog.get("source_repository") ==
+    Some(Json("https://huggingface.co/datasets/bones-studio/seed"))
+  let is_lafan = catalog.get("source_repository") ==
+    Some(
+      Json(
+        "https://huggingface.co/datasets/lvhaidong/LAFAN1_Retargeting_Dataset",
+      ),
+    )
+  guard is_bones || is_lafan else { fail("unsupported G1 motion source") }
+  let source_fps = if is_bones { 120.0 } else { 30.0 }
+  let partial_filter = is_bones &&
+    catalog.get("filter_status") ==
+    Some(
+      Json(
+        "partial published BONES-SEED feasibility rules; author name list and floating-feet gates unavailable; not paper-exact",
+      ),
+    )
+  guard catalog.get("source_fps") == Some(Json(source_fps)) &&
+    catalog.get("quaternion_order") == Some(Json("xyzw")) else {
+    fail("G1 motion catalog FPS or quaternion convention differs")
+  }
+  if is_lafan {
+    guard clips.length() == 40 &&
+      catalog.get("bones_seed_acquired") == Some(Json(false)) else {
+      fail("LAFAN1 reference catalog must contain 40 clips")
+    }
+  } else {
+    guard catalog.get("paper_exact_motion_set") == Some(Json(false)) else {
+      fail("BONES-SEED cannot claim the paper-exact motion set")
+    }
+    if partial_filter {
+      verify_bones_partial_filter(catalog, clips, catalog_path, root, scene)
+    } else {
+      guard catalog.get("filter_status") ==
+        Some(
+          Json(
+            "unfiltered BONES-SEED G1 release; paper Appendix E filters are not yet applied",
+          ),
+        ) else {
+        fail("BONES-SEED catalog has unsupported filter status")
+      }
+    }
+  }
+  guard catalog.get("clip_count") == Some(Json(clips.length())) &&
+    catalog.get("splits") is Some(Object(splits)) &&
+    splits.get("train") is Some(Array(train_ids)) &&
+    splits.get("evaluation") is Some(Array(eval_ids)) else {
+    fail("motion catalog count or split declaration is invalid")
+  }
+  let source_files : Array[Json] = []
+  let source_dir = root + "/providers/motion_learning/aligned"
+  for name in @fs.readdir(source_dir, sort=true) {
+    if name.has_suffix(".py") && !name.has_prefix("._") {
+      source_files.push({
+        "name": name,
+        "sha256": file_sha256(source_dir + "/" + name),
+      })
+    }
+  }
+  guard !source_files.is_empty() else {
+    fail("aligned Python source directory is empty")
+  }
+  let catalog_root = parent(catalog_path)
+  let paths : Map[String, Bool] = Map([])
+  let ids : Map[String, Bool] = Map([])
+  let motion_names : Array[String] = []
+  for clip in clips {
+    guard clip is Object(fields) &&
+      fields.get("id") is Some(String(id)) &&
+      fields.get("path") is Some(String(relative)) &&
+      fields.get("sha256") is Some(String(expected_sha)) &&
+      fields.get("fps") == Some(Json(source_fps)) &&
+      fields.get("layout") ==
+      Some(Json("root_xyz+quaternion_xyzw+g1_29_joint_angles")) else {
+      fail("motion catalog clip lacks identity, path, SHA256 or G1 layout")
+    }
+    guard !ids.contains(id) &&
+      !paths.contains(relative) &&
+      safe_relative(relative) &&
+      (if is_bones {
+        relative.has_prefix("clips/")
+      } else {
+        relative.has_prefix("lafan1_g1/")
+      }) else {
+      fail("duplicate or unsafe G1 clip identity: " + id)
+    }
+    ids[id] = true
+    paths[relative] = true
+    let filename = relative.split("/").last().unwrap().to_owned()
+    guard filename.has_suffix(".csv") &&
+      expected_sha.length() == 64 &&
+      expected_sha == file_sha256(catalog_root + "/" + relative) else {
+      fail("motion file missing or changed: " + relative)
+    }
+    motion_names.push(filename)
+  }
+  for selected in [train_ids, eval_ids] {
+    let seen : Map[String, Bool] = Map([])
+    for value in selected {
+      guard value is String(id) && ids.contains(id) && !seen.contains(id) else {
+        fail("motion split has an unknown or repeated clip")
+      }
+      seen[id] = true
+    }
+  }
+  guard train_ids.length() == clips.length() else {
+    fail("training split does not cover every declared clip")
+  }
+  if is_lafan {
+    let listed = @fs.readdir(motion, sort=true).filter(name => {
+      name.has_suffix(".csv")
+    })
+    guard listed.length() == motion_names.length() &&
+      listed.all(name => motion_names.contains(name)) else {
+      fail("LAFAN1 directory differs from the hashed catalog")
+    }
+  }
+  let mut robot_sha = ""
+  let mut robot_mesh_count = 0
+  match catalog.get("robot_description") {
+    Some(Object(robot)) => {
+      guard robot.get("path") is Some(String(robot_path)) &&
+        robot.get("sha256") is Some(String(expected_sha)) &&
+        robot.get("meshes") is Some(Array(meshes)) &&
+        safe_relative(robot_path) else {
+        fail("robot description lacks safe URDF and mesh hashes")
+      }
+      guard expected_sha == file_sha256(catalog_root + "/" + robot_path) else {
+        fail("G1 URDF differs from the hashed catalog")
+      }
+      robot_sha = expected_sha
+      let mesh_names : Map[String, Bool] = Map([])
+      for mesh in meshes {
+        guard mesh is Object(fields) &&
+          fields.get("path") is Some(String(relative)) &&
+          fields.get("sha256") is Some(String(expected_sha)) &&
+          relative.has_prefix("g1_description/meshes/") &&
+          safe_relative(relative) &&
+          !mesh_names.contains(relative) &&
+          expected_sha == file_sha256(catalog_root + "/" + relative) else {
+          fail("G1 mesh missing, duplicate or changed")
+        }
+        mesh_names[relative] = true
+      }
+      robot_mesh_count = mesh_names.length()
+      guard robot_mesh_count > 0 else { fail("G1 mesh inventory is empty") }
+    }
+    None => if is_lafan { fail("LAFAN1 catalog lacks hashed robot assets") }
+    _ => fail("invalid robot description")
+  }
+  let command_args = [
+    "-m", "providers.motion_learning.aligned.train", "--config", config, "--backend",
+    "isaac", "--device", "cuda:0", "--motion-dir", motion, "--motion-manifest", catalog_path,
+    "--scene", scene, "--usd-path", usd, "--output", output,
+  ]
+  if mode == "ddp" {
+    command_args.push("--distributed")
+  }
+  println(
+    (
+      {
+        "status": "local-inputs-present-plan-only",
+        "node": node,
+        "mode": mode,
+        "python": python,
+        "cwd": root,
+        "argv": command_args,
+        "isaaclab_root": isaaclab,
+        "identity": {
+          "reference_config_sha256": file_sha256(reference_config),
+          "node_config_sha256": file_sha256(config),
+          "motion_catalog_sha256": file_sha256(catalog_path),
+          "scene_sha256": file_sha256(scene),
+          "usd_sha256": file_sha256(usd),
+          "python_sources": source_files,
+          "motion_clip_count": motion_names.length(),
+          "motion_source": if is_bones {
+            if partial_filter {
+              "BONES-SEED G1 partial published feasibility filter; not paper-exact"
+            } else {
+              "BONES-SEED G1 unfiltered"
+            }
+          } else {
+            "LAFAN1 G1"
+          },
+          "paper_exact_motion_set_verified": false,
+          "partial_filter_receipts_verified": partial_filter,
+          "filter_physics_recomputed": false,
+          "robot_urdf_sha256": robot_sha,
+          "robot_mesh_count": robot_mesh_count,
+          "robot_asset_hashes_verified": robot_sha != "",
+        },
+        "executes_training": false,
+        "checks_cuda_runtime": false,
+        "checks_asset_compatibility": false,
+      } : Json).stringify(indent=2),
+  )
+}

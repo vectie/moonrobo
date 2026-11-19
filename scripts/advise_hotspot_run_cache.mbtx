@@ -1,0 +1,1147 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+let allowed_root = "/home/wlc004s/moonrobo/runs/"
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(values) && values.get(key) is Some(result) else {
+    fail("missing field: " + key)
+  }
+  result
+}
+
+///|
+fn string(value : Json) -> String raise {
+  guard value is String(value) else { fail("expected string") }
+  value
+}
+
+///|
+fn safe_component(value : String) -> Bool {
+  value != "" &&
+  value != "." &&
+  value != ".." &&
+  !value.contains("partial") &&
+  !value.contains(".building") &&
+  value.iter().all(c => c >= ' ' && c != '\u007f' && c != '/' && c != '\\')
+}
+
+///|
+fn run_scope(path : String) -> Bool {
+  if !path.has_prefix(allowed_root) {
+    return false
+  }
+  let parts = path[allowed_root.length():].split("/").to_array()
+  if parts.length() != 2 || !parts.all(part => safe_component(part.to_owned())) {
+    return false
+  }
+  let run = parts[1].to_owned()
+  run.has_prefix("run-") &&
+  run.length() > 4 &&
+  run[4:].iter().all(c => c >= '0' && c <= '9')
+}
+
+///|
+fn selected_payload(name : String) -> Bool {
+  safe_component(name) &&
+  (
+    name == "world.pt" ||
+    name == "policy.pt" ||
+    name == "critic.pt" ||
+    name.has_suffix(".f64le") ||
+    name.has_suffix(".i32le") ||
+    name.has_suffix(".u8")
+  )
+}
+
+///|
+fn sha(value : String) -> Bool {
+  value.length() == 64 &&
+  value.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+fn data_sync_arguments(path : String) -> Array[String] raise {
+  guard path.has_prefix(allowed_root) &&
+    path.length() > allowed_root.length() &&
+    path.iter().all(c => c >= ' ' && c != '\u007f') else {
+    fail("file-specific data sync requires an explicit checkpoint path")
+  }
+  ["--data", "--", path]
+}
+
+///|
+let accepted_postvalidation_error = "Failure(run_native_optimization_pairs.mbtx:17:5-17:34@moon/test/single FAILED: missing field: format)"
+
+///|
+fn completed_run_status_allowed(
+  result : Json,
+  allow_postvalidation_failure : Bool,
+) -> Bool raise {
+  if field(result, "passed") == Json(true) {
+    return true
+  }
+  allow_postvalidation_failure &&
+  field(result, "passed") == Json(false) &&
+  field(result, "error") == Json([Json(accepted_postvalidation_error)])
+}
+
+///|
+async fn read_json(path : String, limit~ : Int64 = 1048576L) -> Json {
+  guard @fs.kind(path, follow_symlink=false) == Regular &&
+    @fs.realpath(path) == path else {
+    fail("noncanonical metadata file: " + path)
+  }
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size > 0L && size <= limit else { fail("metadata exceeds byte bound") }
+  let bytes = file.read_exactly_at(size.to_int(), position=0L)
+  guard file.size() == size else { fail("metadata changed while reading") }
+  @json.parse(@utf8.decode(bytes))
+}
+
+///|
+async fn bounded_output(reader : &@io.Reader) -> String {
+  let buffer = FixedArray::make(8193, b'\x00')
+  let mut total = 0
+  for ;; {
+    let n = reader.read(buffer, offset=total, max_len=8193 - total)
+    if n == 0 {
+      break
+    }
+    total += n
+    guard total <= 8192 else { fail("child output exceeds 8 KiB") }
+  }
+  @utf8.decode(Bytes::from_array(buffer[:total]))
+}
+
+///|
+async fn command(program : String, args : Array[String]) -> String {
+  @async.with_timeout(30000, () => {
+    let (out, out_to) = @process.read_from_process()
+    let (err, err_to) = @process.read_from_process()
+    @async.with_task_group() <| group => {
+      let child = group.spawn(() => {
+        @process.run(program, args, stdout=out_to, stderr=err_to)
+      })
+      let stdout = group.spawn(() => {
+        defer out.close()
+        bounded_output(out)
+      })
+      let stderr = group.spawn(() => {
+        defer err.close()
+        bounded_output(err)
+      })
+      let code = child.wait()
+      let output = stdout.wait()
+      let errors = stderr.wait()
+      guard code == 0 else {
+        fail("command failed: " + program + ": " + errors)
+      }
+      output
+    }
+  })
+}
+
+///|
+async fn require_idle() -> Unit {
+  let running = command("docker", [
+    "--host", "unix:///var/run/docker.sock", "ps", "--quiet",
+  ])
+  guard running.trim() == "" else {
+    fail("local Docker has running containers; no cache advice")
+  }
+  guard command("nvidia-smi", ["--query-compute-apps=pid", "--format=csv,noheader,nounits"]).trim() == "" else {
+    fail("active GPU process; no task cache advice")
+  }
+}
+
+///|
+struct Payload {
+  path : String
+  size : Int64
+  generation : String
+  receipt_sha256 : Json
+  stat_identity : String
+}
+
+///|
+fn checkpoint_receipt(report : Json) -> Json raise {
+  match field(report, "checkpoint") {
+    Array([receipt]) => receipt
+    Object(_) as receipt => receipt
+    _ => fail("one completed checkpoint receipt required")
+  }
+}
+
+///|
+fn validate_committed(
+  result : Json,
+  report : Json,
+  current : Json,
+  receipt : Json,
+  allow_postvalidation_failure~ : Bool = false,
+) -> Unit raise {
+  guard field(result, "format") ==
+    Json("moonrobo.native-optimization-pairs.run.v1") &&
+    completed_run_status_allowed(result, allow_postvalidation_failure) &&
+    field(report, "format") == Json("moonrobo.native-tensor-training-report.v1") &&
+    field(report, "training_complete_for_requested_iterations") == Json(true) &&
+    field(report, "distributed") == Json(false) &&
+    field(current, "format") ==
+    Json("moonrobo.native-tensor-checkpoint-pointer.v2") &&
+    field(current, "iteration") == field(report, "iteration") &&
+    checkpoint_receipt(report) == current &&
+    receipt == current else {
+    fail(
+      "run is not an eligible completed single-node optimization run with a committed stream checkpoint",
+    )
+  }
+}
+
+///|
+async fn collect_run(
+  path : String,
+  locks : Array[@fs.File],
+  payloads : Array[Payload],
+  allow_postvalidation_failure : Bool,
+) -> Json {
+  guard !allow_postvalidation_failure else {
+    fail("SMC/native helper accepts passed members only")
+  }
+  guard run_scope(path) &&
+    @fs.kind(path, follow_symlink=false) == Directory &&
+    @fs.realpath(path) == path else {
+    fail("explicit canonical optimization series/run-N path required")
+  }
+  let parts = path.split("/").to_array()
+  let series = parts[0:parts.length() - 1].map(x => x.to_owned()).join("/")
+  let spec = read_json(series + "/spec.json")
+  let plan = read_json(series + "/plan.json")
+  guard field(spec, "format") == Json("moonrobo.smc-native-pairs.spec.v1") &&
+    field(plan, "format") == Json("moonrobo.smc-native-pairs.plan.v1") else {
+    fail("not an SMC/native pair series")
+  }
+  let spec_digest = command("sha256sum", ["--", series + "/spec.json"])
+  guard spec_digest.length() >= 64 &&
+    sha(spec_digest[:64].to_owned()) &&
+    field(plan, "spec_sha256") == Json(spec_digest[:64].to_owned()) else {
+    fail("frozen spec digest changed")
+  }
+  let result = read_json(path + "/result.json")
+  guard field(result, "format") == Json("moonrobo.smc-native-pairs.run.v1") &&
+    field(result, "passed") == Json(true) &&
+    field(result, "spec_sha256") == field(plan, "spec_sha256") &&
+    [Json("a"), Json("b")].contains(field(result, "side")) else {
+    fail("completed passed individual SMC/native member required")
+  }
+  let side = field(spec, string(field(result, "side")))
+  let kind = string(field(side, "kind"))
+  guard ["native", "smc"].contains(kind) && field(result, "kind") == Json(kind) else {
+    fail("run kind differs from frozen specification")
+  }
+  let lock_path = series + "/series.lock"
+  guard @fs.kind(lock_path, follow_symlink=false) == Regular &&
+    @fs.realpath(lock_path) == lock_path else {
+    fail("missing canonical training lock")
+  }
+  // One descriptor per series, even when multiple completed members selected.
+  // Separate opens/flocks of the same file would conflict within this process.
+  if !held_series.contains(series) {
+    let lock = @fs.open(lock_path, mode=ReadOnly, create_mode=OpenExisting)
+    guard lock.try_lock(Exclusive) else {
+      lock.close()
+      fail("series lock is held")
+    }
+    locks.push(lock)
+    held_series[series] = ()
+  }
+  let docker = read_json(path + "/training-docker-final.json")
+  guard docker is Array([container]) &&
+    field(container, "Image") == field(side, "image_id") &&
+    field(field(container, "State"), "Running") == Json(false) &&
+    field(field(container, "State"), "OOMKilled") == Json(false) &&
+    field(field(container, "State"), "ExitCode") == Json(0) else {
+    fail("completed Docker evidence missing/failed")
+  }
+  let actual = @json.parse(command("docker", ["--host", "unix:///var/run/docker.sock", "inspect", "--format={{json .State}}", string(field(container, "Id"))]))
+  guard actual == field(container, "State") else { fail("completed owner state changed") }
+  let guard_report = read_json(path + "/training-guard.json", limit=33554432L)
+  guard field(guard_report, "passed") == Json(true) &&
+    field(guard_report, "exit_code") == Json(0) else {
+    fail("training guard did not pass")
+  }
+  if kind == "smc" {
+    let actual = read_json(path + "/logs/args.json")
+    guard field(side, "expected_config") is Object(expected) else {
+      fail("expected args")
+    }
+    for key, value in expected {
+      guard field(actual, key) == value else { fail("SMC args differ: " + key) }
+    }
+    guard field(actual, "iterations") == Json(60) &&
+      field(actual, "ckpt_every") == Json(60) else {
+      fail("only completed 60-round protocol supported")
+    }
+    let csv = path + "/logs/train_log.csv"
+    require_regular(csv)
+    let file = @fs.open(csv, mode=ReadOnly)
+    defer file.close()
+    guard file.size() > 0L && file.size() <= 4194304L else { fail("CSV bound") }
+    let lines = @utf8.decode(
+        file.read_exactly_at(file.size().to_int(), position=0L),
+      )
+      .trim()
+      .split("\n")
+      .to_array()
+    guard lines.length() == 61 && lines[60].has_prefix("60,") else {
+      fail("SMC 60 complete log rows required")
+    }
+    for name in ["last.pt", "ckpt_000060.pt"] {
+      let target = path + "/logs/" + name
+      add_payload(target, "smc-iteration-60", Json::null(), payloads)
+    }
+    return {
+      "run_path": Json(path),
+      "kind": "smc",
+      "iteration": 60,
+      "selected_files": 2,
+      "payload_hashes_recomputed": false,
+      "payload_digest_source": "SMC provides no checkpoint digest; complete process/args/CSV and fixed output names verified",
+      "paired_run_passed": true,
+      "paired_result_unchanged": true,
+    }
+  }
+  let training_lock = path + "/train/run.lock"
+  require_regular(training_lock)
+  let own_lock = @fs.open(
+    training_lock,
+    mode=ReadOnly,
+    create_mode=OpenExisting,
+  )
+  guard own_lock.try_lock(Exclusive) else {
+    own_lock.close()
+    fail("training lock held")
+  }
+  locks.push(own_lock)
+  let report = read_json(path + "/train/report.json", limit=16777216L)
+  let current = read_json(path + "/train/current.json")
+  let generation = string(field(current, "generation"))
+  guard safe_component(generation) && generation.has_prefix("generation-") else {
+    fail("unsafe/unpublished generation")
+  }
+  let directory = path + "/train/" + generation
+  guard @fs.kind(directory, follow_symlink=false) == Directory &&
+    @fs.realpath(directory) == directory else {
+    fail("generation directory is not canonical")
+  }
+  let receipt = read_json(directory + "/receipt.json")
+  guard field(report, "format") ==
+    Json("moonrobo.native-tensor-training-report.v1") &&
+    field(report, "training_complete_for_requested_iterations") == Json(true) &&
+    field(report, "distributed") == Json(false) &&
+    field(report, "iteration") == Json(60) &&
+    field(current, "format") ==
+    Json("moonrobo.native-tensor-checkpoint-pointer.v2") &&
+    field(current, "iteration") == field(report, "iteration") &&
+    checkpoint_receipt(report) == current &&
+    receipt == current &&
+    field(field(report, "identity"), "config") == field(side, "expected_config") else {
+    fail("native completion/config/committed checkpoint differs")
+  }
+  guard field(current, "files") is Object(files) && files.length() <= 128 else {
+    fail("checkpoint inventory exceeds bound")
+  }
+  let start = payloads.length()
+  for name, digest in files {
+    guard safe_component(name) && sha(string(digest)) else {
+      fail("unsafe checkpoint inventory")
+    }
+    if !selected_payload(name) {
+      continue
+    }
+    add_payload(directory + "/" + name, generation, digest, payloads)
+  }
+  guard payloads.length() > start else {
+    fail("no published payloads selected")
+  }
+  {
+    "run_path": Json(path),
+    "generation": Json(generation),
+    "iteration": field(current, "iteration"),
+    "selected_files": Json(payloads.length() - start),
+    "committed_metadata_matches_report": true,
+    "payload_hashes_recomputed": false,
+    "paired_run_passed": field(result, "passed"),
+    "cache_eligibility": if field(result, "passed") == Json(true) {
+      Json("completed_paired_run")
+    } else {
+      Json("completed_training_with_allowlisted_postvalidation_failure")
+    },
+    "paired_result_unchanged": true,
+  }
+}
+
+///|
+let held_series : Map[String, Unit] = Map([])
+
+///|
+async fn require_regular(path : String) -> Unit {
+  guard @fs.kind(path, follow_symlink=false) == Regular &&
+    @fs.realpath(path) == path else {
+    fail("noncanonical/symlink/nonregular payload: " + path)
+  }
+}
+
+///|
+async fn add_payload(
+  path : String,
+  generation : String,
+  receipt_sha256 : Json,
+  payloads : Array[Payload],
+) -> Unit {
+  require_regular(path)
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let size = file.size()
+  guard size >= 0L && size <= 17179869184L else {
+    fail("payload exceeds 16 GiB bound")
+  }
+  guard !payloads.any(p => p.path == path) else { fail("duplicate payload") }
+  let stat_identity = payload_identity(path, size)
+  payloads.push({ path, size, generation, receipt_sha256, stat_identity, })
+}
+
+///|
+fn validate_stat(value : String, expected_size : Int64) -> String raise {
+  let normalized = value.trim().to_owned()
+  let parts = normalized.split(" ").to_array()
+  guard parts.length() == 6 else { fail("malformed GNU stat identity") }
+  let values = parts.map(part => @string.parse_int64(part))
+  guard values[0] >= 0L &&
+    values[1] > 0L &&
+    values[2] == expected_size &&
+    values[5] == 1L else {
+    fail("payload changed size or has hard links")
+  }
+  normalized
+}
+
+///|
+async fn payload_identity(path : String, size : Int64) -> String {
+  require_regular(path)
+  validate_stat(
+    command("stat", ["--format=%d %i %s %Y %Z %h", "--", path]),
+    size,
+  )
+}
+
+///|
+struct CacheScan {
+  mut entries : Int32
+  mut bytes : Int64
+  mut skipped_small_files : Int32
+  mut skipped_small_bytes : Int64
+}
+
+///|
+fn cache_roots(
+  launch : Json,
+  container : Json,
+  run : String,
+) -> Array[String] raise {
+  guard field(launch, "program") == Json("docker") &&
+    field(launch, "argv") is Array(raw) &&
+    field(field(container, "Config"), "Env") is Array(environment) &&
+    field(container, "Mounts") is Array(mounts) else {
+    fail("launch/container evidence missing")
+  }
+  let args = raw.map(string)
+  let image = string(field(container, "Image"))
+  let positions = [ for i in 0..<args.length() if args[i] == image => i ]
+  guard positions.length() == 1 &&
+    field(field(container, "Config"), "Cmd") ==
+    Json(args[positions[0] + 1:].to_owned()) &&
+    args.filter(a => a == "type=bind,src=" + run + ",dst=/pair").length() == 1 else {
+    fail("training launch command or private run bind differs")
+  }
+  let mut count = 0
+  for mount in mounts {
+    let target = string(field(mount, "Destination"))
+    if target == "/pair" {
+      guard field(mount, "Type") == Json("bind") &&
+        field(mount, "Source") == Json(run) &&
+        field(mount, "RW") == Json(true) else {
+        fail("private run mount differs")
+      }
+      count += 1
+    } else {
+      guard !target.has_prefix("/pair/") else {
+        fail("nested mount shadows private cache")
+      }
+    }
+  }
+  guard count == 1 else { fail("exact private run bind required") }
+  let result : Array[String] = []
+  for
+    (name, variable) in [
+      ("cuda-cache", "CUDA_CACHE_PATH"),
+      ("inductor-cache", "TORCHINDUCTOR_CACHE_DIR"),
+      ("triton-cache", "TRITON_CACHE_DIR"),
+    ] {
+    let expected = variable + "=/pair/" + name
+    let configured = environment.filter(value => {
+      string(value).has_prefix(variable + "=")
+    })
+    if configured.length() == 0 {
+      continue
+    }
+    guard configured == [Json(expected)] &&
+      args.filter(value => value == expected).length() == 1 else {
+      fail(
+        "cache environment is not the fixed private output path: " + variable,
+      )
+    }
+    guard [
+        for i in 1..<args.length() if args[i] == expected &&
+        args[i - 1] == "--env" => i
+      ].length() ==
+      1 else {
+      fail("cache environment not explicitly set by launch")
+    }
+    result.push(name)
+  }
+  guard result.contains("cuda-cache") else {
+    fail("private CUDA cache missing")
+  }
+  result
+}
+
+///|
+async fn scan_compile_cache(
+  directory : String,
+  depth : Int32,
+  scan : CacheScan,
+  payloads : Array[Payload],
+) -> Unit {
+  guard depth <= 8 &&
+    @fs.kind(directory, follow_symlink=false) == Directory &&
+    @fs.realpath(directory) == directory else {
+    fail("cache directory depth/canonical identity rejected")
+  }
+  let entries = @fs.opendir(directory)
+  defer entries.close()
+  while entries.next(include_hidden=true, include_special=false) is Some(entry) {
+    guard safe_component(entry.name) else {
+      fail("partial/unsafe cache component")
+    }
+    scan.entries += 1
+    guard scan.entries <= 32768 else {
+      fail("cache entries exceed 32768 per run")
+    }
+    let path = directory + "/" + entry.name
+    match @fs.kind(path, follow_symlink=false) {
+      Directory => scan_compile_cache(path, depth + 1, scan, payloads)
+      Regular => {
+        let file = @fs.open(path, mode=ReadOnly)
+        let size = file.size()
+        file.close()
+        guard size >= 0L && size <= 4294967296L else {
+          fail("cache size bound")
+        }
+        scan.bytes += size
+        guard scan.bytes <= 4294967296L else {
+          fail("cache total exceeds 4 GiB per run")
+        }
+        if size < 1048576L {
+          scan.skipped_small_files += 1
+          scan.skipped_small_bytes += size
+        } else {
+          add_payload(
+            path,
+            "completed-private-compilation-output",
+            Json::null(),
+            payloads,
+          )
+          guard payloads.length() <= 1024 else {
+            fail("cache selection exceeds 1024 files")
+          }
+        }
+      }
+      _ => fail("symlink or special file in private cache")
+    }
+  }
+}
+
+///|
+async fn collect_compile_caches(
+  run : String,
+  completed : Json,
+  payloads : Array[Payload],
+) -> Json {
+  let parts = run.split("/").to_array()
+  let series = parts[:parts.length() - 1].map(part => part.to_owned()).join("/")
+  let launch = read_json(run + "/training-launch.json")
+  let result = read_json(run + "/result.json")
+  let plan = read_json(series + "/plan.json")
+  guard field(plan, "launches") is Array(launches) else {
+    fail("planned launches missing")
+  }
+  let selected = launches.filter(row => {
+    field(row, "index") == field(result, "index")
+  })
+  guard selected.length() == 1 &&
+    field(selected[0], "argv") == field(launch, "argv") else {
+    fail("recorded launch differs from frozen fresh-run plan")
+  }
+  guard read_json(run + "/training-docker-final.json") is Array([container]) else {
+    fail("container evidence")
+  }
+  let names = cache_roots(launch, container, run)
+  let scan = {
+    entries: 0,
+    bytes: 0L,
+    skipped_small_files: 0,
+    skipped_small_bytes: 0L,
+  }
+  let start = payloads.length()
+  let scanned : Array[String] = []
+  for name in names {
+    let directory = run + "/" + name
+    if @fs.exists(directory) {
+      scan_compile_cache(directory, 0, scan, payloads)
+      scanned.push(directory)
+    }
+  }
+  {
+    "run_path": Json(run),
+    "completion_evidence": completed,
+    "private_compilation_roots": Json(scanned),
+    "launch_matches_frozen_fresh_run_plan": true,
+    "selected_files": Json(payloads.length() - start),
+    "scanned_entries": Json(scan.entries),
+    "scanned_file_bytes": Json(scan.bytes),
+    "skipped_below_1mib_files": Json(scan.skipped_small_files),
+    "skipped_below_1mib_bytes": Json(scan.skipped_small_bytes),
+    "checkpoint_payloads_selected": false,
+    "dataset_asset_shared_cache_selected": false,
+  }
+}
+
+///|
+async fn maintain(mode : String, output : String, runs : Array[String]) -> Unit {
+  guard runs.length() >= 1 && runs.length() <= 16 && !@fs.exists(output) else {
+    fail("need 1..16 explicit runs and fresh report")
+  }
+  let seen : Map[String, Unit] = Map([])
+  for run in runs {
+    guard !seen.contains(run) else { fail("duplicate run argument") }
+    seen[run] = ()
+  }
+  let locks : Array[@fs.File] = []
+  defer (for lock in locks {
+    lock.close()
+  })
+  let payloads : Array[Payload] = []
+  let cache_only = mode.has_suffix("-caches")
+  let selections : Array[Json] = []
+  let operations : Array[Json] = []
+  let data_sync_operations : Array[Json] = []
+  let mut eligible_bytes = 0L
+  let mut advised_bytes = 0L
+  let mut data_synced_bytes = 0L
+  let allow_postvalidation_failure = mode.has_suffix(
+    "-completed-postvalidation-failure",
+  )
+  let mut error_text : String? = None
+  let success = try {
+    require_idle()
+    for run in runs {
+      if cache_only {
+        let checkpoints : Array[Payload] = []
+        let completed = collect_run(run, locks, checkpoints, false)
+        selections.push(collect_compile_caches(run, completed, payloads))
+      } else {
+        selections.push(
+          collect_run(run, locks, payloads, allow_postvalidation_failure),
+        )
+      }
+    }
+    guard payloads.length() <= 1024 else {
+      fail("selection exceeds 1024 files")
+    }
+    for file in payloads {
+      eligible_bytes += file.size
+    }
+    guard eligible_bytes <= 68719476736L else {
+      fail("selection exceeds 64 GiB of existing file sizes")
+    }
+    let inventory : Json = {
+      "stage": "validated_before_any_cache_advice",
+      "selected_files": Json(payloads.length()),
+      "selected_bytes": Json(eligible_bytes),
+      "payloads": Json(
+        payloads.map(file => {
+          "path": Json(file.path),
+          "size_bytes": Json(file.size),
+          "generation": Json(file.generation),
+          "receipt_sha256": file.receipt_sha256,
+          "stat_device_inode_size_mtime_ctime_links": Json(file.stat_identity),
+        }),
+      ),
+    }
+    // Separate durable inventory exists before sync/advice begins, including on
+    // later partial failure. A caller can run --plan first for read-only review.
+    @fs.write_file(
+      output + ".selection.json",
+      inventory.stringify(indent=2) + "\n",
+      create_mode=CreateNew,
+      sync=Full,
+    )
+    if mode == "--advise" || mode == "--advise-caches" {
+      let version = command("dd", ["--version"])
+      guard version.has_prefix("dd (coreutils) ") ||
+        version.has_prefix("dd (GNU coreutils) ") else {
+        fail("GNU dd required")
+      }
+      let sync_version = command("sync", ["--version"])
+      guard sync_version.has_prefix("sync (coreutils) ") ||
+        sync_version.has_prefix("sync (GNU coreutils) ") else {
+        fail("GNU sync required")
+      }
+      for file in payloads {
+        require_idle()
+        guard @fs.realpath(file.path) == file.path &&
+          @fs.kind(file.path, follow_symlink=false) == Regular else {
+          fail("payload path changed")
+        }
+        let checked = @fs.open(file.path, mode=ReadOnly)
+        let size = checked.size()
+        checked.close()
+        guard size == file.size else { fail("payload size changed") }
+        guard payload_identity(file.path, size) == file.stat_identity else {
+          fail("payload identity changed before sync")
+        }
+        ignore(command("sync", data_sync_arguments(file.path)))
+        data_synced_bytes += size
+        data_sync_operations.push({
+          "path": Json(file.path),
+          "generation": Json(file.generation),
+          "file_size_bytes": Json(size),
+          "status": "file_data_sync_returned_zero",
+          "timeout_ms": 30000,
+        })
+        require_idle()
+        guard payload_identity(file.path, size) == file.stat_identity else {
+          fail("payload identity changed before advice")
+        }
+        ignore(
+          command("dd", [
+            "if=" + file.path,
+            "iflag=nocache,nofollow",
+            "count=0",
+            "status=none",
+          ]),
+        )
+        advised_bytes += size
+        operations.push({
+          "path": Json(file.path),
+          "generation": Json(file.generation),
+          "file_size_bytes": Json(size),
+          "status": "advice_returned_zero",
+          "receipt_sha256": file.receipt_sha256,
+          "stat_device_inode_size_mtime_ctime_links": Json(file.stat_identity),
+        })
+        guard payload_identity(file.path, size) == file.stat_identity else {
+          fail("payload identity changed after advice")
+        }
+      }
+    }
+    require_idle()
+    true
+  } catch {
+    error => {
+      error_text = Some(error.to_string())
+      false
+    }
+  }
+  let report : Json = {
+    "format": "moonrobo.smc-native-checkpoint-cache-advice.v1",
+    "mode": Json(mode),
+    "success": Json(success),
+    "error": match error_text {
+      Some(value) => Json(value)
+      None => Json::null()
+    },
+    "runs": Json(selections),
+    "selected_files": Json(payloads.length()),
+    "selected_file_bytes": Json(eligible_bytes),
+    "advised_files": Json(operations.length()),
+    "advised_file_bytes": Json(advised_bytes),
+    "operations": Json(operations),
+    "data_synced_files": Json(data_sync_operations.length()),
+    "data_synced_file_bytes": Json(data_synced_bytes),
+    "data_sync_operations": Json(data_sync_operations),
+    "max_runs": 16,
+    "max_files": 1024,
+    "max_selected_file_bytes": 68719476736,
+    "model_or_replay_payload_bytes_read": 0,
+    "payload_bytes_written": 0,
+    "payload_bytes_written_scope": "direct content writes by this helper; file-specific data sync may flush previously dirty kernel pages to storage",
+    "payload_content_modified": false,
+    "dirty_pages_may_be_flushed_to_storage": true,
+    "files_deleted": 0,
+    "global_cache_operation": false,
+    "global_sync_operation": false,
+    "cache_reclaim_guaranteed": false,
+    "compute_cache_selected": Json(cache_only),
+    "private_cache_minimum_file_bytes": if cache_only {
+      Json(1048576)
+    } else {
+      Json::null()
+    },
+    "private_cache_max_bytes_per_run": if cache_only {
+      Json(4294967296L)
+    } else {
+      Json::null()
+    },
+    "private_cache_max_entries_per_run": if cache_only {
+      Json(32768)
+    } else {
+      Json::null()
+    },
+    "private_cache_max_depth": if cache_only {
+      Json(8)
+    } else {
+      Json::null()
+    },
+    "postvalidation_failure_opt_in": Json(allow_postvalidation_failure),
+    "scope": if cache_only {
+      Json(
+        "passed run-owned cuda-cache/inductor-cache/triton-cache files >=1MiB only; frozen launch and final container prove private /pair paths; no input/dataset/asset/global/shared cache selection; paired results unchanged",
+      )
+    } else {
+      Json(
+        "only explicitly named passed SMC/native members: native committed current-generation receipt payloads or SMC final last.pt/ckpt_000060.pt; metadata attestation without rereading payload hashes; no dataset/input/compute cache selection; paired results unchanged",
+      )
+    },
+    "idle_contract": "local Docker checked before every advice; series and native training locks held; canonical paths and device/inode/size/mtime/ctime/single-link identity rechecked; operator must prevent concurrent writers/launches because pathname checks are not an atomic global scheduler lock",
+  }
+  @fs.write_file(
+    output,
+    report.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+    sync=Full,
+  )
+  guard success else {
+    fail("cache advice rejected/failed; report retained: " + output)
+  }
+  println("Bounded checkpoint cache " + mode + " report: " + output)
+}
+
+///|
+fn self_test() -> Unit raise {
+  let run = allowed_root + "series/run-0"
+  let image = "sha256:" + "a".repeat(64)
+  let launch : Json = {
+    "program": "docker",
+    "argv": [
+      "create",
+      "--mount",
+      "type=bind,src=" + run + ",dst=/pair",
+      "--env",
+      "CUDA_CACHE_PATH=/pair/cuda-cache",
+      image,
+      "echo",
+    ],
+  }
+  let mount : Json = {
+    "Type": "bind",
+    "Source": Json(run),
+    "Destination": "/pair",
+    "RW": true,
+  }
+  let valid : Json = {
+    "Image": Json(image),
+    "Config": { "Cmd": ["echo"], "Env": ["CUDA_CACHE_PATH=/pair/cuda-cache"] },
+    "Mounts": Json([mount]),
+  }
+  assert_eq(cache_roots(launch, valid, run), ["cuda-cache"])
+  let invalids : Array[Json] = [
+    {
+      "Image": Json(image),
+      "Config": { "Cmd": ["echo"], "Env": ["CUDA_CACHE_PATH=/shared/cache"] },
+      "Mounts": Json([mount]),
+    },
+    {
+      "Image": Json(image),
+      "Config": {
+        "Cmd": ["echo"],
+        "Env": [
+          "CUDA_CACHE_PATH=/pair/cuda-cache", "CUDA_CACHE_PATH=/pair/cuda-cache",
+        ],
+      },
+      "Mounts": Json([mount]),
+    },
+    {
+      "Image": Json(image),
+      "Config": {
+        "Cmd": ["changed"],
+        "Env": ["CUDA_CACHE_PATH=/pair/cuda-cache"],
+      },
+      "Mounts": Json([mount]),
+    },
+    {
+      "Image": Json(image),
+      "Config": { "Cmd": ["echo"], "Env": ["CUDA_CACHE_PATH=/pair/cuda-cache"] },
+      "Mounts": Json([mount, { "Destination": "/pair/cuda-cache" }]),
+    },
+  ]
+  for invalid in invalids {
+    try cache_roots(launch, invalid, run) catch {
+      _ => ()
+    } noraise {
+      _ => fail("unsafe compilation cache provenance accepted")
+    }
+  }
+  assert_eq(validate_stat("1 2 3 4 5 1\n", 3L), "1 2 3 4 5 1")
+  for bad in ["1 2 3 4 5 2", "1 2 4 4 5 1", "1 0 3 4 5 1", "1 2 3"] {
+    try validate_stat(bad, 3L) catch {
+      _ => ()
+    } noraise {
+      _ => fail("unsafe identity accepted")
+    }
+  }
+  let path = allowed_root + "series/run-0/train/generation-10/world.pt"
+  assert_eq(data_sync_arguments(path), ["--data", "--", path])
+  for bad in ["", "/", "--data", allowed_root, path + "\n"] {
+    try data_sync_arguments(bad) catch {
+      _ => ()
+    } noraise {
+      _ => fail("accepted missing/unsafe file-specific data sync target")
+    }
+  }
+  assert_true(run_scope(allowed_root + "geometry-series-a/run-0"))
+  for
+    bad in [
+      allowed_root,
+      allowed_root + "run-0",
+      allowed_root + "series/run-0/extra",
+      allowed_root + "../other/run-0",
+      allowed_root + "series.partial/run-0",
+      allowed_root + "series/run-X",
+    ] {
+    assert_false(run_scope(bad))
+  }
+  for
+    name in [
+      "world.pt", "policy.pt", "critic.pt", "replay.values.f64le", "replay.indices.i32le",
+      "replay.flags.u8",
+    ] {
+    assert_true(selected_payload(name))
+  }
+  for
+    name in [
+      "../world.pt", "world.pt.partial", "x.pt", "receipt.json", "state.json", "unknown.f64",
+      ".nv/ComputeCache/x",
+    ] {
+    assert_false(selected_payload(name))
+  }
+  let current : Json = {
+    "format": "moonrobo.native-tensor-checkpoint-pointer.v2",
+    "iteration": 10,
+  }
+  let result : Json = {
+    "format": "moonrobo.native-optimization-pairs.run.v1",
+    "passed": true,
+  }
+  let report : Json = {
+    "format": "moonrobo.native-tensor-training-report.v1",
+    "training_complete_for_requested_iterations": true,
+    "distributed": false,
+    "iteration": 10,
+    "checkpoint": Json([current]),
+  }
+  validate_committed(result, report, current, current)
+  guard result is Object(values) else { fail("fixture") }
+  values["passed"] = Json(false)
+  try validate_committed(result, report, current, current) catch {
+    _ => ()
+  } noraise {
+    _ => fail("accepted failed run")
+  }
+  values["error"] = Json([Json(accepted_postvalidation_error)])
+  validate_committed(
+    result,
+    report,
+    current,
+    current,
+    allow_postvalidation_failure=true,
+  )
+  try validate_committed(result, report, current, current) catch {
+    _ => ()
+  } noraise {
+    _ => fail("ordinary mode accepted postvalidation failure")
+  }
+  values["error"] = Json([Json("training failed")])
+  try
+    validate_committed(
+      result,
+      report,
+      current,
+      current,
+      allow_postvalidation_failure=true,
+    )
+  catch {
+    _ => ()
+  } noraise {
+    _ => fail("explicit exception accepted an unrelated failure")
+  }
+  values["error"] = Json([Json(accepted_postvalidation_error)])
+  guard report is Object(report_values) else { fail("fixture") }
+  report_values["training_complete_for_requested_iterations"] = Json(false)
+  try
+    validate_committed(
+      result,
+      report,
+      current,
+      current,
+      allow_postvalidation_failure=true,
+    )
+  catch {
+    _ => ()
+  } noraise {
+    _ => fail("postvalidation exception accepted incomplete training")
+  }
+  println(
+    "cache advice CPU self-tests passed; no filesystem/process/GPU action",
+  )
+}
+
+///|
+async fn fixture_test() -> Unit {
+  let directory = @fs.realpath(@fs.tmpdir(prefix="moonrobo-cache-advice-test-"))
+  @async.with_task_group() <| group => {
+    group.add_defer(() => @fs.rmdir(directory, recursive=true))
+    let target = directory + "/world.pt"
+    @fs.write_file(
+      target,
+      "bounded-checkpoint-fixture",
+      create_mode=CreateNew,
+      sync=Full,
+    )
+    require_regular(target)
+    let before = @fs.mtime(target)
+    let locked = @fs.open(target, mode=ReadOnly)
+    assert_true(locked.try_lock(Exclusive))
+    locked.close()
+    @fs.symlink(directory + "/link.pt", target~)
+    for invalid in [directory, directory + "/link.pt"] {
+      try require_regular(invalid) catch {
+        _ => ()
+      } noraise {
+        _ => fail("nonregular target accepted")
+      }
+    }
+    @fs.symlink(directory + "/linked-dir", target=directory)
+    try require_regular(directory + "/linked-dir/world.pt") catch {
+      _ => ()
+    } noraise {
+      _ => fail("symlink ancestor accepted")
+    }
+    assert_eq(@fs.read_file(target).text(), "bounded-checkpoint-fixture")
+    assert_eq(@fs.mtime(target), before)
+    let cache = directory + "/compilation"
+    @fs.mkdir(cache)
+    @fs.write_file(
+      cache + "/small.bin",
+      "small",
+      create_mode=CreateNew,
+      sync=Full,
+    )
+    @fs.write_file(
+      cache + "/.hidden",
+      "hidden",
+      create_mode=CreateNew,
+      sync=Full,
+    )
+    let iterator = @fs.opendir(cache)
+    let names : Array[String] = []
+    while iterator.next(include_hidden=true, include_special=false)
+          is Some(entry) {
+      assert_true(entry.name != "." && entry.name != "..")
+      names.push(entry.name)
+    }
+    iterator.close()
+    assert_eq(names.length(), 2)
+    assert_true(names.contains(".hidden") && names.contains("small.bin"))
+    let scan = {
+      entries: 0,
+      bytes: 0L,
+      skipped_small_files: 0,
+      skipped_small_bytes: 0L,
+    }
+    let files : Array[Payload] = []
+    scan_compile_cache(cache, 0, scan, files)
+    assert_eq(scan.entries, 2)
+    assert_eq(scan.skipped_small_files, 2)
+    assert_eq(scan.skipped_small_bytes, 11L)
+    assert_eq(files.length(), 0)
+    for
+      (depth, entries, bytes) in [
+        (9, 0, 0L),
+        (0, 32768, 0L),
+        (0, 0, 4294967296L),
+      ] {
+      let bound = {
+        entries,
+        bytes,
+        skipped_small_files: 0,
+        skipped_small_bytes: 0L,
+      }
+      try scan_compile_cache(cache, depth, bound, files) catch {
+        _ => ()
+      } noraise {
+        _ => fail("cache scan bound ignored")
+      }
+    }
+    @fs.symlink(cache + "/unsafe.bin", target~)
+    try scan_compile_cache(cache, 0, scan, files) catch {
+      _ => ()
+    } noraise {
+      _ => fail("cache scan accepted symlink")
+    }
+  }
+  println(
+    "Temporary regular/symlink/ancestor/read-only-lock fixtures passed; no Docker/cache advice/GPU action",
+  )
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  if args == [args[0], "--self-test"] {
+    self_test()
+    fixture_test()
+    return
+  }
+  guard args.length() >= 4 &&
+    ["--plan", "--advise", "--plan-caches", "--advise-caches"].contains(args[1]) else {
+    fail(
+      "usage: --plan|--advise|--plan-caches|--advise-caches FRESH_REPORT_JSON CANONICAL_PASSED_RUN_PATH...; --self-test; use moon run --target native SCRIPT -- FLAGS",
+    )
+  }
+  maintain(args[1], args[2], args[3:].to_owned())
+}

@@ -1,0 +1,36 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let repo = "/Users/kq/Workspace/moonrobo"
+  let out = repo +
+    "/output/spark-runtime-20261024/world-ln-fk-20261026/advise_followup_final_gate_cache.mbtx"
+  let source = @fs.read_file(
+      repo + "/scripts/advise_hotspot_numeric_cache.mbtx",
+    )
+    .text()
+    .replace_all(
+      old="for mode in [\"layernorm-unit\", \"layernorm\", \"cross\", \"reference_fk-gather\", \"reference_fk\"] {",
+      new="for (mode, revision, spec_sha) in [(\"fused-tail-unit\", \"b\", \"65c66d415a39840c0c4ca8cefddd656d5e6ed553ffd018beea2a8b79f1ecb799\"), (\"fused_tail\", \"b\", \"65c66d415a39840c0c4ca8cefddd656d5e6ed553ffd018beea2a8b79f1ecb799\"), (\"fk_axis\", \"a\", \"7f2f2e35f1b9bbf46be1a13d7dcec2f78627543ec23d1ceab1b88733d304b19d\")] {",
+    )
+    .replace_all(
+      old="\"/runs/hotspot-numeric-\" + mode + \"-20261025-a\"",
+      new="\"/runs/hotspot-followup-\" + mode + \"-20261026-\" + revision",
+    )
+    .replace_all(
+      old="Json(\"8caa57c3b9c28352eca5939e75e174e47e4f7e611645d26f3e614281d45ffaa5\")",
+      new="Json(spec_sha)",
+    )
+  @fs.write_file(out, source, create_mode=CreateNew)
+  guard @process.run("scp", [
+      "-o", "ControlPath=/tmp/moonrobo-operator-179.sock", out, "wlc004s@192.168.2.179:/home/wlc004s/moonrobo/private/operator-diagnostic-20261025-a/advise_followup_final_gate_cache.mbtx",
+    ]) ==
+    0 else {
+    fail("copy")
+  }
+}

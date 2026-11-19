@@ -1,0 +1,18 @@
+import { "moonbitlang/async@0.20.2", "moonbitlang/async@0.20.2/fs" }
+fn rep(s : String,a : String,b : String) -> String raise {guard s.contains(a)else{fail(a)};s.replace_all(old=a,new=b)}
+async fn main {
+  let dir="output/spark-runtime-20261024/fused-rotation-20261028/"
+  let mut runner=@fs.read_file(dir+"run_fused_rotation_b.mbtx").text()
+  let lines=runner.split("\n").map(l=>l.to_owned()).collect()
+  let mut replaced=false
+  for i in 0..<lines.length(){if lines[i].contains("label+\"-post-pin-export\""){lines[i]="  // User requests memory for throughput: keep validated immutable input pages resident; runtime guards remain active.";replaced=true}}
+  guard replaced else{fail("post-pin advice line missing")}
+  runner=lines.join("\n")
+  runner=rep(runner,"\"startup_guard_change\":", "\"retain_input_cache\": true, \"startup_guard_change\":")
+  @fs.write_file(dir+"run_fused_rotation_b.mbtx",runner)
+  let mut s=@fs.read_file(dir+"fused_suite_b.mbtx").text()
+  let a=s.find("async fn release(").unwrap();let b=s.find("fn near(").unwrap()
+  s=s[:a].to_owned()+"async fn release(name : String) -> Unit { println(\"Retaining completed input/output caches within active memory guards: \"+name) }\n"+s[b:].to_owned()
+  s=s.split("\n").filter(l=>!l.contains("-compared-baseline-cache")).map(l=>l.to_owned()).collect().join("\n")
+  @fs.write_file(dir+"fused_suite_b.mbtx",s)
+}

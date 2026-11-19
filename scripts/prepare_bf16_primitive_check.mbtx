@@ -1,0 +1,41 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let dir = "output/spark-runtime-20261024/bf16-original-20261028"
+  let base = "/home/wlc004s/moonrobo/private/shared-compute-20261026-a"
+  let host = "wlc004s@192.168.2.179:" + base + "/"
+  let builder = @fs.read_file(dir + "/build_bf16_original_a.mbtx").text()
+  let main =
+    #|async fn main {
+    #|  container("bf16-original-primitive-build-b", "/toolchain/bin/moon", ["test", "--build-only", "--release", "--target", "native", "-j", "2", "--frozen", "src/learning_tensor"], workdir="/workspace/moonrobo-bf16-original-a")
+    #|  container("bf16-original-primitive-cpu-b", "/workspace/moonrobo-bf16-original-a/_build/native/release/test/vectie/moonrobo/src/learning_tensor/learning_tensor.blackbox_test.exe", ["precision_test.mbt:0-2"])
+    #|}
+  @fs.write_file(
+    dir + "/primitive_check.mbtx",
+    builder[:builder.find("async fn main").unwrap()].to_owned() + main,
+    create_mode=CreateNew,
+  )
+  for
+    (from, to) in [
+      (
+        "src/learning_tensor/precision_test.mbt", "workspace/moonrobo-bf16-original-a/src/learning_tensor/precision_test.mbt",
+      ),
+      (dir + "/primitive_check.mbtx", "bf16-original-primitive-check.mbtx"),
+    ] {
+    assert_eq(
+      @process.run("scp", [
+        "-o",
+        "ControlPath=/tmp/moonrobo-operator-179.sock",
+        from,
+        host + to,
+      ]),
+      0,
+    )
+  }
+}

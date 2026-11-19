@@ -1,0 +1,14 @@
+{
+  "seeds": [0, 1, 2],
+  "source_modes": ["student", "teacher"],
+  "transport_methods": ["body_difference", "gyro", "gravity_gyro"],
+  "random_pose_count": 512,
+  "random_pose_seed": 14000,
+  "control_modes": ["student", "oracle_h10_ankle", "derived_h10_ankle"],
+  "control_reset_seeds": [9800, 9801, 9802],
+  "duration_s": 10,
+  "fall_height_m": 0.35,
+  "fall_upright_z": 0.5,
+  "cpu_threads": 2,
+  "scope": "Validate exported root-relative FK on 512 arbitrary poses and all original student/full-teacher intervention episodes. Observation-only q/gravity/gyro paths in FP64/FP32; privileged states and oracle transports supply verification truth only. Then compare fixed learned parents with no substitution, oracle-H10 ankle feedback and observation-derived-H10 fixed ankle feedback at new canonical reset seeds. No fitting, controller selection, learned-policy qualification or physical authority."
+}

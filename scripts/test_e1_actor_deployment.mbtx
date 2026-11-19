@@ -1,0 +1,224 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+fn source_dependencies(graph : Json, entry : String) -> Array[String] raise {
+  guard graph
+    is { "status": "success", "nodes": Array(nodes), "edges": Array(edges), .. } &&
+    nodes.search_by(node => {
+      node is { "module": "vectie/moonrobo", "rel": String(rel), .. } &&
+      rel == entry
+    })
+    is Some(root) else {
+    fail("package dependency entry missing")
+  }
+  let pending = [root]
+  let seen : Map[Int32, Unit] = Map([])
+  let names : Array[String] = []
+  while pending.pop() is Some(index) {
+    if seen.contains(index) {
+      continue
+    }
+    seen[index] = ()
+    guard nodes[index] is { "module": String(module), "rel": String(rel), .. } else {
+      fail("invalid package node")
+    }
+    if module == "vectie/moonrobo" {
+      guard entry != "cmd/e1_actor" ||
+        ![
+          "cmd/e1_sdk_shadow", "src/e1_actor_sdk_shadow", "src/e1_actor_control",
+          "src/sdk_e1_policy", "src/sdk_e1_low",
+        ].contains(rel) else {
+        fail("standalone actor CLI imported an SDK/control package: " + rel)
+      }
+      guard [
+        "cmd/e1_actor", "src/e1_actor", "src/e1_actor_control", "src/e1_actor_shadow",
+        "src/policy_runner", "src/policy_skills", "src/policy_task", "src/sdk_e1_policy",
+        "src/sdk_e1_low", "src/e1_actor_reference", "src/policy_host", "cmd/e1_sdk_shadow",
+        "src/e1_actor_sdk_shadow",
+      ].contains(rel) else {
+        fail("deployment path imports an unrelated MoonRobo package: " + rel)
+      }
+    } else {
+      guard module == "vectie/lunakine" || module == "moonbitlang/async" else {
+        fail("unexpected deployment dependency: " + module)
+      }
+    }
+    names.push(module + "/" + rel)
+    for edge in edges {
+      guard edge
+        is {
+          "from": Number(from, ..),
+          "to": Number(to, ..),
+          "kinds": Array(kinds),
+          ..
+        } else {
+        fail("invalid package edge")
+      }
+      if from.to_int() == index && kinds.contains(Json("source")) {
+        pending.push(to.to_int())
+      }
+    }
+  }
+  names
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [repo, bundle, output] && !@fs.exists(output) else {
+    fail("usage: test_e1_actor_deployment.mbtx REPO ACTUAL_BUNDLE NEW_OUTPUT")
+  }
+  @fs.mkdir(output, recursive=true)
+  let spec = @fs.read_file(bundle + "/actor.json").json()
+  guard spec
+    is {
+      "history_frames": Number(history, ..),
+      "observation_width": Number(width, ..),
+      "encoder": [Number(goals, ..), ..],
+      ..
+    } else {
+    fail("actor dimensions missing")
+  }
+  let input : Json = {
+    "history": Json(
+      Array::makei(history.to_int(), _ => Array::make(width.to_int(), 0.0)),
+    ),
+    "goals": Json(Array::make(goals.to_int(), 0.0)),
+  }
+  let input_path = output + "/input.json"
+  @fs.write_file(input_path, input.stringify(), create_mode=CreateNew)
+  guard @process.run("moon", [
+      "-C", repo, "build", "--release", "--target", "native", "--deny-warn", "cmd/e1_actor",
+    ]) ==
+    0 else {
+    fail("deployment-only actor CLI build failed")
+  }
+  let dependencies = output + "/package-graph.json"
+  guard @process.run(
+      "moon",
+      ["-C", repo, "tree", "--package", "--json"],
+      stdout=@process.redirect_to_file(dependencies, create_mode=CreateNew),
+    ) ==
+    0 else {
+    fail("package dependency inspection failed")
+  }
+  let graph = @fs.read_file(dependencies).json()
+  let actor_dependencies = source_dependencies(graph, "cmd/e1_actor")
+  let mapping_dependencies = source_dependencies(graph, "src/sdk_e1_policy")
+  let control_dependencies = source_dependencies(graph, "src/e1_actor_control")
+  let reference_dependencies = source_dependencies(
+    graph, "src/e1_actor_reference",
+  )
+  let host_dependencies = source_dependencies(graph, "src/policy_host")
+  let sdk_shadow_dependencies = source_dependencies(graph, "cmd/e1_sdk_shadow")
+  let executable = repo +
+    "/_build/native/release/build/vectie/moonrobo/cmd/e1_actor/e1_actor.exe"
+  guard @process.run(
+      executable,
+      ["inspect", bundle],
+      stdout=@process.redirect_to_file(
+        output + "/inspection.json",
+        create_mode=CreateNew,
+      ),
+    ) ==
+    0 else {
+    fail("deployment-only bundle inspection failed")
+  }
+  let result_path = output + "/result.json"
+  let inspection = @fs.read_file(output + "/inspection.json").json()
+  guard inspection
+    is { "profile_id": String(profile_id), "joints": joint_names, .. } else {
+    fail("deployment inspection omitted profile")
+  }
+  let reference_path = output + "/synthetic-reference.json"
+  let frame : Json = {
+    "goals": Json(Array::make(goals.to_int(), 0.0)),
+    "body_to_world": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+  }
+  let reference : Json = {
+    "format": "moonrobo.e1-actor-reference.v1",
+    "profile_id": profile_id,
+    "joints": joint_names,
+    "reference_id": "synthetic-reference",
+    "control_dt_ms": 20,
+    "goal_layout": "aligned.preview73.v1",
+    "frames": Json([frame, frame]),
+  }
+  @fs.write_file(reference_path, reference.stringify(), create_mode=CreateNew)
+  guard @process.run(
+      executable,
+      ["inspect-reference", bundle, reference_path],
+      stdout=@process.redirect_to_file(
+        output + "/reference-inspection.json",
+        create_mode=CreateNew,
+      ),
+    ) ==
+    0 &&
+    @fs.read_file(output + "/reference-inspection.json").json()
+    is {
+      "reference_id": "synthetic-reference",
+      "frames": 2,
+      "duration_ms": "20",
+      "published": False,
+      "hardware_qualified": False,
+      ..
+    } else {
+    fail("deployment-only prepared reference inspection failed")
+  }
+  guard @process.run(executable, ["reference", bundle, input_path, result_path]) ==
+    0 else {
+    fail("deployment-only real actor reference failed")
+  }
+  guard @fs.read_file(result_path).json()
+    is {
+      "published": False,
+      "hardware_qualified": False,
+      "actions": Array(actions),
+      "joints": Array(joints),
+      "nominal_setpoints": Array(positions),
+      ..
+    } &&
+    actions.length() == 29 &&
+    positions.length() == joints.length() else {
+    fail("deployment-only actor result differs")
+  }
+  for index, action in actions {
+    guard action is Number(value, ..) &&
+      value == value &&
+      value - value == 0.0 &&
+      (index < joints.length() || value == 0.0) else {
+      fail("invalid action or inactive-prefix projection")
+    }
+  }
+  let report : Json = {
+    "passed": true,
+    "backend": "explicit portable reference",
+    "actor_bundle": bundle,
+    "physical_actions": joints.length(),
+    "embedded_actions": actions.length(),
+    "training_package_imported": false,
+    "actor_source_dependencies": actor_dependencies,
+    "mapping_source_dependencies": mapping_dependencies,
+    "control_source_dependencies": control_dependencies,
+    "reference_source_dependencies": reference_dependencies,
+    "host_source_dependencies": host_dependencies,
+    "sdk_shadow_source_dependencies": sdk_shadow_dependencies,
+    "prepared_reference_inspected": true,
+    "prepared_reference_synthetic": true,
+    "published": false,
+    "hardware_access": false,
+    "scope": "standalone deployment-only CLI; actual actor bundle; CPU reference only",
+  }
+  @fs.write_file(
+    output + "/report.json",
+    report.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(report.stringify(indent=2))
+}
