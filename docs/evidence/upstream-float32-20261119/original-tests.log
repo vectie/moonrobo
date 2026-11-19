@@ -1,0 +1,68 @@
+test_duplicate_bin_update_is_order_independent_and_checkpoint_exact (test_aligned_data.AlignedDataTest.test_duplicate_bin_update_is_order_independent_and_checkpoint_exact) ... ok
+test_manifest_hash_verification_and_split_identity (test_aligned_data.AlignedDataTest.test_manifest_hash_verification_and_split_identity) ... ok
+test_reference_only_export_skips_fk_without_changing_goal_features (test_aligned_data.AlignedDataTest.test_reference_only_export_skips_fk_without_changing_goal_features) ... ok
+test_resampling_velocity_goals_and_end_bins (test_aligned_data.AlignedDataTest.test_resampling_velocity_goals_and_end_bins) ... ok
+test_timeout_bootstrap_and_real_terminal (test_aligned_data.AlignedDataTest.test_timeout_bootstrap_and_real_terminal) ... ok
+test_all_40_acquired_sources_match_frozen_catalog (test_aligned_data.SmcDataDifferentialTest.test_all_40_acquired_sources_match_frozen_catalog) ... ok
+test_real_clip_reference_states_and_goals_against_smc (test_aligned_data.SmcDataDifferentialTest.test_real_clip_reference_states_and_goals_against_smc) ... ok
+test_reset_mixture_and_unique_return_updates_match_actual_smc_method (test_aligned_data.SmcDataDifferentialTest.test_reset_mixture_and_unique_return_updates_match_actual_smc_method) ... ok
+test_terminal_only_bins_are_explicit_upstream_bug_fix (test_aligned_data.SmcDataDifferentialTest.test_terminal_only_bins_are_explicit_upstream_bug_fix) ... ok
+test_all_reward_terms_and_paper_scales (test_aligned_mdp.AlignedMDPTest.test_all_reward_terms_and_paper_scales) ... ok
+test_default_pose_scaled_action_has_no_reference_or_ankle_override (test_aligned_mdp.AlignedMDPTest.test_default_pose_scaled_action_has_no_reference_or_ankle_override) ... ok
+test_fk_pose_velocity_and_gradient_against_mujoco (test_aligned_mdp.AlignedMDPTest.test_fk_pose_velocity_and_gradient_against_mujoco) ... ok
+test_observable_input_resolves_translation_and_heading_ambiguity (test_aligned_mdp.AlignedMDPTest.test_observable_input_resolves_translation_and_heading_ambiguity) ... ok
+test_relative_termination_allows_matching_low_and_sideways_reference (test_aligned_mdp.AlignedMDPTest.test_relative_termination_allows_matching_low_and_sideways_reference) ... ok
+test_rotation_distance_gradient_and_vertical_heading (test_aligned_mdp.AlignedMDPTest.test_rotation_distance_gradient_and_vertical_heading) ... ok
+test_documented_rotation_fixes_remove_upstream_floor_and_vertical_collapse (test_aligned_mdp_differential.AlignedMDPDifferentialTest.test_documented_rotation_fixes_remove_upstream_floor_and_vertical_collapse) ... ok
+test_fk_matches_actual_upstream_for_all_tracked_bodies (test_aligned_mdp_differential.AlignedMDPDifferentialTest.test_fk_matches_actual_upstream_for_all_tracked_bodies) ... ok
+test_head_values_and_gradients_match_smc_away_from_rotation_singularities (test_aligned_mdp_differential.AlignedMDPDifferentialTest.test_head_values_and_gradients_match_smc_away_from_rotation_singularities) ... ok
+test_matrix_quaternion_values_and_pullback_match_upstream (test_aligned_mdp_differential.AlignedMDPDifferentialTest.test_matrix_quaternion_values_and_pullback_match_upstream) ... ok
+test_observation_modes_have_exact_upstream_prefix (test_aligned_mdp_differential.AlignedMDPDifferentialTest.test_observation_modes_have_exact_upstream_prefix) ... ok
+test_frozen_critic_retains_state_gradient (aligned.test_aligned_learning.AlignedLearningTests.test_frozen_critic_retains_state_gradient) ... ok
+test_full_8_step_fit_32_step_actor_and_imagined_critic (aligned.test_aligned_learning.AlignedLearningTests.test_full_8_step_fit_32_step_actor_and_imagined_critic) ... ok
+test_gae_failure_and_timeout_do_not_mix (aligned.test_aligned_learning.AlignedLearningTests.test_gae_failure_and_timeout_do_not_mix) ... ok
+test_native_export_reorders_joints_and_rotates_world_angular_velocity (aligned.test_aligned_learning.AlignedLearningTests.test_native_export_reorders_joints_and_rotates_world_angular_velocity) ... ok
+test_replay_ring_resume_restores_windows (aligned.test_aligned_learning.AlignedLearningTests.test_replay_ring_resume_restores_windows) ... ok
+test_replay_short_windows_and_episode_boundary (aligned.test_aligned_learning.AlignedLearningTests.test_replay_short_windows_and_episode_boundary) ... ok
+test_world_model_identity_has_finite_gradients (aligned.test_aligned_learning.AlignedLearningTests.test_world_model_identity_has_finite_gradients) ... ok
+test_full_clip_driver_resets_histories_and_restores_policy_mode (aligned.test_aligned_evaluation.EvaluationDriverTest.test_full_clip_driver_resets_histories_and_restores_policy_mode) ... ok
+test_subset_evaluation_does_not_claim_full_catalog (aligned.test_aligned_evaluation.EvaluationDriverTest.test_subset_evaluation_does_not_claim_full_catalog) ... ok
+test_training_environment_rejected (aligned.test_aligned_evaluation.EvaluationDriverTest.test_training_environment_rejected) ... ok
+test_unused_gpu_replicas_count_as_compute_not_extra_trials (aligned.test_aligned_evaluation.EvaluationDriverTest.test_unused_gpu_replicas_count_as_compute_not_extra_trials) ... ok
+test_duplicate_and_nonfinite_results_rejected (aligned.test_aligned_evaluation.FullClipMetricsTest.test_duplicate_and_nonfinite_results_rejected) ... ok
+test_early_failure_keeps_unplayed_reference_in_denominator (aligned.test_aligned_evaluation.FullClipMetricsTest.test_early_failure_keeps_unplayed_reference_in_denominator) ... ok
+test_negative_return_and_final_frame_termination_are_preserved (aligned.test_aligned_evaluation.FullClipMetricsTest.test_negative_return_and_final_frame_termination_are_preserved) ... ok
+test_strict_tracking_is_distinct_from_paper_failure (aligned.test_aligned_evaluation.FullClipMetricsTest.test_strict_tracking_is_distinct_from_paper_failure) ... ok
+test_timeout_and_missing_clip_cannot_be_claimed_complete (aligned.test_aligned_evaluation.FullClipMetricsTest.test_timeout_and_missing_clip_cannot_be_claimed_complete) ... ok
+test_split_training_matches_uninterrupted (aligned.test_aligned_resume.ResumeTest.test_split_training_matches_uninterrupted) ... {"verified_real_clips": 40, "verified_source_frames": 264705, "smc_formula_resampled_frames": 441140, "catalog_sha256": "c61b2dfc5a3f44891a426755def0173c4f543536398c52ef475149a68a83598b"}
+{"real_clip_differential_count": 3, "state_tensors_bitwise_equal": true, "maximum_goal_abs_difference": 1.1920928955078125e-07}
+{"smc_mdp_differential": {"reward_max_abs": 4.946422438312226e-11, "critic_max_abs": 8.52260928496662e-10, "reward_gradient_max_abs": 1.8256597622556825e-10}}
+{"iteration": 1, "world_model": {"wm_loss": 8.44467544555664, "wm_err8": 17.828373908996582, "wm_updates": 2}, "learning_rate": 0.0002, "actor_readiness": null, "actor_readiness_scope": "rank-local; extra steps lower effective update/data ratio"}
+{"iteration": 2, "world_model": {"wm_loss": 10.255377292633057, "wm_err8": 19.786097526550293, "wm_updates": 2}, "learning_rate": 0.0001999999999923412, "actor_readiness": {"initial_candidates": 90, "candidates": 90, "replay_rows": 45, "horizon": 32, "max_remaining_steps": 3810, "extra_collection_steps": 0, "extra_physical_transitions": 0, "collection_step_budget": 128}, "actor_readiness_scope": "rank-local; extra steps lower effective update/data ratio", "policy": {"pi_loss": -0.3015768527984619, "v_loss": 0.014342472422868013, "imag_rew": 0.09822632372379303, "pi_gradnorm": 0.0034736988600343466, "imag_survival": 0.0029826792888343334, "actor_updates": 1, "critic_updates": 4, "imagined_steps": 128, "critic_tail": true}}
+{"iteration": 3, "world_model": {"wm_loss": 6.722736835479736, "wm_err8": 14.204564094543457, "wm_updates": 2}, "learning_rate": 0.00019999999996936477, "actor_readiness": {"initial_candidates": 94, "candidates": 94, "replay_rows": 47, "horizon": 32, "max_remaining_steps": 3810, "extra_collection_steps": 0, "extra_physical_transitions": 0, "collection_step_budget": 128}, "actor_readiness_scope": "rank-local; extra steps lower effective update/data ratio", "policy": {"pi_loss": -0.17417454719543457, "v_loss": 0.007043057470582426, "imag_rew": 0.057869888842105865, "pi_gradnorm": 0.002870184136554599, "imag_survival": 0.10656028985977173, "actor_updates": 1, "critic_updates": 4, "imagined_steps": 128, "critic_tail": true}}
+{"iteration": 1, "world_model": {"wm_loss": 8.44467544555664, "wm_err8": 17.828373908996582, "wm_updates": 2}, "learning_rate": 0.0002, "actor_readiness": null, "actor_readiness_scope": "rank-local; extra steps lower effective update/data ratio"}
+{"iteration": 2, "world_model": {"wm_loss": 10.255377292633057, "wm_err8": 19.786097526550293, "wm_updates": 2}, "learning_rate": 0.0001999999999923412, "actor_readiness": {"initial_candidates": 90, "candidates": 90, "replay_rows": 45, "horizon": 32, "max_remaining_steps": 3810, "extra_collection_steps": 0, "extra_physical_transitions": 0, "collection_step_budget": 128}, "actor_readiness_scope": "rank-local; extra steps lower effective update/data ratio", "policy": {"pi_loss": -0.3015768527984619, "v_loss": 0.014342472422868013, "imag_rew": 0.09822632372379303, "pi_gradnorm": 0.0034736988600343466, "imag_survival": 0.0029826792888343334, "actor_updates": 1, "critic_updates": 4, "imagined_steps": 128, "critic_tail": true}}
+{"iteration": 3, "world_model": {"wm_loss": 6.722736835479736, "wm_err8": 14.204564094543457, "wm_updates": 2}, "learning_rate": 0.00019999999996936477, "actor_readiness": {"initial_candidates": 94, "candidates": 94, "replay_rows": 47, "horizon": 32, "max_remaining_steps": 3810, "extra_collection_steps": 0, "extra_physical_transitions": 0, "collection_step_budget": 128}, "actor_readiness_scope": "rank-local; extra steps lower effective update/data ratio", "policy": {"pi_loss": -0.17417454719543457, "v_loss": 0.007043057470582426, "imag_rew": 0.057869888842105865, "pi_gradnorm": 0.002870184136554599, "imag_survival": 0.10656028985977173, "actor_updates": 1, "critic_updates": 4, "imagined_steps": 128, "critic_tail": true}}
+ok
+test_episode_context_resamples_selected_environment_only (aligned.test_aligned_physics.PhysicsProtocolTest.test_episode_context_resamples_selected_environment_only) ... ok
+test_four_substeps_and_original_motor_constants (aligned.test_aligned_physics.PhysicsProtocolTest.test_four_substeps_and_original_motor_constants) ... ok
+test_profiles_separate_paper_from_smc_and_experimental_observations (aligned.test_aligned_physics.PhysicsProtocolTest.test_profiles_separate_paper_from_smc_and_experimental_observations) ... ok
+test_smc_context_is_fixed_per_environment_but_calibration_resets (aligned.test_aligned_physics.PhysicsProtocolTest.test_smc_context_is_fixed_per_environment_but_calibration_resets) ... ok
+test_32step_actor_and_gae_critic_updates_match_actual_smc_function (aligned.test_smc_learning_differential.SmcLearningDifferentialTests.test_32step_actor_and_gae_critic_updates_match_actual_smc_function) ... ok
+test_default_architecture_parameter_shapes_match_upstream (aligned.test_smc_learning_differential.SmcLearningDifferentialTests.test_default_architecture_parameter_shapes_match_upstream) ... ok
+test_network_outputs_and_world_model_8step_adam_match (aligned.test_smc_learning_differential.SmcLearningDifferentialTests.test_network_outputs_and_world_model_8step_adam_match) ... ok
+test_replay_same_windows_history_and_exact_ring_restore (aligned.test_smc_learning_differential.SmcLearningDifferentialTests.test_replay_same_windows_history_and_exact_ring_restore) ... ok
+test_context_writes_physics_and_warm_resume_resamples_only_episode_offsets (aligned.test_aligned_isaac.IsaacProtocolTest.test_context_writes_physics_and_warm_resume_resamples_only_episode_offsets) ... ok
+test_episode_context_resamples_only_selected_environment_and_updates_physics (aligned.test_aligned_isaac.IsaacProtocolTest.test_episode_context_resamples_only_selected_environment_and_updates_physics) ... ok
+test_evaluation_passes_raw_action_without_collection_cap (aligned.test_aligned_isaac.IsaacProtocolTest.test_evaluation_passes_raw_action_without_collection_cap) ... ok
+test_evaluation_view_disables_randomization_and_training_timeout (aligned.test_aligned_isaac.IsaacProtocolTest.test_evaluation_view_disables_randomization_and_training_timeout) ... ok
+test_gpu_joint_order_mismatch_is_rejected_before_raw_state_access (aligned.test_aligned_isaac.IsaacProtocolTest.test_gpu_joint_order_mismatch_is_rejected_before_raw_state_access) ... ok
+test_optional_backend_reports_missing_runtime_without_breaking_cpu_import (aligned.test_aligned_isaac.IsaacProtocolTest.test_optional_backend_reports_missing_runtime_without_breaking_cpu_import) ... ok
+test_pinned_physics_config_uses_four_five_millisecond_solver_steps (aligned.test_aligned_isaac.IsaacProtocolTest.test_pinned_physics_config_uses_four_five_millisecond_solver_steps) ... ok
+test_training_transition_preserves_pre_reset_state_and_timeout (aligned.test_aligned_isaac.IsaacProtocolTest.test_training_transition_preserves_pre_reset_state_and_timeout) ... ok
+test_warm_resume_declares_refill_and_starts_new_episodes (aligned.test_aligned_isaac.IsaacProtocolTest.test_warm_resume_declares_refill_and_starts_new_episodes) ... ok
+
+----------------------------------------------------------------------
+Ran 54 tests in 3.060s
+
+OK

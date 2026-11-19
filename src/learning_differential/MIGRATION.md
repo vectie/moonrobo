@@ -6,8 +6,11 @@ generator draws. Native data and CPU protocol cases also execute production
 code. See [README.md](README.md) and the
 [workspace validation guide](../../docs/NATIVE_TESTING.md). The historical
 migration-only record below describes what was checked at initial authoring;
-it is not the current native test status. Strict executed-upstream Float32
-qualification remains a separate, unclaimed result.
+it is not the current native test status. The separate
+[executed-upstream Float32 learning profile](../../qualification/upstream_float32/README.md)
+now passes the two native learning cases; all 54 retained Python methods also
+execute without skips. The full 27-case native exported fixture suite remains
+distinct from those results.
 
 The actual candidate adapters, strict sealed-fixture/capture protocol,
 `cmd/reference_differential` CLI, 27 original-method fixture entries and schema

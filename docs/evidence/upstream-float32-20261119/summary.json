@@ -1,0 +1,1506 @@
+{
+  "format": "moonrobo.executed-upstream-float32-learning.v1",
+  "recorded_date": "2026-11-19",
+  "validated_source_revision": "80e9109ad8ca78e1e94f5eb74634915e9af4fc06",
+  "upstream_revision": "a1508d42c9d1699a52e8233ab16d08c488441ab9",
+  "device": "CPU",
+  "torch_version": "2.9.1",
+  "platform": "macOS AArch64",
+  "moonc_version": "v0.10.15+943464bfa (2026-10-12)",
+  "original_python_methods": 54,
+  "original_python_skips": 0,
+  "native_strict_learning_cases": [
+    {
+      "case_id": "learning.world8",
+      "output_count": 101,
+      "maximum_absolute_difference": 0,
+      "fixture_manifest_sha256": "27951ddaa3645d6602abfd3c42319fa2c6dbd4d0a5b3c6dbbc4d8bc5539b2cea",
+      "input_npz_sha256": "76cb7dee5a19d8057c6d0a7d01ef8af1648bd3f73adc5baaa59a0a32323c8013",
+      "expected_npz_sha256": "fb95aec9de79d93fb2e7c88d999a658aa4fa4b51015d3d48983c94944aa23ba2",
+      "candidate_npz_sha256": "d16e4cacc13f60559ffe8107e953d6efe3094189ab8937ee5349a65a05ca6d28",
+      "report": "learning.world8.json"
+    },
+    {
+      "case_id": "learning.policy32",
+      "output_count": 226,
+      "maximum_absolute_difference": 0,
+      "fixture_manifest_sha256": "c0eab526ebe0420c0d2c1479d6061d04371e3fcd4e43d986cbf0c800fa093223",
+      "input_npz_sha256": "32f599e09c9ce955c6167aad6b908c112146114403e815d170ef7c6f58717daa",
+      "expected_npz_sha256": "3039b6dda842189b483c6009960adf7d5ff753c904c2018d424efb17cec17061",
+      "candidate_npz_sha256": "0968ac83c867882319f966acdc5b23a34291afc4e405afa84c17d7c090d071cc",
+      "report": "learning.policy32.json"
+    }
+  ],
+  "original_checks_and_thresholds_modified": false,
+  "non_metric_float32_values_gradients_weights_and_adam": "exact, maximum difference zero",
+  "scalar_metric_tolerances": "original world 5e-8 / actor 5e-7 absolute thresholds unchanged",
+  "production_tensor_library_sha256": "b7297662636eb2710ad6101a4c3b687b5ab07808ed0b30dab179ede77e84ff95",
+  "rng_only_oracle_library_sha256": "4c2bfb8534d14ba61857cf320aba09f723f0d4dd0d5ca018586520195c8460a5",
+  "original_log_sha256": "d7ec4089684b6c2d9a0daf61785d2030cd01e00b390d7838abd9b6575a90c657",
+  "native_log_sha256": "a16bd546e1309aff7d9c474af1f000468e88251a14eb77e0046e5b8764c0624c",
+  "affected_native_regression": {
+    "summary": "Total tests: 98, passed: 98, failed: 0.",
+    "log_sha256": "2ba233c24e61ec5d8425aba41b524a2ec705c94f27e6a1534788c0159a0b1318",
+    "optional_device_notices": "existing optional CUDA/compiled/diagnostic routes remain unqualified"
+  },
+  "full_native_workspace_regression": {
+    "summary": "Total tests: 1891, passed: 1891, failed: 0.",
+    "platform": "Linux AArch64, matched preserved dependency profile",
+    "container_image_sha256": "5b1332bafb8e0bd31065cfd4a7ea2d57b81dd68f96c4cb6b4ebac477bf921b23",
+    "dependency_profile": "target/native-tests-spark.json",
+    "log_sha256": "3285305d6849da5beec828abcc667d14f4b9a149cd8ef6289d5a40ff131acd89",
+    "existing_optional_skip_notices": 120,
+    "optional_skip_messages_unchanged": true,
+    "sorted_skip_messages_sha256": "b3f2db6856fb23a76044710ad61550e12be784cbaac8eb3c43646211480d5edd",
+    "network": "disabled; no SDK/robot control"
+  },
+  "source_bound_manifest": {
+    "candidate_sources": {
+      "moonrobo/qualification/upstream_float32/native_driver.mbt.in": {
+        "path": "moonrobo/qualification/upstream_float32/native_driver.mbt.in",
+        "sha256": "f2667f5f1633a8d00e4d0dc5f043231a1d0ea9e601b23713f6a5d66288167897"
+      },
+      "moonrobo/scripts/qualify_upstream_float32.mbtx": {
+        "path": "moonrobo/scripts/qualify_upstream_float32.mbtx",
+        "sha256": "854f8ba567e218cd7fbd6ee1bc2dd6def154929e6ffb9524fa29285d9a0922e4"
+      },
+      "moonrobo/src/learning_aligned_gpu/actor_geometry_reuse.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/actor_geometry_reuse.mbt",
+        "sha256": "8fd78af024f2c3a1185334f151a8f729abdc520b908a3e943e807f7e33f266a6"
+      },
+      "moonrobo/src/learning_aligned_gpu/actor_microbatch.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/actor_microbatch.mbt",
+        "sha256": "15a5040dd17cb1f98aefcbb5092b524e99974998a02d8ab2585a323d5791a86b"
+      },
+      "moonrobo/src/learning_aligned_gpu/actor_norm_snapshot.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/actor_norm_snapshot.mbt",
+        "sha256": "90d5eb271ade8122ecfa33f4a9e2cefbcd59b30810ad1298c3571f7354d2a647"
+      },
+      "moonrobo/src/learning_aligned_gpu/actor_norm_snapshot_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/actor_norm_snapshot_wbtest.mbt",
+        "sha256": "cfcee2f53d1ead436ac26268c1e730781c12e54eceebeeac235aaa1b60493b9d"
+      },
+      "moonrobo/src/learning_aligned_gpu/audit.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/audit.mbt",
+        "sha256": "9285332ac48e2c4e26729f86bbdfd044ee632f9bfa26a887e73425b04de7404c"
+      },
+      "moonrobo/src/learning_aligned_gpu/audit/capacity.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/audit/capacity.mbt",
+        "sha256": "5f3acc579effd48f053bf96062ce43a97943bc8d731afeb686e034b26160c704"
+      },
+      "moonrobo/src/learning_aligned_gpu/audit/capacity_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/audit/capacity_wbtest.mbt",
+        "sha256": "3a941e1f22deecb86947573f6a0c16bc56f2ebdcbcecf7656352632a15e0341e"
+      },
+      "moonrobo/src/learning_aligned_gpu/audit/main.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/audit/main.mbt",
+        "sha256": "f623f6a562046833d78fb0baca35ff9b1a8cd53a2a9f6604d471e7ff39ad4a25"
+      },
+      "moonrobo/src/learning_aligned_gpu/audit/memory.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/audit/memory.mbt",
+        "sha256": "b2cdc03d6310e73a9bcb401930c60164e1c5b932fc9d1b2770cbfaf6e7a8eac4"
+      },
+      "moonrobo/src/learning_aligned_gpu/audit/schema_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/audit/schema_wbtest.mbt",
+        "sha256": "dd9def7563b7a632ee082e1f2215ee4c9863b8c8f68794a0c5f6fd00360bef55"
+      },
+      "moonrobo/src/learning_aligned_gpu/audit/single_generation_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/audit/single_generation_wbtest.mbt",
+        "sha256": "90de09ced8e4e22b5f6c9ff6eab2c763c16466693bd87bd2c4095eacd7c4c99e"
+      },
+      "moonrobo/src/learning_aligned_gpu/audit_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/audit_wbtest.mbt",
+        "sha256": "7ccbb5ef129d5665b47bfae47972653f4ab4b12fb438e6bbf9c254d680478882"
+      },
+      "moonrobo/src/learning_aligned_gpu/body_orientation_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/body_orientation_wbtest.mbt",
+        "sha256": "6369badfcaa3ea4c1cba28b5e3e2b4e23ac6f522bc77d579f75147cbafc2ec28"
+      },
+      "moonrobo/src/learning_aligned_gpu/checkpoint.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/checkpoint.mbt",
+        "sha256": "4049c933b7f1a80e4abad318b9d8d440bc62f837ccc5b6330f2d6e38d999cffe"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/bf16_bundle.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/bf16_bundle.mbt",
+        "sha256": "63f2811b68b9b223e3405a5f81795cda42ed16f0d8d2e37780ad35299e4872dd"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/bf16_bundle_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/bf16_bundle_wbtest.mbt",
+        "sha256": "89f2efe1537030a354cf7fbc9ec50d439b34b515105b702d3af3fee116ca624a"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/capacity_integration_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/capacity_integration_wbtest.mbt",
+        "sha256": "de279fa6aee8f6c19b5952483d70e489c03d56d52fd8e5380396f5ef3b603a88"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/checkpoint.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/checkpoint.mbt",
+        "sha256": "424b03db77659b591f049d989b181e5da27cbc9841e33ad4fcd6236aaace2955"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/checkpoint_capacity_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/checkpoint_capacity_wbtest.mbt",
+        "sha256": "cc21b953edaa74db93ad47e4d0e7f9b0dd0c2e39a8f0e30eac16db40c40e11fe"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/checkpoint_stream.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/checkpoint_stream.mbt",
+        "sha256": "d98916ad4ea60b57be4eba7f79feb75983db075243c53055ca9ab0e1cab500ac"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/checkpoint_stream_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/checkpoint_stream_wbtest.mbt",
+        "sha256": "ac58ec3d72406de2147531a46c0060909ae8e00887cbee6f296682a980f1b9dc"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/compiled_mlp_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/compiled_mlp_wbtest.mbt",
+        "sha256": "b05d22a8c55044ea12a2f3c7164f23828c796ceebeed4c0758e8a7a8f18e6713"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/configuration.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/configuration.mbt",
+        "sha256": "03fb09330f0830e5d39229f4d91dcc0e38a40b22657cb86f858d3e461ace81d3"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/data_ready.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/data_ready.mbt",
+        "sha256": "4f87c13dcca33c0f8452aea76d4d0f0e52eb3b5c3268aa9145019e11f8ffcd2c"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/data_ready_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/data_ready_wbtest.mbt",
+        "sha256": "5aec92dd44b447bbec7dbe60afff5d4a4b5729a5fc072a2340a2f37b0388b6ee"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/disk_capacity.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/disk_capacity.mbt",
+        "sha256": "4021ea119f7312328bc080d946f23d69d0c1ec9acd43476a1bdf52abc9b40749"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/disk_capacity_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/disk_capacity_wbtest.mbt",
+        "sha256": "030277c57562a0c20a5593bebcb32c05072901f82b9c7719d8692d59a9cf0576"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/distributed.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/distributed.mbt",
+        "sha256": "885c134a533871d7558a63447b02e22c0950ad47d188831d91aedbf006ac92d5"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/evaluation_environment.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/evaluation_environment.mbt",
+        "sha256": "5024954e6d212a841f7eb695b15eb69fe004f29a348be5e2e381f19572bc6dd5"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/fp32.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/fp32.mbt",
+        "sha256": "49eded213b45bca0df16ce2e1eb5c454541e79c8339b2f7989a38a19525c9f56"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/fp32_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/fp32_wbtest.mbt",
+        "sha256": "b0c73264c9bb9d711f8bd14e72266e59fe1cb4c1b7a21924e270702c645d614f"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/hotspot_numeric_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/hotspot_numeric_wbtest.mbt",
+        "sha256": "6fde6a3592be9a4bc615f9ce141526ace4e1b9311e5ec68dbd4a5df3ea03c207"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/inference.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/inference.mbt",
+        "sha256": "1bef2dae5c12e9b2ad6224bf8bae034c64aabe45374d5cd5ffe839dec5a17c7e"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/inference_checkpoint.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/inference_checkpoint.mbt",
+        "sha256": "70e135a05c2349e3b0b88473e8c460d5a8eb0296c1a9c4fa6cf4aab9a092fbef"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/inference_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/inference_wbtest.mbt",
+        "sha256": "90676329344f2c97b6bf5dca6b7fdec2d6c9604eb1c40f61b94c9c3852103073"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/main.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/main.mbt",
+        "sha256": "dbcbcb0444694cffbfc35a1efc56829c22d35d7af6c9de2202d1f81de3962760"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/memory.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/memory.mbt",
+        "sha256": "864d15902528f33ead7b5728195a9725649c9a6af534edae7f66cd35709f2806"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/mlp_comparison_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/mlp_comparison_wbtest.mbt",
+        "sha256": "bc7a3f770ded89591aab138ae0b7e9f95727189738f32fcede211711905c4c7f"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/motion_sampler_cap.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/motion_sampler_cap.mbt",
+        "sha256": "bfde6d92f56fb1d5758ebfd0bf3e9dbe14b52600ebf776d444f7a34c2123a9d7"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/motion_sampler_cap_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/motion_sampler_cap_wbtest.mbt",
+        "sha256": "2e56270fce5d7c47fcf0c6592b6e4c0a72f9fa0d82b23117e99cf90a41eee419"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/noise_staging.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/noise_staging.mbt",
+        "sha256": "74e54c5a837cce6bf5452f443efc31373380f080bbc49cde377585b5b998af0e"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/noise_staging_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/noise_staging_wbtest.mbt",
+        "sha256": "a7963728b9a9b67d5b90fce6f85a0c41f29135e320443ebc3d19731669f46ddf"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/operator_diagnostics.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/operator_diagnostics.mbt",
+        "sha256": "27d94e051439213e57505ff05c394d55f0ecb8f9b03184a1cebf4f445cf2ed0d"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/operator_diagnostics_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/operator_diagnostics_wbtest.mbt",
+        "sha256": "b7e25997c600f4b788d0847c98dc34056aad0d4093ce640a28f06f096f07297a"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/optimizations.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/optimizations.mbt",
+        "sha256": "d1ccc998d504f850e4e4ab60cd1975892f8b3eaae9bb051b501ed134f154c2b0"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/optimizations_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/optimizations_wbtest.mbt",
+        "sha256": "d2986646473cc6bf96a6cb3bfe195f6f34e921198174817c6cbcb33361bc51c0"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/physics_preflight.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/physics_preflight.mbt",
+        "sha256": "2ccb9ec973a8a93e94a6e4ac12a472e2925367125cf3580e1404758c00586c74"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/preflight_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/preflight_wbtest.mbt",
+        "sha256": "074368d7c99be7af6b53b9d68c4402ff49de2902f23062e009d5c467597b10bd"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/runtime_bridge.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/runtime_bridge.mbt",
+        "sha256": "1f51075bdd63e68553c5a4896f6c9a1bdd6b11282d56e1bef548ca510b768aac"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/serial_save_workspace_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/serial_save_workspace_wbtest.mbt",
+        "sha256": "10abedb8b2284c9a192af6e7376f7ac590ff3126bfed4dd789f13de6163719ce"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/shared_fixture_wbtest.mbt",
+        "sha256": "0d9908373fd95625e0d400bc2f55b9f515643ae24064f9a2861b3a572b137edc"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/telemetry.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/telemetry.mbt",
+        "sha256": "e85fa320fa5ef71dd42ec393652ac46c8bd8b5bd419ccabd127803168165e492"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/telemetry_host.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/telemetry_host.mbt",
+        "sha256": "b528bccbaea46f7321c8db536ad8c26470365c969a6b1852164444fe3e64346a"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/telemetry_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/telemetry_wbtest.mbt",
+        "sha256": "913de32b0bce5871b0e39dfd3e1e78b26873cc53ae9650b34f72e382f8c40dc1"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/world_staging.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/world_staging.mbt",
+        "sha256": "a14d1e6236b740420be05e9a29ec8e675ae80b4f3f78e2d112f45ccd9041a2f9"
+      },
+      "moonrobo/src/learning_aligned_gpu/cmd/world_staging_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/cmd/world_staging_wbtest.mbt",
+        "sha256": "a602e365ba605ca4fb32a5ca76a5fffd6ef8208bc0ba77d0b82573ac05bb6ee8"
+      },
+      "moonrobo/src/learning_aligned_gpu/compiled_actor.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/compiled_actor.mbt",
+        "sha256": "8c8839a9070d2705c5893c2f2b571e6767e8c2f77e78d3d79ca9859c25f5b08d"
+      },
+      "moonrobo/src/learning_aligned_gpu/compiled_world.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/compiled_world.mbt",
+        "sha256": "9f66fce6fc068a20838dfd8aae8a9c367a6919e788c1da034975bbd206de516f"
+      },
+      "moonrobo/src/learning_aligned_gpu/contracts.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/contracts.mbt",
+        "sha256": "858861e70410851568aea27d7b112debae767c885b8ca9d803e88d89da0c14ac"
+      },
+      "moonrobo/src/learning_aligned_gpu/critic_graph.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/critic_graph.mbt",
+        "sha256": "8b4f9cc7f592b914e8eb066bd0504f4c7019acd9ab6676373bb1dec08bdedfb2"
+      },
+      "moonrobo/src/learning_aligned_gpu/critic_graph_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/critic_graph_wbtest.mbt",
+        "sha256": "794810538ac0baace2b7a093297d46291f943c1173eaa82e372b4a747c5e3f9c"
+      },
+      "moonrobo/src/learning_aligned_gpu/critic_normalization.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/critic_normalization.mbt",
+        "sha256": "fad658ab3497988673e1dcde9f3a11a1b835182ffa5ee25f271b0db5f423b760"
+      },
+      "moonrobo/src/learning_aligned_gpu/critic_trace.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/critic_trace.mbt",
+        "sha256": "d739aae1fa2b658d95602399ba3a518e718c260e94c05e05b42dfa76d84490d2"
+      },
+      "moonrobo/src/learning_aligned_gpu/critic_trace_gate_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/critic_trace_gate_wbtest.mbt",
+        "sha256": "38b2d2a5dad57a8ee91aa55fa53d5a6ef3e47daeb58a568a05cc7eec925a8e70"
+      },
+      "moonrobo/src/learning_aligned_gpu/critic_trace_io_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/critic_trace_io_wbtest.mbt",
+        "sha256": "c2685b138cfd4d2b83b27e8c384b474e18a0f183767ee947454bdc8016a9fd59"
+      },
+      "moonrobo/src/learning_aligned_gpu/critic_trace_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/critic_trace_wbtest.mbt",
+        "sha256": "988b78252518b7e4cc86d403af8d12cb37de3b0a1238353f21554aedeb959aa7"
+      },
+      "moonrobo/src/learning_aligned_gpu/distributed.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/distributed.mbt",
+        "sha256": "46525c7942483e97500ab8e368adbfa038cc20839031134507dca5a44ecbf578"
+      },
+      "moonrobo/src/learning_aligned_gpu/distributed_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/distributed_wbtest.mbt",
+        "sha256": "6c3ee709d4e39d0ba510b34c90b6b6626909ccc0ce6c2cf864a5daa2fdde5af8"
+      },
+      "moonrobo/src/learning_aligned_gpu/execution_optimizations.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/execution_optimizations.mbt",
+        "sha256": "4c0c03199e9f0147fe25a323080d470e4a7506b014048a05474a2b8b90a97525"
+      },
+      "moonrobo/src/learning_aligned_gpu/fixed_inputs.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/fixed_inputs.mbt",
+        "sha256": "449c1e4daca8ea4318af44114a2e942933d2d3163a47405bff9c00c4df50d8da"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/checkpoint.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/checkpoint.mbt",
+        "sha256": "97a84cb010578d8f4b22894b267bd79f6aa9ee9905f36912c20c9f475a5ca894"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/checkpoint_oracle_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/checkpoint_oracle_wbtest.mbt",
+        "sha256": "f473e46071d873cff3e5ff494d6da1df2ba5ab4e670fe4f1e1d6cbcb48812ce7"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/cmd/main.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/cmd/main.mbt",
+        "sha256": "46b16745f188024cb90ea9d26876d9a67716f173607854669f9e25a3cbc3e858"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/device_reset.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/device_reset.mbt",
+        "sha256": "822b4a59032c4e2cd7e231e97bd85ce7a99db2707cf9fa0b84e863052b7a6e99"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/eval/author_play.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/eval/author_play.mbt",
+        "sha256": "bb96491a71996760236caea001e11880c66cd8d7fbdb81c59947471accf6ff81"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/eval/main.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/eval/main.mbt",
+        "sha256": "dc1f8f9229d1dbfa96134c652511d34bfc250faf47e5244c287982ee57efd7bf"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/eval/paper_catalog.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/eval/paper_catalog.mbt",
+        "sha256": "23bae181829de0ceb872fe7250be4a7284a9638cc988768fe174233d89d5a58b"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/goal.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/goal.mbt",
+        "sha256": "79216570287db18b742ccbada58c99b3cc2ebf36d3cc6ad66b8f82fe5413eea1"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/learning.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/learning.mbt",
+        "sha256": "8f756068d94b66a5a24d4b0d9e77d83352991c82e041a5190032daea2bac7aa1"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/model.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/model.mbt",
+        "sha256": "5fd8f4bb8d1794b09b49eecf6d87460bfb683ed75cfef43a615f8c15a41f6a00"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/optimizer.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/optimizer.mbt",
+        "sha256": "29bfa3cb7baab883b28aa8b9871b29b394844d6eb73b575e2db5b3360df77093"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/parity_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/parity_wbtest.mbt",
+        "sha256": "af4e7962fc8133a45904b34b3b2f7e70216142340097bd3f0a3543aa751172c7"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/replay.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/replay.mbt",
+        "sha256": "93bff7934e7acee47dd5b565e9c3d14daee2df940293c22a5280fa427bd5b528"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/reset.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/reset.mbt",
+        "sha256": "72bb17fa969296831ca36adeb55aff2961c6017bb532c2d5f55c1eaff00a9525"
+      },
+      "moonrobo/src/learning_aligned_gpu/gencoord/state.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gencoord/state.mbt",
+        "sha256": "81c5eac8e015c775db43dcbc0eef240466a8dd05b62b867f733dfa397767b8a8"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/body_orientation.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/body_orientation.mbt",
+        "sha256": "5be303d5a781e0667f2f3c6addadcbcc7c7fb228486fe6b2d479c34ea58d2e32"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/body_orientation_test.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/body_orientation_test.mbt",
+        "sha256": "63d1fe526646defec736705b32717bc6f8f80941f9ce3209c324549624faeb74"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/coefficient_assembly_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/coefficient_assembly_wbtest.mbt",
+        "sha256": "1897f3a0d3e5b8960a2b6d00886a3d1e50b9e82eeac64eea455df140a3a2b982"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/coefficient_full_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/coefficient_full_wbtest.mbt",
+        "sha256": "8369d9fb71ea23bff16452be217894b755fb47c3449bedd5279ea69cbad1ffc7"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/compact_heading.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/compact_heading.mbt",
+        "sha256": "85a8bdfc55d899414664c8ee6f4b81ca7124306ecfbbc4597af43377b1c67736"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/compact_heading_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/compact_heading_wbtest.mbt",
+        "sha256": "4fff23ac782724d4a5f56eb2bdf6fede553de24e33145fd90a241c2ce607ca1e"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/compact_rotation_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/compact_rotation_wbtest.mbt",
+        "sha256": "1ff66f06579468161caa17b3603e3e377e286aaec168e8cfac8a60feb4d27c6d"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/context.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/context.mbt",
+        "sha256": "bf5d9f1e6e68cbe71c59cea2dfa380c558abf2a5d308b4838532873a2a70ab46"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/cross_preserve_test.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/cross_preserve_test.mbt",
+        "sha256": "662be83fc852a0ff510f38bd07b3d6082b1bc07eaaf0df11161854aaf468003e"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/fused_rotation.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/fused_rotation.mbt",
+        "sha256": "4e009c697511a7fd60d3be3cd2f7e0b4af2e4a53676f7d8a84b2f5b5fa49178b"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/fused_rotation_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/fused_rotation_wbtest.mbt",
+        "sha256": "23dd3589a4d12e853e283eb1159e10dae8cac3cb459cfea328c4e8d65e780983"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/geometry_tail.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/geometry_tail.mbt",
+        "sha256": "7b28025383670c0ac7ac47a9fdf0344f85291ff8c97e85d3f0aca4640b42577c"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/geometry_tail_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/geometry_tail_wbtest.mbt",
+        "sha256": "f53dd188796ecb72d9b0dc7c8da2146ae036650e8fa64dd351dd8635b947bf78"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/geometry_test.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/geometry_test.mbt",
+        "sha256": "4c4958f6541dbae9730c167d0eebbcd8138fac4a317a659a94c2e99dfdc4eaab"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/geometry_vjp.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/geometry_vjp.mbt",
+        "sha256": "74edebd0d754f8ed37751b9b048a407ce224617d5f5aee65aeac98472a68c8ba"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/geometry_vjp_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/geometry_vjp_wbtest.mbt",
+        "sha256": "6c280217b094f47c6382685e2d9f55b16f9a3506fe60f3d193cf0c502ed6c0ff"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/heading_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/heading_wbtest.mbt",
+        "sha256": "0b8918d85cb90d08584251b0571fe6c53d66b596b8d39d5fee8340353344bf87"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/math_revision_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/math_revision_wbtest.mbt",
+        "sha256": "49758cb22ed5256d6f0974658438224bc2cd1a1b574b1a41a2a400f6636a8b8f"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/native_cross_test.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/native_cross_test.mbt",
+        "sha256": "f68f5ca9560dc20f5a924655fc96687e25b24f8fda1de550d82d93652e13b8ea"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/orientation_bench/main.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/orientation_bench/main.mbt",
+        "sha256": "c339abb9ee57e0802d8d444aa0f5be2f3c1adc472b71ed2dcfc1b6ac3acaa44f"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/rotation_constants_test.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/rotation_constants_test.mbt",
+        "sha256": "770e10fc6ba13bb2418059569710bb1217160a9b240c4b85e75d34a60e7e5c27"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/rotation_error_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/rotation_error_wbtest.mbt",
+        "sha256": "9a4308584280664c2894d2e1d3c5cd955de9fdf73747dfe7dce759d3ce841947"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/rotations.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/rotations.mbt",
+        "sha256": "c9506f58e2d3446c6c2b31cae6657a70de96fab418f2088861f93d1530cac5ba"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/smc_soft_limits_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/smc_soft_limits_wbtest.mbt",
+        "sha256": "5904b4771982854a287ecc79bf6ef2dce84fd209cd6f5f9f0f5e038e0f92e7c3"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/state.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/state.mbt",
+        "sha256": "b16febf68608f5cc097509f6e23468116127bffb1b4c2dfc7bbb65554a279d0c"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/static_fk_test.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/static_fk_test.mbt",
+        "sha256": "9329c4919bc3505e7deffea491df5ba5e9945579cecc4b6e8827f08500ae60e8"
+      },
+      "moonrobo/src/learning_aligned_gpu/geometry/tracking_reuse.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/geometry/tracking_reuse.mbt",
+        "sha256": "e5c512536e0efd8961611d7b266cc65650e87ddfdad7e7e5cb0b2f388740222d"
+      },
+      "moonrobo/src/learning_aligned_gpu/gradient_execution.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/gradient_execution.mbt",
+        "sha256": "fe830217d0f0188fd8066ec2394a69b9e5a71baee6c387e8e7b9e7f3ba9ae611"
+      },
+      "moonrobo/src/learning_aligned_gpu/inference/actor.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/inference/actor.mbt",
+        "sha256": "6c5f361ebf3daab2da4a900efaa78b777f3fdb3b7c45155b27a854ae268631b4"
+      },
+      "moonrobo/src/learning_aligned_gpu/inference/actor_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/inference/actor_wbtest.mbt",
+        "sha256": "25d87f72544fab0c01b03d3fbb39242e35de3d09e34816eb350413dd75f7c188"
+      },
+      "moonrobo/src/learning_aligned_gpu/inference/evaluation.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/inference/evaluation.mbt",
+        "sha256": "636abdc0fb372de03e164f7e7de19485c7f5c9494d2f9745a3aa6e428fc2852e"
+      },
+      "moonrobo/src/learning_aligned_gpu/layer_norm_test.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/layer_norm_test.mbt",
+        "sha256": "8e3a6ffc4b7cbfce8a2f5c1c08d02de041b668378c7f68ebc2ff21b8b3c9edfe"
+      },
+      "moonrobo/src/learning_aligned_gpu/learner_test.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/learner_test.mbt",
+        "sha256": "3b608e4587e4ff7554f79537362b9029c45c119366252072d73bc80fb347d054"
+      },
+      "moonrobo/src/learning_aligned_gpu/learning.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/learning.mbt",
+        "sha256": "e3189764f63d46cc9485421747a51a050c3bfe1a428f5d386dc1f7b8603dfc43"
+      },
+      "moonrobo/src/learning_aligned_gpu/microbatch.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/microbatch.mbt",
+        "sha256": "4ce933b566d504da16f2d1bbffdb83020654ad16a1cce2e66f5d1ceed999f1d3"
+      },
+      "moonrobo/src/learning_aligned_gpu/microbatch_gate_io_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/microbatch_gate_io_wbtest.mbt",
+        "sha256": "195710abc2e9a34eafafb1fec05e4eed2d476dd6969f9d4489045567eca4706a"
+      },
+      "moonrobo/src/learning_aligned_gpu/microbatch_gate_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/microbatch_gate_wbtest.mbt",
+        "sha256": "8891abb93a769ce8a5353b11917dfbc511194615bc1185c4921de6d7b0617eac"
+      },
+      "moonrobo/src/learning_aligned_gpu/microbatch_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/microbatch_wbtest.mbt",
+        "sha256": "2c01a51040bc28628587cb8edac8b35651b1ec3163e10d5a1360979f6824d487"
+      },
+      "moonrobo/src/learning_aligned_gpu/networks.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/networks.mbt",
+        "sha256": "1d6654858e79aaddb6f4805a8b3554d424779d90508c4a641e7f80d50995ac73"
+      },
+      "moonrobo/src/learning_aligned_gpu/operator_diagnostics_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/operator_diagnostics_wbtest.mbt",
+        "sha256": "201d9c985a5549a678e9450b40a131aa00b3a4d78feac007a470b5fdf5abfcc9"
+      },
+      "moonrobo/src/learning_aligned_gpu/optimizer_execution.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/optimizer_execution.mbt",
+        "sha256": "d8e6245988d73866ea8cb01d0bbca2a7fa46f691fbb9d7d2ba88e412f74aca8b"
+      },
+      "moonrobo/src/learning_aligned_gpu/optimizer_execution_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/optimizer_execution_wbtest.mbt",
+        "sha256": "21d3be7cd3fc80a4e253bceccf7ffb161428f3f56f0648a8b10b217292742d63"
+      },
+      "moonrobo/src/learning_aligned_gpu/precision_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/precision_wbtest.mbt",
+        "sha256": "21899143ddc221e1651f4a8bed18f03dcebd0572a2dfc34c2d9654af264d42d3"
+      },
+      "moonrobo/src/learning_aligned_gpu/reuse_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/reuse_wbtest.mbt",
+        "sha256": "723ec8084fc27552b4ab1fa360f157dd9a402b43c9a954e1e8d980ef97862996"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/actor_ready_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/actor_ready_wbtest.mbt",
+        "sha256": "7149a7fd656f743d5859c8a73d4afe536d6846fb3817c117626b503a2a94a7f8"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/actor_start_blocks_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/actor_start_blocks_wbtest.mbt",
+        "sha256": "2bba3c1a4e513c34854eff30b57bf4c93da0d3880ceb1ea5b459fbe3d1c651b1"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/batch_shapes.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/batch_shapes.mbt",
+        "sha256": "3a4c24065c929197f9b2f46ad19541b4ee49752199aa961e513b936d4193212a"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/batch_shapes_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/batch_shapes_wbtest.mbt",
+        "sha256": "86856ade8e19d5dcb36d33fb032788ddc8751421ce8eb8b8bd377410967a70ad"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/batches.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/batches.mbt",
+        "sha256": "8d00cd4c71345644de71b49d8678190455979210a7b5eed10b4f6a9c5017dc0f"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/checkpoint.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/checkpoint.mbt",
+        "sha256": "5acfa995a8738582a77c7df58f0383bda48612d9081f5efff3488dd4fe7a9832"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/checkpoint_v2.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/checkpoint_v2.mbt",
+        "sha256": "9a8252b15381e476bae93fd5b5742d5f6073974f378c3136663ebdd6948ef28c"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/checkpoint_v2_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/checkpoint_v2_wbtest.mbt",
+        "sha256": "4cc27aeeb662e37b6f218e6759ef7904d845e9afc2e1e47b15222835fb30c952"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/diagnostic_phases.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/diagnostic_phases.mbt",
+        "sha256": "15c401698995acec9927eb5101ed5a349c4c642c96ab5de82671d459e5eef148"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/distributed.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/distributed.mbt",
+        "sha256": "e0421d11ff89d7376ef67cf96c4aab07e7ce4aa83861503cc9212491b06256df"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/n128_bounds_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/n128_bounds_wbtest.mbt",
+        "sha256": "aa8605d32da40b912a19603a6558eb7e202d721ffa7d8c790f286b8d33f5ec6a"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/noise_staging.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/noise_staging.mbt",
+        "sha256": "320ad874e251084cde8f686fccc0ebec80d8b78665b71b071895883d92761564"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/noise_staging_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/noise_staging_wbtest.mbt",
+        "sha256": "f8e5e2e59cc94405213a446c7721843776317980b80043481b1d58ae9131fe22"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/operator_window_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/operator_window_wbtest.mbt",
+        "sha256": "ce34a3da1ab5611b10c65a79828a356bbda8f6d58b8abd5a1d182eb515f409b1"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/reference_blocks.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/reference_blocks.mbt",
+        "sha256": "95fd3b755c88b536f5b21cef2c106e109670f16e1ffbe56141ae2626d28bee4e"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/reference_blocks_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/reference_blocks_wbtest.mbt",
+        "sha256": "e0871293cf8dd39e1dcc0dc2cb97922f352ea54864df7c3558d72c36560f8574"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/resident_references.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/resident_references.mbt",
+        "sha256": "031a9446188765e3f0933054f985fdf9f78eb9d1b58b62ed225956307813aff4"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/resident_references_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/resident_references_wbtest.mbt",
+        "sha256": "494bab054b1c09a3cdb0480497f98f0d6bb8207fc201a8c491f13c189833846a"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/runtime_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/runtime_wbtest.mbt",
+        "sha256": "a540bdd5b8c8c7243f0ba16634e45a83c7ff5b4dab6049337360392332482b46"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/train.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/train.mbt",
+        "sha256": "de2f5f86746452bd08edffdac213e5e583c677d846ffc7fffaeaceabcb67e21d"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/world_blocks_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/world_blocks_wbtest.mbt",
+        "sha256": "f92aa8a477ee646de25904fca6083f187e1347b5a0d710daf16b6b793fcf2085"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/world_packed.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/world_packed.mbt",
+        "sha256": "5851040a0bb5ed116e6cb9f05b3a427e4fa4b2b369db5ccf8c75d60ad9839858"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/world_staging.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/world_staging.mbt",
+        "sha256": "5ba06782e0c4841a0a4575f673450386a47494748dc26ac199fc5f4eec3ad59a"
+      },
+      "moonrobo/src/learning_aligned_gpu/runtime/world_staging_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/runtime/world_staging_wbtest.mbt",
+        "sha256": "debc6a37148e55f322bec4967ece4c1638d18889e07d7750ffd7bfc211a6a0a7"
+      },
+      "moonrobo/src/learning_aligned_gpu/smc_algebra.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/smc_algebra.mbt",
+        "sha256": "355169b332a39c44c1e1ce1f0b105a6bee3f57e647447c7a3172576271c2949c"
+      },
+      "moonrobo/src/learning_aligned_gpu/world_error_batched.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/world_error_batched.mbt",
+        "sha256": "77705f55a4ca32870bfad5eea65f00f63a349b93c5f72a72b5807182c985f17d"
+      },
+      "moonrobo/src/learning_aligned_gpu/world_error_batched_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/world_error_batched_wbtest.mbt",
+        "sha256": "b1ed542a682deccd2877b78d0d2bcbffeac75cd009d3bbbb9853b89b74f6b330"
+      },
+      "moonrobo/src/learning_aligned_gpu/world_norm_snapshot.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/world_norm_snapshot.mbt",
+        "sha256": "5080a6d33816a0d193faf2c4b8cbca69693ea8d233fe9a999606e3ba5664bfa3"
+      },
+      "moonrobo/src/learning_aligned_gpu/world_norm_snapshot_wbtest.mbt": {
+        "path": "moonrobo/src/learning_aligned_gpu/world_norm_snapshot_wbtest.mbt",
+        "sha256": "a6a1cc94fceb3a543b8309a90bf0f64bc4f6fdbb698ea389c9f83f638fa19810"
+      },
+      "moonrobo/src/learning_artifacts/archive.mbt": {
+        "path": "moonrobo/src/learning_artifacts/archive.mbt",
+        "sha256": "1ce259199b542503c6a864e911557fc93e45f6f3d869c1b2072e17a513c4cb3a"
+      },
+      "moonrobo/src/learning_artifacts/artifacts_test.mbt": {
+        "path": "moonrobo/src/learning_artifacts/artifacts_test.mbt",
+        "sha256": "1bf3225487f53b15482401e3aa0f4cb75680c5c724e4705eef3a28a52f346e5d"
+      },
+      "moonrobo/src/learning_artifacts/batch.mbt": {
+        "path": "moonrobo/src/learning_artifacts/batch.mbt",
+        "sha256": "23bdae9bb2f550c0141facd296b4f37dfde359bdd2e734060559a82e38445a82"
+      },
+      "moonrobo/src/learning_artifacts/checkpoint.mbt": {
+        "path": "moonrobo/src/learning_artifacts/checkpoint.mbt",
+        "sha256": "3962f014a19030851c70e900e27a381aff55dae78dbb95cc0019baa2324dca3d"
+      },
+      "moonrobo/src/learning_artifacts/comparison.mbt": {
+        "path": "moonrobo/src/learning_artifacts/comparison.mbt",
+        "sha256": "c8b1337cf9268864b55e25756f359e23e6ba1c88651d73d33ca9548698eb3531"
+      },
+      "moonrobo/src/learning_artifacts/compression_native.mbt": {
+        "path": "moonrobo/src/learning_artifacts/compression_native.mbt",
+        "sha256": "b5ad013b8785a5e4e0e6a94c471726179333139313a978eadf87606ede3ccd5c"
+      },
+      "moonrobo/src/learning_artifacts/compression_portable.mbt": {
+        "path": "moonrobo/src/learning_artifacts/compression_portable.mbt",
+        "sha256": "b4d011080638d7204cf4b3b656a32780a1f306b5f0f972e2ab7670deb8c0176c"
+      },
+      "moonrobo/src/learning_artifacts/json_io.mbt": {
+        "path": "moonrobo/src/learning_artifacts/json_io.mbt",
+        "sha256": "dcf62d17ae7540fb6646164a5dce02897820051ee8ee85129e691c807276a5b5"
+      },
+      "moonrobo/src/learning_artifacts/numpy.mbt": {
+        "path": "moonrobo/src/learning_artifacts/numpy.mbt",
+        "sha256": "ea2f01c0d844e98a0478b7f2012f07d11af26343c37025911112e2f581ecc9e5"
+      },
+      "moonrobo/src/learning_artifacts/torch_pickle.mbt": {
+        "path": "moonrobo/src/learning_artifacts/torch_pickle.mbt",
+        "sha256": "c53136352cb7833f9d66ea1a4fd6b76f939acc31a57ba5622e5888140a409b7d"
+      },
+      "moonrobo/src/learning_artifacts/torch_pickle_test.mbt": {
+        "path": "moonrobo/src/learning_artifacts/torch_pickle_test.mbt",
+        "sha256": "99bce63e999e74c4211b299675ca8bec5e9f4f4f0269c04d44e91d6a0b1cae9f"
+      },
+      "moonrobo/src/learning_tensor/adam.mbt": {
+        "path": "moonrobo/src/learning_tensor/adam.mbt",
+        "sha256": "3dac3677da1a4890eb8b4dbc0b23ecac0ac31878aa3a817e63af23964e6e4020"
+      },
+      "moonrobo/src/learning_tensor/adam_checked_norm.inc": {
+        "path": "moonrobo/src/learning_tensor/adam_checked_norm.inc",
+        "sha256": "b2756d37b007e3f0c99fceecab3ebd06fbaa695939bb0aec7488b49ceb455f27"
+      },
+      "moonrobo/src/learning_tensor/adam_checked_norm.mbt": {
+        "path": "moonrobo/src/learning_tensor/adam_checked_norm.mbt",
+        "sha256": "515a4d3546af1c289d355e51564d2530a60597d5445cecf6dd0ac8763eddb4d1"
+      },
+      "moonrobo/src/learning_tensor/adam_checked_norm_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/adam_checked_norm_loader.inc",
+        "sha256": "276e1d23d78556a95fd7a38621e189773c9385eb1feba1cad08a8b7a83551edf"
+      },
+      "moonrobo/src/learning_tensor/adam_checked_norm_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/adam_checked_norm_test.mbt",
+        "sha256": "4ef6a5edabb9b412684a94127b01d680c130ece610d7fda3324ab4a444bba90c"
+      },
+      "moonrobo/src/learning_tensor/adam_smc.inc": {
+        "path": "moonrobo/src/learning_tensor/adam_smc.inc",
+        "sha256": "b83a88b61b102261c1389844a24638ea62850d6c38fc66144d33a5eb49c64621"
+      },
+      "moonrobo/src/learning_tensor/adam_smc.mbt": {
+        "path": "moonrobo/src/learning_tensor/adam_smc.mbt",
+        "sha256": "0a1cbf05a10ad811c5099e59444b68de3fa17de09fa02f5839b48003abac2362"
+      },
+      "moonrobo/src/learning_tensor/adam_smc_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/adam_smc_loader.inc",
+        "sha256": "4a3af58e589310dca677b349b6869d2351757cc14bae85456f72fe838fb83fff"
+      },
+      "moonrobo/src/learning_tensor/adapter.cpp": {
+        "path": "moonrobo/src/learning_tensor/adapter.cpp",
+        "sha256": "0538ee437ba5642792a57bae0b874d98d4c7d4c0aa89ad41751a8dc89fa1bebf"
+      },
+      "moonrobo/src/learning_tensor/batched.mbt": {
+        "path": "moonrobo/src/learning_tensor/batched.mbt",
+        "sha256": "7eaa3afad8ecfe43364adb4cad810c4f82be492f25a925065bb1b038a8ee6f12"
+      },
+      "moonrobo/src/learning_tensor/collective.inc": {
+        "path": "moonrobo/src/learning_tensor/collective.inc",
+        "sha256": "d5c356cc250b3b2092f3c9cfdb307783352f08051c70f6eb36867a6447e85ddd"
+      },
+      "moonrobo/src/learning_tensor/collective.mbt": {
+        "path": "moonrobo/src/learning_tensor/collective.mbt",
+        "sha256": "197455d2faa174af04270f7e0df561f91da236bf3460caaa86a3795a692382b7"
+      },
+      "moonrobo/src/learning_tensor/collective_bucket_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/collective_bucket_loader.inc",
+        "sha256": "82892d6711c2961c4c89b2fd924c0ab4ac0e8775ded49d0e9493a1e600ad4e3a"
+      },
+      "moonrobo/src/learning_tensor/compact_heading.inc": {
+        "path": "moonrobo/src/learning_tensor/compact_heading.inc",
+        "sha256": "72f2582b4f3dc9381293bb0464ac5444ee6af99d0f65f79133e3b08cb43b5e33"
+      },
+      "moonrobo/src/learning_tensor/compact_heading.mbt": {
+        "path": "moonrobo/src/learning_tensor/compact_heading.mbt",
+        "sha256": "4609d27b899964bfc547158f46e2a9891912567152c1838067c2f786b94861b2"
+      },
+      "moonrobo/src/learning_tensor/compact_heading_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/compact_heading_loader.inc",
+        "sha256": "7cfb649aaa2aaefdd0ea3129ce3cb83795752927f870df363c0551c21ea82b60"
+      },
+      "moonrobo/src/learning_tensor/compact_rotation.inc": {
+        "path": "moonrobo/src/learning_tensor/compact_rotation.inc",
+        "sha256": "99f821dd6f4037af86a974aa40026cf18844383b0025c535b347630a6beb5d21"
+      },
+      "moonrobo/src/learning_tensor/compact_rotation.mbt": {
+        "path": "moonrobo/src/learning_tensor/compact_rotation.mbt",
+        "sha256": "a8ddc92e4866dc3fa7a55f17256fbc6bf1ff409c81e2361acae351f16c5ff1ea"
+      },
+      "moonrobo/src/learning_tensor/compact_rotation_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/compact_rotation_loader.inc",
+        "sha256": "41b64709f9b07e14febd04038d66a0b3a996321435257cf7192ec414f9ef45eb"
+      },
+      "moonrobo/src/learning_tensor/compiled_block.inc": {
+        "path": "moonrobo/src/learning_tensor/compiled_block.inc",
+        "sha256": "20d8621812467c76a1f9d117228b51f766e77d636349dfcde84006a702014e24"
+      },
+      "moonrobo/src/learning_tensor/compiled_block.mbt": {
+        "path": "moonrobo/src/learning_tensor/compiled_block.mbt",
+        "sha256": "c4ee63dd0c2e1eb1023be53db3aff332fed1b60c0c889be6be178ac03a5c5e31"
+      },
+      "moonrobo/src/learning_tensor/compiled_block_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/compiled_block_loader.inc",
+        "sha256": "5ae40586cacb7c4c0b49fadee9d18714cb83085d181e3caf7492a8eb4d3a2c29"
+      },
+      "moonrobo/src/learning_tensor/compiled_block_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/compiled_block_test.mbt",
+        "sha256": "258900d6489141e802220e20af129f31f7c776baea4d75ba8084140021d086c4"
+      },
+      "moonrobo/src/learning_tensor/cross_preserve_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/cross_preserve_test.mbt",
+        "sha256": "71e7f27e393b2aa310865e594770979652b4c34d295b5d25000adff167f9a8f1"
+      },
+      "moonrobo/src/learning_tensor/fk_submitted.inc": {
+        "path": "moonrobo/src/learning_tensor/fk_submitted.inc",
+        "sha256": "60bbdfddfc013a39fda2feb1ebd3876e4db664684f88c9bff7a303434234d7da"
+      },
+      "moonrobo/src/learning_tensor/fk_submitted.mbt": {
+        "path": "moonrobo/src/learning_tensor/fk_submitted.mbt",
+        "sha256": "162bd67e7144f6eae240e3af8cae381bed24ba33593a686c5a5f010fd365b311"
+      },
+      "moonrobo/src/learning_tensor/fk_submitted_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/fk_submitted_loader.inc",
+        "sha256": "4a0cd57eb91189cd37313cc6dc49eb413e2a68892b98b0858ac904faf2fab70b"
+      },
+      "moonrobo/src/learning_tensor/fused_rotation.inc": {
+        "path": "moonrobo/src/learning_tensor/fused_rotation.inc",
+        "sha256": "307f9892c2d904b45c8711fd67d0c1c3f44fc97f189374c6c6b790c4902db08a"
+      },
+      "moonrobo/src/learning_tensor/fused_rotation.mbt": {
+        "path": "moonrobo/src/learning_tensor/fused_rotation.mbt",
+        "sha256": "52d8b41598ef5d47147d1a4d58c5fe6268fc670001b6f7f43f0e3bad9076930d"
+      },
+      "moonrobo/src/learning_tensor/fused_rotation_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/fused_rotation_loader.inc",
+        "sha256": "5b409dbbbe87cff620d61202bfd09239bf28c2886a6b70b4448f1a49f3afb9bc"
+      },
+      "moonrobo/src/learning_tensor/geometry_tail.inc": {
+        "path": "moonrobo/src/learning_tensor/geometry_tail.inc",
+        "sha256": "d2aa37b1e055002e5b3bf11dfed934ca7e94a0d1ed7e02b8ca2176981d679927"
+      },
+      "moonrobo/src/learning_tensor/geometry_tail.mbt": {
+        "path": "moonrobo/src/learning_tensor/geometry_tail.mbt",
+        "sha256": "883d6adc0a27b23dda282bfe8d7a294b02e02b88c678da93656a3617c4b55587"
+      },
+      "moonrobo/src/learning_tensor/geometry_tail_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/geometry_tail_loader.inc",
+        "sha256": "3c200d64239402ccaebdb2a5df61ce6bee85eeac36524ed2a700548ec773e925"
+      },
+      "moonrobo/src/learning_tensor/geometry_vjp.inc": {
+        "path": "moonrobo/src/learning_tensor/geometry_vjp.inc",
+        "sha256": "6bf1f27a17bc4d9d3c6e2d2c1f0e71e2bc8d45b82bc4e413970726bd80f90e64"
+      },
+      "moonrobo/src/learning_tensor/geometry_vjp.mbt": {
+        "path": "moonrobo/src/learning_tensor/geometry_vjp.mbt",
+        "sha256": "512b95fa79ef98a81ffeb3d1cf5d3d089064ad85d1c746dcb042aa4e2598c82b"
+      },
+      "moonrobo/src/learning_tensor/geometry_vjp_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/geometry_vjp_loader.inc",
+        "sha256": "0280714de44d5f711763648ceb60386e59cb92f4ea812f853d07b995fa2736fc"
+      },
+      "moonrobo/src/learning_tensor/graph.inc": {
+        "path": "moonrobo/src/learning_tensor/graph.inc",
+        "sha256": "5e95874b99233b4c76a5ccc4cff0a3b1f1b94a2ec4f044ae3cb15d21399ae73d"
+      },
+      "moonrobo/src/learning_tensor/graph.mbt": {
+        "path": "moonrobo/src/learning_tensor/graph.mbt",
+        "sha256": "9319f9fadf69184e281785d5c89bb12a846380d2bedc11679a8de9442a10e7e4"
+      },
+      "moonrobo/src/learning_tensor/graph_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/graph_loader.inc",
+        "sha256": "71900f9cfa1526b5f48a135404f999c4d92bbe16c77f618671263092b951147e"
+      },
+      "moonrobo/src/learning_tensor/graph_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/graph_test.mbt",
+        "sha256": "c0dfab58d66b5a4115633ec030fcd5fef1e239081ed1c1dc520de57e35a5d5c7"
+      },
+      "moonrobo/src/learning_tensor/layer_norm.inc": {
+        "path": "moonrobo/src/learning_tensor/layer_norm.inc",
+        "sha256": "6af5bf2596391fa0bf67568c9b9c34a5794634056d5691b8418d232305e514dc"
+      },
+      "moonrobo/src/learning_tensor/layer_norm.mbt": {
+        "path": "moonrobo/src/learning_tensor/layer_norm.mbt",
+        "sha256": "07017927091d7093a6d4a12c748641c9e599d9bd20d735ce8f07870f9ead26ec"
+      },
+      "moonrobo/src/learning_tensor/layer_norm_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/layer_norm_loader.inc",
+        "sha256": "22b6744448e9df0beb3811c231137f02846fc24b7a23cdf56cb27f6e74f0d7cf"
+      },
+      "moonrobo/src/learning_tensor/layer_norm_submitted_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/layer_norm_submitted_test.mbt",
+        "sha256": "6db565317b031090af7e4b61f6d7f9974a49ad0f76b6f82f7ce742d7d4d1501a"
+      },
+      "moonrobo/src/learning_tensor/layer_norm_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/layer_norm_test.mbt",
+        "sha256": "f2736d64573682c8abe449167a2707b6be25f02c235944a18a4d45352a5901d3"
+      },
+      "moonrobo/src/learning_tensor/linear_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/linear_test.mbt",
+        "sha256": "d3239507c363f51ee3720123e4cead09c35270051cd34ca6f967e32f244d0070"
+      },
+      "moonrobo/src/learning_tensor/ln_silu_tail.inc": {
+        "path": "moonrobo/src/learning_tensor/ln_silu_tail.inc",
+        "sha256": "b14abd30088849ab8b81217705d7b2f8daac1d3a34cd71d8aea82eeae887b5a6"
+      },
+      "moonrobo/src/learning_tensor/ln_silu_tail_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/ln_silu_tail_test.mbt",
+        "sha256": "35eef33a54161752326df36ae1adec8b693bd7aeec14320ff862436c835deeee"
+      },
+      "moonrobo/src/learning_tensor/loader.c": {
+        "path": "moonrobo/src/learning_tensor/loader.c",
+        "sha256": "b3e2771bd4a875217c233875b4d00dc77d7fc49dab84d5d111200436439deaea"
+      },
+      "moonrobo/src/learning_tensor/native_cross.inc": {
+        "path": "moonrobo/src/learning_tensor/native_cross.inc",
+        "sha256": "95f9e70b46fb564004b2555b001cafb211e2e4128ffa940cae0ea2ca132bbe9c"
+      },
+      "moonrobo/src/learning_tensor/native_cross.mbt": {
+        "path": "moonrobo/src/learning_tensor/native_cross.mbt",
+        "sha256": "03a590a5c60aa81641c16dab5ba824045cb15698b0f215e49bac23d61efa413d"
+      },
+      "moonrobo/src/learning_tensor/native_cross_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/native_cross_loader.inc",
+        "sha256": "7396b886bc1cc8f3a4f2a5e928e8ef7b7f29f09a221268ff5339654e78cf012d"
+      },
+      "moonrobo/src/learning_tensor/native_cross_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/native_cross_test.mbt",
+        "sha256": "60fc7e2e7117eec5afd51be5219ca53bedf4987f19109580227091ae9cd9cafa"
+      },
+      "moonrobo/src/learning_tensor/operator_diagnostics.inc": {
+        "path": "moonrobo/src/learning_tensor/operator_diagnostics.inc",
+        "sha256": "ce2617e24f29744c9b16951e14486ebb80ea5a759ee531a0560e3f9c641d74ee"
+      },
+      "moonrobo/src/learning_tensor/operator_diagnostics.mbt": {
+        "path": "moonrobo/src/learning_tensor/operator_diagnostics.mbt",
+        "sha256": "6cf1a0fca30fe34899a9ea5519da874396e62e014b6d91479b20243ae5132cd0"
+      },
+      "moonrobo/src/learning_tensor/operator_diagnostics_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/operator_diagnostics_loader.inc",
+        "sha256": "dfac2d44921503f4cb7c8fb269021072f13affd6c8895b829c187f1a46c9388f"
+      },
+      "moonrobo/src/learning_tensor/operator_diagnostics_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/operator_diagnostics_test.mbt",
+        "sha256": "bab095cad5c2e17061ee04c2fdf740c078d72bc79576633a48c71666ece866e9"
+      },
+      "moonrobo/src/learning_tensor/precision.inc": {
+        "path": "moonrobo/src/learning_tensor/precision.inc",
+        "sha256": "978900f121d6bba3b5d9e3bc6b9bf002fdb6ac4cf70ab1f33ea4b7dcff93c053"
+      },
+      "moonrobo/src/learning_tensor/precision.mbt": {
+        "path": "moonrobo/src/learning_tensor/precision.mbt",
+        "sha256": "5abf09c881b0e5e0c87ff724bc9fa7c21526faddefe998f6996937e2ec97d22e"
+      },
+      "moonrobo/src/learning_tensor/precision_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/precision_loader.inc",
+        "sha256": "cbbf66a040723ac0e48eadfec43ef66dc556c6df0268799fb57fc67887cc74c0"
+      },
+      "moonrobo/src/learning_tensor/precision_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/precision_test.mbt",
+        "sha256": "cb0e154595764fe7da27d37ab330f2659ffd509b431efabc6e7a1ef8ba54b455"
+      },
+      "moonrobo/src/learning_tensor/profiling.inc": {
+        "path": "moonrobo/src/learning_tensor/profiling.inc",
+        "sha256": "d8c087a15468e8547e65661971996b91937ff2b5efb5599e62930a26541abc48"
+      },
+      "moonrobo/src/learning_tensor/profiling.mbt": {
+        "path": "moonrobo/src/learning_tensor/profiling.mbt",
+        "sha256": "43dbde1b4bc9e7522e02388719e3215285259ad15f708b3cd0e71c2fb86dad83"
+      },
+      "moonrobo/src/learning_tensor/profiling_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/profiling_loader.inc",
+        "sha256": "1c1075d390a1405c64897c4f815ae511ff00785e368a1478c4eeb177a02574ff"
+      },
+      "moonrobo/src/learning_tensor/profiling_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/profiling_test.mbt",
+        "sha256": "0cae9c935909094f4afd48d400c2543b96a9d40e7ff72b8a8bf9cbe7fb70e233"
+      },
+      "moonrobo/src/learning_tensor/smc_algebra.inc": {
+        "path": "moonrobo/src/learning_tensor/smc_algebra.inc",
+        "sha256": "5501832a4b359ddbe59262c1b5416109302a7ff9c70c741a7beb947067d88777"
+      },
+      "moonrobo/src/learning_tensor/smc_algebra.mbt": {
+        "path": "moonrobo/src/learning_tensor/smc_algebra.mbt",
+        "sha256": "ccdeb059b89d581a39857ee5507472d6d24d97ff7d5c590f4b9c0466b77d751d"
+      },
+      "moonrobo/src/learning_tensor/smc_algebra_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/smc_algebra_loader.inc",
+        "sha256": "4c9e3b0b2ec18251a90b9674dd3ba40029f4b9fa090badfd990ce5953a4bd7bc"
+      },
+      "moonrobo/src/learning_tensor/smc_algebra_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/smc_algebra_test.mbt",
+        "sha256": "11146851b977f8356caaef69f27cd811eb3152e288e496a1c0ee0bf075d51821"
+      },
+      "moonrobo/src/learning_tensor/split_sections.inc": {
+        "path": "moonrobo/src/learning_tensor/split_sections.inc",
+        "sha256": "c7a48b048f0bfb53e86bb970ab4cdd01011d4e1d888678a25c0c724dfccc42b4"
+      },
+      "moonrobo/src/learning_tensor/split_sections.mbt": {
+        "path": "moonrobo/src/learning_tensor/split_sections.mbt",
+        "sha256": "d67f7a93717e10b631baeca2c550864f4d1fff5b7cbaf605422078a588a81674"
+      },
+      "moonrobo/src/learning_tensor/split_sections_loader.inc": {
+        "path": "moonrobo/src/learning_tensor/split_sections_loader.inc",
+        "sha256": "e7e1752b6847da98dd4c53df0a88b010665384fe25a2a70ca885bd53a18420d4"
+      },
+      "moonrobo/src/learning_tensor/split_sections_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/split_sections_test.mbt",
+        "sha256": "1ad3cde578da001020cf1ec8e9db00094d984260e71e94783732b1fd7a0d0eca"
+      },
+      "moonrobo/src/learning_tensor/telemetry.inc": {
+        "path": "moonrobo/src/learning_tensor/telemetry.inc",
+        "sha256": "dcf3c12c745af802565acc20e51de05fc2fac6d5d487f5b7b58d80fb85e37391"
+      },
+      "moonrobo/src/learning_tensor/telemetry.mbt": {
+        "path": "moonrobo/src/learning_tensor/telemetry.mbt",
+        "sha256": "2773dd0bdcc6a73fd62030626df7a95b94ea86d0facfd7c62714e21e371aaed4"
+      },
+      "moonrobo/src/learning_tensor/telemetry_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/telemetry_test.mbt",
+        "sha256": "1c2d42c12a32a7e2216f58fce52a412de58efb1807e8327fa379c0866221375f"
+      },
+      "moonrobo/src/learning_tensor/tensor.mbt": {
+        "path": "moonrobo/src/learning_tensor/tensor.mbt",
+        "sha256": "0d43e45919470b57c7292d012e42e610bfab425edb51247840b702ae3c82dc9b"
+      },
+      "moonrobo/src/learning_tensor/tensor_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/tensor_test.mbt",
+        "sha256": "1bd12f2d3a47e019ad24a403dcde648e8c9fa2487c5fd688976b773f18c20e79"
+      },
+      "moonrobo/src/learning_tensor/tf32.inc": {
+        "path": "moonrobo/src/learning_tensor/tf32.inc",
+        "sha256": "71479890bf3d30b213bb4a13efd387b70c12ac10336ae3dcf1d8a346f485245a"
+      },
+      "moonrobo/src/learning_tensor/tf32.mbt": {
+        "path": "moonrobo/src/learning_tensor/tf32.mbt",
+        "sha256": "d66e9f1a9bedd46bf2083b2925b9dfbef9f5c5b42e85b3a044445ea8334592f3"
+      },
+      "moonrobo/src/learning_tensor/tf32_test.mbt": {
+        "path": "moonrobo/src/learning_tensor/tf32_test.mbt",
+        "sha256": "71dfd38c1922e55eb60debef8e885f770147be10b15675566522e796ec12c981"
+      },
+      "moonrobo/src/learning_tensor/tf32_wbtest.mbt": {
+        "path": "moonrobo/src/learning_tensor/tf32_wbtest.mbt",
+        "sha256": "f9f7ad9fab5e67321605b9ff91c668a0df33fc56f2d75656200b755418a15b15"
+      }
+    },
+    "case_id": "learning.world8",
+    "config": {
+      "original_method": "SmcLearningDifferentialTests.test_network_outputs_and_world_model_8step_adam_match"
+    },
+    "device": "cpu",
+    "dtype": "float32",
+    "expected": {
+      "path": "expected.npz",
+      "sha256": "fb95aec9de79d93fb2e7c88d999a658aa4fa4b51015d3d48983c94944aa23ba2"
+    },
+    "expected_keys": [
+      "grad.clipped.wm.net.0.bias",
+      "grad.clipped.wm.net.0.weight",
+      "grad.clipped.wm.net.1.bias",
+      "grad.clipped.wm.net.1.weight",
+      "grad.clipped.wm.net.3.bias",
+      "grad.clipped.wm.net.3.weight",
+      "grad.clipped.wm.net.4.bias",
+      "grad.clipped.wm.net.4.weight",
+      "grad.clipped.wm.net.6.bias",
+      "grad.clipped.wm.net.6.weight",
+      "grad.clipped.wm.net.7.bias",
+      "grad.clipped.wm.net.7.weight",
+      "grad.clipped.wm.net.9.bias",
+      "grad.clipped.wm.net.9.weight",
+      "grad.raw.wm.net.0.bias",
+      "grad.raw.wm.net.0.weight",
+      "grad.raw.wm.net.1.bias",
+      "grad.raw.wm.net.1.weight",
+      "grad.raw.wm.net.3.bias",
+      "grad.raw.wm.net.3.weight",
+      "grad.raw.wm.net.4.bias",
+      "grad.raw.wm.net.4.weight",
+      "grad.raw.wm.net.6.bias",
+      "grad.raw.wm.net.6.weight",
+      "grad.raw.wm.net.7.bias",
+      "grad.raw.wm.net.7.weight",
+      "grad.raw.wm.net.9.bias",
+      "grad.raw.wm.net.9.weight",
+      "metrics.wm_err8",
+      "metrics.wm_loss",
+      "network.critic",
+      "network.policy",
+      "network.world.R",
+      "network.world.p",
+      "network.world.q",
+      "network.world.qd",
+      "network.world.v",
+      "network.world.w",
+      "optimizer_after.wm.net.0.bias.exp_avg",
+      "optimizer_after.wm.net.0.bias.exp_avg_sq",
+      "optimizer_after.wm.net.0.bias.step",
+      "optimizer_after.wm.net.0.weight.exp_avg",
+      "optimizer_after.wm.net.0.weight.exp_avg_sq",
+      "optimizer_after.wm.net.0.weight.step",
+      "optimizer_after.wm.net.1.bias.exp_avg",
+      "optimizer_after.wm.net.1.bias.exp_avg_sq",
+      "optimizer_after.wm.net.1.bias.step",
+      "optimizer_after.wm.net.1.weight.exp_avg",
+      "optimizer_after.wm.net.1.weight.exp_avg_sq",
+      "optimizer_after.wm.net.1.weight.step",
+      "optimizer_after.wm.net.3.bias.exp_avg",
+      "optimizer_after.wm.net.3.bias.exp_avg_sq",
+      "optimizer_after.wm.net.3.bias.step",
+      "optimizer_after.wm.net.3.weight.exp_avg",
+      "optimizer_after.wm.net.3.weight.exp_avg_sq",
+      "optimizer_after.wm.net.3.weight.step",
+      "optimizer_after.wm.net.4.bias.exp_avg",
+      "optimizer_after.wm.net.4.bias.exp_avg_sq",
+      "optimizer_after.wm.net.4.bias.step",
+      "optimizer_after.wm.net.4.weight.exp_avg",
+      "optimizer_after.wm.net.4.weight.exp_avg_sq",
+      "optimizer_after.wm.net.4.weight.step",
+      "optimizer_after.wm.net.6.bias.exp_avg",
+      "optimizer_after.wm.net.6.bias.exp_avg_sq",
+      "optimizer_after.wm.net.6.bias.step",
+      "optimizer_after.wm.net.6.weight.exp_avg",
+      "optimizer_after.wm.net.6.weight.exp_avg_sq",
+      "optimizer_after.wm.net.6.weight.step",
+      "optimizer_after.wm.net.7.bias.exp_avg",
+      "optimizer_after.wm.net.7.bias.exp_avg_sq",
+      "optimizer_after.wm.net.7.bias.step",
+      "optimizer_after.wm.net.7.weight.exp_avg",
+      "optimizer_after.wm.net.7.weight.exp_avg_sq",
+      "optimizer_after.wm.net.7.weight.step",
+      "optimizer_after.wm.net.9.bias.exp_avg",
+      "optimizer_after.wm.net.9.bias.exp_avg_sq",
+      "optimizer_after.wm.net.9.bias.step",
+      "optimizer_after.wm.net.9.weight.exp_avg",
+      "optimizer_after.wm.net.9.weight.exp_avg_sq",
+      "optimizer_after.wm.net.9.weight.step",
+      "rng.after",
+      "weights_after.wm.in_norm.count",
+      "weights_after.wm.in_norm.mean",
+      "weights_after.wm.in_norm.var",
+      "weights_after.wm.net.0.bias",
+      "weights_after.wm.net.0.weight",
+      "weights_after.wm.net.1.bias",
+      "weights_after.wm.net.1.weight",
+      "weights_after.wm.net.3.bias",
+      "weights_after.wm.net.3.weight",
+      "weights_after.wm.net.4.bias",
+      "weights_after.wm.net.4.weight",
+      "weights_after.wm.net.6.bias",
+      "weights_after.wm.net.6.weight",
+      "weights_after.wm.net.7.bias",
+      "weights_after.wm.net.7.weight",
+      "weights_after.wm.net.9.bias",
+      "weights_after.wm.net.9.weight",
+      "weights_after.wm.out_norm.count",
+      "weights_after.wm.out_norm.mean",
+      "weights_after.wm.out_norm.var"
+    ],
+    "format": "moonrobo.smc-differential.fixture.v1",
+    "input": {
+      "path": "input.npz",
+      "sha256": "76cb7dee5a19d8057c6d0a7d01ef8af1648bd3f73adc5baaa59a0a32323c8013"
+    },
+    "input_keys": [
+      "config.critic_epochs",
+      "config.critic_minibatches",
+      "config.gamma",
+      "config.goal_frames",
+      "config.hist",
+      "config.horizon",
+      "config.lam",
+      "config.lr",
+      "config.no_critic",
+      "config.observation_noise",
+      "config.pi_batch",
+      "config.wm_batch",
+      "config.wm_window",
+      "inputs.action",
+      "inputs.critic_features",
+      "inputs.error_floor",
+      "inputs.goal",
+      "inputs.observation_history",
+      "inputs.state",
+      "inputs.windows.a",
+      "inputs.windows.mask",
+      "inputs.windows.s",
+      "inputs.windows.s1",
+      "inputs.windows.xi",
+      "inputs.xi_normalized",
+      "optimizer_before.critic.net.0.bias.exp_avg",
+      "optimizer_before.critic.net.0.bias.exp_avg_sq",
+      "optimizer_before.critic.net.0.bias.step",
+      "optimizer_before.critic.net.0.weight.exp_avg",
+      "optimizer_before.critic.net.0.weight.exp_avg_sq",
+      "optimizer_before.critic.net.0.weight.step",
+      "optimizer_before.critic.net.2.bias.exp_avg",
+      "optimizer_before.critic.net.2.bias.exp_avg_sq",
+      "optimizer_before.critic.net.2.bias.step",
+      "optimizer_before.critic.net.2.weight.exp_avg",
+      "optimizer_before.critic.net.2.weight.exp_avg_sq",
+      "optimizer_before.critic.net.2.weight.step",
+      "optimizer_before.critic.net.4.bias.exp_avg",
+      "optimizer_before.critic.net.4.bias.exp_avg_sq",
+      "optimizer_before.critic.net.4.bias.step",
+      "optimizer_before.critic.net.4.weight.exp_avg",
+      "optimizer_before.critic.net.4.weight.exp_avg_sq",
+      "optimizer_before.critic.net.4.weight.step",
+      "optimizer_before.pi.dec.0.bias.exp_avg",
+      "optimizer_before.pi.dec.0.bias.exp_avg_sq",
+      "optimizer_before.pi.dec.0.bias.step",
+      "optimizer_before.pi.dec.0.weight.exp_avg",
+      "optimizer_before.pi.dec.0.weight.exp_avg_sq",
+      "optimizer_before.pi.dec.0.weight.step",
+      "optimizer_before.pi.dec.2.bias.exp_avg",
+      "optimizer_before.pi.dec.2.bias.exp_avg_sq",
+      "optimizer_before.pi.dec.2.bias.step",
+      "optimizer_before.pi.dec.2.weight.exp_avg",
+      "optimizer_before.pi.dec.2.weight.exp_avg_sq",
+      "optimizer_before.pi.dec.2.weight.step",
+      "optimizer_before.pi.dec.4.bias.exp_avg",
+      "optimizer_before.pi.dec.4.bias.exp_avg_sq",
+      "optimizer_before.pi.dec.4.bias.step",
+      "optimizer_before.pi.dec.4.weight.exp_avg",
+      "optimizer_before.pi.dec.4.weight.exp_avg_sq",
+      "optimizer_before.pi.dec.4.weight.step",
+      "optimizer_before.pi.enc.0.bias.exp_avg",
+      "optimizer_before.pi.enc.0.bias.exp_avg_sq",
+      "optimizer_before.pi.enc.0.bias.step",
+      "optimizer_before.pi.enc.0.weight.exp_avg",
+      "optimizer_before.pi.enc.0.weight.exp_avg_sq",
+      "optimizer_before.pi.enc.0.weight.step",
+      "optimizer_before.pi.enc.2.bias.exp_avg",
+      "optimizer_before.pi.enc.2.bias.exp_avg_sq",
+      "optimizer_before.pi.enc.2.bias.step",
+      "optimizer_before.pi.enc.2.weight.exp_avg",
+      "optimizer_before.pi.enc.2.weight.exp_avg_sq",
+      "optimizer_before.pi.enc.2.weight.step",
+      "optimizer_before.pi.enc.4.bias.exp_avg",
+      "optimizer_before.pi.enc.4.bias.exp_avg_sq",
+      "optimizer_before.pi.enc.4.bias.step",
+      "optimizer_before.pi.enc.4.weight.exp_avg",
+      "optimizer_before.pi.enc.4.weight.exp_avg_sq",
+      "optimizer_before.pi.enc.4.weight.step",
+      "optimizer_before.wm.net.0.bias.exp_avg",
+      "optimizer_before.wm.net.0.bias.exp_avg_sq",
+      "optimizer_before.wm.net.0.bias.step",
+      "optimizer_before.wm.net.0.weight.exp_avg",
+      "optimizer_before.wm.net.0.weight.exp_avg_sq",
+      "optimizer_before.wm.net.0.weight.step",
+      "optimizer_before.wm.net.1.bias.exp_avg",
+      "optimizer_before.wm.net.1.bias.exp_avg_sq",
+      "optimizer_before.wm.net.1.bias.step",
+      "optimizer_before.wm.net.1.weight.exp_avg",
+      "optimizer_before.wm.net.1.weight.exp_avg_sq",
+      "optimizer_before.wm.net.1.weight.step",
+      "optimizer_before.wm.net.3.bias.exp_avg",
+      "optimizer_before.wm.net.3.bias.exp_avg_sq",
+      "optimizer_before.wm.net.3.bias.step",
+      "optimizer_before.wm.net.3.weight.exp_avg",
+      "optimizer_before.wm.net.3.weight.exp_avg_sq",
+      "optimizer_before.wm.net.3.weight.step",
+      "optimizer_before.wm.net.4.bias.exp_avg",
+      "optimizer_before.wm.net.4.bias.exp_avg_sq",
+      "optimizer_before.wm.net.4.bias.step",
+      "optimizer_before.wm.net.4.weight.exp_avg",
+      "optimizer_before.wm.net.4.weight.exp_avg_sq",
+      "optimizer_before.wm.net.4.weight.step",
+      "optimizer_before.wm.net.6.bias.exp_avg",
+      "optimizer_before.wm.net.6.bias.exp_avg_sq",
+      "optimizer_before.wm.net.6.bias.step",
+      "optimizer_before.wm.net.6.weight.exp_avg",
+      "optimizer_before.wm.net.6.weight.exp_avg_sq",
+      "optimizer_before.wm.net.6.weight.step",
+      "optimizer_before.wm.net.7.bias.exp_avg",
+      "optimizer_before.wm.net.7.bias.exp_avg_sq",
+      "optimizer_before.wm.net.7.bias.step",
+      "optimizer_before.wm.net.7.weight.exp_avg",
+      "optimizer_before.wm.net.7.weight.exp_avg_sq",
+      "optimizer_before.wm.net.7.weight.step",
+      "optimizer_before.wm.net.9.bias.exp_avg",
+      "optimizer_before.wm.net.9.bias.exp_avg_sq",
+      "optimizer_before.wm.net.9.bias.step",
+      "optimizer_before.wm.net.9.weight.exp_avg",
+      "optimizer_before.wm.net.9.weight.exp_avg_sq",
+      "optimizer_before.wm.net.9.weight.step",
+      "rng.before",
+      "rng.calls",
+      "weights.critic.net.0.bias",
+      "weights.critic.net.0.weight",
+      "weights.critic.net.2.bias",
+      "weights.critic.net.2.weight",
+      "weights.critic.net.4.bias",
+      "weights.critic.net.4.weight",
+      "weights.critic.norm.count",
+      "weights.critic.norm.mean",
+      "weights.critic.norm.var",
+      "weights.pi.dec.0.bias",
+      "weights.pi.dec.0.weight",
+      "weights.pi.dec.2.bias",
+      "weights.pi.dec.2.weight",
+      "weights.pi.dec.4.bias",
+      "weights.pi.dec.4.weight",
+      "weights.pi.enc.0.bias",
+      "weights.pi.enc.0.weight",
+      "weights.pi.enc.2.bias",
+      "weights.pi.enc.2.weight",
+      "weights.pi.enc.4.bias",
+      "weights.pi.enc.4.weight",
+      "weights.pi.goal_norm.count",
+      "weights.pi.goal_norm.mean",
+      "weights.pi.goal_norm.var",
+      "weights.pi.obs_norm.count",
+      "weights.pi.obs_norm.mean",
+      "weights.pi.obs_norm.var",
+      "weights.wm.in_norm.count",
+      "weights.wm.in_norm.mean",
+      "weights.wm.in_norm.var",
+      "weights.wm.net.0.bias",
+      "weights.wm.net.0.weight",
+      "weights.wm.net.1.bias",
+      "weights.wm.net.1.weight",
+      "weights.wm.net.3.bias",
+      "weights.wm.net.3.weight",
+      "weights.wm.net.4.bias",
+      "weights.wm.net.4.weight",
+      "weights.wm.net.6.bias",
+      "weights.wm.net.6.weight",
+      "weights.wm.net.7.bias",
+      "weights.wm.net.7.weight",
+      "weights.wm.net.9.bias",
+      "weights.wm.net.9.weight",
+      "weights.wm.out_norm.count",
+      "weights.wm.out_norm.mean",
+      "weights.wm.out_norm.var"
+    ],
+    "oracle_kind": "executed-upstream-python",
+    "original_test": {
+      "path": "moonrobo/providers/motion_learning/aligned/test_smc_learning_differential.py",
+      "sha256": "83ee4a9a81033e3ff71db0fcc959af5b2f70f7b777f136b2d9d556af1e42b3c5"
+    },
+    "producer": {
+      "path": "moonrobo/providers/motion_learning/aligned/test_smc_learning_differential.py",
+      "sha256": "83ee4a9a81033e3ff71db0fcc959af5b2f70f7b777f136b2d9d556af1e42b3c5"
+    },
+    "rng_after_sha256": "071223a8114cc0db37d29be136d7464af21533baff3674f1a940a19bb536ab68",
+    "rng_before_sha256": "071223a8114cc0db37d29be136d7464af21533baff3674f1a940a19bb536ab68",
+    "threads": 1,
+    "torch_version": "2.9.1",
+    "upstream_revision": "a1508d42c9d1699a52e8233ab16d08c488441ab9",
+    "upstream_sources": {
+      "moonrobo/providers/motion_learning/aligned/__init__.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/__init__.py",
+        "sha256": "09417f65a738b24937a7877710f7a87bbd68cded25cc2e853df0c35a676ef3d8"
+      },
+      "moonrobo/providers/motion_learning/aligned/assets.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/assets.py",
+        "sha256": "ab213d9630527d7f3ad98df91c1970fdfc18cd4654c7ec6893a5bc560e05ff67"
+      },
+      "moonrobo/providers/motion_learning/aligned/buffer.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/buffer.py",
+        "sha256": "279746c60265afdee9c8787854d94a4983b3b6fd40714581190c127f1c7b49d5"
+      },
+      "moonrobo/providers/motion_learning/aligned/distributed.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/distributed.py",
+        "sha256": "097a545b38fd3c3bcf7b5bd05d48da580b1b711c606b302dbdf93a00cc6cf586"
+      },
+      "moonrobo/providers/motion_learning/aligned/evaluation.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/evaluation.py",
+        "sha256": "50b4ec66c5b07d0f214f595db08cc3d42ef17b601ddffacf7ca760db545f9b1b"
+      },
+      "moonrobo/providers/motion_learning/aligned/export.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/export.py",
+        "sha256": "d23cda600a48ded730efbdee06398e8f2fe326f2288cabfe1afb18223a57baa2"
+      },
+      "moonrobo/providers/motion_learning/aligned/geometry_math.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/geometry_math.py",
+        "sha256": "1670070e62ca5b9a6f11b18ee9e91f922c36a2616aaa48c6cf4591dbef7c923a"
+      },
+      "moonrobo/providers/motion_learning/aligned/isaac_env.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/isaac_env.py",
+        "sha256": "029cca96ea3964aa390e0a0987b52beb2ed81f0b514d7492319405c52e1214d7"
+      },
+      "moonrobo/providers/motion_learning/aligned/kinematics.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/kinematics.py",
+        "sha256": "3a0fa79099a28bc8b66ee16d9eb3a69bf30cfa2b8592e164e0a27e1c787255af"
+      },
+      "moonrobo/providers/motion_learning/aligned/learning.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/learning.py",
+        "sha256": "c0f5e9443b8515edb9b49560a45e40197340bf5a8b0a32842c04347e69c044d4"
+      },
+      "moonrobo/providers/motion_learning/aligned/mdp.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/mdp.py",
+        "sha256": "9c3976d0f6019502516cb377e50154ee5453196d8cb91ed14fa22b433a7c1731"
+      },
+      "moonrobo/providers/motion_learning/aligned/memory_budget.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/memory_budget.py",
+        "sha256": "374b92c534f6fcf936c5222a8c7aee6c84619ae711f63e87eb41d703bc0e9619"
+      },
+      "moonrobo/providers/motion_learning/aligned/motion.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/motion.py",
+        "sha256": "8bababb2317618287212b78f0cbf172d542d69efe5171bef2d315989cf3514b5"
+      },
+      "moonrobo/providers/motion_learning/aligned/mujoco_env.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/mujoco_env.py",
+        "sha256": "8e065acfef5e033a2181837dea782bf9da49e3d8db47b321ef99468c74566768"
+      },
+      "moonrobo/providers/motion_learning/aligned/networks.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/networks.py",
+        "sha256": "59b1694894c64cada571d8f5799f435f2809c8f676905e81bb479ddfb038e251"
+      },
+      "moonrobo/providers/motion_learning/aligned/robot.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/robot.py",
+        "sha256": "c4ff27c3be9ca4c0f7c99bf9294eed35dbdb0a60da60b56e490218ae84a4fff0"
+      },
+      "moonrobo/providers/motion_learning/aligned/rotations.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/rotations.py",
+        "sha256": "c7df75b4c4193cafddfe7a06b5545224b85503a4971d3a231f810c9103299aa7"
+      },
+      "moonrobo/providers/motion_learning/aligned/sampling.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/sampling.py",
+        "sha256": "8e59de4924956c53f9ae61526cb9ccbd28f3df05263f26f4ccdf957c25a03fa6"
+      },
+      "moonrobo/providers/motion_learning/aligned/test_actor_readiness.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/test_actor_readiness.py",
+        "sha256": "dee23f839572bd605ce366e39936e5191196cc3d82310022a22e4287e4c79bad"
+      },
+      "moonrobo/providers/motion_learning/aligned/test_aligned_distributed.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/test_aligned_distributed.py",
+        "sha256": "637b1a7cb32a0fcaf61db7f6c2f5163eaf0dacd79e4fafbf5bd0facd982448ef"
+      },
+      "moonrobo/providers/motion_learning/aligned/test_aligned_evaluation.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/test_aligned_evaluation.py",
+        "sha256": "c359cc7037d7997f3858227065e2262301f93b182be8f8c10f86b041e8b4adc7"
+      },
+      "moonrobo/providers/motion_learning/aligned/test_aligned_isaac.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/test_aligned_isaac.py",
+        "sha256": "d4167d373bc6f2003f9deb9254a0f3a779e18ad90ed391e406dd59c00b08694b"
+      },
+      "moonrobo/providers/motion_learning/aligned/test_aligned_learning.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/test_aligned_learning.py",
+        "sha256": "f3f84560cda5a9e628671cb04eab84093f50ad3d7f9cc0f2edd7ffe0b8961e9d"
+      },
+      "moonrobo/providers/motion_learning/aligned/test_aligned_physics.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/test_aligned_physics.py",
+        "sha256": "73e2a3202fdc45b89cd8d5198bf9a6baf921d34bc4bc4510130eecc5ee1c2b32"
+      },
+      "moonrobo/providers/motion_learning/aligned/test_aligned_resume.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/test_aligned_resume.py",
+        "sha256": "c1675853a26fc11826c89ce6fd43a30fda2d105d57a93eea4ced363828532cfe"
+      },
+      "moonrobo/providers/motion_learning/aligned/test_smc_learning_differential.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/test_smc_learning_differential.py",
+        "sha256": "83ee4a9a81033e3ff71db0fcc959af5b2f70f7b777f136b2d9d556af1e42b3c5"
+      },
+      "moonrobo/providers/motion_learning/aligned/train.py": {
+        "path": "moonrobo/providers/motion_learning/aligned/train.py",
+        "sha256": "73abd635bd28c284e92c4f480c179dba11b72a58969876694a3aad2e7c48410d"
+      },
+      "smc/supermimic/mdp.py": {
+        "path": "smc/supermimic/mdp.py",
+        "sha256": "f19186f70e259ee37b2d8dd6b9beb1ae0c2fd875b67902bb5544779b9792d074"
+      },
+      "smc/supermimic/networks.py": {
+        "path": "smc/supermimic/networks.py",
+        "sha256": "72bdb2bf11f927663dec82ef00f75123dfe810cba9879fee455faac4042b1efe"
+      },
+      "smc/supermimic/rotations.py": {
+        "path": "smc/supermimic/rotations.py",
+        "sha256": "f0d75dd6d8398220aff7f2910e7ef4a559bf33368fa3324a6d405ee2304be8de"
+      },
+      "smc/supermimic/train.py": {
+        "path": "smc/supermimic/train.py",
+        "sha256": "6f364bb904fb173a6d76f6da2af4bbe0eeb7dd51dd8370d35c7f067b117218c6"
+      }
+    }
+  },
+  "reproduction": "moon run scripts/qualify_upstream_float32.mbtx PYTHON_ABSOLUTE TORCH_ROOT_ABSOLUTE FRESH_OUTPUT_ABSOLUTE",
+  "raw_evidence_location": "target/upstream-float32-qualification-release2",
+  "scope": "Two strict native production LibTorch learning cases and all 54 executed retained Python methods. No claim of a newly sealed full 27-case native data/MDP/Isaac suite, CUDA equivalence, simulator quality or real-robot qualification."
+}

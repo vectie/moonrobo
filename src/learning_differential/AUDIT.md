@@ -7,6 +7,13 @@ suite and native physics/data/protocol contracts now execute. See
 The original-upstream execution requirements in this audit remain distinct;
 historical statements about unrun native tests are not the current result.
 
+Subsequent November 19 execution also passed all 54 retained Python methods and
+the two strict native Float32 learning cases against actual upstream execution.
+See the [qualification profile](../../qualification/upstream_float32/README.md)
+for exact scope. The initial-migration evidence inventory below is historical;
+it does not negate those later results or claim a complete new 27-case native
+fixture suite.
+
 This audit covers **9 retained Python test files, 54 original test methods**. Exactly **27 methods** have named entries in `contracts.mbt`: 9 data, 5 MDP differential, 4 learning differential and 9 Isaac protocol cases. The other 27 methods are native unit, evaluation, resume and MuJoCo contract tests; they are not silently counted as additional differential case IDs. Several native test blocks combine original methods, so test-block counts and original-method counts are different measures.
 
 **No test, Python function, random fixture, training loop, simulator, SDK or differential oracle was executed for this migration. No passing original-upstream differential result is claimed.** Type checking, C/C++ syntax checking and source review are static evidence only.

@@ -2,11 +2,19 @@
 
 This package provides actual MoonBit candidate adapters, a separate optional
 ATen C++ mathematical oracle, immutable numerical fixture bundles, and strict
-capture verification. The original Python files remain unchanged. The native
+capture verification. The retained Python tests keep their original checks;
+three stale setup fixtures were repaired. The native
 conformance suite now builds, loads and executes the independent ATen oracle.
 It tests the production scalar learner in Float64, its declared precision.
 This is separate from upstream Float32 qualification; it does not establish
 bitwise agreement with an executed Python model or qualify GPU dynamics.
+
+The separate [Float32 learning qualification](../../qualification/upstream_float32/README.md)
+now executes all 54 retained Python methods and strictly compares the actual
+native LibTorch world/actor learner against two executed-upstream fixtures.
+The original small CPU profile matches Float32 gradients, weights and Adam
+state exactly. This does not extend the scalar Float64 adapter to Float32 or
+establish a new sealed 27-case native suite.
 
 [AUDIT.md](AUDIT.md) maps all 54 methods in the nine retained aligned test files;
 27 have named entries in `contracts.mbt`. The first five data unit methods and
@@ -228,8 +236,9 @@ compiler and Torch headers/libraries. CMake with TorchConfig is also supported.
 The normal MoonBit production module has no LibTorch/Python link dependency;
 the adapter is explicitly loaded at differential execution time.
 
-The canonical candidate uses Float64. Original Float32 fixtures currently fail
-the strict dtype gate, before any claim of bitwise tensor/optimizer equality.
+The scalar candidate uses Float64. Original Float32 fixtures fail
+its strict dtype gate; use the separate production LibTorch qualification
+driver for the two Float32 learning cases.
 That is a real unresolved numerical boundary, not permission to relabel dtype,
 round results or widen the original thresholds. Missing upstream-executed
 fixtures and unperformed real SDK/GPU runs remain external execution evidence;

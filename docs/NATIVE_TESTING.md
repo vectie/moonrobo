@@ -76,3 +76,11 @@ Neither a native conformance pass nor existing optional-device skips establish
 paper-level Float32 parity, GPU dynamics, learned-policy quality or real-robot
 commissioning. No qualification guard or numeric fixture threshold was weakened
 to obtain a green native run.
+
+For the separately executed Float32 learning comparison, use
+`scripts/qualify_upstream_float32.mbtx`. It freshly builds the production tensor
+plugin, executes the 54 retained Python methods without skips, and compares
+the two native world/actor cases against actual upstream Float32 execution.
+See [the recorded result](UPSTREAM_FLOAT32_QUALIFICATION_20261119.md) and
+[reproduction/scope](../qualification/upstream_float32/README.md). This route
+does not relabel the scalar Float64 candidate or replace its original gates.
