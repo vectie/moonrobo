@@ -1,0 +1,20 @@
+# Add userspace verbs support to the exact Isaac Lab image already built from
+# commit 46d6cc3. This never installs or re-resolves Python dependencies.
+# Override with a verified registry digest when the base is published; when
+# using the local tag, record and compare its image ID before this build.
+ARG ISAACLAB_BASE=moonrobo-isaaclab:46d6cc3-kitless
+FROM ${ISAACLAB_BASE}
+
+ARG ISAACLAB_BASE
+LABEL org.moonrobo.isaaclab.base="${ISAACLAB_BASE}"
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      libibverbs1 \
+      ibverbs-providers \
+      ibverbs-utils \
+ && dpkg-query -W libibverbs1 ibverbs-providers ibverbs-utils \
+      > /usr/local/share/moonrobo-rdma-packages.txt \
+ && rm -rf /var/lib/apt/lists/*
+
+USER isaaclab

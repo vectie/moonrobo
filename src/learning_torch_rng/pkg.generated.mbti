@@ -1,0 +1,22 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_torch_rng"
+
+// Values
+
+// Errors
+pub suberror RngError {
+  Invalid(String)
+}
+
+// Types and methods
+pub type Generator
+pub fn Generator::indices(Self, Int, Int) -> Array[Int] raise RngError
+pub fn Generator::normal(Self, Int) -> Array[Double] raise RngError
+pub fn Generator::open(String, Int64) -> Self raise RngError
+pub fn Generator::restore(Self, Bytes) -> Unit raise RngError
+pub fn Generator::state(Self) -> Bytes raise RngError
+pub fn Generator::version(Self) -> String
+
+// Type aliases
+
+// Traits

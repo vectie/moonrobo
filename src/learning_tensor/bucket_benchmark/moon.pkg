@@ -1,0 +1,18 @@
+import {
+  "vectie/moonrobo/src/learning_tensor" @tensor,
+  "vectie/moonrobo/src/learning_aligned_gpu" @gpu,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+}
+
+pkgtype(kind: "executable")
+
+options(
+  "native-stub": [ "benchmark_clock.c" ],
+  targets: { "main.mbt": [ "native" ], "main_wbtest.mbt": [ "native" ] },
+)

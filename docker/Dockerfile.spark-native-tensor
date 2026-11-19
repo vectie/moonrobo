@@ -1,0 +1,28 @@
+ARG BASE_IMAGE=moonrobo-isaaclab:46d6cc3-kitless-rdma
+FROM ${BASE_IMAGE} AS tensor-build
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends g++ && rm -rf /var/lib/apt/lists/*
+COPY adapter.cpp /build/adapter.cpp
+COPY collective.inc /build/collective.inc
+COPY telemetry.inc /build/telemetry.inc
+COPY tf32.inc /build/tf32.inc
+COPY layer_norm.inc /build/layer_norm.inc
+COPY profiling.inc /build/profiling.inc
+COPY graph.inc /build/graph.inc
+COPY precision.inc /build/precision.inc
+COPY adam_checked_norm.inc /build/adam_checked_norm.inc
+COPY cuda-include/ /build/cuda-include/
+ARG CUDA_GRAPH=0
+RUN mkdir -p /build/output && \
+    g++ -std=c++17 -O1 -shared -fPIC -D_GLIBCXX_USE_CXX11_ABI=1 -DMR_ENABLE_CUDA_GRAPH=${CUDA_GRAPH} -DMR_ENABLE_NVTX3=${CUDA_GRAPH} -I/build/cuda-include \
+      -I/opt/isaaclab-venv/lib/python3.12/site-packages/torch/include \
+      -I/opt/isaaclab-venv/lib/python3.12/site-packages/torch/include/torch/csrc/api/include \
+      /build/adapter.cpp -o /build/output/libmoonrobo_learning_tensor.so \
+      -L/opt/isaaclab-venv/lib/python3.12/site-packages/torch/lib \
+      -L/opt/isaaclab-venv/lib/python3.12/site-packages/nvidia/cu13/lib \
+      -Wl,-rpath,/opt/isaaclab-venv/lib/python3.12/site-packages/torch/lib \
+      -Wl,-rpath,/opt/isaaclab-venv/lib/python3.12/site-packages/nvidia/cu13/lib \
+      -Wl,--no-as-needed -ltorch -ltorch_cpu -lc10 -ltorch_cuda -lc10_cuda -l:libcudart.so.13 -ldl && \
+    sha256sum /build/adapter.cpp /build/collective.inc /build/telemetry.inc /build/tf32.inc /build/layer_norm.inc /build/profiling.inc /build/graph.inc /build/precision.inc /build/adam_checked_norm.inc /build/output/libmoonrobo_learning_tensor.so > /build/output/build.sha256
+FROM ${BASE_IMAGE}
+COPY --from=tensor-build /build/output/ /opt/moonrobo/lib/

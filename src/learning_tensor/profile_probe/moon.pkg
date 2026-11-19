@@ -1,0 +1,11 @@
+import {
+  "vectie/moonrobo/src/learning_tensor" @tensor,
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+pkgtype(kind: "executable")
+
+options(
+  targets: { "main.mbt": [ "native" ] },
+)

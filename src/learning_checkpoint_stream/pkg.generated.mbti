@@ -1,0 +1,41 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_checkpoint_stream"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn read_f64le(String, BlobDescriptor, (Int64, Array[Double]) -> Unit raise) -> Unit
+
+pub async fn read_i32le(String, BlobDescriptor, (Int64, Array[Int]) -> Unit raise) -> Unit
+
+pub async fn read_u8(String, BlobDescriptor, (Int64, Array[Byte]) -> Unit raise) -> Unit
+
+pub fn validate_descriptor(BlobDescriptor) -> Unit raise
+
+pub async fn verify_blob(String, BlobDescriptor) -> Unit
+
+pub async fn write_f64le(String, String, Array[Int], (Int64, Int) -> Array[Double] raise) -> BlobDescriptor
+
+pub async fn write_i32le(String, String, Array[Int], (Int64, Int) -> Array[Int] raise) -> BlobDescriptor
+
+pub async fn write_u8(String, String, Array[Int], (Int64, Int) -> Array[Byte] raise) -> BlobDescriptor
+
+// Errors
+
+// Types and methods
+pub(all) struct BlobDescriptor {
+  file : String
+  dtype : String
+  shape : Array[Int]
+  count : Int64
+  byte_length : Int64
+  sha256 : String
+} derive(ToJson, @json.FromJson)
+pub fn BlobDescriptor::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn BlobDescriptor::to_json(Self) -> Json
+
+// Type aliases
+
+// Traits

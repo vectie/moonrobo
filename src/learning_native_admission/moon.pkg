@@ -1,0 +1,6 @@
+import {
+  "moonbitlang/core/debug",
+  "vectie/moonrobo/src/learning_native_capacity" @capacity,
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_aligned_gpu/runtime",
+}

@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 3.18)
+project(moonrobo_aten_rng LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+find_package(Torch REQUIRED)
+find_package(Threads REQUIRED)
+add_library(moonrobo_aten_rng SHARED adapter.cpp)
+target_include_directories(moonrobo_aten_rng PRIVATE ${TORCH_INCLUDE_DIRS})
+target_link_libraries(moonrobo_aten_rng PRIVATE ${TORCH_LIBRARIES} Threads::Threads)
+set_property(TARGET moonrobo_aten_rng PROPERTY CXX_STANDARD 17)
+# In particular preserve the library's _GLIBCXX_USE_CXX11_ABI flag on Linux.
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")

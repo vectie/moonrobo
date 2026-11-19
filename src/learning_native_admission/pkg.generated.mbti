@@ -1,0 +1,94 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_native_admission"
+
+import {
+  "moonbitlang/core/debug",
+  "vectie/moonrobo/src/learning_aligned",
+  "vectie/moonrobo/src/learning_native_capacity",
+}
+
+// Values
+pub fn assess(Plan, Int64, Int64, memory_admission_percent? : Int) -> Decision raise
+
+pub fn plan_paper_stream(Inputs, include_restore? : Bool, serial_optimizer_save_workspace? : Bool, verified_compiled_allocator_cap? : Int64) -> Plan raise
+
+pub fn unknown_sampler_bins_upper() -> Int
+
+// Errors
+
+// Types and methods
+pub struct Decision {
+  format : String
+  accepted : Bool
+  host_remaining_bytes : Int64
+  cuda_free_bytes : Int64
+  limiting_remaining_bytes : Int64
+  admission_percent : Int
+  minimum_free_reserve_bytes : Int64
+  budget_bytes : Int64
+  peak_bytes : Int64
+  required_remaining_bytes : Int64
+  baseline_65_percent_required_remaining_bytes : Int64
+} derive(ToJson, @debug.Debug)
+pub fn Decision::require_accepted(Self) -> Unit raise
+pub fn Decision::to_json(Self) -> Json
+pub fn Decision::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Inputs {
+  profile : @learning_native_capacity.CapacityProfile
+  checkpoint_format : String
+  environments : Int
+  replay_steps : Int
+  learner : @learning_aligned.LearnerConfig
+  observation_mode : @learning_aligned.ObservationMode
+  world_microbatch : Int
+  actor_microbatch : Int
+  sampler_bins : Int
+  motion_manifest_bytes : Int64
+  catalog_json_bytes : Int64
+  state_json_bytes : Int64
+  environment_payload_bytes : Int64
+  apic_manifest_bytes : Int64
+  apic_payload_bytes : Int64
+  apic_shared_union_bytes : Int64
+  restore_live_rows : Int
+  restore_saved_rows : Int
+  restore_optimizer_archive_bytes : Int64
+  distributed : Bool
+}
+
+pub struct Phase {
+  name : String
+  components : Map[String, Int64]
+  envelope_bytes : Int64
+} derive(ToJson, @debug.Debug)
+pub fn Phase::to_json(Self) -> Json
+pub fn Phase::to_repr(Self) -> @debug.Repr
+
+pub struct Plan {
+  format : String
+  capacity_profile : String
+  checkpoint_format : String
+  restore_phases_included : Bool
+  accounting_scope : String
+  phases : Array[Phase]
+  peak_bytes : Int64
+  peak_phase : String
+  required_remaining_bytes : Int64
+  full_replacement_restore_peak_bytes : Int64
+  full_replacement_restore_scope : String
+  counts : Map[String, Int64]
+  device_phase_working_bytes : Map[String, Int64]
+  checkpoint_generation_bytes : Int64
+  minimum_output_free_bytes : Int64
+  assumptions : Array[String]
+} derive(ToJson, @debug.Debug)
+pub fn Plan::for_operator_diagnostic(Self) -> Self raise
+pub fn Plan::require_output_free(Self, Int64) -> Unit raise
+pub fn Plan::to_json(Self) -> Json
+pub fn Plan::to_repr(Self) -> @debug.Repr
+pub fn Plan::with_execution_reserve(Self, Map[String, Int64]) -> Self raise
+
+// Type aliases
+
+// Traits

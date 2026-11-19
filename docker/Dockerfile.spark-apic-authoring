@@ -1,0 +1,59 @@
+# Only offline authoring uses CPython. No SDK import, CUDA export or replay is
+# performed during this CPU build. Build context is prepared by the .mbtx helper.
+ARG BASE_IMAGE=moonrobo-isaaclab:46d6cc3-kitless-rdma
+FROM ${BASE_IMAGE} AS authoring-build
+USER root
+# The pinned base installs Ubuntu 24.04's libpython3.12t64 provider. Keep its exact interpreter
+# and shared runtime: a newer dev-package patch must not silently build against
+# a different libpython than the final stage. Unavailable pinned headers fail.
+RUN mkdir -p /build/output && \
+    dpkg-query -s libpython3.12t64 libpython3.12-stdlib python3.12 python3.12-minimal > /build/output/python-runtime-status.txt && \
+    test "$(grep -c '^Status: install ok installed$' /build/output/python-runtime-status.txt)" = 4 && \
+    dpkg-query -W libpython3.12t64 libpython3.12-stdlib python3.12 python3.12-minimal > /build/output/python-runtime-packages.txt && \
+    sha256sum /usr/lib/aarch64-linux-gnu/libpython3.12.so.1.0 /usr/bin/python3.12 > /build/output/python-runtime.sha256 && \
+    APIC_PYTHON_VERSION="$(dpkg-query -W python3.12 | cut -f2)" && \
+    APIC_LIBPYTHON_VERSION="$(dpkg-query -W libpython3.12t64 | cut -f2)" && \
+    test -n "$APIC_PYTHON_VERSION" && test -n "$APIC_LIBPYTHON_VERSION" && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends g++ cmake make \
+      "python3.12-dev=$APIC_PYTHON_VERSION" \
+      "libpython3.12-dev=$APIC_LIBPYTHON_VERSION" && \
+    rm -rf /var/lib/apt/lists/* && \
+    sha256sum -c /build/output/python-runtime.sha256 && \
+    test "$(dpkg-query -W libpython3.12t64 libpython3.12-stdlib python3.12 python3.12-minimal)" = "$(cat /build/output/python-runtime-packages.txt)"
+COPY CMakeLists.txt python_objects.cpp /build/source/
+RUN cmake -S /build/source -B /build/apic -DCMAKE_BUILD_TYPE=Release -DPython3_ROOT_DIR=/usr && \
+    cmake --build /build/apic --parallel 1 && \
+    cp /build/apic/libmoonrobo_apic_authoring.so /build/output/ && \
+    sha256sum /build/source/CMakeLists.txt /build/source/python_objects.cpp /build/output/libmoonrobo_apic_authoring.so > /build/output/build.sha256 && \
+    dpkg-query -W g++ cmake make python3.12-dev libpython3.12-dev > /build/output/build-packages.txt
+
+FROM ${BASE_IMAGE}
+USER root
+WORKDIR /opt/moonrobo
+COPY --from=authoring-build /build/output/ /opt/moonrobo/apic-authoring/
+COPY sdk/ /opt/moonrobo/sdk/
+COPY provenance.json /opt/moonrobo/apic-authoring/sdk-provenance.json
+RUN sha256sum -c /opt/moonrobo/apic-authoring/python-runtime.sha256 && \
+    dpkg-query -s libpython3.12t64 libpython3.12-stdlib python3.12 python3.12-minimal > /opt/moonrobo/apic-authoring/final-python-runtime-status.txt && \
+    test "$(grep -c '^Status: install ok installed$' /opt/moonrobo/apic-authoring/final-python-runtime-status.txt)" = 4 && \
+    test "$(dpkg-query -W libpython3.12t64 libpython3.12-stdlib python3.12 python3.12-minimal)" = "$(cat /opt/moonrobo/apic-authoring/python-runtime-packages.txt)" && \
+    ldd -r /opt/moonrobo/apic-authoring/libmoonrobo_apic_authoring.so > /opt/moonrobo/apic-authoring/runtime-linkage.txt 2>&1 && \
+    ! grep -E 'not found|undefined symbol' /opt/moonrobo/apic-authoring/runtime-linkage.txt
+RUN test "$(git -C /opt/moonrobo/sdk/IsaacLab rev-parse HEAD)" = 46d6cc3d7b115906fad12efd372fbf69f4e3d3ed && \
+    test "$(git -C /opt/moonrobo/sdk/newton rev-parse HEAD)" = 71eeba16a717d4dcf0b9dd7056a7b6f863054dc3 && \
+    git -C /opt/moonrobo/sdk/IsaacLab diff --quiet HEAD -- && \
+    git -C /opt/moonrobo/sdk/newton diff --quiet HEAD -- && \
+    mkdir -p /opt/moonrobo/original-sdk && \
+    mv /workspace/isaaclab /opt/moonrobo/original-sdk/isaaclab && \
+    mv /opt/isaaclab-venv/lib/python3.12/site-packages/newton /opt/moonrobo/original-sdk/newton && \
+    tar -czf /opt/moonrobo/original-sdk/image-sources.tar.gz -C /opt/moonrobo/original-sdk isaaclab newton && \
+    sha256sum /opt/moonrobo/original-sdk/image-sources.tar.gz > /opt/moonrobo/original-sdk/image-sources.sha256 && \
+    ln -s /opt/moonrobo/sdk/IsaacLab /workspace/isaaclab && \
+    ln -s /opt/moonrobo/sdk/newton/newton /opt/isaaclab-venv/lib/python3.12/site-packages/newton && \
+    git config --system --add safe.directory /opt/moonrobo/sdk/IsaacLab && \
+    git config --system --add safe.directory /opt/moonrobo/sdk/newton
+# The exact source directories are root-owned, image-resident and read-only to
+# ordinary users; allow those two paths only, never safe.directory='*'.
+USER isaaclab
+WORKDIR /workspace/isaaclab

@@ -1,0 +1,89 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_replay_memory"
+
+import {
+  "moonbitlang/core/debug",
+  "vectie/moonrobo/src/learning_aligned",
+}
+
+// Values
+pub fn diagnose_stream_v2(Inputs) -> Plan raise
+
+// Errors
+
+// Types and methods
+pub(all) struct Inputs {
+  capacity : Int
+  environments : Int
+  storage : @learning_aligned.ReplayStorageUsage
+  next_collection_steps : Int
+  restore_rows : Int
+  learner : @learning_aligned.LearnerConfig
+  observation_mode : String
+  sampler_bins : Int
+  catalog_json_bytes : Int64
+  state_json_bytes : Int64
+  environment_payload_bytes : Int64
+  optimizer_archive_bytes : Int64?
+  isaac : Bool
+  distributed : Bool
+} derive(ToJson)
+
+pub(all) struct Phase {
+  components : Map[String, Int64]
+  envelope_bytes : Int64
+} derive(ToJson)
+
+pub(all) struct Plan {
+  format : String
+  diagnostic_only : Bool
+  admission_eligible : Bool
+  checkpoint_format : String
+  storage_format : String
+  accounting_scope : String
+  inputs : Inputs
+  current : SlabProjection
+  after_collection : SlabProjection
+  capacity : SlabProjection
+  restoring : SlabProjection
+  next_collection_growth_payload_bytes : Int64
+  maximum_slab_payload_bytes : Int64
+  exact_counts : Map[String, Int64]
+  legacy_replay_json_envelope_bytes : Int64
+  archive_envelope_basis_bytes : Int64
+  archive_basis_source : String
+  train_after_collection : Phase
+  train_at_capacity : Phase
+  save_at_capacity : Phase
+  restore_into_current : Phase
+  restore_at_capacity : Phase
+  saved_sidecars : SidecarProjection
+  capacity_sidecars : SidecarProjection
+  uncalibrated : Array[String]
+} derive(ToJson)
+
+pub(all) struct SidecarProjection {
+  replay_payload_bytes : Int64
+  history_payload_bytes : Int64
+  sampler_payload_bytes : Int64
+  environment_payload_bytes : Int64
+  catalog_json_bytes : Int64
+  state_json_bytes : Int64
+  total_bytes : Int64
+  retained_total_limit_bytes : Int64
+  fits_retained_total_limit : Bool
+} derive(ToJson)
+
+pub(all) struct SlabProjection {
+  rows : Int
+  logical_records : Int64
+  allocated_records : Int64
+  slab_count : Int64
+  logical_payload_bytes : Int64
+  allocated_payload_bytes : Int64
+  metadata_allowance_bytes : Int64
+} derive(ToJson, @debug.Debug)
+
+// Type aliases
+
+// Traits

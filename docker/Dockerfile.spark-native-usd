@@ -1,0 +1,15 @@
+ARG BASE_IMAGE=moonrobo-isaaclab:46d6cc3-kitless-rdma
+FROM ${BASE_IMAGE} AS usd-build
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends g++ && rm -rf /var/lib/apt/lists/*
+COPY usd_converter.cpp /build/usd_converter.cpp
+RUN mkdir -p /build/output && \
+    g++ -std=c++17 -O1 -shared -fPIC \
+      -I/opt/isaaclab-venv/lib/python3.12/site-packages/mujoco/include \
+      /build/usd_converter.cpp -o /build/output/libmoonrobo_aligned_usd.so \
+      -L/opt/isaaclab-venv/lib/python3.12/site-packages/mujoco \
+      -Wl,-rpath,/opt/isaaclab-venv/lib/python3.12/site-packages/mujoco \
+      -l:libmujoco.so.3.15.0 && \
+    sha256sum /build/usd_converter.cpp /build/output/libmoonrobo_aligned_usd.so > /build/output/build.sha256
+FROM ${BASE_IMAGE}
+COPY --from=usd-build /build/output/ /opt/moonrobo/usd/

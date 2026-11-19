@@ -1,0 +1,318 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_tensor"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn clear_operator_diagnostics() -> Unit raise TensorError
+
+pub fn clear_profiling() -> Unit raise TensorError
+
+pub fn configure_operator_diagnostics(Backend, cuda_device~ : Int, iteration? : Int, structural_only? : Bool, max_ranges? : Int, phase? : String, observer? : String) -> Unit raise TensorError
+
+pub fn configure_profiling(Backend, cuda_device~ : Int, max_spans? : Int, nvtx? : Bool) -> Unit raise TensorError
+
+pub fn operator_diagnostic_flush() -> Unit raise TensorError
+
+pub fn operator_diagnostic_iteration_begin(Int, phase? : String) -> Int64 raise TensorError
+
+pub fn operator_diagnostic_iteration_cancel(Int64) -> Unit
+
+pub fn operator_diagnostic_iteration_end(Int64) -> Unit raise TensorError
+
+pub fn operator_diagnostic_iteration_selected(Int, phase? : String) -> Bool
+
+pub fn operator_diagnostics_enabled() -> Bool
+
+pub fn operator_diagnostics_report() -> String raise TensorError
+
+pub fn operator_range_begin(String) -> Int64 raise TensorError
+
+pub fn operator_range_cancel(Int64) -> Unit
+
+pub fn operator_range_end(Int64) -> Unit raise TensorError
+
+pub fn[T] operator_span(String, () -> T raise) -> T raise
+
+pub fn profile_begin(String) -> Int64 raise TensorError
+
+pub fn profile_cancel(Int64) -> Unit
+
+pub fn profile_end(Int64) -> Unit raise TensorError
+
+pub fn[T] profile_span(String, () -> T raise) -> T raise
+
+pub fn profiling_enabled() -> Bool
+
+pub fn profiling_report() -> String raise TensorError
+
+// Errors
+pub suberror TensorError {
+  Native(String)
+}
+
+// Types and methods
+pub struct Adam {
+  backend : Backend
+  native : NativeAdam
+}
+pub fn Adam::audit_metadata(Self) -> String raise TensorError
+pub fn Adam::audit_tensor(Self, Int, kind? : Int) -> Tensor raise TensorError
+pub fn Adam::load(Self, String) -> Unit raise TensorError
+pub fn Adam::save(Self, String) -> Unit raise TensorError
+pub fn Adam::set_learning_rate(Self, Double) -> Unit raise TensorError
+pub fn Adam::step(Self, clip_norm? : Double, clip_value? : Double) -> Unit raise TensorError
+pub fn Adam::step_checked_norm(Self, clip_norm? : Double, clip_value? : Double) -> Unit raise TensorError
+pub fn Adam::step_gencoord(Self, Array[Tensor], clip_value~ : Double) -> Unit raise TensorError
+pub fn Adam::step_smc(Self, clip_norm? : Double, clip_value? : Double) -> Unit raise TensorError
+pub fn Adam::zero_grad(Self) -> Unit raise TensorError
+
+pub type Backend
+pub fn Backend::adam(Self, Array[Tensor], learning_rate? : Double, beta1? : Double, beta2? : Double, eps? : Double) -> Adam raise TensorError
+pub fn Backend::capture_critic_graph(Self, Array[Tensor], Tensor, Tensor, (Tensor) -> Tensor raise, pool_budget_bytes? : Int64, minimum_free_bytes? : Int64) -> CriticGraph raise
+pub fn Backend::concat(Self, Array[Tensor], axis? : Int) -> Tensor raise TensorError
+pub fn Backend::configure_cuda_tf32(Self, matmul~ : Bool, cudnn_conv~ : Bool, cudnn_rnn~ : Bool, before_first_tensor~ : Bool) -> CudaFp32Settings raise TensorError
+pub fn Backend::cuda_device_count(Self) -> Int
+pub fn Backend::cuda_fp32_settings(Self) -> CudaFp32Settings raise TensorError
+pub fn Backend::cuda_free_bytes(Self, Int) -> Int64 raise TensorError
+pub fn Backend::cuda_memory_stats(Self, Int, synchronize? : Bool) -> CudaMemoryStats raise TensorError
+pub fn Backend::from_fixed_values(Self, Array[Int], FixedArray[Double], cuda_device~ : Int, requires_grad~ : Bool, dtype? : DType) -> Tensor raise TensorError
+pub fn Backend::from_values(Self, Array[Int], Array[Double], cuda_device~ : Int, requires_grad~ : Bool, dtype? : DType) -> Tensor raise TensorError
+pub fn Backend::has_bf16_linear(Self) -> Bool
+pub fn Backend::has_checked_norm_adam(Self) -> Bool
+pub fn Backend::has_coefficient_forward(Self) -> Bool
+pub fn Backend::has_coefficient_full_forward(Self) -> Bool
+pub fn Backend::has_compact_heading(Self) -> Bool
+pub fn Backend::has_compact_rotation(Self) -> Bool
+pub fn Backend::has_compiled_block(Self) -> Bool
+pub fn Backend::has_critic_cuda_graph(Self) -> Bool
+pub fn Backend::has_cross_preserve_forward(Self) -> Bool
+pub fn Backend::has_cuda_fp32_control(Self) -> Bool
+pub fn Backend::has_cuda_memory_telemetry(Self) -> Bool
+pub fn Backend::has_fused_rotation(Self) -> Bool
+pub fn Backend::has_geometry_tail(Self) -> Bool
+pub fn Backend::has_geometry_vjp(Self) -> Bool
+pub fn Backend::has_gradient_buckets(Self) -> Bool
+pub fn Backend::has_layer_norm(Self) -> Bool
+pub fn Backend::has_layer_norm_submitted(Self) -> Bool
+pub fn Backend::has_linear(Self) -> Bool
+pub fn Backend::has_ln_silu_tail(Self) -> Bool
+pub fn Backend::has_native_cross(Self) -> Bool
+pub fn Backend::has_smc_algebra(Self) -> Bool
+pub fn Backend::has_split_sections(Self) -> Bool
+pub fn Backend::load_compiled_block(Self, String, cuda_device~ : Int) -> CompiledBlock raise TensorError
+pub fn Backend::nccl_connect(Self, Bytes, rank~ : Int, world_size~ : Int, cuda_device~ : Int, timeout_ms? : Int) -> Collective raise TensorError
+pub fn Backend::nccl_id(Self) -> Bytes raise TensorError
+pub fn Backend::open(String) -> Self raise TensorError
+pub fn Backend::open_mjlab(Self, String) -> Mjlab raise TensorError
+pub fn Backend::reset_cuda_memory_peaks(Self, Int, synchronize? : Bool) -> Unit raise TensorError
+pub fn Backend::stack(Self, Array[Tensor], axis? : Int) -> Tensor raise TensorError
+pub fn Backend::version(Self) -> String
+
+pub struct Collective {
+  rank : Int
+  world_size : Int
+  cuda_device : Int
+  // private fields
+}
+pub fn Collective::all_reduce(Self, Tensor, op? : ReduceOp) -> Tensor raise TensorError
+pub fn Collective::average_gradients(Self, Array[Tensor]) -> Unit raise TensorError
+pub fn Collective::average_gradients_bucketed(Self, Array[Tensor], bucket_bytes~ : Int) -> Unit raise TensorError
+pub fn Collective::barrier(Self) -> Unit raise TensorError
+pub fn Collective::broadcast(Self, Tensor, root? : Int) -> Unit raise TensorError
+pub fn Collective::close(Self) -> Unit raise TensorError
+pub fn Collective::control(Self, Array[Int64], op? : ReduceOp) -> Array[Int64] raise TensorError
+
+pub struct CompiledBlock {
+  backend : Backend
+  native : NativeCompiledBlock
+}
+pub fn CompiledBlock::forward(Self, Array[Tensor]) -> Tensor raise TensorError
+pub fn CompiledBlock::forward_many(Self, Array[Tensor]) -> Array[Tensor] raise TensorError
+
+pub struct CriticGraph {
+  backend : Backend
+  native : NativeCriticGraph
+}
+pub fn CriticGraph::cancel(Self) -> Unit
+pub fn CriticGraph::close(Self) -> Unit raise TensorError
+pub fn CriticGraph::memory(Self) -> CriticGraphMemory raise TensorError
+pub fn CriticGraph::replay(Self, Tensor, Tensor) -> Tensor raise TensorError
+
+pub(all) struct CriticGraphMemory {
+  static_bytes : Int64
+  retained_gradient_bytes : Int64
+  private_pool_reserved_bytes : Int64
+  private_pool_allocated_bytes : Int64
+  replay_count : Int64
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct CudaFp32Settings {
+  matmul_precision : Fp32Precision
+  cudnn_conv_precision : Fp32Precision
+  cudnn_rnn_precision : Fp32Precision
+  nvidia_tf32_override : String
+  torch_allow_tf32_cublas_override : String
+  cudnn_available : Bool
+  startup_configuration_locked : Bool
+  matmul_permission : TF32Permission
+  cudnn_conv_permission : TF32Permission
+  cudnn_rnn_permission : TF32Permission
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CudaMemoryStats {
+  device : Int
+  synchronized : Bool
+  allocated_current_bytes : Int64
+  allocated_peak_bytes : Int64
+  reserved_current_bytes : Int64
+  reserved_peak_bytes : Int64
+  cuda_free_bytes : Int64
+  cuda_total_bytes : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum DType {
+  Float64
+  Float32
+  BFloat16
+  Int64
+  Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Fp32Precision {
+  BackendDefault
+  IEEE
+  TF32
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub struct Mjlab {
+  backend : Backend
+  session : NativeMjlab
+}
+pub fn Mjlab::exchange(Self, Int, input? : Tensor) -> Tensor raise TensorError
+
+type NativeAdam
+
+type NativeCollective
+
+type NativeCompiledBlock
+
+type NativeCompiledOutputs
+
+type NativeCriticGraph
+
+type NativeMjlab
+
+type NativeOperatorDiagnostics
+
+type NativeProfile
+
+type NativeTensor
+
+pub(all) enum ReduceOp {
+  Sum
+  Max
+  Min
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TF32Permission {
+  ContextDisallows
+  RuntimeOverrideBlocks
+  LibraryMayUse
+  OverrideUnconfirmed
+  BackendUnavailable
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub struct Tensor {
+  backend : Backend
+  native : NativeTensor
+}
+pub fn Tensor::abs(Self) -> Self raise TensorError
+pub fn Tensor::acos(Self) -> Self raise TensorError
+pub fn Tensor::actor_return_smc(Self, Self, Self, Double) -> Self raise TensorError
+pub fn Tensor::add(Self, Self) -> Self raise TensorError
+pub fn Tensor::affine(Self, Double, bias? : Double) -> Self raise TensorError
+pub fn Tensor::atan2(Self, Self) -> Self raise TensorError
+pub fn Tensor::axis_angle_submitted(Self, Double, Double, Double) -> Self raise TensorError
+pub fn Tensor::backward(Self, retain_graph? : Bool) -> Unit raise TensorError
+pub fn Tensor::cast_float(Self, DType) -> Self raise TensorError
+pub fn Tensor::checkpoint(Self, String, load~ : Bool) -> Unit raise TensorError
+pub fn Tensor::clamp(Self, Double, Double) -> Self raise TensorError
+pub fn Tensor::compact_axis_rotation(Self, Int, Double) -> Self raise TensorError
+pub fn Tensor::compact_heading(Self) -> Self raise TensorError
+pub fn Tensor::compact_skew(Self) -> Self raise TensorError
+pub fn Tensor::copy_values_from(Self, Self) -> Unit raise TensorError
+pub fn Tensor::cos(Self) -> Self raise TensorError
+pub fn Tensor::cross_preserve_forward(Self, Self) -> Self raise TensorError
+pub fn Tensor::cross_submitted(Self, Self) -> Self raise TensorError
+pub fn Tensor::cuda_device(Self) -> Int raise TensorError
+pub fn Tensor::detach(Self) -> Self raise TensorError
+pub fn Tensor::div(Self, Self) -> Self raise TensorError
+pub fn Tensor::dtype(Self) -> DType raise TensorError
+pub fn Tensor::elu(Self) -> Self raise TensorError
+pub fn Tensor::exp(Self) -> Self raise TensorError
+pub fn Tensor::fused_axis_rotation(Self, Int, Double) -> Self raise TensorError
+pub fn Tensor::fused_cross_forward(Self, Self) -> Self raise TensorError
+pub fn Tensor::fused_cross_vjp(Self, Self) -> Self raise TensorError
+pub fn Tensor::fused_skew(Self) -> Self raise TensorError
+pub fn Tensor::gelu(Self) -> Self raise TensorError
+pub fn Tensor::gradient(Self) -> Self raise TensorError
+pub fn Tensor::gradient_values(Self) -> Array[Double] raise TensorError
+pub fn Tensor::greater(Self, Self) -> Self raise TensorError
+pub fn Tensor::group_sum(Self, Self, Int) -> Self raise TensorError
+pub fn Tensor::index_select(Self, Self, axis? : Int) -> Self raise TensorError
+pub fn Tensor::layer_norm(Self, Self, Self, eps? : Double) -> Self raise TensorError
+pub fn Tensor::layer_norm_submitted(Self, Self, Self, eps? : Double) -> Self raise TensorError
+pub fn Tensor::less(Self, Self) -> Self raise TensorError
+pub fn Tensor::linear(Self, Self, Self) -> Self raise TensorError
+pub fn Tensor::linear_bf16(Self, Self, Self) -> Self raise TensorError
+pub fn Tensor::linear_parameters(Self, Int, Int, with_norm~ : Bool) -> (Self, Self, Self?, Self?) raise TensorError
+pub fn Tensor::ln_silu_tail(Self, Self, Self, Self, eps? : Double) -> Self raise TensorError
+pub fn Tensor::log(Self) -> Self raise TensorError
+pub fn Tensor::matmul(Self, Self) -> Self raise TensorError
+pub fn Tensor::maximum(Self, Self) -> Self raise TensorError
+pub fn Tensor::mean(Self) -> Self raise TensorError
+pub fn Tensor::mean_dim(Self, Int, keepdim? : Bool) -> Self raise TensorError
+pub fn Tensor::mul(Self, Self) -> Self raise TensorError
+pub fn Tensor::muon_update(Self, Self, Double) -> Unit raise TensorError
+pub fn Tensor::narrow(Self, Int, Int, Int) -> Self raise TensorError
+pub fn Tensor::native_cross(Self, Self) -> Self raise TensorError
+pub fn Tensor::new_zeros(Self, Array[Int]) -> Self raise TensorError
+pub fn Tensor::normalize_xi_smc(Self) -> Self raise TensorError
+pub fn Tensor::population_variance_dim(Self, Int, keepdim? : Bool) -> Self raise TensorError
+pub fn Tensor::pullback(Self, Self, Self, retain_graph? : Bool) -> Self raise TensorError
+pub fn Tensor::randperm(Self, Int) -> Self raise TensorError
+pub fn Tensor::relu(Self) -> Self raise TensorError
+pub fn Tensor::reshape(Self, Array[Int]) -> Self raise TensorError
+pub fn Tensor::rotation_vector_smc(Self) -> Self raise TensorError
+pub fn Tensor::sample_with_replacement(Self, Int) -> Self raise TensorError
+pub fn Tensor::select_where(Self, Self, Self) -> Self raise TensorError
+pub fn Tensor::shape(Self) -> Array[Int] raise TensorError
+pub fn Tensor::sigmoid(Self) -> Self raise TensorError
+pub fn Tensor::silu(Self) -> Self raise TensorError
+pub fn Tensor::sin(Self) -> Self raise TensorError
+pub fn Tensor::so3_coefficient_forward(Self) -> Self raise TensorError
+pub fn Tensor::so3_coefficient_full_forward(Self) -> Self raise TensorError
+pub fn Tensor::so3_coefficients(Self) -> Self raise TensorError
+pub fn Tensor::so3_tail(Self, Self, Self, Self) -> Self raise TensorError
+pub fn Tensor::softmax0(Self) -> Self raise TensorError
+pub fn Tensor::split_sections(Self, Array[Int], axis? : Int) -> Array[Self] raise TensorError
+pub fn Tensor::sqrt(Self) -> Self raise TensorError
+pub fn Tensor::square(Self) -> Self raise TensorError
+pub fn Tensor::stop_gradient(Self) -> Self raise TensorError
+pub fn Tensor::sub(Self, Self) -> Self raise TensorError
+pub fn Tensor::sum(Self) -> Self raise TensorError
+pub fn Tensor::sum_dim(Self, Int, keepdim? : Bool) -> Self raise TensorError
+pub fn Tensor::tanh(Self) -> Self raise TensorError
+pub fn Tensor::transpose(Self) -> Self raise TensorError
+pub fn Tensor::transpose_dims(Self, Int, Int) -> Self raise TensorError
+pub fn Tensor::uniform_samples(Self, Int) -> Self raise TensorError
+pub fn Tensor::values(Self) -> Array[Double] raise TensorError
+pub fn Tensor::zero_gradient(Self) -> Unit raise TensorError
+
+// Type aliases
+
+// Traits

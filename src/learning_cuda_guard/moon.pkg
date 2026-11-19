@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+}
+
+pkgtype(kind: "executable")
+
+options(
+  "native-stub": [ "driver.c" ],
+  targets: { "main.mbt": [ "native" ] },
+)

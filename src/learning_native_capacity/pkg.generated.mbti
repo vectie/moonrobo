@@ -1,0 +1,67 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_native_capacity"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct CapacityLimits {
+  max_environments : Int
+  max_world_batch : Int
+  max_policy_batch : Int
+  max_replay_steps : Int
+  max_replay_values : Int64
+  max_reference_frames : Int
+  max_tensor_values : Int64
+  max_stream_total_bytes : Int64
+  max_stream_member_bytes : Int64
+  max_stream_members : Int
+  max_catalog_bytes : Int64
+  max_state_bytes : Int64
+  max_apic_numeric_union_bytes : Int64
+  max_apic_payload_total_bytes : Int64
+  max_apic_payload_file_bytes : Int64
+  max_apic_payload_files : Int
+  max_apic_oracle_bytes : Int64
+  max_apic_manifest_bytes : Int64
+} derive(Eq, ToJson, @debug.Debug)
+pub fn CapacityLimits::equal(Self, Self) -> Bool
+pub fn CapacityLimits::not_equal(Self, Self) -> Bool
+pub fn CapacityLimits::to_json(Self) -> Json
+pub fn CapacityLimits::to_repr(Self) -> @debug.Repr
+
+pub(all) enum CapacityProfile {
+  Initial
+  Paper4096
+} derive(Eq, @debug.Debug)
+pub fn CapacityProfile::equal(Self, Self) -> Bool
+pub fn CapacityProfile::limits(Self) -> CapacityLimits
+pub fn CapacityProfile::name(Self) -> String
+pub fn CapacityProfile::not_equal(Self, Self) -> Bool
+pub fn CapacityProfile::parse(String) -> Self raise
+pub fn CapacityProfile::to_repr(Self) -> @debug.Repr
+pub fn CapacityProfile::validate_catalog_bytes(Self, Int64) -> Unit raise
+pub fn CapacityProfile::validate_dimensions(Self, environments~ : Int, world_batch~ : Int, policy_batch~ : Int, replay_steps~ : Int) -> ReplayCapacity raise
+pub fn CapacityProfile::validate_stream_totals(Self, ArrayView[Int64], state_bytes~ : Int64) -> Int64 raise
+
+pub struct ReplayCapacity {
+  records : Int64
+  values : Int64
+  float64_bytes : Int64
+  indices_bytes : Int64
+  flags_bytes : Int64
+  payload_bytes : Int64
+} derive(Eq, ToJson, @debug.Debug)
+pub fn ReplayCapacity::equal(Self, Self) -> Bool
+pub fn ReplayCapacity::not_equal(Self, Self) -> Bool
+pub fn ReplayCapacity::to_json(Self) -> Json
+pub fn ReplayCapacity::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

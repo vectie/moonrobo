@@ -1,0 +1,28 @@
+# CPU-only build against the verified image's genuine headers and Warp library.
+# No SDK import, driver initialization, GPU request or graph replay occurs here.
+ARG BASE_IMAGE=moonrobo-isaaclab:46d6cc3-kitless-rdma
+FROM ${BASE_IMAGE} AS replay-build
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends g++ cmake make binutils && rm -rf /var/lib/apt/lists/*
+COPY native/ /build/native/
+RUN cmake -S /build/native/apic_runtime -B /build/replay -DCMAKE_BUILD_TYPE=Release \
+      -DCUDA_DRIVER_INCLUDE_DIR=/opt/isaaclab-venv/lib/python3.12/site-packages/nvidia/cu13/include \
+      -DWARP_NATIVE_INCLUDE_DIR=/opt/isaaclab-venv/lib/python3.12/site-packages/warp/native \
+      -DWARP_NATIVE_LIBRARY=/opt/isaaclab-venv/lib/python3.12/site-packages/warp/bin/warp.so && \
+    cmake --build /build/replay --parallel 1 && \
+    mkdir -p /build/output && \
+    cp /build/replay/libmoonrobo_aligned_apic.so /build/replay/dependencies.sha256 /build/output/ && \
+    sha256sum /build/native/aot_solver.cpp /build/native/apic_runtime/cuda_driver_dynamic.h /build/native/apic_runtime/CMakeLists.txt /build/output/libmoonrobo_aligned_apic.so > /build/output/build.sha256 && \
+    dpkg-query -W g++ cmake make binutils > /build/output/build-packages.txt && \
+    readelf -d /build/output/libmoonrobo_aligned_apic.so > /build/output/elf-dynamic.txt && \
+    readelf --dyn-syms --wide /build/output/libmoonrobo_aligned_apic.so > /build/output/elf-symbols.txt && \
+    ! grep -E 'NEEDED.*libpython|NEEDED.*libcuda' /build/output/elf-dynamic.txt
+
+FROM ${BASE_IMAGE}
+USER root
+COPY --from=replay-build /build/output/ /opt/moonrobo/apic-runtime/
+RUN sha256sum -c /opt/moonrobo/apic-runtime/dependencies.sha256 && \
+    ldd -r /opt/moonrobo/apic-runtime/libmoonrobo_aligned_apic.so > /opt/moonrobo/apic-runtime/runtime-linkage.txt 2>&1 && \
+    ! grep -E 'not found|undefined symbol|libpython' /opt/moonrobo/apic-runtime/runtime-linkage.txt
+USER isaaclab
+WORKDIR /workspace/isaaclab

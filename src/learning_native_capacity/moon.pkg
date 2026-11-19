@@ -1,0 +1,4 @@
+// Pure fixed capacity contracts. No runtime, tensor, filesystem or FFI dependency.
+import {
+  "moonbitlang/core/debug",
+}

@@ -1,0 +1,21 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_tensor/bucket_benchmark"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+type Group
+
+type Progress
+
+type Ticket derive(ToJson, @json.FromJson)
+
+// Type aliases
+
+// Traits
