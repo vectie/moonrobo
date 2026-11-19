@@ -13,6 +13,7 @@ test "SMC world arithmetic checkpoint fields preserve explicit and legacy modes"
   assert_eq(old.rotation_error_mode, None)
   assert_eq(old.heading_mode, None)
   assert_eq(old.smc_world_rotation, None)
+  assert_eq(old.smc_source_order, None)
   assert_eq(old.smc_xi_normalization, None)
   assert_eq(old.smc_actor_return, None)
   assert_eq(old.policy_linear_mode, None)
@@ -26,6 +27,7 @@ test "SMC world arithmetic checkpoint fields preserve explicit and legacy modes"
     rotation_error_mode: Some(@geometry.TraceAcos),
     heading_mode: Some(@geometry.SmcProjected),
     smc_world_rotation: Some(true),
+    smc_source_order: Some(true),
     smc_xi_normalization: Some(true),
     smc_actor_return: Some(true),
   }
@@ -37,6 +39,7 @@ test "SMC world arithmetic checkpoint fields preserve explicit and legacy modes"
   assert_eq(restored.rotation_error_mode, Some(@geometry.TraceAcos))
   assert_eq(restored.heading_mode, Some(@geometry.SmcProjected))
   assert_eq(restored.smc_world_rotation, Some(true))
+  assert_eq(restored.smc_source_order, Some(true))
   assert_eq(restored.smc_xi_normalization, Some(true))
   assert_eq(restored.smc_actor_return, Some(true))
 }

@@ -126,6 +126,13 @@ fn strict_learner(backend : @tensor.Backend) -> Learner raise {
   )
   learner.smc_gae_order = true
   learner.smc_adam = true
+  let metadata = learner.checkpoint_metadata()
+  assert_eq(metadata.smc_source_order, Some(true))
+  try learner.restore_metadata({ ..metadata, smc_source_order: None }) catch {
+    _ => ()
+  } noraise {
+    _ => fail("legacy arithmetic metadata admitted into source-order learner")
+  }
   learner
 }
 

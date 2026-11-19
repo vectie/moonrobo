@@ -89,6 +89,7 @@ test "actor precision survives checkpoint and contract with legacy FP32 compatib
     rotation_error_mode: None,
     heading_mode: None,
     smc_world_rotation: None,
+    smc_source_order: None,
     smc_xi_normalization: None,
     smc_actor_return: None,
     world_layer_norm_mode: None,

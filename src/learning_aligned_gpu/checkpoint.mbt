@@ -15,6 +15,7 @@ pub(all) struct CheckpointMetadata {
   rotation_error_mode : @geometry.RotationErrorMode?
   heading_mode : @geometry.HeadingMode?
   smc_world_rotation : Bool?
+  smc_source_order : Bool?
   smc_xi_normalization : Bool?
   smc_actor_return : Bool?
   normalizers : Array[@aligned.NormSnapshot]
@@ -55,6 +56,7 @@ pub fn Learner::checkpoint_metadata(self : Learner) -> CheckpointMetadata raise 
     rotation_error_mode: Some(self.optimizations.rotation_error_mode),
     heading_mode: Some(self.optimizations.heading_mode),
     smc_world_rotation: Some(self.optimizations.smc_world_rotation),
+    smc_source_order: Some(self.optimizations.smc_source_order),
     smc_xi_normalization: Some(self.optimizations.smc_xi_normalization),
     smc_actor_return: Some(self.optimizations.smc_actor_return),
     normalizers: self
@@ -97,6 +99,8 @@ pub fn Learner::restore_metadata(
     self.optimizations.heading_mode &&
     saved.smc_world_rotation.unwrap_or(false) ==
     self.optimizations.smc_world_rotation &&
+    saved.smc_source_order.unwrap_or(false) ==
+    self.optimizations.smc_source_order &&
     saved.smc_xi_normalization.unwrap_or(false) ==
     self.optimizations.smc_xi_normalization &&
     saved.smc_actor_return.unwrap_or(false) ==

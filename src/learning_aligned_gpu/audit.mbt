@@ -419,6 +419,7 @@ fn shared_state_digest(
   for
     (key, enabled) in [
       ("smc_world_rotation", metadata.smc_world_rotation.unwrap_or(false)),
+      ("smc_source_order", metadata.smc_source_order.unwrap_or(false)),
       ("smc_xi_normalization", metadata.smc_xi_normalization.unwrap_or(false)),
       ("smc_actor_return", metadata.smc_actor_return.unwrap_or(false)),
     ] {

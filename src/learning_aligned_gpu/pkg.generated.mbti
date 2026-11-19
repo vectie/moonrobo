@@ -48,6 +48,7 @@ pub(all) struct CheckpointMetadata {
   rotation_error_mode : @geometry.RotationErrorMode?
   heading_mode : @geometry.HeadingMode?
   smc_world_rotation : Bool?
+  smc_source_order : Bool?
   smc_xi_normalization : Bool?
   smc_actor_return : Bool?
   normalizers : Array[@learning_aligned.NormSnapshot]
