@@ -314,8 +314,19 @@ pub fn decode_npz(bytes : Bytes) -> Map[String, NumericArray] raise {
 }
 
 ///|
-/// Write portable float64 C-order NPY without pickle or a Python runtime.
-pub fn encode_npy(shape : Array[Int32], values : Array[Double]) -> Bytes raise {
+/// Write portable C-order NPY without pickle or a Python runtime. Float64 is
+/// the default; typed archives preserve their declared dtype without narrowing.
+pub fn encode_npy(
+  shape : Array[Int32],
+  values : Array[Double],
+  dtype~ : String = "<f8",
+) -> Bytes raise {
+  let width = match dtype {
+    "<f8" | "<i8" => 8
+    "<f4" | "<i4" | "<u4" => 4
+    "|b1" | "|u1" | "|i1" => 1
+    _ => fail("unsupported NumPy output dtype: " + dtype)
+  }
   let mut count = 1
   for size in shape {
     guard size >= 0 && (size == 0 || count <= 2147483647 / size) else {
@@ -323,12 +334,14 @@ pub fn encode_npy(shape : Array[Int32], values : Array[Double]) -> Bytes raise {
     }
     count *= size
   }
-  guard count == values.length() && count <= (2147483647 - 65546) / 8 else {
+  guard count == values.length() && count <= (2147483647 - 65546) / width else {
     fail("NPY shape differs from values")
   }
   let dims = shape.map(n => n.to_string()).join(", ") +
     (if shape.length() == 1 { "," } else { "" })
-  let header = "{'descr': '<f8', 'fortran_order': False, 'shape': (" +
+  let header = "{'descr': '" +
+    dtype +
+    "', 'fortran_order': False, 'shape': (" +
     dims +
     "), }"
   let padding = (64 - (10 + header.length() + 1) % 64) % 64
@@ -355,8 +368,31 @@ pub fn encode_npy(shape : Array[Int32], values : Array[Double]) -> Bytes raise {
     guard value.abs() <= 1.7976931348623157e308 else {
       fail("nonfinite NPY tensor")
     }
-    let bits = value.reinterpret_as_int64()
-    for i in 0..<8 {
+    let bits = match dtype {
+      "<f8" => value.reinterpret_as_int64()
+      "<f4" => {
+        let narrowed = Float::from_double(value)
+        guard narrowed.to_double() == value else {
+          fail("NPY Float32 output would narrow the supplied value")
+        }
+        narrowed.reinterpret_as_int().to_int64()
+      }
+      _ => {
+        let (minimum, maximum) = match dtype {
+          "<i8" => (-9007199254740992.0, 9007199254740992.0)
+          "<i4" => (-2147483648.0, 2147483647.0)
+          "<u4" => (0.0, 4294967295.0)
+          "|i1" => (-128.0, 127.0)
+          "|u1" => (0.0, 255.0)
+          _ => (0.0, 1.0)
+        }
+        guard value.trunc() == value && value >= minimum && value <= maximum else {
+          fail("NPY integer/boolean output is out of range or fractional")
+        }
+        value.to_int64()
+      }
+    }
+    for i in 0..<width {
       output.push(((bits >> (8 * i)).to_int() & 255).to_byte())
     }
   }

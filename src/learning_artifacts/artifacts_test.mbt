@@ -38,6 +38,59 @@ test "NPZ members preserve shapes and reject corruption" {
 }
 
 ///|
+test "NPZ preserves actual numeric dtypes and rejects silent narrowing" {
+  let arrays : Map[String, @learning_artifacts.NumericArray] = {
+    "float": { shape: [3], dtype: "<f4", values: [0.25, -0.5, -0.0], },
+    "integer": {
+      shape: [2],
+      dtype: "<i8",
+      values: [-4503599627370496.0, 4503599627370496.0],
+    },
+    "int32": {
+      shape: [2],
+      dtype: "<i4",
+      values: [-2147483648.0, 2147483647.0],
+    },
+    "uint32": { shape: [2], dtype: "<u4", values: [0.0, 4294967295.0], },
+    "byte": { shape: [2], dtype: "|u1", values: [0.0, 255.0], },
+    "signed_byte": { shape: [2], dtype: "|i1", values: [-128.0, 127.0], },
+    "boolean": { shape: [2], dtype: "|b1", values: [0.0, 1.0], },
+  }
+  let decoded = @learning_artifacts.decode_npz(
+    @learning_artifacts.encode_npz(arrays),
+  )
+  for name, value in arrays {
+    assert_eq(decoded[name].dtype, value.dtype)
+    assert_eq(decoded[name].shape, value.shape)
+    assert_eq(decoded[name].values, value.values)
+  }
+  assert_eq(
+    decoded["float"].values[2].reinterpret_as_uint64(),
+    (-0.0).reinterpret_as_uint64(),
+  )
+  for
+    (dtype, value) in [
+      ("<f4", 0.1),
+      ("<i8", 0.5),
+      ("<i8", 9007199254740994.0),
+      ("<i4", 2147483648.0),
+      ("<u4", -1.0),
+      ("|u1", 256.0),
+      ("|i1", -129.0),
+      ("|b1", 2.0),
+    ] {
+    assert_true(
+      try {
+        ignore(@learning_artifacts.encode_npy([1], [value], dtype~))
+        false
+      } catch {
+        _ => true
+      },
+    )
+  }
+}
+
+///|
 test "standard empty gzip member and invalid compressed input" {
   let empty = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00"
   assert_eq(@learning_artifacts.decompress(empty), b"")

@@ -26,7 +26,7 @@ pub fn encode_npz(arrays : Map[String, NumericArray]) -> Bytes raise {
     let name = @utf8.encode(key + ".npy")
     guard name.length() <= 65535 else { fail("NPZ name too long") }
     let tensor = arrays.get(key).unwrap()
-    let data = encode_npy(tensor.shape, tensor.values)
+    let data = encode_npy(tensor.shape, tensor.values, dtype=tensor.dtype)
     guard output.length() <= 2147483647 - data.length() - name.length() - 30 else {
       fail("NPZ exceeds size limit")
     }
