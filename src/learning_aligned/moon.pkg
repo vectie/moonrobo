@@ -11,3 +11,7 @@ import {
   "moonbitlang/x/crypto",
   "vectie/moonrobo/src/learning_aligned/storage" @motion_storage,
 }
+
+import {
+  "moonbitlang/core/env",
+} for "wbtest"

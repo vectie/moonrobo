@@ -332,7 +332,9 @@ test "parent MDP rotation zero tiny-angle derivative and vertical heading fixes"
 
 ///|
 async test "parent acquired catalog verifies all forty original sources and 264705 rows" {
-  let folder = "target/learning/g1-aligned-data"
+  let folder = @env.get_env_var("MOONROBO_ALIGNED_DATA").unwrap_or(
+    "target/learning/g1-aligned-data",
+  )
   let catalog = @artifacts.load_json(folder + "/motion-manifest.json")
   guard catalog is Object(fields) else {
     fail("acquired catalog must be object")

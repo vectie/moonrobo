@@ -51,7 +51,7 @@ Required inputs and failure causes resolved in the November 19 sweep:
 | MuJoCo | Matching installed headers and library. The runner hashes the selected library and complete header set into its build directory; changing `CPATH` alone can otherwise reuse a headerless native stub. |
 | G1 | Actual menagerie `scene_mjx.xml` with its model/mesh dependencies. Supplying only the MuJoCo library caused 18 initialization failures. |
 | E1 | Complete qualified dataset including scene, meshes, motion entries, reports, model validation and admission. Metadata-only output archives are insufficient. Use the exact runtime library recorded in admission; do not rewrite its hashes. |
-| Motion catalog | Acquired `motion-manifest.json` and all 40 source CSVs. The tests stream real files and verify identities, not a synthetic substitute. |
+| Motion catalog | Acquired `motion-manifest.json`, all 40 source CSVs and `g1_description/scene.xml` with its meshes. The aligned-physics fixture uses that source model and `dance1_subject1.csv`; it is distinct from the menagerie G1 fixture. The tests stream real files and verify identities, not a synthetic substitute. |
 | ATen oracle | Explicit Torch headers/library and compiler. The runner links a fresh optional oracle on each run. Production does not acquire a new Torch link dependency. |
 | BLAS | Explicit `MOONNUM_BLAS_LIBRARY`, supporting LP64 `cblas_dgemm` and `cblas_sgemm`. The native test executes both precisions against portable deterministic products. |
 

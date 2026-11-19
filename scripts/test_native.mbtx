@@ -87,6 +87,8 @@ async fn main {
       d.e1_dataset + "/admission.json",
       d.e1_dataset + "/model-validation.json",
       d.aligned_data + "/motion-manifest.json",
+      d.aligned_data + "/g1_description/scene.xml",
+      d.aligned_data + "/lafan1_g1/dance1_subject1.csv",
       d.blas_library,
     ] {
     guard @fs.exists(path) else {
@@ -113,7 +115,9 @@ async fn main {
   }
   let identity = @crypto.bytes_to_hex_string(hash.finalize())
   let build = d.build_root + "/" + identity
-  @fs.mkdir(build, recursive=true)
+  if !@fs.exists(build) {
+    @fs.mkdir(build, recursive=true)
+  }
   let oracle = build +
     "/libmoonrobo_diff_oracle" +
     (if d.platform == "macos" { ".dylib" } else { ".so" })
@@ -155,6 +159,8 @@ async fn main {
     "MOONROBO_MUJOCO_SCENE": d.g1_scene,
     "MOONROBO_E1_DATASET": d.e1_dataset,
     "MOONROBO_ALIGNED_DATA": d.aligned_data,
+    "MOONROBO_ALIGNED_SCENE": d.aligned_data + "/g1_description/scene.xml",
+    "MOONROBO_ALIGNED_MOTION": d.aligned_data + "/lafan1_g1/dance1_subject1.csv",
     "MOONNUM_BLAS_LIBRARY": d.blas_library,
     "MOONROBO_SMC_DIFF_ADAPTER": oracle,
     "MOONROBO_SMC_DIFF_FIXTURES": "",
