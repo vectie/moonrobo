@@ -17,3 +17,8 @@ options(
 import {
   "moonbitlang/core/env",
 } for "test"
+
+import {
+  "vectie/moonrobo/src/learning_aligned/gpu_protocol" @protocol,
+  "vectie/moonrobo/src/learning_aligned/gpu_native",
+} for "wbtest"

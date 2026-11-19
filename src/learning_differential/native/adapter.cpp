@@ -30,7 +30,7 @@ extern "C" int moonrobo_diff_put(void*h,const char*name,const char*dtype,const i
 }
 extern "C" int moonrobo_diff_evaluate(void*h,const char*operation){auto&c=*static_cast<Context*>(h);try{
  at::set_num_threads(1);c.output.clear();c.names.clear();c.failure.clear();std::string op(operation);
- if(op=="network"||op=="world_update"||op=="policy_update")moonrobo_diff::learning_oracle(op,c.input,c.output);else moonrobo_diff::mathematical_oracle(op,c.input,c.output);
+ if(op=="network"||op=="world_update"||op=="policy_update"||op.rfind("native64.learning.",0)==0)moonrobo_diff::learning_oracle(op,c.input,c.output);else moonrobo_diff::mathematical_oracle(op,c.input,c.output);
  for(auto&entry:c.output){auto&v=entry.second;if(v.device().type()!=at::kCPU||v.numel()>INT_MAX)throw std::runtime_error("oracle returned non-CPU or oversized output");if(!at::isfinite(v).all().item<bool>())throw std::runtime_error("oracle returned nonfinite output "+entry.first);v=v.detach().contiguous();c.names.push_back(entry.first);}return 0;
  }catch(const std::exception&e){c.failure=e.what();return -1;}}
 extern "C" int moonrobo_diff_output_count(void*h){return int(static_cast<Context*>(h)->names.size());}

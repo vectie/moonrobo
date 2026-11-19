@@ -1,5 +1,14 @@
 # Differential tooling migration status
 
+Update, 19 November 2026: native Float64 conformance now builds, links, loads
+and executes the independent ATen oracle, including autograd, Adam and actual
+generator draws. Native data and CPU protocol cases also execute production
+code. See [README.md](README.md) and the
+[workspace validation guide](../../docs/NATIVE_TESTING.md). The historical
+migration-only record below describes what was checked at initial authoring;
+it is not the current native test status. Strict executed-upstream Float32
+qualification remains a separate, unclaimed result.
+
 The actual candidate adapters, strict sealed-fixture/capture protocol,
 `cmd/reference_differential` CLI, 27 original-method fixture entries and schema
 regressions are authored and native typechecked. The three independent C++

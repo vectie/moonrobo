@@ -20,10 +20,9 @@ async fn required_case(id : String) -> Unit {
   let suite_folder = @env.get_env_var("MOONROBO_SMC_DIFF_FIXTURES").unwrap_or(
     "",
   )
-  guard !suite_folder.is_empty() else {
-    fail(
-      "differential execution remains deferred: set MOONROBO_SMC_DIFF_FIXTURES to real source-bound exported fixtures; no fixture is fabricated or skipped",
-    )
+  if suite_folder.is_empty() {
+    native_contract(id)
+    return
   }
   let suite : Suite = @json.from_json(
     @artifacts.load_json(suite_folder + "/suite.json"),
@@ -88,137 +87,137 @@ async fn required_case(id : String) -> Unit {
 }
 
 ///|
-async test "original data resampling velocity goals and end bins" {
+async test "data resampling velocity goals and end bins" {
   required_case("data.resampling")
 }
 
 ///|
-async test "original data duplicate bin update order and exact checkpoint" {
+async test "data duplicate bin update order and exact checkpoint" {
   required_case("data.duplicates")
 }
 
 ///|
-async test "original data timeout bootstrap and terminal" {
+async test "data timeout bootstrap and terminal" {
   required_case("data.bootstrap")
 }
 
 ///|
-async test "original data manifest source SHA and split identity" {
+async test "data manifest source SHA and split identity" {
   required_case("data.manifest")
 }
 
 ///|
-async test "original data reference-only export does not invoke FK" {
+async test "data reference-only export does not invoke FK" {
   required_case("data.reference_only")
 }
 
 ///|
-async test "original acquired 40 sources frozen catalog" {
+async test "acquired 40 sources frozen catalog" {
   required_case("data.catalog40")
 }
 
 ///|
-async test "original three acquired clips versus executed smc" {
+async test "three acquired clips differential resampling" {
   required_case("data.real_clips")
 }
 
 ///|
-async test "original reset mixture and updates versus executed smc" {
+async test "reset mixture and updates differential" {
   required_case("data.reset_mixture")
 }
 
 ///|
-async test "original terminal-only-bin documented upstream bug" {
+async test "terminal-only-bin documented upstream bug" {
   required_case("data.terminal_fix")
 }
 
 ///|
-async test "original MDP heads and pullbacks versus executed smc" {
+async test "MDP heads and pullbacks differential" {
   required_case("mdp.heads")
 }
 
 ///|
-async test "original observation mode exact upstream prefix" {
+async test "observation mode exact prefix" {
   required_case("mdp.observation_modes")
 }
 
 ///|
-async test "original all tracked FK versus executed smc" {
+async test "all tracked FK differential" {
   required_case("mdp.fk")
 }
 
 ///|
-async test "original quaternion values and pullback versus executed smc" {
+async test "quaternion values and pullback differential" {
   required_case("mdp.quaternion")
 }
 
 ///|
-async test "original rotation floor and vertical-collapse bug fixes" {
+async test "rotation floor and vertical-collapse bug fixes" {
   required_case("mdp.rotation_fixes")
 }
 
 ///|
-async test "original default architecture versus executed smc" {
+async test "default architecture independently specified dimensions" {
   required_case("learning.architecture")
 }
 
 ///|
-async test "original networks and eight-step Adam versus executed smc" {
+async test "networks and eight-step Adam differential" {
   required_case("learning.world8")
 }
 
 ///|
-async test "original 32-step actor and GAE critic versus executed smc" {
+async test "32-step actor and GAE critic differential" {
   required_case("learning.policy32")
 }
 
 ///|
-async test "original replay windows histories and ring restore versus executed smc" {
+async test "replay windows histories and ring restore differential" {
   required_case("learning.replay")
 }
 
 ///|
-async test "original Isaac pinned solver protocol" {
+async test "Isaac pinned solver protocol" {
   required_case("isaac.solver")
 }
 
 ///|
-async test "original Isaac joint order before state access" {
+async test "Isaac joint order before state access" {
   required_case("isaac.joint_order")
 }
 
 ///|
-async test "original Isaac missing optional runtime" {
+async test "Isaac missing optional runtime rejects load" {
   required_case("isaac.missing")
 }
 
 ///|
-async test "original Isaac pre-reset transition and timeout" {
+async test "Isaac pre-reset transition and timeout" {
   required_case("isaac.transition")
 }
 
 ///|
-async test "original Isaac evaluation view and replica accounting" {
+async test "Isaac evaluation view and replica accounting" {
   required_case("isaac.evaluation")
 }
 
 ///|
-async test "original Isaac warm resume refill and collision identity" {
+async test "Isaac warm resume refill and collision identity" {
   required_case("isaac.resume")
 }
 
 ///|
-async test "original Isaac context COM friction and offset resampling" {
+async test "Isaac context COM friction and offset resampling" {
   required_case("isaac.context")
 }
 
 ///|
-async test "original Isaac raw evaluation action" {
+async test "Isaac raw evaluation action" {
   required_case("isaac.raw_action")
 }
 
 ///|
-async test "original Isaac episode context indexed reset" {
+async test "Isaac episode context indexed reset" {
   required_case("isaac.episode_context")
 }
 

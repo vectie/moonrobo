@@ -1,11 +1,12 @@
-# Deferred source-bound differential execution
+# Native conformance and source-bound differential execution
 
 This package provides actual MoonBit candidate adapters, a separate optional
 ATen C++ mathematical oracle, immutable numerical fixture bundles, and strict
-capture verification. The original Python files remain unchanged. **No test,
-oracle computation, RNG sample, training, simulator, fixture export or comparison
-has been executed.** Static MoonBit checking and C/C++ syntax checking are the
-only validation performed during migration.
+capture verification. The original Python files remain unchanged. The native
+conformance suite now builds, loads and executes the independent ATen oracle.
+It tests the production scalar learner in Float64, its declared precision.
+This is separate from upstream Float32 qualification; it does not establish
+bitwise agreement with an executed Python model or qualify GPU dynamics.
 
 [AUDIT.md](AUDIT.md) maps all 54 methods in the nine retained aligned test files;
 27 have named entries in `contracts.mbt`. The first five data unit methods and
@@ -24,9 +25,35 @@ executed-upstream fixture.
 - `executed-upstream-python`: numeric fixtures exported by an actual execution
   of the preserved original Python oracle/tests. Native tools only ingest and
   verify these artifacts; they do not interpret Python or execute pickle code.
-  No such fixture has been produced. The 12 original methods that compare with
-  executed sibling SMC functions explicitly require this label in their pending
-  tests; independent C++ results cannot substitute for that execution.
+  No such fixture was produced by this test-fix task. When an external suite is
+  selected, the 12 methods that compare with executed sibling SMC functions
+  still require this label; independent C++ results cannot substitute for it.
+
+## Executable native profile
+
+Run `moon run scripts/test_native.mbtx DEPENDENCIES.json` from the workspace
+root. The [dependency guide](../../docs/NATIVE_TESTING.md) describes the explicit
+Torch, MuJoCo, G1, qualified E1, acquired motion-data and LP64 BLAS inputs. Missing
+inputs fail. An optional list of package paths selects a focused run; the default
+runs the full workspace, including MoonNum, Moonphys and LunaKine tests.
+
+Without `MOONROBO_SMC_DIFF_FIXTURES`, the 27 named cases execute production code
+against explicit unit expectations, independent data/ring equations, CPU adapter
+protocol fixtures or independent ATen autograd/Adam. They cover all network
+outputs, normalizer buffers, raw/applied gradients and optimizer states for an
+eight-step world update and a 32-step policy/GAE update, plus actual acquired
+motion files and genuine ATen generator state/draws. No case returns a skip.
+
+The oracle's `native64.learning.*` and `native64.*` operations specify Double
+arithmetic and the native corrected heading/rotation-error equations. Original
+unprefixed operations retain the upstream Float32 normalizer/discount behavior
+and documented rotation bugs. Regression tests verify failure isolation and
+that the two profiles retain different optimizer-step dtypes. Native comparison
+requires exact keysets, dtypes and shapes; integers, booleans and RNG bytes are
+exact. Float64 comparisons allow `2e-10 + 2e-9 * abs(reference)` for independent
+reduction/autograd order. Tests reject missing tensors, corrupted moments,
+reshaped arrays and false dtype labels. These bounds never apply to sealed
+upstream fixtures.
 
 The native exporter refuses to write an `executed-upstream-python` label. A
 manifest label is provenance to inspect, not proof of Python or GPU execution.
@@ -34,7 +61,7 @@ The original Python process remains the authoritative external producer when
 that exact upstream execution is required; no new Python script, string `exec`,
 source mutation or Python subprocess is introduced by the MoonBit tools.
 
-## Product command (not executed)
+## Source-bound fixture command
 
 From the MoonRobo module, with a previously built explicitly selected oracle:
 
@@ -119,7 +146,7 @@ The original small profile is enforced: world hidden `[16,16,16]`, policy
 `[16,12]`, critic `[16,8]`, history 10, goals 10, batch 2, window 8, imagination
 32, critic epochs 2/minibatches 4, noise disabled, gamma .99, lambda .95 and
 the source learning rate. Architecture comparison separately constructs the
-actual default candidate models; it allocates those models when eventually run.
+actual default candidate models; the native architecture test constructs them.
 
 | Operation | Fixed inputs |
 |---|---|
@@ -184,21 +211,22 @@ exactly two `randperm(64)` calls and match supplied permutations. MDP noise and
 replay choices are also matched against actual ATen draws before the candidate
 calculation. No fallback seed law is accepted.
 
-## Deferred execution and remaining boundaries
+## Strict upstream profile and remaining boundaries
 
-`fixtures_wbtest.mbt` has 27 original-method fixture entries plus strict schema
-tests. Set `MOONROBO_SMC_DIFF_FIXTURES` to an actual exported suite. `suite.json`
+`fixtures_wbtest.mbt` has 27 method entries plus strict schema tests. To run the
+external qualification route instead of native conformance, set
+`MOONROBO_SMC_DIFF_FIXTURES` to an actual exported suite and run
+`moon test src/learning_differential --target native` directly. `suite.json`
 uses format `moonrobo.smc-differential.suite.v1`, `source_root`,
 `oracle_library`, and `cases` records with `case_id`, relative `folder`, trusted
 `manifest_sha256`, optional `capture`, optional `variant`. The real-clip method
 requires all three exact names from the original test. Missing fixtures fail
 explicitly; no skip/fake pass or independent-for-upstream substitution occurs.
 
-Build the optional C++ library later with CMake's actual TorchConfig package.
-This migration only ran `clang++ -fsyntax-only` against the installed headers;
-it did not configure/link/build/load or sample that library. The normal
-MoonBit module has no LibTorch/Python link dependency; the adapter is explicitly
-loaded at differential execution time.
+The native runner builds the optional C++ library with an explicitly selected
+compiler and Torch headers/libraries. CMake with TorchConfig is also supported.
+The normal MoonBit production module has no LibTorch/Python link dependency;
+the adapter is explicitly loaded at differential execution time.
 
 The canonical candidate uses Float64. Original Float32 fixtures currently fail
 the strict dtype gate, before any claim of bitwise tensor/optimizer equality.

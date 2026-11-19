@@ -26,8 +26,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *
- * Only syntax checking was performed while authoring this file. There is no
- * executed oracle fixture, numerical parity or training result in this change.
+ * Native Float64 conformance is executed separately from sealed upstream
+ * Float32 qualification. See ../README.md for precision and evidence boundaries.
  */
 #include "oracle.hpp"
 #include <ATen/TensorIndexing.h>
@@ -49,6 +49,14 @@ using at::Tensor;
 using at::indexing::Ellipsis;
 using at::indexing::Slice;
 using State = std::array<Tensor,6>;
+// An explicit Float64 conformance profile, separate from the preserved SMC
+// profile. Scope restoration prevents failed evaluations leaking precision.
+thread_local bool native64_profile = false;
+struct PrecisionScope {
+  bool previous;
+  explicit PrecisionScope(bool enabled):previous(native64_profile){native64_profile=enabled;}
+  ~PrecisionScope(){native64_profile=previous;}
+};
 
 const Tensor& require(const Tensors& input,const std::string& key) {
   auto found=input.find(key);
@@ -128,7 +136,7 @@ Tensor so3_log(const Tensor& rotation) {
 Tensor heading(const Tensor& rotation,bool fixture_corrected=false) {
   auto fx=rotation.index({Ellipsis,0,0}),fy=rotation.index({Ellipsis,1,0});
   Tensor n;
-  if(fixture_corrected) {
+  if(fixture_corrected || native64_profile) {
     auto vertical=fx.square()+fy.square()<1e-12;
     fx=at::where(vertical,rotation.index({Ellipsis,1,1}),fx);
     fy=at::where(vertical,-rotation.index({Ellipsis,0,1}),fy);
@@ -204,7 +212,7 @@ void update_norm(Model& model,const std::string& prefix,const Tensor& input,doub
   auto& mean=model.at(prefix+".mean");auto& variance=model.at(prefix+".var");auto& count=model.at(prefix+".count");
   if(count.item<double>()>=max_count) return;
   // This .float() is required even for double fixtures, exactly as RunningNorm.
-  auto x=input.reshape({-1,input.size(-1)}).to(at::kFloat);
+  auto x=input.reshape({-1,input.size(-1)}).to(native64_profile?at::kDouble:at::kFloat);
   const auto n=x.size(0);auto m=x.mean(0),v=x.var(0,false),total=count+n,delta=m-mean;
   mean.add_(delta*n/total);
   variance=(variance*count+v*n+delta.square()*count*n/total)/total;
@@ -259,7 +267,7 @@ Tensor fixture_critic(const State& s,const Tensor& goal) {
   // into the translated SUT and must not be used for world-model invariants.
   auto inv=invariant(s,true);
   auto zeros_shape=leading_shape(inv,1,113);
-  return at::cat({inv,at::zeros(zeros_shape,at::TensorOptions().dtype(at::kFloat).device(inv.device())),goal},-1);
+  return at::cat({inv,at::zeros(zeros_shape,inv.options().dtype(native64_profile?at::kDouble:at::kFloat)),goal},-1);
 }
 
 std::unique_ptr<torch::optim::Adam> optimizer(Model& model,const Tensors& input,double lr,double beta2) {
@@ -303,7 +311,7 @@ void capture_optimizer(Tensors& output,Model& model,torch::optim::Adam& opt) {
     const auto prefix="optimizer_after."+model.name+"."+model.names[i]+".";
     output[prefix+"exp_avg"]=state.exp_avg().detach().clone();
     output[prefix+"exp_avg_sq"]=state.exp_avg_sq().detach().clone();
-    output[prefix+"step"]=at::scalar_tensor(static_cast<double>(state.step()),at::TensorOptions().dtype(at::kFloat));
+    output[prefix+"step"]=at::scalar_tensor(static_cast<double>(state.step()),at::TensorOptions().dtype(native64_profile?at::kDouble:at::kFloat));
   }
 }
 void capture_state(Tensors& output,const std::string& prefix,const State& state) {
@@ -363,7 +371,7 @@ void policy_operation(const Tensors& input,Tensors& output) {
   TORCH_CHECK(history_state.size(0)==batch&&history_state.size(1)==hist,"history shape mismatch");
   Tensor history;
   {at::NoGradGuard no_grad;history=fixture_observation(unflatten(history_state),history_previous);}
-  auto goal=at::full({batch,73*frames},0.01,at::TensorOptions().dtype(at::kFloat).device(initial.device()));
+  auto goal=at::full({batch,73*frames},0.01,initial.options().dtype(native64_profile?at::kDouble:at::kFloat));
   auto initial_goal=goal;
   std::array<std::vector<Tensor>,6> states;
   std::vector<Tensor> actions,previous_actions,frame_ids,goals;
@@ -374,7 +382,7 @@ void policy_operation(const Tensors& input,Tensors& output) {
     f=f+1;
     auto observation=fixture_observation(state,action);
     history=at::cat({history.index({Slice(),Slice(1,hist),Slice()}),observation.unsqueeze(1)},1);
-    goal=at::full({batch,73*frames},0.01,at::TensorOptions().dtype(at::kFloat).device(initial.device()));
+    goal=at::full({batch,73*frames},0.01,initial.options().dtype(native64_profile?at::kDouble:at::kFloat));
     previous=action;
     for(size_t i=0;i<6;++i) states[i].push_back(state[i]);
     actions.push_back(action);frame_ids.push_back(f);goals.push_back(goal);
@@ -389,7 +397,7 @@ void policy_operation(const Tensors& input,Tensors& output) {
   // Original torch.ones and torch.arange explicitly have Float32 semantics,
   // even when the enclosing fixture tensors are double.
   auto before=at::cat({at::ones({1,batch},at::TensorOptions().dtype(at::kFloat).device(initial.device())),alive.index({Slice(0,horizon-1),Slice()})},0);
-  auto discount=at::pow(gamma,at::arange(horizon,at::TensorOptions().dtype(at::kFloat).device(initial.device()))).unsqueeze(-1);
+  auto discount=at::pow(gamma,at::arange(horizon,initial.options().dtype(native64_profile?at::kDouble:at::kFloat))).unsqueeze(-1);
   auto objective=(discount*before*reward).sum(0),continuation=alive.select(0,horizon-1);
   auto reward_sum=(before*reward).detach().sum(0);
   auto detached_reward=reward.detach(),detached_done=done.detach();
@@ -459,9 +467,14 @@ void policy_operation(const Tensors& input,Tensors& output) {
 } // anonymous namespace
 
 void learning_oracle(const std::string& operation,const Tensors& input,Tensors& output) {
-  if(operation=="network") network_operation(input,output);
-  else if(operation=="world_update") world_operation(input,output);
-  else if(operation=="policy_update") policy_operation(input,output);
+  const bool native=operation.rfind("native64.learning.",0)==0;
+  PrecisionScope precision(native);
+  const auto op=native?operation.substr(18):operation;
+  if(native) for(const auto& item:input) if(item.first.rfind("weights.",0)==0)
+    TORCH_CHECK(item.second.scalar_type()==at::kDouble,"native64 requires actual Float64 weights");
+  if(op=="network") network_operation(input,output);
+  else if(op=="world_update") world_operation(input,output);
+  else if(op=="policy_update") policy_operation(input,output);
   else throw std::invalid_argument("unknown independent learning operation: "+operation);
 }
 } // namespace moonrobo_diff

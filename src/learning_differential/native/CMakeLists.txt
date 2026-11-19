@@ -25,6 +25,5 @@ set_target_properties(moonrobo_diff_oracle PROPERTIES
   POSITION_INDEPENDENT_CODE ON
 )
 
-# No executable, CTest registration, fixture producer or forward call is part
-# of configuration/build. This change was validated with clang++ -fsyntax-only
-# against the installed Torch headers; the shared library was not built or run.
+# No executable, fixture producer or forward call is part of configuration.
+# scripts/test_native.mbtx builds and executes the independent oracle explicitly.
