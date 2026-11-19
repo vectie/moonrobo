@@ -1,0 +1,77 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/e1_elbow_control"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/sdk_e1_low",
+}
+
+// Values
+pub const DRUM_FRAMES : Int = 2401
+
+pub const DT_MS : Int = 20
+
+pub const ELBOW_SLOT : Int = 3
+
+pub const FRAMES : Int = 751
+
+pub const RAISED_DRUM_FRAMES : Int = 8551
+
+pub const RIGHT_ELBOW_SLOT : Int = 14
+
+pub fn drum_offsets(Int) -> (Double, Double) raise
+
+pub fn leg_position_in_range(Int, Double) -> Bool
+
+pub fn leg_slot(Int) -> Bool
+
+pub fn raised_drum_targets(Int, Double, Double) -> (Double, Double) raise
+
+// Errors
+
+// Types and methods
+pub(all) struct Clip {
+  joint : String
+  step_ms : Int
+  offset_degrees : Array[Double]
+} derive(@json.FromJson)
+pub fn Clip::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Clip::gentle() -> Self
+pub fn Clip::slow_fold_return() -> Self
+pub fn Clip::tracking_tolerance_deg(Self) -> Double
+pub fn Clip::validate(Self) -> Unit raise
+
+pub struct DrumPath {
+  // private fields
+}
+pub fn DrumPath::frame_index(Self) -> Int
+pub fn DrumPath::new(ArrayView[@sdk_e1_low.MotorCommand]) -> Self raise
+pub fn DrumPath::next(Self, Sample, Int64) -> Array[@sdk_e1_low.MotorCommand] raise
+pub fn DrumPath::raised(ArrayView[@sdk_e1_low.MotorCommand]) -> Self raise
+
+pub(all) struct Motor {
+  id : Int
+  position : Double
+  velocity : Double
+  error : Int
+} derive(@json.FromJson)
+pub fn Motor::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+
+pub struct Path {
+  // private fields
+}
+pub fn Path::cancel(Self) -> Unit
+pub fn Path::new(Clip, ArrayView[@sdk_e1_low.MotorCommand], suspended? : Bool) -> Self raise
+pub fn Path::next(Self, Sample, Int64) -> Array[@sdk_e1_low.MotorCommand] raise
+
+pub(all) struct Sample {
+  source_ns : Int64
+  receipt_ms : Int64
+  motors : Array[Motor]
+} derive(@json.FromJson)
+pub fn Sample::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Sample::stand_candidate(Self) -> Array[@sdk_e1_low.MotorCommand] raise
+
+// Type aliases
+
+// Traits

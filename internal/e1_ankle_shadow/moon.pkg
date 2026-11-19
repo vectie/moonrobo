@@ -1,0 +1,6 @@
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/e1_elbow_control" @elbow,
+}
+
+supported_targets = "native"

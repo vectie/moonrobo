@@ -1,0 +1,368 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  guard @env.args()[1:]
+    is [
+      kind,
+      stage,
+      preflight_file,
+      dir,
+      handback_file,
+      controller,
+      decoder_library,
+      mirror_dir,
+    ] &&
+    (kind == "live" || kind == "shadow") &&
+    (
+      stage == "hold" ||
+      stage == "elbow" ||
+      stage == "elbow90" ||
+      stage == "drums" ||
+      stage == "raised-drums"
+    ) &&
+    (
+      kind == "live" ||
+      stage == "hold" ||
+      stage == "drums" ||
+      stage == "raised-drums"
+    ) else {
+    fail(
+      "usage: live|shadow STAGE PREFLIGHT NEW_RUN_DIR HANDBACK_OR_DASH CONTROLLER DECODER_LIBRARY MIRROR_DIR_OR_DASH",
+    )
+  }
+  let live = kind == "live"
+  let preflight = @fs.read_file(preflight_file).json()
+  guard preflight
+    is {
+      "passed": True,
+      "peer_prefix": String(peer),
+      "status_guid": String(writer),
+      "created_epoch": Number(created, ..),
+      ..
+    } &&
+    @env.now().to_double() / 1000.0 - created >= 0.0 &&
+    @env.now().to_double() / 1000.0 - created < 120.0 else {
+    fail("fresh successful preflight required")
+  }
+  guard !@fs.exists(dir) else { fail("run directory already exists") }
+  @fs.mkdir(dir, recursive=true)
+  let python = @env.get_env_var("MOONROBO_E1_PYTHON").unwrap_or("python3")
+  let sender_args = if live {
+    [
+      "-B",
+      "january_transport.py",
+      "--live",
+      "--execute",
+      "--stage",
+      stage,
+      "--peer-prefix",
+      peer,
+      "--ready",
+      dir + "/ready.json",
+      "--receipt",
+      dir + "/transport.json",
+    ]
+  } else {
+    [dir + "/shadow-sink.ndjson"]
+  }
+  if live && stage == "elbow" {
+    sender_args.push("--handback-from")
+    sender_args.push(handback_file)
+  }
+  @async.with_timeout(
+    if stage == "raised-drums" {
+      240000
+    } else if stage == "elbow90" {
+      215000
+    } else if stage == "drums" {
+      80000
+    } else {
+      50000
+    },
+    () => {
+      @async.with_task_group(g => {
+        let privilege = @process.spawn(
+          g,
+          "/usr/bin/sudo",
+          ["-n", "true"],
+          stderr=@process.redirect_to_file(
+            dir + "/privilege.log",
+            create_mode=CreateNew,
+          ),
+        )
+        guard privilege.wait() == 0 else {
+          fail("packet capture needs sudo credential")
+        }
+        let (capture_read, capture_output) = @process.read_from_process()
+        let (pcap_input, decoder_feed) = @process.write_to_process()
+        let (decoded_read, decoded_output) = @process.read_from_process()
+        let (status_input, planner_feed) = @process.write_to_process()
+        let (command_read, planner_output) = @process.read_from_process()
+        let (sender_input, sender_feed) = @process.write_to_process()
+        let capture = @process.spawn(
+          g,
+          "/usr/bin/sudo",
+          [
+            "-n",
+            "/usr/bin/timeout",
+            "-s",
+            "INT",
+            if stage == "raised-drums" {
+              "225"
+            } else if stage == "elbow90" {
+              "205"
+            } else if stage == "drums" {
+              "70"
+            } else {
+              "40"
+            },
+            "/usr/bin/tcpdump",
+            "--immediate-mode",
+            "-i",
+            "eno1",
+            "-p",
+            "-n",
+            "-U",
+            "-Q",
+            "inout",
+            "-s",
+            "0",
+            "-w",
+            "-",
+            "udp and host 192.168.55.102 and host 192.168.55.101",
+          ],
+          stdout=capture_output,
+          stderr=@process.redirect_to_file(
+            dir + "/capture.log",
+            create_mode=CreateNew,
+          ),
+        )
+        defer capture.cancel()
+        let decoder_args = [
+          "-B", "e1_status_packets.py", decoder_library, writer,
+        ]
+        if mirror_dir != "-" {
+          decoder_args.push("--mirror-dir")
+          decoder_args.push(mirror_dir)
+        }
+        let decoder = @process.spawn(
+          g,
+          python,
+          decoder_args,
+          stdin=pcap_input,
+          stdout=decoded_output,
+          stderr=@process.redirect_to_file(
+            dir + "/decoder.log",
+            create_mode=CreateNew,
+          ),
+        )
+        defer decoder.cancel()
+        let wire = @fs.create(dir + "/wire.pcap")
+        defer wire.close()
+        let wire_writer : &@io.Writer = wire
+        g.spawn_bg(() => {
+          let source : &@io.Reader = capture_read
+          let target : &@io.Writer = decoder_feed
+          for ;; {
+            guard source.read_some() is Some(data) else { break }
+            wire_writer.write(data)
+            target.write(data)
+          }
+          decoder_feed.close()
+        })
+        let records : Array[String] = []
+        let mut feeding = false
+        let mut feed_error : String? = None
+        let mut status_drained = false
+        g.spawn_bg(() => {
+          let source : &@io.Reader = decoded_read
+          let target : &@io.Writer = planner_feed
+          for ;; {
+            guard source.read_until("\n") is Some(line) else { break }
+            let normalized = line.trim().to_owned()
+            records.push(normalized)
+            if feeding {
+              target.write(normalized + "\n") catch {
+                err => {
+                  feeding = false
+                  feed_error = Some(err.to_string())
+                }
+              }
+            }
+          }
+          status_drained = true
+        })
+        // Shadow mode starts only tee as the sink: no command DDS participant exists.
+        let sender = @process.spawn(
+          g,
+          if live {
+            python
+          } else {
+            "/usr/bin/tee"
+          },
+          sender_args,
+          stdin=sender_input,
+          stdout=@process.redirect_to_file(
+            dir + "/sender.stdout",
+            create_mode=CreateNew,
+          ),
+          stderr=@process.redirect_to_file(
+            dir + "/transport.log",
+            create_mode=CreateNew,
+          ),
+        )
+        defer sender.cancel()
+        if live {
+          for _i in 0..<2000 {
+            if @fs.exists(dir + "/ready.json") {
+              break
+            }
+            guard sender.try_wait() is None else {
+              fail("sender preflight failed")
+            }
+            @async.sleep(10)
+          }
+          guard @fs.exists(dir + "/ready.json") else {
+            fail("sender readiness timeout")
+          }
+        }
+        let planner_args = [stage, dir + "/planner.json"]
+        if !live && (stage == "drums" || stage == "raised-drums") {
+          planner_args.push("--shadow")
+        }
+        let planner = @process.spawn(
+          g,
+          controller,
+          planner_args,
+          stdin=status_input,
+          stdout=planner_output,
+          stderr=@process.redirect_to_file(
+            dir + "/planner.log",
+            create_mode=CreateNew,
+          ),
+        )
+        defer planner.cancel()
+        let commands : Array[String] = []
+        let mut commands_drained = false
+        let mut sending = true
+        let mut command_error : String? = None
+        g.spawn_bg(() => {
+          let source : &@io.Reader = command_read
+          let target : &@io.Writer = sender_feed
+          for ;; {
+            guard source.read_until("\n") is Some(line) else { break }
+            commands.push(line.trim().to_owned())
+            if sending {
+              target.write(line.trim().to_owned() + "\n") catch {
+                err => {
+                  sending = false
+                  command_error = Some(err.to_string())
+                }
+              }
+            }
+          }
+          sender_feed.close()
+          commands_drained = true
+        })
+        feeding = true
+        // Independent receive-only reader keeps status flowing after the sender closes.
+        let observer_args = ["-B", "observe.py", dir + "/observed.json"]
+        if live {
+          observer_args.push(dir + "/ready.json")
+        }
+        observer_args.push(
+          if stage == "raised-drums" {
+            "215"
+          } else if stage == "elbow90" {
+            "195"
+          } else if stage == "drums" {
+            "60"
+          } else {
+            "22"
+          },
+        )
+        let observer = @process.spawn(
+          g,
+          python,
+          observer_args,
+          stderr=@process.redirect_to_file(
+            dir + "/observer.log",
+            create_mode=CreateNew,
+          ),
+        )
+        defer observer.cancel()
+        let planner_status = planner.wait()
+        feeding = false
+        planner_feed.close()
+        while !commands_drained {
+          @async.sleep(1)
+        }
+        let sender_status = sender.wait()
+        let disconnect_epoch = @env.now().to_double() / 1000.0
+        let records_at_disconnect = records.length()
+        @async.sleep(3000)
+        let records_after_observation = records.length()
+        let observer_status = observer.wait()
+        let capture_status = capture.wait()
+        let decoder_status = decoder.wait()
+        while !status_drained {
+          @async.sleep(1)
+        }
+        @fs.write_file(
+          dir + "/status.ndjson",
+          records.join("\n") + "\n",
+          create_mode=CreateNew,
+        )
+        @fs.write_file(
+          dir + "/targets.ndjson",
+          commands.join("\n") + "\n",
+          create_mode=CreateNew,
+        )
+        let report : Json = {
+          "kind": kind,
+          "stage": stage,
+          "planner_status": Json(planner_status),
+          "sender_status": Json(sender_status),
+          "observer_status": Json(observer_status),
+          "capture_status": Json(capture_status),
+          "decoder_status": Json(decoder_status),
+          "command_writers_created": live,
+          "physical_handback_verified": false,
+          "post_disconnect_observation_ms": 3000,
+          "disconnect_epoch": Json(disconnect_epoch),
+          "decoded_records": Json(records.length()),
+          "records_after_observation": Json(records_after_observation),
+          "post_disconnect_records": Json(
+            records_after_observation - records_at_disconnect,
+          ),
+          "status_feed_error": Json(feed_error),
+          "command_feed_error": Json(command_error),
+          "operator_action": "confirm handheld factory control after live hold disconnect before elbow stage",
+        }
+        @fs.write_file(
+          dir + "/session.json",
+          report.stringify(indent=2),
+          create_mode=CreateNew,
+        )
+        println(report.stringify(indent=2))
+        guard planner_status == 0 &&
+          sender_status == 0 &&
+          observer_status == 0 &&
+          capture_status == 124 &&
+          decoder_status == 0 &&
+          command_error is None else {
+          fail("stage stopped; examine saved receipts")
+        }
+      })
+    },
+  )
+}

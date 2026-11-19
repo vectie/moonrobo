@@ -1,0 +1,2 @@
+# Exact Python DDS package used in the qualified January-protocol trials.
+cyclonedds==11.1.0

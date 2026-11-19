@@ -1,0 +1,130 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  if !@fs.exists("runs") { @fs.mkdir("runs", recursive=true) }
+  let dir = "runs/watchdog-" + @env.now().to_string()
+  @fs.mkdir(dir)
+  let python = @env.get_env_var("MOONROBO_E1_PYTHON").unwrap_or("python3")
+  @async.with_timeout(10000, () => {
+    @async.with_task_group(g => {
+      let fixture = @process.spawn(
+        g,
+        python,
+        ["-B", "robot_fixture.py", dir + "/wire.json"],
+        stderr=@process.redirect_to_file(
+          dir + "/fixture.log",
+          create_mode=CreateNew,
+        ),
+      )
+      defer fixture.cancel()
+      let (input, feed) = @process.write_to_process()
+      let sender = @process.spawn(
+        g,
+        python,
+        [
+          "-B",
+          "january_transport.py",
+          "--stage",
+          "hold",
+          "--ready",
+          dir + "/ready.json",
+          "--receipt",
+          dir + "/transport.json",
+        ],
+        stdin=input,
+        stderr=@process.redirect_to_file(
+          dir + "/transport.log",
+          create_mode=CreateNew,
+        ),
+      )
+      defer sender.cancel()
+      for _i in 0..<600 {
+        if @fs.exists(dir + "/ready.json") {
+          break
+        }
+        guard sender.try_wait() is None else { fail("sender startup failed") }
+        @async.sleep(10)
+      }
+      guard @fs.exists(dir + "/ready.json") else {
+        fail("sender readiness timeout")
+      }
+      let started = @env.now()
+      let stamp = started.to_string()
+      let row : Json = {
+        "kind": "target",
+        "stage": "hold",
+        "profile": "suspended",
+        "sequence": 0,
+        "receipt_ms": stamp,
+        "telemetry_receipt_ms": stamp,
+        "telemetry_source_ns": (started.reinterpret_as_int64() * 1000000L).to_string(),
+        "action": 11,
+        "axes": [0, 0],
+        "motors": Json(
+          Array::makei(24, i => {
+            "motor_id": Json(i),
+            "pos": Json(if i == 3 { -0.5 } else { 0.0 }),
+            "vel": 0,
+            "tau": 0,
+            "kp": Json(if i == 23 { 0 } else { 50 }),
+            "kd": Json(
+              if i == 9 || i == 10 || i == 20 || i == 21 {
+                1
+              } else {
+                5
+              },
+            ),
+          }),
+        ),
+      }
+      let writer : &@io.Writer = feed
+      writer.write(row.stringify() + "\n")
+      // Keep stdin open without more planner output or a stop event.
+      let status = sender.wait()
+      let elapsed = @env.now() - started
+      guard status != 0 && elapsed < 250UL else {
+        fail("independent sender watchdog failed")
+      }
+      guard fixture.wait() == 0 else { fail("writer endpoints did not close") }
+      let receipt = @fs.read_file(dir + "/transport.json").json()
+      guard receipt
+        is {
+          "result": String(reason),
+          "motor_samples_sent": Number(count, ..),
+          ..
+        } &&
+        count > 0 &&
+        (
+          reason == "planner heartbeat expired" ||
+          reason == "source telemetry expired" ||
+          reason == "telemetry expired"
+        ) else {
+        fail("wrong transport stop reason")
+      }
+      let report : Json = {
+        "passed": true,
+        "directory": dir,
+        "scenario": "independent_planner_stall",
+        "sender_status": Json(status),
+        "exit_elapsed_ms": elapsed.to_string(),
+        "transport": receipt,
+        "wire": @fs.read_file(dir + "/wire.json").json(),
+      }
+      @fs.write_file(
+        dir + "/result.json",
+        report.stringify(indent=2),
+        create_mode=CreateNew,
+      )
+      println(report.stringify())
+    })
+  })
+}

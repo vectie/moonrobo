@@ -1,0 +1,199 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+struct Packet {
+  seq : Int32
+  arrival_ns : Int64
+  source_ns : Int64
+  q : Array[Double]
+} derive(FromJson)
+
+///|
+struct Row {
+  packet : Packet
+} derive(FromJson)
+
+///|
+struct Motor {
+  motor_id : Int32
+  pos : Double
+} derive(FromJson)
+
+///|
+fn magnitude(x : Double) -> Double {
+  if x < 0 {
+    -x
+  } else {
+    x
+  }
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [dir] else { fail("trial directory required") }
+  let transport = @fs.read_file(dir + "/transport.json").json()
+  guard transport
+    is { "finished_epoch": Number(finished, ..), "result": String(reason), .. } else {
+    fail("transport completion receipt required")
+  }
+  let mut start_ms = 0L
+  let mut initial : Array[Motor] = []
+  let mut targets = 0
+  let mut command_min = 0.0
+  let mut command_max = 0.0
+  let mut command_last = 0.0
+  let mut planner_reason = reason
+  for line in @fs.read_file(dir + "/targets.ndjson").text().split("\n") {
+    if line.is_empty() {
+      continue
+    }
+    // The native runner repeats its terminal failure after the JSON stop record.
+    if line.to_owned() == planner_reason {
+      continue
+    }
+    let value = @json.parse(line.to_owned())
+    if value is { "kind": "stop", "reason": String(stop_reason), .. } {
+      planner_reason = stop_reason
+    }
+    if value is { "kind": "target", "receipt_ms": stamp, "motors": motors, .. } {
+      let current : Array[Motor] = @json.from_json(motors)
+      guard current.length() == 24 else { fail("incomplete target") }
+      for slot in 0..<24 {
+        guard current[slot].motor_id == slot else {
+          fail("target motor order mismatch")
+        }
+      }
+      if targets == 0 {
+        start_ms = @json.from_json(stamp)
+        initial = current
+      }
+      let delta = current[3].pos - initial[3].pos
+      command_min = if delta < command_min { delta } else { command_min }
+      command_max = if delta > command_max { delta } else { command_max }
+      command_last = delta
+      targets += 1
+    }
+  }
+  guard targets > 0 else { fail("no target frames") }
+  let end_ms = finished * 1000.0
+  let mut active = 0
+  let mut post = 0
+  let mut elbow_min = 1.0e100
+  let mut elbow_max = -1.0e100
+  let mut elbow_last = 0.0
+  let mut post_last = 0.0
+  let mut right_min = 1.0e100
+  let mut right_max = -1.0e100
+  let mut right_last = 0.0
+  let mut right_post = 0.0
+  let mut first_seq = -1
+  let mut last_seq = -1
+  let mut previous_arrival = 0.0
+  let mut previous_source = 0.0
+  let mut max_near_stop_arrival_gap_ms = 0.0
+  let mut max_near_stop_source_gap_ms = 0.0
+  let changes = Array::make(24, 0.0)
+  for line in @fs.read_file(dir + "/status.ndjson").text().split("\n") {
+    if line.is_empty() {
+      continue
+    }
+    let row : Row = @json.from_json(@json.parse(line.to_owned()))
+    let p = row.packet
+    guard p.q.length() == 24 else { fail("incomplete telemetry") }
+    let at_ms = p.arrival_ns.to_double() / 1000000.0
+    let source_ms = p.source_ns.to_double() / 1000000.0
+    if previous_arrival > 0.0 &&
+      at_ms >= end_ms - 100.0 &&
+      at_ms <= end_ms + 100.0 {
+      let arrival_gap = at_ms - previous_arrival
+      let source_gap = source_ms - previous_source
+      if arrival_gap > max_near_stop_arrival_gap_ms {
+        max_near_stop_arrival_gap_ms = arrival_gap
+      }
+      if source_gap > max_near_stop_source_gap_ms {
+        max_near_stop_source_gap_ms = source_gap
+      }
+    }
+    previous_arrival = at_ms
+    previous_source = source_ms
+    if at_ms < start_ms.to_double() {
+      continue
+    }
+    let delta = p.q[3] - initial[3].pos
+    if at_ms <= end_ms {
+      if active == 0 {
+        first_seq = p.seq
+      }
+      last_seq = p.seq
+      active += 1
+      elbow_min = if delta < elbow_min { delta } else { elbow_min }
+      elbow_max = if delta > elbow_max { delta } else { elbow_max }
+      elbow_last = delta
+      let right_delta = p.q[14] - initial[14].pos
+      right_min = if right_delta < right_min { right_delta } else { right_min }
+      right_max = if right_delta > right_max { right_delta } else { right_max }
+      right_last = right_delta
+      for slot in 0..<24 {
+        let change = magnitude(p.q[slot] - initial[slot].pos)
+        if change > changes[slot] {
+          changes[slot] = change
+        }
+      }
+    } else if at_ms <= end_ms + 3000.0 {
+      post += 1
+      post_last = delta
+      right_post = p.q[14] - initial[14].pos
+    }
+  }
+  guard active > 0 && post > 0 else {
+    fail("active and post-disconnect telemetry required")
+  }
+  let rad = 0.017453292519943295
+  let report : Json = {
+    "sender_stop_reason": Json(reason),
+    "planner_stop_reason": Json(planner_reason),
+    "max_arrival_gap_within_100ms_of_stop_ms": Json(
+      max_near_stop_arrival_gap_ms,
+    ),
+    "max_robot_source_gap_within_100ms_of_stop_ms": Json(
+      max_near_stop_source_gap_ms,
+    ),
+    "source": "saved raw telemetry and planner targets; no robot connection",
+    "active_window_start_epoch_ms": start_ms.to_string(),
+    "active_window_end_epoch_ms": Json(end_ms),
+    "planned_target_updates": Json(targets),
+    "active_telemetry_packets": Json(active),
+    "active_first_sequence": Json(first_seq),
+    "active_last_sequence": Json(last_seq),
+    "post_disconnect_3s_packets": Json(post),
+    "initial_elbow_deg": Json(initial[3].pos / rad),
+    "commanded_elbow_min_offset_deg": Json(command_min / rad),
+    "commanded_elbow_max_offset_deg": Json(command_max / rad),
+    "commanded_elbow_last_offset_deg": Json(command_last / rad),
+    "measured_elbow_min_offset_deg": Json(elbow_min / rad),
+    "measured_elbow_max_offset_deg": Json(elbow_max / rad),
+    "measured_elbow_last_active_offset_deg": Json(elbow_last / rad),
+    "measured_elbow_post_disconnect_3s_offset_deg": Json(post_last / rad),
+    "initial_right_elbow_deg": Json(initial[14].pos / rad),
+    "measured_right_min_offset_deg": Json(right_min / rad),
+    "measured_right_max_offset_deg": Json(right_max / rad),
+    "measured_right_last_active_offset_deg": Json(right_last / rad),
+    "measured_right_post_disconnect_3s_offset_deg": Json(right_post / rad),
+    "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": Json(
+      changes.map(x => x / rad),
+    ),
+    "note": "Raw ankle maxima include unfiltered spikes. Slot 23 is reserved; its raw value is not a joint angle. Telemetry does not prove controller ownership.",
+  }
+  @fs.write_file(
+    dir + "/measured-motion.json",
+    report.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(report.stringify(indent=2))
+}

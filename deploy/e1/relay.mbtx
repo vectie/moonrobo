@@ -1,0 +1,30 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/async@0.20.2/stdio",
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [file] else {
+    fail("usage: relay.mbtx LOCAL_POSE_JSON")
+  }
+  let input : &@io.Reader = @stdio.stdin
+  let mut previous = ""
+  for ;; {
+    guard input.read_until("\n") is Some(line) else { break }
+    let value = @json.parse(line)
+    guard value is { "source_ns": String(stamp), .. } else {
+      fail("pose source timestamp required")
+    }
+    if stamp != previous {
+      @fs.write_file(file + ".tmp", value.stringify(), permission=0o600)
+      @fs.rename(file + ".tmp", file, replace=true)
+      previous = stamp
+    }
+  }
+}

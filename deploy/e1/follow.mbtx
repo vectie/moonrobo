@@ -1,0 +1,32 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/async@0.20.2/stdio",
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [file] else {
+    fail("usage: follow.mbtx REMOTE_POSE_JSON")
+  }
+  let output : &@io.Writer = @stdio.stdout
+  let mut previous = ""
+  for ;; {
+    if @fs.exists(file) {
+      let (seconds, nanos) = @fs.mtime(file)
+      let age = @env.now().reinterpret_as_int64() -
+        (seconds * 1000L + nanos.to_int64() / 1000000L)
+      if age >= 0L && age < 800L {
+        let value = @fs.read_file(file).json()
+        if value is { "source_ns": String(stamp), .. } && stamp != previous {
+          output.write(value.stringify() + "\n")
+          previous = stamp
+        }
+      }
+    }
+    @async.sleep(80)
+  }
+}

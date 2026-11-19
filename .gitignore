@@ -22,3 +22,7 @@ ui/rabbita-cockpit/node_modules/
 # Large local robot asset packs. Keep the lightweight example metadata checked in,
 # but leave extracted CAD/URDF packages outside Git.
 examples/noetix-e1/e1_asm_251028/
+
+# Local E1 commissioning captures, receipts and live-page build output.
+/deploy/e1/runs/
+/ui/rabbita-cockpit/dist-e1-live/

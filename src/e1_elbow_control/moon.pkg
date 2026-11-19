@@ -1,0 +1,7 @@
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/math",
+  "vectie/moonrobo/src/sdk_e1_low" @low,
+}
+
+supported_targets = "native"

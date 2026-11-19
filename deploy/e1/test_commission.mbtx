@@ -1,0 +1,268 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/async@0.20.2/io",
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [scenario] else { fail("scenario") }
+  if !@fs.exists("runs") { @fs.mkdir("runs", recursive=true) }
+  let dir = "runs/" + scenario + "-" + @env.now().to_string()
+  @fs.mkdir(dir)
+  let python = @env.get_env_var("MOONROBO_E1_PYTHON").unwrap_or("python3")
+  let moon = @env.get_env_var("MOONROBO_MOON").unwrap_or("moon")
+  let controller = @env.get_env_var("MOONROBO_E1_CONTROLLER").unwrap_or(
+    "../../_build/native/debug/build/cmd/e1_commission/e1_commission.exe",
+  )
+  let stage = if scenario == "raised-drums" {
+    "raised-drums"
+  } else if scenario == "drums" {
+    "drums"
+  } else if scenario == "elbow90" {
+    "elbow90"
+  } else if scenario == "elbow" {
+    "elbow"
+  } else {
+    "hold"
+  }
+  @async.with_timeout(
+    if scenario == "raised-drums" {
+      230000
+    } else {
+      200000
+    },
+    () => {
+      @async.with_task_group(g => {
+        let fixture = @process.spawn(
+          g,
+          python,
+          ["-B", "robot_fixture.py", dir + "/wire.json", stage],
+          stderr=@process.redirect_to_file(
+            dir + "/fixture.log",
+            create_mode=CreateNew,
+          ),
+        )
+        defer fixture.cancel()
+        let (input, source_feed) = @process.write_to_process()
+        let (source_read, source_output) = @process.read_from_process()
+        let (commands, command_feed) = @process.write_to_process()
+        let (command_read, planner_output) = @process.read_from_process()
+        let sender = @process.spawn(
+          g,
+          python,
+          [
+            "-B",
+            "january_transport.py",
+            "--stage",
+            stage,
+            "--ready",
+            dir + "/ready.json",
+            "--receipt",
+            dir + "/transport.json",
+          ],
+          stdin=commands,
+          stderr=@process.redirect_to_file(
+            dir + "/transport.log",
+            create_mode=CreateNew,
+          ),
+        )
+        defer sender.cancel()
+        for _i in 0..<600 {
+          if @fs.exists(dir + "/ready.json") {
+            break
+          }
+          guard sender.try_wait() is None else {
+            fail("sender exited before ready")
+          }
+          @async.sleep(10)
+        }
+        guard @fs.exists(dir + "/ready.json") else {
+          fail("sender readiness timeout")
+        }
+        let planner = @process.spawn(
+          g,
+          controller,
+          [stage, dir + "/planner.json"],
+          stdin=input,
+          stdout=planner_output,
+          stderr=@process.redirect_to_file(
+            dir + "/planner.log",
+            create_mode=CreateNew,
+          ),
+        )
+        defer planner.cancel()
+        let source = @process.spawn(
+          g,
+          moon,
+          [
+            "run",
+            "replay_input.mbtx",
+            if scenario == "recorded-hold" {
+              match @env.get_env_var("MOONROBO_E1_RECORDED_STATUS") {
+                Some(path) => path
+                None =>
+                  fail("recorded-hold requires MOONROBO_E1_RECORDED_STATUS")
+              }
+            } else {
+              "-"
+            },
+            scenario,
+            dir + "/feedback.json",
+          ],
+          stdout=source_output,
+          stderr=@process.redirect_to_file(
+            dir + "/input.log",
+            create_mode=CreateNew,
+          ),
+        )
+        defer source.cancel()
+        g.spawn_bg(() => {
+          let reader : &@io.Reader = source_read
+          let writer : &@io.Writer = source_feed
+          for ;; {
+            guard reader.read_some() is Some(data) else { break }
+            writer.write(data) catch {
+              _ => break
+            }
+          }
+          source_feed.close()
+        })
+        let mut commands_drained = false
+        g.spawn_bg(() => {
+          let reader : &@io.Reader = command_read
+          let writer : &@io.Writer = command_feed
+          for ;; {
+            guard reader.read_some() is Some(data) else { break }
+            writer.write(data)
+          }
+          command_feed.close()
+          commands_drained = true
+        })
+        let planner_status = planner.wait()
+        while !commands_drained {
+          @async.sleep(1)
+        }
+        let sender_status = sender.wait()
+        guard fixture.wait() == 0 else { fail("wire receiver failed") }
+        let expected_complete = scenario == "hold" ||
+          scenario == "recorded-hold" ||
+          scenario == "settling" ||
+          scenario == "elbow" ||
+          scenario == "elbow90" ||
+          scenario == "drums" ||
+          scenario == "raised-drums"
+        let transport = @fs.read_file(dir + "/transport.json").json()
+        // Both independent 40 ms deadlines may win a missing-telemetry race.
+        // Accept sender failure only when this scenario proves a freshness stop.
+        let watchdog_first = scenario == "stall" &&
+          sender_status == 1 &&
+          transport
+          is {
+            "result": String(reason),
+            "participant_deleted": True,
+            "active_seconds": Number(active, ..),
+            ..
+          } &&
+          (
+            reason == "source telemetry expired" ||
+            reason == "telemetry expired" ||
+            reason == "planner heartbeat expired"
+          ) &&
+          active >= 0.35 &&
+          active <= 0.45
+        guard (planner_status == 0) == expected_complete &&
+          (sender_status == 0 || watchdog_first) else {
+          fail(
+            "unexpected process status: planner=" +
+            planner_status.to_string() +
+            ", sender=" +
+            sender_status.to_string(),
+          )
+        }
+        let wire = @fs.read_file(dir + "/wire.json").json()
+        guard wire
+          is {
+            "motor_and_mode_writers_disconnected": True,
+            "mode_requests": [Number(2, ..)],
+            "max_other_target_delta": Number(0, ..),
+            ..
+          } else {
+          fail("mode or isolation mismatch")
+        }
+        if scenario == "elbow" || scenario == "elbow90" {
+          guard wire
+            is {
+              "elbow_peak_deg": Number(peak, ..),
+              "elbow_final_deg": Number(last, ..),
+              ..
+            } &&
+            (peak + (if scenario == "elbow90" { 90.0 } else { 5.0 })).abs() <
+            1.0e-8 &&
+            last.abs() < 1.0e-8 else {
+            fail("elbow did not fold and return")
+          }
+        }
+        if scenario == "drums" {
+          guard wire
+            is {
+              "elbow_peak_deg": Number(left, ..),
+              "right_peak_deg": Number(right, ..),
+              "elbow_final_deg": Number(left_end, ..),
+              "right_final_deg": Number(right_end, ..),
+              "left_strokes": Number(2, ..),
+              "right_strokes": Number(2, ..),
+              ..
+            } &&
+            (left + 10.0).abs() < 1.0e-8 &&
+            (right + 10.0).abs() < 1.0e-8 &&
+            left_end.abs() < 1.0e-8 &&
+            right_end.abs() < 1.0e-8 else {
+            fail("dual elbow peaks, alternation or return failed")
+          }
+        }
+        if scenario == "raised-drums" {
+          guard wire
+            is {
+              "left_absolute_min": Number(left, ..),
+              "right_absolute_min": Number(right, ..),
+              "left_drop": Number(ld, ..),
+              "right_drop": Number(rd, ..),
+              "left_strokes": Number(2, ..),
+              "right_strokes": Number(2, ..),
+              "elbow_final_deg": Number(le, ..),
+              "right_final_deg": Number(re, ..),
+              ..
+            } &&
+            (left + 90.0).abs() < 1.0e-8 &&
+            (right + 90.0).abs() < 1.0e-8 &&
+            (ld - 30.0).abs() < 1.0e-8 &&
+            (rd - 30.0).abs() < 1.0e-8 &&
+            le.abs() < 1.0e-8 &&
+            re.abs() < 1.0e-8 else {
+            fail("raised endpoints, alternating drops or return failed")
+          }
+        }
+        let report : Json = {
+          "passed": true,
+          "directory": dir,
+          "scenario": scenario,
+          "planner_status": Json(planner_status),
+          "sender_status": Json(sender_status),
+          "wire": wire,
+          "transport": transport,
+        }
+        @fs.write_file(
+          dir + "/result.json",
+          report.stringify(indent=2),
+          create_mode=CreateNew,
+        )
+        println(report.stringify())
+      })
+    },
+  )
+}

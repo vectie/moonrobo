@@ -1,0 +1,17 @@
+import {
+  "vectie/moonrobo/internal/e1_ankle_shadow" @ankle,
+  "vectie/moonrobo/src/e1_elbow_control" @elbow,
+  "vectie/moonrobo/src/sdk_e1_low" @low,
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native"
+
+import {
+  "moonbitlang/core/math",
+} for "wbtest"

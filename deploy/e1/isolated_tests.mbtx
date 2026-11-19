@@ -1,0 +1,57 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let interfaces : Array[String] = []
+  for line in @fs.read_file("/proc/net/dev").text().split("\n") {
+    if line.contains(":") {
+      interfaces.push(line.split(":").next().unwrap().trim().to_owned())
+    }
+  }
+  guard interfaces == ["lo"] else {
+    fail("test suite requires isolated loopback namespace")
+  }
+  @env.set_env_var(
+    "CYCLONEDDS_URI",
+    "file://" + @env.current_dir().unwrap() + "/dds-loopback.xml",
+  )
+  let moon = @env.get_env_var("MOONROBO_MOON").unwrap_or("moon")
+  @async.with_task_group(g => {
+    let link = @process.spawn(g, "/usr/sbin/ip", ["link", "set", "lo", "up"])
+    guard link.wait() == 0 else { fail("loopback setup failed") }
+    let scenarios = if @env.args()[1:] is ["recorded-only"] {
+      ["recorded-hold"]
+    } else if @env.args()[1:] is ["raised-only"] {
+      ["raised-drums"]
+    } else if @env.args()[1:] is ["drums-only"] {
+      ["drums"]
+    } else if @env.args()[1:] is ["hold-only"] {
+      ["hold"]
+    } else if @env.args()[1:] is ["slow-only"] {
+      ["elbow90"]
+    } else if @env.args()[1:] is ["elbow-only"] {
+      ["elbow"]
+    } else if @env.args()[1:] is ["safety-only"] {
+      ["stall", "watchdog"]
+    } else {
+      ["hold", "settling", "elbow", "motor-error", "stall", "watchdog"]
+    }
+    for scenario in scenarios {
+      let args = if scenario == "watchdog" {
+        ["run", "test_watchdog.mbtx"]
+      } else {
+        ["run", "test_commission.mbtx", scenario]
+      }
+      let test_process = @process.spawn(g, moon, args)
+      guard test_process.wait() == 0 else {
+        fail("isolated scenario failed: " + scenario)
+      }
+    }
+  })
+}

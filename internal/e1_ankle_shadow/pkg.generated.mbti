@@ -1,0 +1,52 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/internal/e1_ankle_shadow"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+pub const CONFIRM_NS : Int64 = 6000000
+
+pub const RAD : Double = 0.017453292519943295
+
+// Errors
+
+// Types and methods
+pub struct Detector {
+  baseline : Packet
+  confirm_isolated : Bool
+  suspended : Bool
+  mut healthy_streak : Int
+  mut good : Packet
+  mut last : Packet?
+  mut pending : Packet?
+  mut left_events : Int
+  mut right_only_events : Int
+  mut max_confirmation_ns : Int64
+}
+pub fn Detector::begin_hold(Self) -> Self raise
+pub fn Detector::new(Packet, confirm_isolated? : Bool, suspended? : Bool) -> Self
+pub fn Detector::observe(Self, Packet) -> Verdict
+
+pub(all) struct Packet {
+  seq : Int
+  source_ns : Int64
+  arrival_ns : Int64
+  q : Array[Double]
+  qd : Array[Double]
+  error : Array[Int]
+} derive(@json.FromJson)
+pub fn Packet::confirms_standing_start(Self, Self) -> Bool
+pub fn Packet::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Packet::starts_on_standing_spike(Self) -> Bool
+
+pub(all) enum Verdict {
+  Use
+  Wait
+  Stop(String, Int)
+}
+
+// Type aliases
+
+// Traits

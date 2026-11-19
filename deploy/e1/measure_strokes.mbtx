@@ -1,0 +1,94 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+struct Packet {
+  arrival_ns : Int64
+  q : Array[Double]
+} derive(FromJson)
+
+///|
+struct Status {
+  packet : Packet
+} derive(FromJson)
+
+///|
+async fn main {
+  guard @env.args()[1:] is [dir] else { fail("saved run directory required") }
+  let thresholds = [3100, 3900, 4700, 5500, 6300]
+  let boundaries = Array::make(5, -1L)
+  for line in @fs.read_file(dir + "/targets.ndjson").text().split("\n") {
+    if line.is_empty() {
+      continue
+    }
+    let value = @json.parse(line.to_owned())
+    if value
+      is {
+        "kind": "target",
+        "reference_frame": Number(frame, ..),
+        "receipt_ms": stamp,
+        ..
+      } {
+      let ms : Int64 = @json.from_json(stamp)
+      for i, threshold in thresholds {
+        if boundaries[i] < 0L && frame >= threshold.to_double() {
+          boundaries[i] = ms
+        }
+      }
+    }
+  }
+  guard boundaries.all(x => x >= 0L) else {
+    fail("complete stroke boundaries required")
+  }
+  let minimum_left = Array::make(4, 1.0e100)
+  let maximum_left = Array::make(4, -1.0e100)
+  let minimum_right = Array::make(4, 1.0e100)
+  let maximum_right = Array::make(4, -1.0e100)
+  let counts = Array::make(4, 0)
+  for line in @fs.read_file(dir + "/status.ndjson").text().split("\n") {
+    if line.is_empty() {
+      continue
+    }
+    let row : Status = @json.from_json(@json.parse(line.to_owned()))
+    let ms = row.packet.arrival_ns / 1000000L
+    for i in 0..<4 {
+      if ms >= boundaries[i] && ms < boundaries[i + 1] {
+        let left = -row.packet.q[3] / 0.017453292519943295
+        let right = -row.packet.q[14] / 0.017453292519943295
+        minimum_left[i] = minimum_left[i].min(left)
+        maximum_left[i] = maximum_left[i].max(left)
+        minimum_right[i] = minimum_right[i].min(right)
+        maximum_right[i] = maximum_right[i].max(right)
+        counts[i] += 1
+      }
+    }
+  }
+  guard counts.all(x => x > 0) else {
+    fail("measured samples required in every stroke")
+  }
+  let report : Json = {
+    "source": "saved raw telemetry aligned to captured planner phase boundaries; no robot connection",
+    "strokes": Json(
+      Array::makei(4, i => {
+        "stroke": Json(i + 1),
+        "active_motor": Json(if i % 2 == 0 { 3 } else { 14 }),
+        "samples": Json(counts[i]),
+        "left_min_bend_deg": Json(minimum_left[i]),
+        "left_max_bend_deg": Json(maximum_left[i]),
+        "right_min_bend_deg": Json(minimum_right[i]),
+        "right_max_bend_deg": Json(maximum_right[i]),
+      }),
+    ),
+  }
+  @fs.write_file(
+    dir + "/stroke-feedback.json",
+    report.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(report.stringify(indent=2))
+}

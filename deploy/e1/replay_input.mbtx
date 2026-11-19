@@ -1,0 +1,148 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/math",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/async@0.20.2/stdio",
+  "moonbitlang/core/string",
+}
+
+///|
+struct Packet {
+  seq : Int32
+  source_ns : Int64
+  arrival_ns : Int64
+  q : Array[Double]
+  qd : Array[Double]
+  error : Array[Int32]
+} derive(FromJson)
+
+///|
+struct Row {
+  packet : Packet
+  motor_ids : Array[Int32]
+} derive(FromJson)
+
+///|
+async fn main {
+  let (file, scenario, feedback_file) = match @env.args()[1:] {
+    [file, scenario] => (file, scenario, "")
+    [file, scenario, feedback] => (file, scenario, feedback)
+    _ => fail("recording and scenario")
+  }
+  let rows : Array[Row] = []
+  if file == "-" {
+    for i in 0..<1000 {
+      let q = Array::make(24, 0.0)
+      q[3] = -0.1
+      q[14] = -0.1
+      rows.push({
+        packet: {
+          seq: i,
+          source_ns: 1000000000L + i.to_int64() * 3000000L,
+          arrival_ns: 1000000000L + i.to_int64() * 3000000L,
+          q,
+          qd: Array::make(24, 0.0),
+          error: Array::make(24, 0),
+        },
+        motor_ids: Array::makei(24, j => j),
+      })
+    }
+  } else {
+    for l in @fs.read_file(file).text().split("\n") {
+      if !l.is_empty() {
+        rows.push(@json.from_json(@json.parse(l.to_owned())))
+      }
+    }
+  }
+  let start = @env.now().reinterpret_as_int64() + 100L
+  let input_start = rows[0].packet.arrival_ns
+  let elbow = rows[0].packet.q[3]
+  let right_elbow = rows[0].packet.q[14]
+  let output : &@io.Writer = @stdio.stdout
+  // Repeat this explicitly synthetic fixture for the longer slow trajectory.
+  let period = rows.last().unwrap().packet.arrival_ns -
+    input_start +
+    rows[1].packet.arrival_ns -
+    input_start
+  let duration = if scenario == "elbow90" || scenario == "raised-drums" {
+    210000000000L
+  } else {
+    55000000000L
+  }
+  let cycles = (duration / period).to_int() + 1
+  for index in 0..<(rows.length() * cycles) {
+    let row = rows[index % rows.length()]
+    let p = row.packet
+    let cycle = index / rows.length()
+    let delta = p.arrival_ns - input_start + cycle.to_int64() * period
+    if delta >
+      (if scenario == "raised-drums" { 210000000000L } else { 184000000000L }) {
+      break
+    }
+    let due = start + delta / 1000000L
+    let remaining = due - @env.now().reinterpret_as_int64()
+    if remaining > 0L {
+      @async.sleep(remaining.to_int())
+    }
+    if scenario == "stall" && delta > 1400000000L {
+      @async.sleep(100)
+      break
+    }
+    if scenario == "motor-error" && delta > 1400000000L {
+      p.error[8] = 1
+    }
+    if scenario == "settling" && delta > 1400000000L {
+      p.q[9] = -14.0 * 0.017453292519943295
+    }
+    if scenario == "elbow" || scenario == "elbow90" {
+      let duration = if scenario == "elbow90" { 180000.0 } else { 15000.0 }
+      let half_peak = if scenario == "elbow90" { 45.0 } else { 2.5 }
+      let t = ((delta.to_double() / 1.0e6 - 2000.0) / duration).clamp(
+        min=0.0,
+        max=1.0,
+      )
+      p.q[3] = elbow -
+        half_peak * 0.017453292519943295 * (1.0 - @math.cos(2.0 * @math.PI * t))
+    }
+    if scenario == "drums" {
+      let ms = (delta.to_double() / 1.0e6 - 2000.0).clamp(min=0.0, max=48000.0)
+      let stroke = (ms / 12000.0).to_int()
+      let phase = (ms - stroke.to_double() * 12000.0) / 12000.0
+      let offset = -5.0 *
+        0.017453292519943295 *
+        (1.0 - @math.cos(2.0 * @math.PI * phase))
+      p.q[3] = elbow + (if stroke % 2 == 0 { offset } else { 0.0 })
+      p.q[14] = right_elbow + (if stroke % 2 == 1 { offset } else { 0.0 })
+    }
+    if scenario == "raised-drums" {
+      guard feedback_file != "" else { fail("isolated feedback file required") }
+      // This test-only plant follows positions decoded by the isolated DDS
+      // receiver. It does not fabricate wall-clock progress while the paced
+      // controller is holding its reference.
+      let feedback : Array[Double] = if @fs.exists(feedback_file) {
+        @json.from_json(@fs.read_file(feedback_file).json())
+      } else {
+        [elbow, right_elbow]
+      }
+      guard feedback.length() == 2 else { fail("incomplete isolated feedback") }
+      p.q[3] = feedback[0]
+      p.q[14] = feedback[1]
+    }
+    let line : Json = {
+      "packet": {
+        "seq": Json(rows[0].packet.seq + index),
+        "source_ns": (p.source_ns + cycle.to_int64() * period).to_string(),
+        "arrival_ns": (start * 1000000L + delta).to_string(),
+        "q": Json(p.q),
+        "qd": Json(p.qd),
+        "error": Json(p.error),
+      },
+      "motor_ids": Json(row.motor_ids),
+    }
+    output.write(line.stringify() + "\n")
+  }
+}
