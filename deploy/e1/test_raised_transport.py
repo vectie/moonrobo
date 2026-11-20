@@ -1,7 +1,7 @@
 """Raised reference validation without DDS participants or robot I/O."""
 import copy,time,unittest
 from test_drum_transport import row
-from january_transport import validate_frame,raised_targets
+from january_transport import validate_frame,raised_targets,typing_targets
 
 class RaisedTransportTest(unittest.TestCase):
     def initial(self):
@@ -36,5 +36,28 @@ class RaisedTransportTest(unittest.TestCase):
         with self.assertRaises(AssertionError):validate_frame(sample,baseline,first,"raised-drums")
         sample=self.initial();sample["receipt_ms"]=str(now-41)
         with self.assertRaises(AssertionError):validate_frame(sample,baseline,None,"raised-drums")
+
+class TypingTransportTest(unittest.TestCase):
+    def initial(self):
+        sample=row();sample["stage"]="typing-elbows";sample["reference_frame"]=-1
+        return sample
+
+    def test_typing_entry_hold_and_exact_return(self):
+        first=self.initial();baseline=validate_frame(first,None,None,"typing-elbows")
+        for frame in (0,1500,3000,3100,4600,6100):
+            sample=copy.deepcopy(first);sample["reference_frame"]=frame
+            sample["motors"][3]["pos"],sample["motors"][14]["pos"]=typing_targets(frame,baseline)
+            validate_frame(sample,baseline,None,"typing-elbows")
+
+    def test_non_elbow_change_wrong_target_and_shadow_are_rejected(self):
+        first=self.initial();baseline=validate_frame(first,None,None,"typing-elbows")
+        for fault in range(5):
+            sample=copy.deepcopy(first)
+            if fault==0:sample["motors"][5]["pos"]+=.01
+            if fault==1:sample["motors"][0]["pos"]+=.01
+            if fault==2:sample["motors"][3]["pos"]-=.01
+            if fault==3:sample["shadow"]=True
+            if fault==4:sample["reference_frame"]=6101
+            with self.assertRaises(AssertionError):validate_frame(sample,baseline,None,"typing-elbows")
 
 if __name__=="__main__":unittest.main()

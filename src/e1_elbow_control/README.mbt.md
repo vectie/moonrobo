@@ -12,6 +12,14 @@ then return to the captured starting targets. The raised reference has 8,551
 samples: 60 seconds up, two seconds hold, four 16-second down/up strokes and
 45 seconds return. It can wait for measured feedback before advancing.
 
+`DrumPath::typing_pose` enters the typing reference's initial left/right elbow
+pitch angles (about −82.95°/−31.13°) over 60 seconds, holds two seconds and
+returns over 60 seconds. Its minimum-jerk blend has zero endpoint velocity and
+acceleration. It reuses the paced following, telemetry and fault checks while
+retaining all 22 non-elbow records. This is elbow-only reference commissioning,
+not whole-body actor execution or the complete typing gesture. See the
+[dated transfer record](../../docs/E1_ELBOW_TRANSFER_20261120.md).
+
 Travel uses the intersection of the SDK and model elbow ranges, [−130°, 0°].
 The 90° and dual-elbow paths use the existing 5° following tolerance; the gentle
 5° path retains its 1° tolerance. These are commissioning test settings, not

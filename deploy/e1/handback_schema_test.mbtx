@@ -1,0 +1,71 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+fn main {
+
+}
+
+///|
+async test "current hold report schema accepts observation and rejects drift or expired receipt" {
+  let directory = @env.current_dir().unwrap()
+  let root = directory + "/_build/e1-handback-schema-" + @env.now().to_string()
+  @fs.mkdir(root, recursive=true)
+  for kind in ["valid", "drift", "expired"] {
+    let dir = root + "/" + kind
+    @fs.mkdir(dir)
+    let planner : Json = {
+      "stage": "hold",
+      "software_stage_completed": true,
+      "max_fixed_target_change": Json(if kind == "drift" { 0.01 } else { 0.0 }),
+    }
+    let transport : Json = {
+      "stage": "hold",
+      "result": "stage complete",
+      "live": true,
+      "participant_deleted": true,
+      "peer_prefix": "000000000000000000000000",
+      "finished_epoch": Json(
+        @env.now().to_double() / 1000.0 -
+        (if kind == "expired" { 601.0 } else { 0.0 }),
+      ),
+      "physical_handback_verified": false,
+      "scope": "synthetic schema fixture; no robot or network",
+    }
+    @fs.write_file(
+      dir + "/planner.json",
+      planner.stringify(),
+      create_mode=CreateNew,
+    )
+    @fs.write_file(
+      dir + "/transport.json",
+      transport.stringify(),
+      create_mode=CreateNew,
+    )
+    @fs.write_file(
+      dir + "/session.json",
+      "{\"stage\":\"hold\",\"planner_status\":0,\"sender_status\":0}",
+      create_mode=CreateNew,
+    )
+    let output = dir + "/confirmed.json"
+    let (status, _, error) = @process.collect_output("moon", [
+      "run",
+      directory + "/confirm_handback.mbtx",
+      dir,
+      "schema-test",
+      "Synthetic test input; no physical observation",
+      output,
+    ])
+    if kind == "valid" && status != 0 {
+      fail(error.text())
+    }
+    assert_eq(status == 0, kind == "valid")
+    assert_eq(@fs.exists(output), kind == "valid")
+  }
+}

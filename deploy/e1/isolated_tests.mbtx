@@ -27,6 +27,8 @@ async fn main {
     guard link.wait() == 0 else { fail("loopback setup failed") }
     let scenarios = if @env.args()[1:] is ["recorded-only"] {
       ["recorded-hold"]
+    } else if @env.args()[1:] is ["typing-only"] {
+      ["typing-elbows"]
     } else if @env.args()[1:] is ["raised-only"] {
       ["raised-drums"]
     } else if @env.args()[1:] is ["drums-only"] {

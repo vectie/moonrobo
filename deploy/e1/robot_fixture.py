@@ -12,7 +12,8 @@ motor=DataReader(p,Topic(p,"Motor_Cmd_Topic",MotorCmdArray),qos=Qos(Policy.Relia
 mode=DataReader(p,Topic(p,"Control_Mode_Topic",SetMode))
 baseline=None; count=0; peak=0.; last=0.; modes=[]; seen=False; first=None; finish=None
 raised=len(sys.argv)>2 and sys.argv[2]=="raised-drums"
-drums=len(sys.argv)>2 and sys.argv[2] in ("drums","raised-drums")
+typing=len(sys.argv)>2 and sys.argv[2]=="typing-elbows"
+drums=len(sys.argv)>2 and sys.argv[2] in ("drums","raised-drums","typing-elbows")
 left_absolute_min=right_absolute_min=0.;left_drop=right_drop=0.;raised_seen=False
 last_feedback=0.
 right_peak=0.;right_last=0.;left_strokes=right_strokes=0;left_active=right_active=False
@@ -30,7 +31,7 @@ while time.monotonic()<end:
         assert previous_stamp is None or row.timestamp > previous_stamp
         previous_stamp=row.timestamp
         values=[dataclasses.asdict(x) for x in row.motorcmds]
-        if raised and time.monotonic()-last_feedback>=.010:
+        if (raised or typing) and time.monotonic()-last_feedback>=.010:
             temporary=pathlib.Path(sys.argv[1]).parent/"feedback.tmp"
             temporary.write_text(json.dumps([values[3]["pos"],values[14]["pos"]]))
             os.replace(temporary,temporary.with_name("feedback.json"))
@@ -45,10 +46,14 @@ while time.monotonic()<end:
         peak=min(peak,last);count+=1
         if drums:
             right_last=math.degrees(values[14]["pos"]-baseline[14]["pos"])
-            assert -(90 if raised else 10)-.000001<=last<=.000001 and -(90 if raised else 10)-.000001<=right_last<=.000001
-            if not raised:assert abs(last*right_last)<1e-8
+            assert -(90 if raised or typing else 10)-.000001<=last<=.000001 and -(90 if raised or typing else 10)-.000001<=right_last<=.000001
+            if not raised and not typing:assert abs(last*right_last)<1e-8
             right_peak=min(right_peak,right_last)
-            if raised:
+            if typing:
+                left_absolute_min=min(left_absolute_min,math.degrees(values[3]["pos"]))
+                right_absolute_min=min(right_absolute_min,math.degrees(values[14]["pos"]))
+                lactive=ractive=False
+            elif raised:
                 la,ra=math.degrees(values[3]["pos"]),math.degrees(values[14]["pos"])
                 left_absolute_min=min(left_absolute_min,la);right_absolute_min=min(right_absolute_min,ra)
                 raised_seen=raised_seen or abs(la+90)<1e-8 and abs(ra+90)<1e-8

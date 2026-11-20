@@ -1,0 +1,143 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+struct Motor {
+  motor_id : Int32
+  pos : Double
+  vel : Double
+  tau : Double
+  kp : Double
+  kd : Double
+} derive(FromJson)
+
+///|
+struct Target {
+  reference_frame : Int32
+  motors : Array[Motor]
+} derive(FromJson)
+
+///|
+fn pair(frame : Int32, initial : Array[Motor]) -> (Double, Double) {
+  if frame <= 0 || frame == 6100 {
+    return (initial[3].pos, initial[14].pos)
+  }
+  let goals = (-1.4477981791899937, -0.5434064639344343)
+  if frame >= 3000 && frame <= 3100 {
+    return goals
+  }
+  let u = if frame < 3000 {
+    frame.to_double() / 3000.0
+  } else {
+    (frame - 3100).to_double() / 3000.0
+  }
+  let ease = u * u * u * (10.0 + u * (-15.0 + 6.0 * u))
+  let weight = if frame < 3000 { ease } else { 1.0 - ease }
+  (
+    initial[3].pos + (goals.0 - initial[3].pos) * weight,
+    initial[14].pos + (goals.1 - initial[14].pos) * weight,
+  )
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [directory, output] else {
+    fail("usage: measure_elbow_transfer.mbtx RUN NEW_REPORT")
+  }
+  let session = @fs.read_file(directory + "/session.json").json()
+  guard session
+    is {
+      "stage": "typing-elbows",
+      "planner_status": Number(0, ..),
+      "sender_status": Number(0, ..),
+      "command_writers_created": live_value,
+      ..
+    } else {
+    fail("successful typing session required")
+  }
+  let live : Bool = @json.from_json(live_value)
+  let initial : Array[Motor] = []
+  let seen = Array::make(6101, false)
+  let mut updates = 0
+  let mut previous = -1
+  let mut final_targets : Array[Motor] = []
+  for line in @fs.read_file(directory + "/targets.ndjson").text().split("\n") {
+    if line == "" {
+      continue
+    }
+    let value = @json.parse(line.to_owned())
+    if value is { "kind": "stop", .. } {
+      continue
+    }
+    guard value
+      is {
+        "kind": "target",
+        "stage": "typing-elbows",
+        "shadow": shadow_value,
+        ..
+      } else {
+      fail("target source or stage differs")
+    }
+    let shadow : Bool = @json.from_json(shadow_value)
+    assert_true(shadow != live)
+    let target : Target = @json.from_json(value)
+    guard target.motors.length() == 24 &&
+      target.reference_frame >= previous &&
+      target.reference_frame <= previous + 1 &&
+      target.reference_frame <= 6100 else {
+      fail("invalid target sequence")
+    }
+    if updates == 0 {
+      assert_eq(target.reference_frame, -1)
+      initial.append(target.motors)
+    }
+    let expected = pair(target.reference_frame, initial)
+    for i, motor in target.motors {
+      assert_eq(motor.motor_id, i)
+      assert_eq(
+        (motor.vel, motor.tau, motor.kp, motor.kd),
+        (initial[i].vel, initial[i].tau, initial[i].kp, initial[i].kd),
+      )
+      if i == 3 {
+        assert_true((motor.pos - expected.0).abs() < 1.0e-9)
+      } else if i == 14 {
+        assert_true((motor.pos - expected.1).abs() < 1.0e-9)
+      } else {
+        assert_eq(motor.pos, initial[i].pos)
+      }
+    }
+    if target.reference_frame >= 0 {
+      seen[target.reference_frame] = true
+    }
+    previous = target.reference_frame
+    final_targets = target.motors
+    updates += 1
+  }
+  assert_true(seen.all(x => x))
+  for slot in [3, 14] {
+    assert_eq(final_targets[slot].pos, initial[slot].pos)
+  }
+  let report : Json = {
+    "passed": true,
+    "stage": "typing-elbows",
+    "live": Json(live),
+    "guarded_target_updates_checked": Json(updates),
+    "reference_samples_checked": 6101,
+    "moving_slots": [3, 14],
+    "fixed_motor_records": 22,
+    "max_fixed_target_change": 0,
+    "left_target_rad": -1.4477981791899937,
+    "right_target_rad": -0.5434064639344343,
+    "target_positions_returned_exactly": true,
+    "gains_and_other_motor_fields_unchanged": true,
+    "physical_handback_verified": false,
+    "scope": "planner targets; separate wire and telemetry checks required for physical conclusions",
+  }
+  @fs.write_file(output, report.stringify(indent=2), create_mode=CreateNew)
+  println(report.stringify(indent=2))
+}

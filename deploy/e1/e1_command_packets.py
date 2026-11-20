@@ -25,7 +25,8 @@ def main():
     receipt = json.loads((capture.parent / "transport.json").read_text())
     assert receipt["profile"] == "suspended"
     raised = receipt["stage"] == "raised-drums"
-    drums = receipt["stage"] in ("drums","raised-drums")
+    typing = receipt["stage"] == "typing-elbows"
+    drums = receipt["stage"] in ("drums","raised-drums","typing-elbows")
     peak_degrees = 90 if raised else 10 if drums else 90 if receipt["stage"] == "elbow90" else 5
     assert len(prefix) == 12
     addresses = ipaddress.IPv4Address("192.168.55.101").packed + ipaddress.IPv4Address("192.168.55.102").packed
@@ -100,15 +101,23 @@ def main():
                         for field in ("vel", "tau", "kp", "kd"):
                             assert motor[field] == baseline[i][field]
                     final = math.degrees(values[3]["pos"] - baseline[3]["pos"])
-                    if not raised:assert -peak_degrees-.000001 <= final <= .000001
+                    if not raised and not typing:assert -peak_degrees-.000001 <= final <= .000001
                     minimum, maximum = min(minimum, final), max(maximum, final)
                     if drums:
                         right_final = math.degrees(values[14]["pos"]-baseline[14]["pos"])
-                        if not raised:
+                        if not raised and not typing:
                             assert -peak_degrees-.000001<=right_final<=.000001
                             assert abs(final*right_final)<1e-8
                         right_minimum=min(right_minimum,right_final)
-                        if raised:
+                        if typing:
+                            for slot,target in ((3,-1.4477981791899937),(14,-0.5434064639344343)):
+                                angle=values[slot]["pos"]
+                                assert -math.radians(130)<=angle<=0
+                                assert min(baseline[slot]["pos"],target)-1e-9<=angle<=max(baseline[slot]["pos"],target)+1e-9
+                            left_absolute_min=min(left_absolute_min,math.degrees(values[3]["pos"]))
+                            right_absolute_min=min(right_absolute_min,math.degrees(values[14]["pos"]))
+                            lactive=ractive=False
+                        elif raised:
                             la,ra=math.degrees(values[3]["pos"]),math.degrees(values[14]["pos"])
                             left_absolute_min=min(left_absolute_min,la);right_absolute_min=min(right_absolute_min,ra)
                             assert min(-90,math.degrees(baseline[3]["pos"]))-1e-6<=la<=max(-60,math.degrees(baseline[3]["pos"]))+1e-6

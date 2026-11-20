@@ -9,6 +9,16 @@ import {
 }
 
 ///|
+priv struct Arrival {
+  arrival_ns : Int64
+} derive(FromJson)
+
+///|
+priv struct TimedStatus {
+  packet : Arrival
+} derive(FromJson)
+
+///|
 async fn main {
   guard @env.args()[1:]
     is [
@@ -27,13 +37,15 @@ async fn main {
       stage == "elbow" ||
       stage == "elbow90" ||
       stage == "drums" ||
-      stage == "raised-drums"
+      stage == "raised-drums" ||
+      stage == "typing-elbows"
     ) &&
     (
       kind == "live" ||
       stage == "hold" ||
       stage == "drums" ||
-      stage == "raised-drums"
+      stage == "raised-drums" ||
+      stage == "typing-elbows"
     ) else {
     fail(
       "usage: live|shadow STAGE PREFLIGHT NEW_RUN_DIR HANDBACK_OR_DASH CONTROLLER DECODER_LIBRARY MIRROR_DIR_OR_DASH",
@@ -74,12 +86,12 @@ async fn main {
   } else {
     [dir + "/shadow-sink.ndjson"]
   }
-  if live && stage == "elbow" {
+  if live && (stage == "elbow" || stage == "typing-elbows") {
     sender_args.push("--handback-from")
     sender_args.push(handback_file)
   }
   @async.with_timeout(
-    if stage == "raised-drums" {
+    if stage == "raised-drums" || stage == "typing-elbows" {
       240000
     } else if stage == "elbow90" {
       215000
@@ -90,6 +102,28 @@ async fn main {
     },
     () => {
       @async.with_task_group(g => {
+        // Bounded diagnostics expose coordinator pauses without changing any
+        // control deadline or discarding status packets.
+        let mut monitor_done = false
+        let mut monitor_active = false
+        let mut max_coordinator_gap_ms = 0L
+        let mut max_capture_archive_ms = 0L
+        let mut max_status_pipeline_age_ms = 0L
+        let mut max_planner_write_ms = 0L
+        g.spawn_bg(() => {
+          let mut last = @env.now().reinterpret_as_int64()
+          while !monitor_done {
+            @async.sleep(5)
+            let now = @env.now().reinterpret_as_int64()
+            if monitor_active && !monitor_done {
+              max_coordinator_gap_ms = max_coordinator_gap_ms.max(now - last)
+            }
+            last = now
+          }
+        })
+        defer {
+          monitor_done = true
+        }
         let privilege = @process.spawn(
           g,
           "/usr/bin/sudo",
@@ -116,7 +150,7 @@ async fn main {
             "/usr/bin/timeout",
             "-s",
             "INT",
-            if stage == "raised-drums" {
+            if stage == "raised-drums" || stage == "typing-elbows" {
               "225"
             } else if stage == "elbow90" {
               "205"
@@ -174,7 +208,11 @@ async fn main {
           let target : &@io.Writer = decoder_feed
           for ;; {
             guard source.read_some() is Some(data) else { break }
+            let archive_start = @env.now().reinterpret_as_int64()
             wire_writer.write(data)
+            max_capture_archive_ms = max_capture_archive_ms.max(
+              @env.now().reinterpret_as_int64() - archive_start,
+            )
             target.write(data)
           }
           decoder_feed.close()
@@ -191,12 +229,22 @@ async fn main {
             let normalized = line.trim().to_owned()
             records.push(normalized)
             if feeding {
+              let status : TimedStatus = @json.from_json(
+                @json.parse(normalized),
+              )
+              let received = @env.now().reinterpret_as_int64()
+              max_status_pipeline_age_ms = max_status_pipeline_age_ms.max(
+                received - status.packet.arrival_ns / 1000000L,
+              )
               target.write(normalized + "\n") catch {
                 err => {
                   feeding = false
                   feed_error = Some(err.to_string())
                 }
               }
+              max_planner_write_ms = max_planner_write_ms.max(
+                @env.now().reinterpret_as_int64() - received,
+              )
             }
           }
           status_drained = true
@@ -236,7 +284,12 @@ async fn main {
           }
         }
         let planner_args = [stage, dir + "/planner.json"]
-        if !live && (stage == "drums" || stage == "raised-drums") {
+        if !live &&
+          (
+            stage == "drums" ||
+            stage == "raised-drums" ||
+            stage == "typing-elbows"
+          ) {
           planner_args.push("--shadow")
         }
         let planner = @process.spawn(
@@ -274,13 +327,14 @@ async fn main {
           commands_drained = true
         })
         feeding = true
+        monitor_active = true
         // Independent receive-only reader keeps status flowing after the sender closes.
         let observer_args = ["-B", "observe.py", dir + "/observed.json"]
         if live {
           observer_args.push(dir + "/ready.json")
         }
         observer_args.push(
-          if stage == "raised-drums" {
+          if stage == "raised-drums" || stage == "typing-elbows" {
             "215"
           } else if stage == "elbow90" {
             "195"
@@ -301,6 +355,8 @@ async fn main {
         )
         defer observer.cancel()
         let planner_status = planner.wait()
+        monitor_active = false
+        monitor_done = true
         feeding = false
         planner_feed.close()
         while !commands_drained {
@@ -346,6 +402,12 @@ async fn main {
           ),
           "status_feed_error": Json(feed_error),
           "command_feed_error": Json(command_error),
+          "pipeline_timing_ms": {
+            "max_coordinator_poll_gap": max_coordinator_gap_ms.to_string(),
+            "max_capture_archive_write": max_capture_archive_ms.to_string(),
+            "max_kernel_arrival_to_planner_feed": max_status_pipeline_age_ms.to_string(),
+            "max_planner_pipe_write": max_planner_write_ms.to_string(),
+          },
           "operator_action": "confirm handheld factory control after live hold disconnect before elbow stage",
         }
         @fs.write_file(

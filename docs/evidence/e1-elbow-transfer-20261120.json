@@ -1,0 +1,73 @@
+{
+  "date": "2026-11-20",
+  "scope": "deterministic elbow-only commissioning; not whole-body actor deployment",
+  "selected_motors": [3, 14],
+  "fixed_motor_records": 22,
+  "reference_targets_rad": [-1.4477981791899937, -0.5434064639344343],
+  "nominal_phases_seconds": [60, 2, 60],
+  "powered_trial": {
+    "run": "typing-transfer-20261120/live-1",
+    "completed": false,
+    "stop_reason": "source telemetry expired",
+    "active_seconds": 35.51183141200454,
+    "motor_frames_sent": 17112,
+    "wire_motor_records_checked": 410688,
+    "mode_requests": [2],
+    "action": 11,
+    "axes": [0, 0],
+    "max_non_elbow_target_change_deg": 0,
+    "participant_deleted": true,
+    "planned_return_completed": false,
+    "last_commanded_elbow_deg": [-52.64671871236347, -20.408263491922582],
+    "last_active_measured_elbow_deg": [-50.17260254843271, -19.179444396962603],
+    "kernel_capture_drops": 0,
+    "max_arrival_gap_near_stop_ms": 2.9560546875,
+    "max_robot_source_gap_near_stop_ms": 2.944091796875,
+    "operator_post_stop_observation": "Steady; handheld responds; movement looked smooth",
+    "automatic_retry_sent": false,
+    "raw_artifact_sha256": {
+      "wire.pcap": "86e67cbb23668221f1b3e59e81b791fce3b442affcedd0d6c86bea9f1094b7b3",
+      "status.ndjson": "4e5a90be12f0de6832f76b238053c3e336119a5adfff52d4449ef9dd8c045589",
+      "targets.ndjson": "603adf3cbc01745d7b4ab7a5e318a6962380c296d07ff4e12f35040ec56350c5"
+    }
+  },
+  "completed_powered_trial": {
+    "run": "typing-transfer-20261120/live-native-1",
+    "coordinator_backend": "native release",
+    "completed": true,
+    "stop_reason": "stage complete",
+    "active_seconds": 126.41107050699065,
+    "reference_samples_checked": 6101,
+    "guarded_target_updates_checked": 11020,
+    "motor_frames_sent": 58043,
+    "wire_motor_records_checked": 1393032,
+    "mode_requests": [2],
+    "action": 11,
+    "axes": [0, 0],
+    "max_non_elbow_target_change_deg": 0,
+    "elbow_targets_returned_exactly": true,
+    "participant_deleted": true,
+    "measured_peak_elbow_deg": [-79.72317010568274, -28.927654304944884],
+    "last_active_measured_elbow_offset_deg": [-0.6994113710093057, -0.6557528018345842],
+    "post_disconnect_3s_measured_elbow_offset_deg": [-0.0655698160321224, 0],
+    "max_active_coordinator_poll_gap_ms": 9,
+    "max_kernel_arrival_to_planner_feed_ms": 9,
+    "max_capture_archive_write_ms": 7,
+    "max_planner_pipe_write_ms": 4,
+    "operator_post_stop_observation": "Both elbows smooth; steady; handheld responds",
+    "observation_source": "operator reply after this completed trial; separate from unmodified transport receipt",
+    "automatic_repeat_active": false,
+    "raw_artifact_sha256": {
+      "wire.pcap": "c684d2a8e2d86399278ae839c53677a1898cde2d0c0596b175b5d16698b1a8b3",
+      "status.ndjson": "a7168a590f1449bd15cbe0cc9b5a5ba5f8f6fab8bfacf1818d88dd26664853ac",
+      "targets.ndjson": "b4adecad1f58cf054222d7dfe3cc95574ea870cb24d5ed2940dc19176eca9e44",
+      "coordinator_native_executable": "87be4a48ab95ea21299008983af026dae4e99af1296d9bcca9c62e00f44cfd31",
+      "coordinator_source": "6ad6b401b92f74443730b099aca0dfda410e4ae326a4712f54425985c5a1d344"
+    }
+  },
+  "limitations": [
+    "Fixed command targets do not prove physically motionless legs.",
+    "Operator observation confirms the reported trial outcome, not general firmware handback semantics.",
+    "Timely incoming packets locate the stop in software delivery or scheduling; the individual delayed process is not yet established."
+  ]
+}

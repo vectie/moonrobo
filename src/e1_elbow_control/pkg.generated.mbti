@@ -19,6 +19,12 @@ pub const RAISED_DRUM_FRAMES : Int = 8551
 
 pub const RIGHT_ELBOW_SLOT : Int = 14
 
+pub const TYPING_ELBOW_FRAMES : Int = 6101
+
+pub const TYPING_LEFT_RAD : Double = -1.4477981791899937
+
+pub const TYPING_RIGHT_RAD : Double = -0.5434064639344343
+
 pub fn drum_offsets(Int) -> (Double, Double) raise
 
 pub fn leg_position_in_range(Int, Double) -> Bool
@@ -26,6 +32,8 @@ pub fn leg_position_in_range(Int, Double) -> Bool
 pub fn leg_slot(Int) -> Bool
 
 pub fn raised_drum_targets(Int, Double, Double) -> (Double, Double) raise
+
+pub fn typing_elbow_targets(Int, Double, Double) -> (Double, Double) raise
 
 // Errors
 
@@ -48,6 +56,7 @@ pub fn DrumPath::frame_index(Self) -> Int
 pub fn DrumPath::new(ArrayView[@sdk_e1_low.MotorCommand]) -> Self raise
 pub fn DrumPath::next(Self, Sample, Int64) -> Array[@sdk_e1_low.MotorCommand] raise
 pub fn DrumPath::raised(ArrayView[@sdk_e1_low.MotorCommand]) -> Self raise
+pub fn DrumPath::typing_pose(ArrayView[@sdk_e1_low.MotorCommand]) -> Self raise
 
 pub(all) struct Motor {
   id : Int

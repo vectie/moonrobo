@@ -15,11 +15,14 @@ async fn commission(
     stage == "elbow" ||
     stage == "elbow90" ||
     stage == "drums" ||
-    stage == "raised-drums" else {
+    stage == "raised-drums" ||
+    stage == "typing-elbows" else {
     fail("hold, elbow or elbow90 stage required")
   }
-  let dual = stage == "drums" || stage == "raised-drums"
-  let raised = stage == "raised-drums"
+  let dual = stage == "drums" ||
+    stage == "raised-drums" ||
+    stage == "typing-elbows"
+  let raised = stage == "raised-drums" || stage == "typing-elbows"
   let opening = @async.with_timeout(10000, read_status)
   let first = if opening.starts_on_standing_spike() {
     let recovery = @async.with_timeout(6, read_status)
@@ -52,7 +55,11 @@ async fn commission(
     @elbow.Clip::gentle()
   }
   let frame_count = if raised {
-    @elbow.RAISED_DRUM_FRAMES
+    if stage == "typing-elbows" {
+      @elbow.TYPING_ELBOW_FRAMES
+    } else {
+      @elbow.RAISED_DRUM_FRAMES
+    }
   } else if dual {
     @elbow.DRUM_FRAMES
   } else {
@@ -98,7 +105,11 @@ async fn commission(
             if dual {
               ignore(
                 if raised {
-                  @elbow.DrumPath::raised(current[:])
+                  if stage == "typing-elbows" {
+                    @elbow.DrumPath::typing_pose(current[:])
+                  } else {
+                    @elbow.DrumPath::raised(current[:])
+                  }
                 } else {
                   @elbow.DrumPath::new(current[:])
                 },
@@ -147,7 +158,11 @@ async fn commission(
               if dual {
                 drums = Some(
                   if raised {
-                    @elbow.DrumPath::raised(base[:])
+                    if stage == "typing-elbows" {
+                      @elbow.DrumPath::typing_pose(base[:])
+                    } else {
+                      @elbow.DrumPath::raised(base[:])
+                    }
                   } else {
                     @elbow.DrumPath::new(base[:])
                   },
@@ -304,12 +319,25 @@ async fn main {
     ["drums", report_file, "--shadow"] => ("drums", report_file, true)
     ["raised-drums", report_file, "--shadow"] =>
       ("raised-drums", report_file, true)
-    _ => fail("usage: hold|elbow|elbow90|drums REPORT [--shadow for drums]")
+    ["typing-elbows", report_file, "--shadow"] =>
+      ("typing-elbows", report_file, true)
+    _ =>
+      fail(
+        "usage: hold|elbow|elbow90|drums|raised-drums|typing-elbows REPORT [--shadow for dual-elbow stages]",
+      )
   }
-  commission(stage, report_file, shadow~) catch {
-    err => {
-      emit_event({ "kind": "stop", "reason": err.to_string() })
-      raise err
+  let mut reason = "commissioning interrupted"
+  errdefer emit_event({ "kind": "stop", "reason": Json(reason) })
+  let result = try commission(stage, report_file, shadow~) catch {
+    error => Err(error)
+  } noraise {
+    _ => Ok(())
+  }
+  match result {
+    Ok(_) => ()
+    Err(error) => {
+      reason = error.to_string()
+      raise error
     }
   }
 }

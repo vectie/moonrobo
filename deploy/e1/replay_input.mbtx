@@ -68,7 +68,9 @@ async fn main {
     input_start +
     rows[1].packet.arrival_ns -
     input_start
-  let duration = if scenario == "elbow90" || scenario == "raised-drums" {
+  let duration = if scenario == "elbow90" ||
+    scenario == "raised-drums" ||
+    scenario == "typing-elbows" {
     210000000000L
   } else {
     55000000000L
@@ -118,7 +120,7 @@ async fn main {
       p.q[3] = elbow + (if stroke % 2 == 0 { offset } else { 0.0 })
       p.q[14] = right_elbow + (if stroke % 2 == 1 { offset } else { 0.0 })
     }
-    if scenario == "raised-drums" {
+    if scenario == "raised-drums" || scenario == "typing-elbows" {
       guard feedback_file != "" else { fail("isolated feedback file required") }
       // This test-only plant follows positions decoded by the isolated DDS
       // receiver. It does not fabricate wall-clock progress while the paced

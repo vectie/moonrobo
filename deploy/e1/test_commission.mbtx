@@ -11,7 +11,9 @@ import {
 ///|
 async fn main {
   guard @env.args()[1:] is [scenario] else { fail("scenario") }
-  if !@fs.exists("runs") { @fs.mkdir("runs", recursive=true) }
+  if !@fs.exists("runs") {
+    @fs.mkdir("runs", recursive=true)
+  }
   let dir = "runs/" + scenario + "-" + @env.now().to_string()
   @fs.mkdir(dir)
   let python = @env.get_env_var("MOONROBO_E1_PYTHON").unwrap_or("python3")
@@ -19,7 +21,9 @@ async fn main {
   let controller = @env.get_env_var("MOONROBO_E1_CONTROLLER").unwrap_or(
     "../../_build/native/debug/build/cmd/e1_commission/e1_commission.exe",
   )
-  let stage = if scenario == "raised-drums" {
+  let stage = if scenario == "typing-elbows" {
+    "typing-elbows"
+  } else if scenario == "raised-drums" {
     "raised-drums"
   } else if scenario == "drums" {
     "drums"
@@ -155,7 +159,8 @@ async fn main {
           scenario == "elbow" ||
           scenario == "elbow90" ||
           scenario == "drums" ||
-          scenario == "raised-drums"
+          scenario == "raised-drums" ||
+          scenario == "typing-elbows"
         let transport = @fs.read_file(dir + "/transport.json").json()
         // Both independent 40 ms deadlines may win a missing-telemetry race.
         // Accept sender failure only when this scenario proves a freshness stop.
@@ -245,6 +250,24 @@ async fn main {
             le.abs() < 1.0e-8 &&
             re.abs() < 1.0e-8 else {
             fail("raised endpoints, alternating drops or return failed")
+          }
+        }
+        if scenario == "typing-elbows" {
+          guard wire
+            is {
+              "left_absolute_min": Number(left, ..),
+              "right_absolute_min": Number(right, ..),
+              "elbow_final_deg": Number(le, ..),
+              "right_final_deg": Number(re, ..),
+              ..
+            } &&
+            (left - -1.4477981791899937 * 180.0 / 3.141592653589793).abs() <
+            1.0e-8 &&
+            (right - -0.5434064639344343 * 180.0 / 3.141592653589793).abs() <
+            1.0e-8 &&
+            le.abs() < 1.0e-8 &&
+            re.abs() < 1.0e-8 else {
+            fail("typing elbow endpoints or return failed")
           }
         }
         let report : Json = {

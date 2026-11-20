@@ -28,7 +28,7 @@ async fn main {
     is {
       "stage": "hold",
       "software_stage_completed": True,
-      "max_non_elbow_target_change": Number(0, ..),
+      "max_fixed_target_change": Number(0, ..),
       ..
     } else {
     fail("valid pose-hold planner receipt required")
