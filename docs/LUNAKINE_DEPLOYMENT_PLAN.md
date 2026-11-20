@@ -1,6 +1,15 @@
 # LunaKine actor deployment and LunaFlux LLM integration
 
-Status: selected architecture; dated deployment evidence updated 2026-11-20
+Status: selected architecture; dated deployment evidence updated 2026-11-21
+
+The [21 November constrained actor deployment](E1_ACTOR_CONTROL_20261121.md)
+adds a genuine feedback-to-Ascend-to-command owner for the two commissioned
+elbows. It passes recorded-input NPU execution, sampled ONNX comparisons,
+closed-loop simulation and isolated DDS transport. The experimental adapter
+uses 25% model authority; it does not qualify the raw whole-body policy. Fresh
+live shadow and powered execution remain pending because `.191` currently has
+no carrier on its robot-facing `eno1` link. The deterministic 20 November
+physical elbow transfer remains a separate result.
 
 The [20 November 23-joint actor deployment](E1_TRAINED23_DEPLOYMENT_20261120.md)
 is installed on Atlas `.191` and passed three 15-second live-telemetry Ascend

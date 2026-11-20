@@ -179,7 +179,10 @@ def main():
                                 ori=orientation, baseline=baseline, baseline_ori=baseline_ori)
                     mirror.offer(pose)
                     last_mirror = arrival
-            print(json.dumps(dict(packet=packet, motor_ids=ids), separators=(",", ":"), allow_nan=False), flush=True)
+            print(json.dumps(dict(packet=packet, motor_ids=ids,
+                                  orientation=list(values[144:148]),
+                                  angular_velocity=list(values[148:151])),
+                             separators=(",", ":"), allow_nan=False), flush=True)
     if mirror:
         mirror.close()
 

@@ -1,0 +1,152 @@
+{
+  "format": "moonrobo.e1-actor-control-qualification.v1",
+  "date": "2026-11-21",
+  "status": "installed; fresh live shadow and physical execution pending E1 Ethernet link",
+  "physical_robot_commands_sent_this_work": false,
+  "physical_control_qualified": false,
+  "host": {
+    "management_suffix": ".191",
+    "npu": "310P3",
+    "npu_health": "OK",
+    "driver": "26.1.1",
+    "cann": "9.1.0",
+    "robot_interface": "eno1",
+    "carrier": 0,
+    "active_ipv4": null,
+    "persistent_ipv4": "192.168.55.101/24"
+  },
+  "artifacts_sha256": {
+    "actor_json": "b3d9d197292acf080f020e369472168b10a0810e52c88493316aa84988c0247e",
+    "parameters_f32": "d2c5e2f4893e77f3b0a5dd0aa9b19f9e7ac55120fd75e941d22120ca23c1e43e",
+    "robot_json": "19f9a7e8c00f7b8954627608e153ea6d7ba65d6cc0d1f5b2bf03191b782328aa",
+    "model_om": "031c4f35c09b86233d4ae05a44fdf5b6942a327224b112f7bc043b53c59727c0",
+    "actor_onnx": "0674c3bf848f5f3417bfc74286b49777ac3f5e9f8806c89315c94843dcf6426a",
+    "reference_json": "520d9e658d4e9ebfd8205656f6c17b2b48096922eb2fbe0bfd7d498afae9ba14",
+    "deployment_config_json": "d06dad0729907ec32e075d821a4023749decde6b18717111251635e10b98f0a3",
+    "installed_native_actor_executable": "d03b7cd53404c383525eb9af0bd669980998c7a2ce458039c1899153ab3024b6",
+    "final_source_archive": "81893ab6b9071cdffd00c4c50efb9593dcb4c50ee42c5c698c3eb0808cc64ffa",
+    "decoded_saved_status_ndjson": "de8c90a6ae092dd14c3b0e969b38c1b6651fa48219828a7eb25b8522530f6fd9"
+  },
+  "controller": {
+    "moving_sdk_slots": [3, 14],
+    "total_command_records": 24,
+    "other_fixed_records": 22,
+    "policy_authority": 0.25,
+    "reference_duration_ms": 13520,
+    "model_driven_approach_ms": 10000,
+    "engage_ms": 2000,
+    "response_ms": 500,
+    "inference_period_ms": 20,
+    "sender_period_ms": 2,
+    "freshness_ms": 40,
+    "maximum_lateness_ms": 10,
+    "previous_action_source": "inverse of complete applied command",
+    "baseline_and_return": "explicit deterministic handover phases",
+    "whole_body_calibration_qualified": false
+  },
+  "tests": {
+    "native_warning_denied_actor_mapping_adapter_shadow_elbow": {"passed": 31, "failed": 0},
+    "native_warning_denied_physics": {"passed": 3, "failed": 0},
+    "python_network_free_admission_and_existing_transport": {"passed": 11, "failed": 0},
+    "website": {"passed": 11, "failed": 0},
+    "website_build": "passed; existing whole-cockpit MoonBit prebuild and chunk-size warnings remain visible; not a warning-denied full UI build",
+    "native_checks": "actor and simulation owners pass --deny-warn --warn-list +73",
+    "native_script_builds": "launcher and coordinator built; upstream async C prototype warning remains visible"
+  },
+  "closed_loop_simulation": {
+    "report": "/tmp/e1-actor-closed-loop-sim-4.json",
+    "report_sha256": "3262e63d2df09585e79de9f03946d2ef6199c7ff2f0d90612f844dd79a4ad138",
+    "backend": "frozen LunaKine CPU reference with real MuJoCo 3.3.7 feedback",
+    "passed": true,
+    "ticks": 1542,
+    "policy_updates": 1177,
+    "maximum_raw_action_sensor_sensitivity": 0.0010824203491210938,
+    "maximum_applied_command_sensor_sensitivity_rad": 0.0000021454661632835936,
+    "position_bounded_policy_ticks": [0, 0],
+    "rate_limited_policy_ticks": [214, 125],
+    "max_fixed_target_change": 0,
+    "targets_returned_exactly": true,
+    "max_measured_leg_displacement_rad": 0.037959785194971174,
+    "assumptions": "root welded as crane approximation; saved pose; supplied scene force/inertia; commissioning PD gains; not physical actuator identification"
+  },
+  "recorded_input_ascend": {
+    "run": "recorded-10",
+    "passed": true,
+    "sensor_values_modified": false,
+    "clocks_rebased": true,
+    "saved_window_offset_ms": 130000,
+    "trace_sha256": "3f71d43f1d0b135b63d591b2ecc21a7073b3831dc3b6d9a852d71588e5294ac1",
+    "planner_sha256": "1d6b96c0535444ea37f760420605603f41e5aafad2d64380850c8ccec4eb6259",
+    "audit_sha256": "4d33a60ef8dc053892fbaaa230644bab8d4e38064505348a41c76f2b4c5125d7",
+    "policy_updates": 1177,
+    "inference_updates": 1560,
+    "target_heartbeats": 2809,
+    "packets": 11268,
+    "maximum_inference_ms": 3,
+    "maximum_lateness_ms": 3,
+    "maximum_kernel_arrival_to_inference_ms": 6,
+    "active_ms": 31185,
+    "actor_close_ms": 1518,
+    "position_bounded_policy_ticks": [0, 0],
+    "rate_limited_policy_ticks": [209, 98],
+    "max_fixed_target_change": 0,
+    "targets_returned_exactly": true,
+    "physical_following_checked": false
+  },
+  "independent_onnx": {
+    "passed": true,
+    "source_run": "recorded-10",
+    "oracle": "ONNX Runtime 1.32.0 CPU FP32 via Polygraphy 0.53.6",
+    "frames": [0, 1, 9, 10, 520, 780, 1040, 1559],
+    "actions_compared": 232,
+    "max_absolute_error": 0.0000024437904357910156,
+    "unchanged_tolerance": 0.0001,
+    "inputs_sha256": "354c0897d0bb16da7aa64ade09a53c7b34e02a5c95f8f3f536699dd17012db62",
+    "outputs_sha256": "9073572eb41aeb02875f18d9b4045123b5430c50c90f87e550c3d801ad34adc1",
+    "scope": "sampled numerical parity; not bit-exact or physical task qualification"
+  },
+  "isolated_transport": {
+    "run": "isolated-1",
+    "source_proposals": "recorded-7",
+    "passed": true,
+    "network": "lo-only namespace, no E1 reachability",
+    "fresh_model_inference_during_transport_test": false,
+    "complete": {
+      "motor_frames": 14908,
+      "motor_records_checked": 357792,
+      "mode_requests": [2],
+      "action": 11,
+      "axes": [0, 0],
+      "max_other_target_delta": 0,
+      "final_elbow_target_offset_deg": [0, 0],
+      "writers_disconnected": true
+    },
+    "stale_inference_with_fresh_telemetry": {
+      "rejected_with": "actor input expired",
+      "motor_frames_before_stop": 17,
+      "active_seconds": 0.03300688698072918,
+      "writers_disconnected": true
+    }
+  },
+  "retained_failed_run": {
+    "run": "recorded-8",
+    "reason": "ankle excursion lacks stationary history slot 9",
+    "phase": "startup before baseline",
+    "guard_relaxed": false,
+    "physical_commands_sent": false
+  },
+  "website": {
+    "url": "http://127.0.0.1:5300/e1-live.html?gesture=policy",
+    "source_run": "recorded-7",
+    "published": false,
+    "channels": ["raw neural target", "constrained candidate", "historical measured input"],
+    "current_robot_pane": "empty while telemetry disconnected"
+  },
+  "remaining": [
+    "restore E1 carrier and run fresh receive-only discovery",
+    "pass new actor owner with fresh live telemetry in shadow",
+    "confirm current physical support, mode, operator and clear area",
+    "fresh powered hold and operator-observed factory handback",
+    "one supervised constrained actor trial and independent wire/tracking audit"
+  ]
+}

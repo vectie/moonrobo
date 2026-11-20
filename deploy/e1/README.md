@@ -148,6 +148,70 @@ from the active polling measurement.
 
 ## Isolated regression tests
 
+### Feedback-driven actor elbows
+
+`actor-elbows` is a separate, experimental policy stage. It runs the frozen
+LunaKine Ascend model on actual decoded status/IMU history, restricts model
+authority to SDK elbows 3/14, holds all 22 other full records, and feeds the
+inverse applied command back into the next observation. Its shadow mode keeps
+**measured** joint feedback; it does not synthesize elbow tracking. It creates
+only a file sink and exempts the physical following-error requirement while
+retaining ranges, freshness, motor errors and the glitch-aware leg guard.
+Live execution requires the same fresh real hold and observed-handback receipt
+as the typing stage. Neither offline qualification nor a shadow result proves
+handback or physical following.
+
+See the [dated qualification and physical sequence](../../docs/E1_ACTOR_CONTROL_20261121.md).
+The profile is generated with
+`scripts/prepare_e1_actor_elbows.mbtx BUNDLE OM_SHA SHADOW_CONFIG REFERENCE NEW_CONFIG`.
+It pins all model/reference hashes, 25% authority, a ten-second model-driven
+approach and explicit filter/envelope/speed settings. The whole-body calibration
+is diagnostic and must not be described as qualified hardware calibration.
+
+Build `cmd/e1_actor_elbows` with native release warning denial. Precompile
+`start_stage.mbtx` and `actor_stage.mbtx` as native release executables before
+commissioning; no compilation should consume the fresh handback interval.
+The `actor_stage` launcher accepts:
+
+```
+shadow|live hold|actor-elbows PREFLIGHT NEW_RUN HANDBACK_OR_DASH
+```
+
+Set absolute paths in `MOONROBO_E1_DEPLOY_DIR`, `MOONROBO_E1_COORDINATOR`,
+`MOONROBO_E1_HOLD_CONTROLLER`, `MOONROBO_E1_ACTOR_CONTROLLER` and
+`MOONROBO_E1_DECODER_LIBRARY`; optionally set `MOONROBO_E1_MIRROR_DIR`.
+The coordinator is the compiled `start_stage` executable, and the hold owner
+is the already commissioned `e1_commission` executable. The actor also needs
+`MOONROBO_E1_ACTOR_BUNDLE`, `MOONROBO_E1_ACTOR_MODEL`,
+`MOONROBO_E1_ACTOR_CONFIG`, `MOONROBO_E1_ACTOR_REFERENCE` and
+`MOONROBO_E1_CANN_LIBRARY`, with the installed CANN/driver loader paths.
+Set `MOONROBO_E1_PYTHON`, the existing CycloneDDS Python environment and the
+interface-bound `CYCLONEDDS_URI` as for the January owner. The launcher obtains
+capture credentials through sudo's terminal and stores no password.
+
+On `.191`, the private native `e1-actor-stage.mbtx` wrapper is installed under
+`/home/jiaanguo/lunakine-deployment-20261117/actor-elbows-20261121` with these paths
+preconfigured. Nothing starts automatically. A receive-only fresh `preflight.py`
+receipt is required before either live shadow or a powered stage.
+
+`audit_actor_targets.py CONFIG TARGET_TRACE NEW_REPORT` checks every saved
+proposal, model sequence, original model-input age, affine conversion, applied
+previous action, authority/filter/slew, fixed records and exact return. It does
+not open network sockets or assert that a proposal reached the physical wire.
+`extract_e1_actor_inference.mbtx` preserves exact observed model inputs for
+sampled CPU ONNX comparison; `compare_e1_live_shadow_onnx.mbtx prepare-phased`
+selects baseline and advancing-reference frames without changing tolerances.
+
+`test_actor_transport.mbtx TRACE CONFIG NEW_DIRECTORY` must run in a lo-only
+network namespace. Precompile `replay_actor_targets.mbtx` and set its native
+executable path in `MOONROBO_E1_ACTOR_REPLAY`. The test replays saved real model
+proposals through actual DDS and injects a stale model input despite fresh
+telemetry. It cannot reach `eno1`; it is transport qualification, not a fresh
+closed-loop model run. `replay_actor_input.mbtx STATUS SKIP_MS` separately
+rebases saved sensor clocks for recorded-input NPU tests and never sends commands.
+
+### Existing commissioning regression suite
+
 Build the controller first. From this directory on Linux, set absolute paths
 for `MOONROBO_MOON`, `MOONROBO_E1_PYTHON` and `MOONROBO_E1_CONTROLLER`. Then:
 

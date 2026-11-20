@@ -1,0 +1,87 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/async@0.20.2/stdio",
+}
+
+///|
+// This is command replay for a transport test, not inference. It refuses every
+// network namespace with an interface other than lo before changing shadow=false.
+async fn main {
+  let interfaces = []
+  for line in @fs.read_file("/proc/net/dev").text().split("\n") {
+    if line.contains(":") {
+      interfaces.push(line.split(":").next().unwrap().trim().to_owned())
+    }
+  }
+  guard interfaces == ["lo"] else {
+    fail("actor transport replay requires isolated loopback")
+  }
+  guard @env.args()[1:] is [trace, scenario] &&
+    (scenario == "complete" || scenario == "stale-inference") else {
+    fail("TRACE complete|stale-inference required")
+  }
+  let text = @fs.read_file(trace).text()
+  let output : &@io.Writer = @stdio.stdout
+  let mut offset : Int64? = None
+  let start = @env.now().reinterpret_as_int64() + 200L
+  for line in text.split("\n") {
+    if line == "" {
+      continue
+    }
+    guard @json.parse(line.to_owned()) is Object(row) else {
+      fail("invalid command record")
+    }
+    if row["kind"] is String("stop") {
+      output.write(Json(row).stringify() + "\n")
+      break
+    }
+    guard row["shadow"] is True && row["inference"] is Object(inference) else {
+      fail("recorded NPU shadow required")
+    }
+    let receipt : Int64 = @json.from_json(row["receipt_ms"])
+    if offset is None {
+      offset = Some(start - receipt)
+    }
+    for key in ["receipt_ms", "telemetry_receipt_ms"] {
+      let stamp : Int64 = @json.from_json(row[key])
+      row[key] = Json((stamp + offset.unwrap()).to_string())
+    }
+    for
+      key in [
+        "inferred_at_ms", "adapter_tick_ms", "scheduled_tick_ms", "input_receipt_ms",
+      ] {
+      let stamp : Int64 = @json.from_json(inference[key])
+      inference[key] = Json((stamp + offset.unwrap()).to_string())
+    }
+    let source : Int64 = @json.from_json(row["telemetry_source_ns"])
+    row["telemetry_source_ns"] = Json(
+      (source + offset.unwrap() * 1000000L).to_string(),
+    )
+    row["shadow"] = Json(false)
+    let due = receipt + offset.unwrap()
+    let now = @env.now().reinterpret_as_int64()
+    if now < due {
+      @async.sleep((due - now).to_int())
+    }
+    if scenario == "stale-inference" {
+      for i in 0..<100 {
+        let current = @env.now().reinterpret_as_int64()
+        row["sequence"] = Json(i)
+        row["receipt_ms"] = Json(current.to_string())
+        row["telemetry_receipt_ms"] = Json(current.to_string())
+        row["telemetry_source_ns"] = Json((current * 1000000L).to_string())
+        output.write(Json(row).stringify() + "\n") catch {
+          _ => return
+        }
+        @async.sleep(10)
+      }
+      fail("sender did not stop stale inference despite fresh telemetry")
+    }
+    output.write(Json(row).stringify() + "\n")
+  }
+}

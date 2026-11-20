@@ -13,11 +13,17 @@ import {
 async fn main {
   let (repo, output, role) = match @env.args()[1:] {
     [repo, output] => (repo, output, "actor")
-    [repo, output, "planner" | "sdk-shadow" | "status-shadow" as role] =>
-      (repo, output, role)
+    [
+      repo,
+      output,
+      "planner"
+      | "sdk-shadow"
+      | "status-shadow"
+      | "actor-elbows" as role,
+    ] => (repo, output, role)
     _ =>
       fail(
-        "usage: stage_lunakine_actor_host.mbtx MOONROBO NEW_OUTPUT [planner|sdk-shadow|status-shadow]",
+        "usage: stage_lunakine_actor_host.mbtx MOONROBO NEW_OUTPUT [planner|sdk-shadow|status-shadow|actor-elbows]",
       )
   }
   let actor = role != "planner"
@@ -25,9 +31,16 @@ async fn main {
   @fs.mkdir(output + "/src", recursive=true)
   @fs.mkdir(output + "/cmd", recursive=true)
   @fs.mkdir(output + "/scripts", recursive=true)
+  @fs.mkdir(output + "/internal", recursive=true)
   let packages = if role == "planner" {
     [
       "cmd/actor_task", "src/policy_skills", "src/policy_task", "src/policy_planner",
+    ]
+  } else if role == "actor-elbows" {
+    [
+      "cmd/e1_actor_elbows", "src/e1_actor", "src/e1_actor_reference", "src/e1_actor_elbows",
+      "src/policy_skills", "src/sdk_e1_low", "src/sdk_e1_policy", "src/e1_elbow_control",
+      "internal/e1_ankle_shadow",
     ]
   } else if role == "status-shadow" {
     [
@@ -90,6 +103,7 @@ async fn main {
       #|
     ) +
     (if actor { "  \"vectie/lunakine@0.1.0\",\n" } else { "" }) +
+    (if role == "actor-elbows" { "  \"moonbitlang/x@0.5.5\",\n" } else { "" }) +
     (
       #|  "moonbitlang/async@0.20.2",
       #|}
@@ -116,7 +130,7 @@ async fn main {
     } else {
       Json::null()
     },
-    "scope": "deployment-only actor/task packages for recorded or SDK shadow execution and planning",
+    "scope": "deployment-only actor/task/control source; selecting a source role does not grant publication authority",
   }
   @fs.write_file(
     output + "/source-view.json",

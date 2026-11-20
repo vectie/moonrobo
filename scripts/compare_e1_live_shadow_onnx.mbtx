@@ -88,6 +88,7 @@ async fn prepare(
   summary : String,
   inputs : String,
   expected : String,
+  phased~ : Bool = false,
 ) -> Unit {
   let report : Report = @json.from_json(@fs.read_file(summary).json())
   guard report.format == "moonrobo.e1-live-actor-shadow-report.v1" &&
@@ -96,7 +97,20 @@ async fn prepare(
     report.frames > 500 else {
     fail("expected the recorded stationary shadow inputs")
   }
-  let selected = [0, 1, 9, 10, 100, 250, 500, report.frames - 1]
+  let selected = if phased {
+    [
+      0,
+      1,
+      9,
+      10,
+      report.frames / 3,
+      report.frames / 2,
+      report.frames * 2 / 3,
+      report.frames - 1,
+    ]
+  } else {
+    [0, 1, 9, 10, 100, 250, 500, report.frames - 1]
+  }
   let history : Array[Array[Double]] = []
   let cases : Array[Case] = []
   let records : Array[Json] = []
@@ -148,13 +162,15 @@ async fn prepare(
     create_mode=CreateNew,
   )
   println(
-    "Prepared eight captured live inputs for independent ONNX Runtime comparison",
+    "Prepared eight recorded actor inputs for independent ONNX Runtime comparison",
   )
 }
 
 ///|
 async fn main {
   match @env.args()[1:] {
+    ["prepare-phased", trace, summary, inputs, expected] =>
+      prepare(trace, summary, inputs, expected, phased=true)
     ["prepare", trace, summary, inputs, expected] =>
       prepare(trace, summary, inputs, expected)
     ["check", expected, outputs, destination] => {
@@ -201,7 +217,7 @@ async fn main {
     }
     _ =>
       fail(
-        "usage: compare_e1_live_shadow_onnx.mbtx prepare TRACE REPORT NEW_INPUTS NEW_EXPECTED | check EXPECTED OUTPUTS NEW_REPORT",
+        "usage: compare_e1_live_shadow_onnx.mbtx prepare|prepare-phased TRACE REPORT NEW_INPUTS NEW_EXPECTED | check EXPECTED OUTPUTS NEW_REPORT",
       )
   }
 }

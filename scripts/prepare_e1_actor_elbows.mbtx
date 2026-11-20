@@ -1,0 +1,88 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn sha(bytes : Bytes) -> String {
+  let mut result = ""
+  for byte in @crypto.sha256(bytes) {
+    result += byte.to_hex()
+  }
+  result
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [bundle, model_sha, shadow_config, reference, output] &&
+    model_sha.length() == 64 else {
+    fail(
+      "usage: BUNDLE MODEL_OM_SHA256 SHADOW_CONFIG PREPARED_REFERENCE NEW_CONFIG",
+    )
+  }
+  guard @fs.read_file(shadow_config).json()
+    is { "joint_calibration": Object(calibration), "imu_calibration": imu, .. } &&
+    calibration["axes"] is Array(axes) &&
+    calibration["fixed"] is Array(fixed) &&
+    @fs.read_file(bundle + "/robot.json").json()
+    is { "identity": { "robot": robot, .. }, .. } &&
+    @fs.read_file(reference).json()
+    is { "reference_id": String(id), "frames": Array(frames), .. } else {
+    fail("actor preparation inputs incomplete")
+  }
+  for value in axes {
+    guard value is Object(axis) && axis["motor_id"] is Number(slot, ..) else {
+      fail("invalid calibration axis")
+    }
+    axis["kp"] = Json(50.0)
+    axis["kd"] = Json(
+      if slot == 9.0 || slot == 10.0 || slot == 20.0 || slot == 21.0 {
+        1.0
+      } else {
+        5.0
+      },
+    )
+  }
+  guard fixed.length() == 1 && fixed[0] is Object(reserved) else {
+    fail("reserved motor missing")
+  }
+  reserved["kd"] = Json(5.0)
+  let config : Json = {
+    "format": "moonrobo.e1-actor-elbows.v1",
+    "model_id": Json(model_sha),
+    "model_om_sha256": Json(model_sha),
+    "actor_json_sha256": sha(@fs.read_file(bundle + "/actor.json").binary()),
+    "parameters_sha256": sha(@fs.read_file(bundle + "/parameters.f32").binary()),
+    "robot_json_sha256": sha(@fs.read_file(bundle + "/robot.json").binary()),
+    "reference_sha256": sha(@fs.read_file(reference).binary()),
+    "reference_id": Json(id),
+    "reference_duration_ms": Json((frames.length() - 1) * 20),
+    "actor_robot": robot,
+    "joint_calibration": Json(calibration),
+    "imu_calibration": imu,
+    "adapter": {
+      "lower_rad": [-1.4477981791899937, -0.5434064639344343],
+      "upper_rad": [0.0, 0.0],
+      "maximum_speed_rad_s": [
+        70.30846049673089 * 0.017453292519943295 * 1.875 / 60.0,
+        19.211954803856727 * 0.017453292519943295 * 1.875 / 60.0,
+      ],
+      "response_ms": 500,
+      "engage_ms": 2000,
+      "policy_authority": 0.25,
+    },
+    "maximum_policy_ms": 15000,
+    "approach_ms": 10000,
+    "maximum_total_ms": 120000,
+    "following_tolerance_rad": 5.0 * 0.017453292519943295,
+    "scope": "Experimental constrained actor, SDK elbow pitch 3/14 only. Position envelope and speed maxima use the completed typing-elbow commissioning path; 500 ms response and 2 s engagement are explicit experimental filter settings. Other full motor targets are held. Whole-body/IMU calibration remains diagnostic and is not asserted qualified.",
+  }
+  @fs.write_file(output, config.stringify(indent=2), create_mode=CreateNew)
+  println(
+    "Prepared explicit constrained-actor configuration; no robot connection or command",
+  )
+}

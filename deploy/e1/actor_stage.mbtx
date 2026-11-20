@@ -1,0 +1,69 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+fn required(name : String) -> String raise {
+  guard @env.get_env_var(name) is Some(value) && value != "" else {
+    fail("missing deployment setting: " + name)
+  }
+  value
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [kind, stage, preflight, directory, handback] &&
+    (kind == "shadow" || kind == "live") &&
+    (stage == "hold" || stage == "actor-elbows") else {
+    fail(
+      "usage: shadow|live hold|actor-elbows PREFLIGHT NEW_RUN HANDBACK_OR_DASH",
+    )
+  }
+  let deploy = required("MOONROBO_E1_DEPLOY_DIR")
+  let coordinator = required("MOONROBO_E1_COORDINATOR")
+  let controller = required(
+    if stage == "hold" {
+      "MOONROBO_E1_HOLD_CONTROLLER"
+    } else {
+      "MOONROBO_E1_ACTOR_CONTROLLER"
+    },
+  )
+  let decoder = required("MOONROBO_E1_DECODER_LIBRARY")
+  for path in [coordinator, controller, decoder, deploy + "/preflight.py"] {
+    guard @fs.exists(path) else { fail("deployment file unavailable: " + path) }
+  }
+  if stage == "actor-elbows" {
+    for
+      name in [
+        "MOONROBO_E1_ACTOR_CONFIG", "MOONROBO_E1_ACTOR_BUNDLE", "MOONROBO_E1_ACTOR_MODEL",
+        "MOONROBO_E1_ACTOR_REFERENCE", "MOONROBO_E1_CANN_LIBRARY",
+      ] {
+      guard @fs.exists(required(name)) else {
+        fail("actor artifact unavailable: " + name)
+      }
+    }
+  }
+  // Credential input belongs to sudo's terminal, never an argument or archive.
+  guard @process.run("/usr/bin/sudo", ["-v"]) == 0 else {
+    fail("capture privilege unavailable")
+  }
+  let status = @process.run(
+    coordinator,
+    [
+      kind,
+      stage,
+      preflight,
+      directory,
+      handback,
+      controller,
+      decoder,
+      @env.get_env_var("MOONROBO_E1_MIRROR_DIR").unwrap_or("-"),
+    ],
+    cwd=deploy,
+  )
+  guard status == 0 else { fail("stage stopped; inspect owned run receipts") }
+}

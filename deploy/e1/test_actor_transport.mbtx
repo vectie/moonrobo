@@ -1,0 +1,163 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  let interfaces = []
+  for line in @fs.read_file("/proc/net/dev").text().split("\n") {
+    if line.contains(":") {
+      interfaces.push(line.split(":").next().unwrap().trim().to_owned())
+    }
+  }
+  guard interfaces == ["lo"] else { fail("isolated namespace required") }
+  guard @env.args()[1:] is [trace, profile, directory] else {
+    fail("TRACE CONFIG NEW_DIRECTORY required")
+  }
+  @fs.mkdir(directory)
+  guard @process.run("/usr/sbin/ip", ["link", "set", "lo", "up"]) == 0 else {
+    fail("loopback setup failed")
+  }
+  @env.set_env_var(
+    "CYCLONEDDS_URI",
+    "file://" + @env.current_dir().unwrap() + "/dds-loopback.xml",
+  )
+  let replay = @env.get_env_var("MOONROBO_E1_ACTOR_REPLAY").unwrap_or(
+    @env.current_dir().unwrap() +
+    "/_build/replay_actor_targets.mbtx/native/release/build/single/single.exe",
+  )
+  @async.with_timeout(100000, () => {
+    @async.with_task_group(g => {
+      for scenario in ["complete", "stale-inference"] {
+        let dir = directory + "/" + scenario
+        @fs.mkdir(dir)
+        let fixture = @process.spawn(
+          g,
+          "/usr/bin/python3",
+          ["-B", "robot_fixture.py", dir + "/wire.json", "actor-elbows"],
+          stderr=@process.redirect_to_file(
+            dir + "/fixture.log",
+            create_mode=CreateNew,
+          ),
+        )
+        defer fixture.cancel()
+        let (input, feed) = @process.write_to_process()
+        let sender = @process.spawn(
+          g,
+          "/usr/bin/python3",
+          [
+            "-B",
+            "january_transport.py",
+            "--stage",
+            "actor-elbows",
+            "--actor-profile",
+            profile,
+            "--ready",
+            dir + "/ready.json",
+            "--receipt",
+            dir + "/transport.json",
+          ],
+          stdin=input,
+          stderr=@process.redirect_to_file(
+            dir + "/sender.log",
+            create_mode=CreateNew,
+          ),
+        )
+        defer sender.cancel()
+        for _ in 0..<600 {
+          if @fs.exists(dir + "/ready.json") {
+            break
+          }
+          guard sender.try_wait() is None else {
+            fail("actor sender startup failed")
+          }
+          @async.sleep(10)
+        }
+        guard @fs.exists(dir + "/ready.json") else {
+          fail("sender readiness timeout")
+        }
+        let (source_read, source_output) = @process.read_from_process()
+        let source = @process.spawn(
+          g,
+          replay,
+          [trace, scenario],
+          stdout=source_output,
+          stderr=@process.redirect_to_file(
+            dir + "/input.log",
+            create_mode=CreateNew,
+          ),
+        )
+        defer source.cancel()
+        g.spawn_bg(() => {
+          let reader : &@io.Reader = source_read
+          let writer : &@io.Writer = feed
+          for ;; {
+            guard reader.read_some() is Some(chunk) else { break }
+            writer.write(chunk) catch {
+              _ => break
+            }
+          }
+          feed.close()
+        })
+        let sender_status = sender.wait()
+        source.cancel()
+        guard fixture.wait() == 0 else { fail("isolated receiver failed") }
+        let receipt = @fs.read_file(dir + "/transport.json").json()
+        guard receipt
+          is {
+            "participant_deleted": True,
+            "live": False,
+            "result": String(reason),
+            "motor_samples_sent": Number(count, ..),
+            ..
+          } &&
+          count > 0 else {
+          fail("isolated actor sender receipt invalid")
+        }
+        if scenario == "complete" {
+          guard sender_status == 0 && reason == "stage complete" else {
+            fail("actor transport replay failed")
+          }
+          guard @fs.read_file(dir + "/wire.json").json()
+            is {
+              "elbow_final_deg": Number(0, ..),
+              "right_final_deg": Number(0, ..),
+              "max_other_target_delta": Number(0, ..),
+              "motor_and_mode_writers_disconnected": True,
+              ..
+            } else {
+            fail("isolated actor wire return failed")
+          }
+        } else {
+          guard sender_status != 0 &&
+            (
+              reason == "actor inference expired" ||
+              reason == "actor input expired"
+            ) else {
+            fail("fresh telemetry masked stale model output: " + reason)
+          }
+        }
+        let result : Json = {
+          "passed": true,
+          "scenario": Json(scenario),
+          "isolation": "loopback-only namespace",
+          "scope": "replay of recorded Ascend proposals through real DDS transport; not fresh inference or physical robot execution",
+          "transport": receipt,
+          "wire": @fs.read_file(dir + "/wire.json").json(),
+        }
+        @fs.write_file(
+          dir + "/result.json",
+          result.stringify(indent=2),
+          create_mode=CreateNew,
+        )
+        println(result.stringify())
+      }
+    })
+  })
+}

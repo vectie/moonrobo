@@ -38,14 +38,16 @@ async fn main {
       stage == "elbow90" ||
       stage == "drums" ||
       stage == "raised-drums" ||
-      stage == "typing-elbows"
+      stage == "typing-elbows" ||
+      stage == "actor-elbows"
     ) &&
     (
       kind == "live" ||
       stage == "hold" ||
       stage == "drums" ||
       stage == "raised-drums" ||
-      stage == "typing-elbows"
+      stage == "typing-elbows" ||
+      stage == "actor-elbows"
     ) else {
     fail(
       "usage: live|shadow STAGE PREFLIGHT NEW_RUN_DIR HANDBACK_OR_DASH CONTROLLER DECODER_LIBRARY MIRROR_DIR_OR_DASH",
@@ -86,12 +88,22 @@ async fn main {
   } else {
     [dir + "/shadow-sink.ndjson"]
   }
-  if live && (stage == "elbow" || stage == "typing-elbows") {
+  if live &&
+    (stage == "elbow" || stage == "typing-elbows" || stage == "actor-elbows") {
     sender_args.push("--handback-from")
     sender_args.push(handback_file)
   }
+  if live && stage == "actor-elbows" {
+    sender_args.push("--actor-profile")
+    guard @env.get_env_var("MOONROBO_E1_ACTOR_CONFIG") is Some(config) else {
+      fail("actor configuration required")
+    }
+    sender_args.push(config)
+  }
   @async.with_timeout(
-    if stage == "raised-drums" || stage == "typing-elbows" {
+    if stage == "raised-drums" ||
+      stage == "typing-elbows" ||
+      stage == "actor-elbows" {
       240000
     } else if stage == "elbow90" {
       215000
@@ -150,7 +162,9 @@ async fn main {
             "/usr/bin/timeout",
             "-s",
             "INT",
-            if stage == "raised-drums" || stage == "typing-elbows" {
+            if stage == "raised-drums" ||
+              stage == "typing-elbows" ||
+              stage == "actor-elbows" {
               "225"
             } else if stage == "elbow90" {
               "205"
@@ -288,7 +302,8 @@ async fn main {
           (
             stage == "drums" ||
             stage == "raised-drums" ||
-            stage == "typing-elbows"
+            stage == "typing-elbows" ||
+            stage == "actor-elbows"
           ) {
           planner_args.push("--shadow")
         }
@@ -334,7 +349,9 @@ async fn main {
           observer_args.push(dir + "/ready.json")
         }
         observer_args.push(
-          if stage == "raised-drums" || stage == "typing-elbows" {
+          if stage == "raised-drums" ||
+            stage == "typing-elbows" ||
+            stage == "actor-elbows" {
             "215"
           } else if stage == "elbow90" {
             "195"

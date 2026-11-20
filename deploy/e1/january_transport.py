@@ -20,6 +20,7 @@ from cyclonedds.topic import Topic
 from cyclonedds.builtin import BuiltinDataReader, BuiltinTopicDcpsPublication
 from cyclonedds.dynamic import get_types_for_typeid
 from cyclonedds.util import duration
+from actor_validation import ActorValidator
 
 @a.final
 @dataclasses.dataclass
@@ -76,8 +77,8 @@ def typing_targets(frame, baseline):
     if frame>3100:blend=1-blend
     return tuple(x+(y-x)*blend for x,y in zip(initial,target))
 
-def validate_frame(row, baseline, previous, stage):
-    dual=stage in ("drums","raised-drums","typing-elbows")
+def validate_frame(row, baseline, previous, stage, actor_validator=None):
+    dual=stage in ("drums","raised-drums","typing-elbows","actor-elbows")
     assert not row.get("shadow",False), "shadow targets cannot drive live transport"
     assert row["kind"]=="target" and row["stage"]==stage and row["profile"]=="suspended"
     assert row["action"]==11 and row["axes"]==[0,0]
@@ -97,7 +98,10 @@ def validate_frame(row, baseline, previous, stage):
     assert motors[23]["pos"]==0 and -2.44 <= motors[3]["pos"] <=0
     if dual:
         assert all(-math.radians(130)<=motors[slot]["pos"]<=0 for slot in (3,14))
-    if stage=="typing-elbows":
+    if stage=="actor-elbows":
+        assert actor_validator is not None, "actor deployment profile required"
+        actor_validator.validate(row, baseline or motors, previous)
+    elif stage=="typing-elbows":
         frame=row["reference_frame"]
         assert isinstance(frame,int) and -1<=frame<=6100
         if baseline is None:assert frame==-1
@@ -125,6 +129,7 @@ def validate_frame(row, baseline, previous, stage):
     if previous:
         assert int(row["telemetry_source_ns"]) > int(previous["telemetry_source_ns"])
         assert int(row["receipt_ms"]) > int(previous["receipt_ms"])
+        if stage=="actor-elbows":return motors
         peak=30 if stage=="raised-drums" else 10 if stage=="drums" else 90 if stage=="elbow90" else 5
         duration_s=16 if stage=="raised-drums" else 12 if stage=="drums" else 180 if stage=="elbow90" else 15
         max_step=(max(abs(baseline[3]["pos"]+1.4477981791899937),abs(baseline[14]["pos"]+0.5434064639344343))*1.875/60*.020
@@ -136,13 +141,17 @@ def validate_frame(row, baseline, previous, stage):
 def command_timestamp_ns(row, host_now_ns, domain, previous_ns):
     age_ns = host_now_ns - int(row["telemetry_receipt_ms"]) * 1000000
     assert 0 <= age_ns <= 40000000, "source telemetry expired"
+    if row.get("stage")=="actor-elbows":
+        assert 0 <= host_now_ns-int(row["inference"]["inferred_at_ms"])*1000000 <= 40000000, "actor inference expired"
+        assert 0 <= host_now_ns-int(row["inference"]["input_receipt_ms"])*1000000 <= 40000000, "actor input expired"
     stamp = host_now_ns if domain == "host" else int(row["telemetry_source_ns"]) + age_ns
     assert previous_ns is None or stamp > previous_ns, "command source clock reversed"
     return stamp
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--stage",required=True,choices=("hold","elbow","elbow90","drums","raised-drums","typing-elbows"))
+    ap.add_argument("--stage",required=True,choices=("hold","elbow","elbow90","drums","raised-drums","typing-elbows","actor-elbows"))
+    ap.add_argument("--actor-profile")
     ap.add_argument("--live",action="store_true")
     ap.add_argument("--execute",action="store_true")
     ap.add_argument("--peer-prefix",default="")
@@ -151,6 +160,10 @@ def main():
     ap.add_argument("--ready",required=True)
     ap.add_argument("--receipt",required=True)
     args=ap.parse_args()
+    actor_validator=None
+    if args.stage=="actor-elbows":
+        assert args.actor_profile, "actor profile required"
+        actor_validator=ActorValidator(json.loads(pathlib.Path(args.actor_profile).read_text()))
     for path in (args.ready,args.receipt):
         assert not pathlib.Path(path).exists(), "output exists"
     interfaces=[x.split(":")[0].strip() for x in pathlib.Path("/proc/net/dev").read_text().splitlines() if ":" in x]
@@ -159,7 +172,7 @@ def main():
         with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as s:
             reply=fcntl.ioctl(s.fileno(),0x8915,struct.pack("256s",b"eno1"))
             assert socket.inet_ntoa(reply[20:24])=="192.168.55.101"
-        if args.stage in ("elbow","typing-elbows"):
+        if args.stage in ("elbow","typing-elbows","actor-elbows"):
             assert args.handback_from, "verified hold receipt required"
             previous=json.loads(pathlib.Path(args.handback_from).read_text())
             assert previous["stage"]=="hold" and previous["result"]=="stage complete"
@@ -247,7 +260,7 @@ def main():
                     if row["kind"]=="stop":
                         result=row["reason"]
                         return
-                    motors=validate_frame(row,baseline,latest,args.stage)
+                    motors=validate_frame(row,baseline,latest,args.stage,actor_validator)
                     if baseline is None:baseline=motors
                     latest=row
                     last_update=time.monotonic()
@@ -261,7 +274,7 @@ def main():
             assert 0<=time.time_ns()//1000000-int(latest["receipt_ms"])<=40,"telemetry expired"
             assert 0<=time.time_ns()//1000000-int(latest["telemetry_receipt_ms"])<=40,"source telemetry expired"
             if first_send is not None:
-                assert now-first_send <= (203.0 if args.stage in ("raised-drums","typing-elbows") else 1.25 if args.stage=="hold" else 50.0 if args.stage=="drums" else 182.0 if args.stage=="elbow90" else 17.0),"stage time limit"
+                assert now-first_send <= (actor_validator.profile["maximum_total_ms"]/1000 if actor_validator else 203.0 if args.stage in ("raised-drums","typing-elbows") else 1.25 if args.stage=="hold" else 50.0 if args.stage=="drums" else 182.0 if args.stage=="elbow90" else 17.0),"stage time limit"
             if now>=due:
                 assert now-due<=.010,"publication deadline missed"
                 stamp_ns=command_timestamp_ns(latest,time.time_ns(),args.timestamp_domain,last_command_timestamp)

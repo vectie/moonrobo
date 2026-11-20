@@ -13,7 +13,8 @@ mode=DataReader(p,Topic(p,"Control_Mode_Topic",SetMode))
 baseline=None; count=0; peak=0.; last=0.; modes=[]; seen=False; first=None; finish=None
 raised=len(sys.argv)>2 and sys.argv[2]=="raised-drums"
 typing=len(sys.argv)>2 and sys.argv[2]=="typing-elbows"
-drums=len(sys.argv)>2 and sys.argv[2] in ("drums","raised-drums","typing-elbows")
+actor=len(sys.argv)>2 and sys.argv[2]=="actor-elbows"
+drums=len(sys.argv)>2 and sys.argv[2] in ("drums","raised-drums","typing-elbows","actor-elbows")
 left_absolute_min=right_absolute_min=0.;left_drop=right_drop=0.;raised_seen=False
 last_feedback=0.
 right_peak=0.;right_last=0.;left_strokes=right_strokes=0;left_active=right_active=False
@@ -42,14 +43,16 @@ while time.monotonic()<end:
             if i not in ((3,14) if drums else (3,)):assert m==baseline[i]
             for name in ("kp","kd","tau","vel"):assert m[name]==baseline[i][name]
         last=math.degrees(values[3]["pos"]-baseline[3]["pos"])
-        assert -90.000001<=last<=.000001
+        if actor:assert -90.000001<=math.degrees(values[3]["pos"])<=0.000001
+        else:assert -90.000001<=last<=.000001
         peak=min(peak,last);count+=1
         if drums:
             right_last=math.degrees(values[14]["pos"]-baseline[14]["pos"])
-            assert -(90 if raised or typing else 10)-.000001<=last<=.000001 and -(90 if raised or typing else 10)-.000001<=right_last<=.000001
-            if not raised and not typing:assert abs(last*right_last)<1e-8
+            if actor:assert -90.000001<=math.degrees(values[14]["pos"])<=0.000001
+            else:assert -(90 if raised or typing else 10)-.000001<=last<=.000001 and -(90 if raised or typing else 10)-.000001<=right_last<=.000001
+            if not raised and not typing and not actor:assert abs(last*right_last)<1e-8
             right_peak=min(right_peak,right_last)
-            if typing:
+            if typing or actor:
                 left_absolute_min=min(left_absolute_min,math.degrees(values[3]["pos"]))
                 right_absolute_min=min(right_absolute_min,math.degrees(values[14]["pos"]))
                 lactive=ractive=False

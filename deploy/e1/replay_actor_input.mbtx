@@ -1,0 +1,64 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/async@0.20.2/stdio",
+}
+
+///|
+// Recorded sensor values are unchanged. Only packet clocks are translated to
+// the replay host epoch so the real freshness checks can execute. No sockets.
+async fn main {
+  guard @env.args()[1:] is [file, skip_text] else {
+    fail("recorded decoded status and window start ms required")
+  }
+  let skip = @string.parse_int(skip_text)
+  guard skip >= 0 && skip <= 200000 else {
+    fail("recorded window start outside capture budget")
+  }
+  let text = @fs.read_file(file).text()
+  let output : &@io.Writer = @stdio.stdout
+  let started = @env.now().reinterpret_as_int64()
+  let mut offset : Int64? = None
+  let mut first = 0L
+  let mut capture_first : Int64? = None
+  for line in text.split("\n") {
+    if line == "" {
+      continue
+    }
+    guard @json.parse(line.to_owned()) is Object(row) &&
+      row["packet"] is Object(packet) else {
+      fail("recorded packet missing")
+    }
+    let arrival : Int64 = @json.from_json(packet["arrival_ns"])
+    let source : Int64 = @json.from_json(packet["source_ns"])
+    if capture_first is None {
+      capture_first = Some(arrival)
+    }
+    // This saved trial includes a different powered gesture. Select its
+    // post-disconnect stationary segment for baseline qualification; retain
+    // every packet and sensor value inside that explicitly selected window.
+    if arrival - capture_first.unwrap() < skip.to_int64() * 1000000L {
+      continue
+    }
+    if offset is None {
+      first = arrival
+      offset = Some(started * 1000000L - arrival)
+    }
+    let due = (arrival - first) / 1000000L + started
+    if due - started > 180000L {
+      break
+    }
+    let now = @env.now().reinterpret_as_int64()
+    if now < due {
+      @async.sleep((due - now).to_int())
+    }
+    packet["arrival_ns"] = Json((arrival + offset.unwrap()).to_string())
+    packet["source_ns"] = Json((source + offset.unwrap()).to_string())
+    output.write(Json(row).stringify() + "\n")
+  }
+}

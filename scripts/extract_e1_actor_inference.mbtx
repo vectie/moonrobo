@@ -1,0 +1,83 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+// Preserve exact recorded observations, goals and actions. This only removes
+// duplicate command heartbeats and adapts their container to the existing
+// independent ONNX comparison reader. No sensor features are reconstructed.
+async fn main {
+  guard @env.args()[1:] is [trace, new_trace, new_summary] else {
+    fail("TRACE NEW_COMPARISON_TRACE NEW_COMPARISON_SUMMARY required")
+  }
+  let output : Array[String] = []
+  let mut last = -1
+  let mut first_goals : Json = Json::null()
+  let mut stopped = false
+  for line in @fs.read_file(trace).text().split("\n") {
+    if line == "" {
+      continue
+    }
+    let row = @json.parse(line.to_owned())
+    if row is { "kind": "stop", "reason": "stage complete", .. } {
+      assert_false(stopped)
+      stopped = true
+      continue
+    }
+    guard !stopped else { fail("target after terminal stop") }
+    guard row
+      is {
+        "kind": "target",
+        "stage": "actor-elbows",
+        "shadow": True,
+        "inference": {
+          "inference_sequence": Number(index, ..),
+          "observation": observation,
+          "goals": goals,
+          "raw_actions": raw,
+          ..
+        },
+        ..
+      } else {
+      fail("successful read-only actor proposal trace required")
+    }
+    let frame = index.to_int()
+    if frame == last {
+      continue
+    }
+    guard frame == last + 1 else { fail("model update missing") }
+    if frame == 0 {
+      first_goals = goals
+    }
+    let value : Json = {
+      "format": "moonrobo.e1-live-actor-shadow-tick.v1",
+      "published": false,
+      "frame": Json(frame),
+      "observation": observation,
+      "goals": goals,
+      "raw_actions": raw,
+    }
+    output.push(value.stringify())
+    last = frame
+  }
+  guard stopped && last > 500 else {
+    fail("complete real inference trace required")
+  }
+  let summary : Json = {
+    "format": "moonrobo.e1-live-actor-shadow-report.v1",
+    "published": false,
+    "frames": Json(last + 1),
+    "goals": first_goals,
+    "source_scope": "recorded-input Ascend actor command proposals; not live telemetry or physical execution",
+  }
+  @fs.write_file(new_trace, output.join("\n") + "\n", create_mode=CreateNew)
+  @fs.write_file(
+    new_summary,
+    summary.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+}
