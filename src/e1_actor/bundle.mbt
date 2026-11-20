@@ -139,6 +139,32 @@ pub fn Bundle::nominal_setpoints(
 }
 
 ///|
+/// Invert the saved affine action conversion for the positions actually
+/// commanded. Used by explicit action adapters to populate previous-action
+/// features consistently. This neither clips values nor asserts qualification.
+pub fn Bundle::actions_for_setpoints(
+  self : Self,
+  positions : ArrayView[Double],
+) -> Array[Double] raise {
+  guard positions.length() == self.robot.joints.length() &&
+    positions.all(@portable.finite) else {
+    fail("invalid applied E1 positions")
+  }
+  let actions = Array::makei(29, index => {
+    if index < positions.length() {
+      (positions[index] - self.robot.default_q[index]) /
+      self.robot.scales[index]
+    } else {
+      0.0
+    }
+  })
+  guard actions.all(@portable.finite) else {
+    fail("applied action conversion overflow")
+  }
+  actions
+}
+
+///|
 fn Bundle::project(self : Self, actions : Array[Double]) -> Array[Double] raise {
   guard actions.length() == 29 && actions.all(@portable.finite) else {
     fail("invalid embedded E1 action")

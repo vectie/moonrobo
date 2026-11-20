@@ -7,6 +7,9 @@ import {
 }
 
 // Values
+pub fn align_heading(ArrayView[Double], ArrayView[Double]) -> Array[Double] raise
+
+pub fn heading_alignment(ArrayView[Double], ArrayView[Double]) -> Array[Double] raise
 
 // Errors
 

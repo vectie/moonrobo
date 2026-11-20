@@ -69,8 +69,10 @@ pub fn ImuFeatures::reference_orientation(Self) -> ReadOnlyArray[Double]
 pub struct Mapping {
   // private fields
 }
+pub fn Mapping::actions_for_commands(Self, ArrayView[@sdk_e1_low.MotorCommand]) -> Array[Double] raise
 pub fn Mapping::commands(Self, ArrayView[Double]) -> Array[@sdk_e1_low.MotorCommand] raise
 pub fn Mapping::joint_state(Self, @sdk_e1_low.Sample) -> (Array[Double], Array[Double]) raise
+pub fn Mapping::joint_values(Self, ArrayView[Int], ArrayView[Double], ArrayView[Double], ArrayView[Int]) -> (Array[Double], Array[Double]) raise
 pub fn Mapping::new(@e1_actor.Bundle, Calibration, resolve~ : (String) -> Int raise) -> Self raise
 pub fn Mapping::profile_id(Self) -> String
 

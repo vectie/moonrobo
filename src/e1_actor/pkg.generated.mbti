@@ -19,6 +19,7 @@ pub fn Actor::reference(Bundle, BytesView) -> Self raise
 pub struct Bundle {
   // private fields
 }
+pub fn Bundle::actions_for_setpoints(Self, ArrayView[Double]) -> Array[Double] raise
 pub fn Bundle::goal_width(Self) -> Int
 pub fn Bundle::history_frames(Self) -> Int
 pub fn Bundle::joints(Self) -> ReadOnlyArray[String]

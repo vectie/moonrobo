@@ -1,0 +1,10 @@
+import {
+  "vectie/moonrobo/src/sdk_e1_low" @low,
+  "moonbitlang/core/json",
+}
+
+supported_targets = "native"
+
+import {
+  "vectie/moonrobo/src/sdk_e1_low" @low,
+} for "test"

@@ -1,0 +1,21 @@
+import {
+  "vectie/moonrobo/src/e1_actor" @actor,
+  "vectie/moonrobo/src/e1_actor_reference" @reference,
+  "vectie/moonrobo/src/e1_actor_elbows" @adapter,
+  "vectie/moonrobo/src/sdk_e1_policy" @mapping,
+  "vectie/moonrobo/src/sdk_e1_low" @low,
+  "vectie/moonrobo/src/e1_elbow_control" @elbow,
+  "vectie/moonrobo/src/policy_skills" @skills,
+  "vectie/moonrobo/internal/e1_ankle_shadow" @ankle,
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/io",
+  "moonbitlang/async/stdio",
+  "moonbitlang/x/crypto",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native"

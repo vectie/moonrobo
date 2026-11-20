@@ -151,3 +151,48 @@ test "mapping rejects incomplete and ambiguous calibration before any command ex
     _ => fail("invalid SDK slot accepted")
   }
 }
+
+///|
+test "decoded joint values and applied-command feedback preserve sign zero and mask" {
+  let bundle = fixture(23)
+  let mapping = @sdk_e1_policy.Mapping::new(bundle, calibration(23), resolve~)
+  let actions = Array::makei(29, i => {
+    if i < 23 {
+      (i + 1).to_double() * 0.1
+    } else {
+      0.0
+    }
+  })
+  let commands = mapping.commands(actions[:])
+  let recovered = mapping.actions_for_commands(commands[:])
+  for i in 0..<29 {
+    assert_true((recovered[i] - actions[i]).abs() < 1.0e-12)
+  }
+  let ids = Array::makei(24, i => 100 + i)
+  let pos = commands.map(m => m.position)
+  let vel = Array::makei(24, i => i.to_double() * 0.01)
+  let errors = Array::make(24, 0)
+  let (q, qd) = mapping.joint_values(ids[:], pos[:], vel[:], errors[:])
+  for i in 0..<23 {
+    assert_true((q[i] - 0.1 * actions[i]).abs() < 1.0e-12)
+    assert_eq(qd[i], (if i % 2 == 0 { -1.0 } else { 1.0 }) * vel[23 - i])
+  }
+  ids[3] = 99
+  try mapping.joint_values(ids[:], pos[:], vel[:], errors[:]) catch {
+    _ => ()
+  } noraise {
+    _ => fail("incorrect packet motor ID accepted")
+  }
+  ids[3] = 103
+  errors[3] = 1
+  try mapping.joint_values(ids[:], pos[:], vel[:], errors[:]) catch {
+    _ => ()
+  } noraise {
+    _ => fail("motor error accepted")
+  }
+  try mapping.actions_for_commands(commands[:23]) catch {
+    _ => ()
+  } noraise {
+    _ => fail("incomplete applied command accepted")
+  }
+}

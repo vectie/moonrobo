@@ -1,0 +1,44 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/e1_actor_elbows"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/sdk_e1_low",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Adapter {
+  // private fields
+}
+pub fn Adapter::new(Settings, ArrayView[@sdk_e1_low.MotorCommand]) -> Self raise
+pub fn Adapter::next(Self, ArrayView[@sdk_e1_low.MotorCommand], Int64, Int64, String) -> Step raise
+pub fn Adapter::preview(Self, ArrayView[@sdk_e1_low.MotorCommand], Int64, Int64, String) -> Step raise
+pub fn Adapter::returned(Self) -> Bool
+
+pub(all) struct Settings {
+  lower_rad : Array[Double]
+  upper_rad : Array[Double]
+  maximum_speed_rad_s : Array[Double]
+  response_ms : Int
+  engage_ms : Int
+  policy_authority : Double
+} derive(@json.FromJson)
+pub fn Settings::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Settings::validate(Self) -> Unit raise
+
+pub(all) struct Step {
+  commands : Array[@sdk_e1_low.MotorCommand]
+  raw_elbow_rad : Array[Double]
+  requested_elbow_rad : Array[Double]
+  bounded_elbow_rad : Array[Double]
+  rate_limited : Array[Bool]
+  authority : Double
+}
+
+// Type aliases
+
+// Traits

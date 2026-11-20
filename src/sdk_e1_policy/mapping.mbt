@@ -150,25 +150,68 @@ pub fn Mapping::joint_state(
   self : Self,
   sample : @low.Sample,
 ) -> (Array[Double], Array[Double]) raise {
+  let joints = Array::makei(24, slot => sample.joint(slot))
+  self.joint_values(
+    joints.map(j => j.motor_id)[:],
+    joints.map(j => j.position)[:],
+    joints.map(j => j.velocity)[:],
+    joints.map(j => j.error)[:],
+  )
+}
+
+///|
+/// Same calibrated conversion for independently decoded status packets.
+/// Caller owns packet continuity, source identity and receipt freshness.
+pub fn Mapping::joint_values(
+  self : Self,
+  ids : ArrayView[Int32],
+  positions : ArrayView[Double],
+  velocities : ArrayView[Double],
+  errors : ArrayView[Int32],
+) -> (Array[Double], Array[Double]) raise {
+  guard ids.length() == 24 &&
+    positions.length() == 24 &&
+    velocities.length() == 24 &&
+    errors.length() == 24 &&
+    positions.all(finite) &&
+    velocities.all(finite) else {
+    fail("incomplete or nonfinite SDK joint arrays")
+  }
   for slot in 0..<24 {
-    let joint = sample.joint(slot)
-    guard joint.motor_id == self.expected_ids[slot] && joint.error == 0 else {
+    guard ids[slot] == self.expected_ids[slot] && errors[slot] == 0 else {
       fail("SDK status motor identity or error differs from calibration")
     }
   }
   let q = Array::make(self.axes.length(), 0.0)
   let qd = Array::make(self.axes.length(), 0.0)
   for axis in self.axes {
-    let joint = sample.joint(axis.slot)
     let calibration = axis.calibration
     q[axis.actor_index] = calibration.direction *
-      (joint.position - calibration.zero)
-    qd[axis.actor_index] = calibration.direction * joint.velocity
+      (positions[axis.slot] - calibration.zero)
+    qd[axis.actor_index] = calibration.direction * velocities[axis.slot]
   }
   guard q.all(finite) && qd.all(finite) else {
     fail("calibrated SDK joint state is not finite")
   }
   (q, qd)
+}
+
+///|
+/// Previous-action features for the complete command after action adaptation.
+/// Fixed non-actor records are deliberately absent from the 29-value embedding.
+pub fn Mapping::actions_for_commands(
+  self : Self,
+  commands : ArrayView[@low.MotorCommand],
+) -> Array[Double] raise {
+  guard commands.length() == 24 && commands.all(m => finite(m.position)) else {
+    fail("complete finite applied command frame required")
+  }
+  let positions = Array::make(self.axes.length(), 0.0)
+  for axis in self.axes {
+    positions[axis.actor_index] = axis.calibration.direction *
+      (commands[axis.slot].position - axis.calibration.zero)
+  }
+  self.bundle.actions_for_setpoints(positions[:])
 }
 
 ///|
