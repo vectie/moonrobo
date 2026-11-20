@@ -1,0 +1,463 @@
+{
+  "format": "moonrobo.e1-minimum-motion-evidence.v1",
+  "date": "2026-11-20",
+  "host": "Atlas .191 / Ascend 310P3 / CANN 9.1.0",
+  "installation": "/home/jiaanguo/lunakine-deployment-20261117/minmotion-20261120-edhu16RZ",
+  "dataset_sha256": "346d00c65383dc9bb08627307cca7f76f9b627c5bc769838bd5b977c257ecaf5",
+  "model_identity": "same evaluation-100 actor as e1-trained23-shadow-20261120.json",
+  "shadow_executable_sha256": "93d8b2ccd49051c4b3b85428a3f6cd50f54af61ff3713d63f670655f8338cf28",
+  "minimum_within_clip_reference": {
+    "id": "bones-230711__cellphone_typing_stand_one_hand_idle_R_001__A423_M",
+    "file": "motions/bones-230711__cellphone_typing_stand_one_hand_idle_R_001__A423_M.json",
+    "split": "train",
+    "frames": 677,
+    "maximum_leg_excursion_deg": 2.0979586409522764,
+    "maximum_leg_step_deg": 1.534032423398193,
+    "maximum_joint_excursion_deg": 14.551350653668074,
+    "root_travel_m": 0.00734863637617049,
+    "initial_q_rad": [
+      0.32110739724279397,
+      -0.2376720478444055,
+      0.11945454005369344,
+      0.0017634171741505256,
+      -0.12214004726296818,
+      -0.0727069119610001,
+      -0.1917033218338648,
+      0.04901380842133071,
+      0.06479403933562151,
+      0.02080400910210997,
+      -0.09172775279077244,
+      0.12692495991199895,
+      -0.04882299274281519,
+      -0.6986811030234584,
+      0.332471121527573,
+      -0.34732736678973736,
+      -1.4477981791899937,
+      0.866825946927096,
+      0.002333429798424004,
+      -0.2146499847048517,
+      0.44039241030139775,
+      -0.5434064639344343,
+      0.03922693912048937
+    ],
+    "maximum_leg_from_live_deg": 19.251840668057852,
+    "maximum_initial_leg_transition_deg": 18.01560803892215
+  },
+  "minimum_from_live_reference": {
+    "id": "bones-230104__neutral_idle_loop_002__A103_M",
+    "file": "motions/bones-230104__neutral_idle_loop_002__A103_M.json",
+    "split": "train",
+    "frames": 677,
+    "maximum_leg_excursion_deg": 5.73939603440071,
+    "maximum_leg_step_deg": 4.2222438451389115,
+    "maximum_joint_excursion_deg": 5.73939603440071,
+    "root_travel_m": 0.011006974458941296,
+    "initial_q_rad": [
+      0.21126484105201257,
+      -0.14207091463368518,
+      0.15907460732932327,
+      0.05223369012689002,
+      -0.15265754378659754,
+      -0.02435580693156278,
+      0.021044007995685468,
+      -0.11938437425567994,
+      0.1290750096137791,
+      0,
+      -0.11924690777807356,
+      0.08745451013270376,
+      -0.042966710657678674,
+      0.02438721220957087,
+      0.35820810213636456,
+      -0.7274901559896023,
+      -0.5492615982837723,
+      -0.1750440180438257,
+      -0.03064898678794797,
+      -0.13959775221105478,
+      0.537925071618825,
+      -0.43132779318760023,
+      0.11382049907868257
+    ],
+    "maximum_leg_from_live_deg": 12.203419030905756,
+    "maximum_initial_leg_transition_deg": 11.722093158261782
+  },
+  "training_references_ranked": 75,
+  "saved_simulation_rollouts_ranked": 40,
+  "candidate_live_shadow_runs": [
+    {
+      "name": "idle",
+      "summary": {
+        "reference": "bones-230104__neutral_idle_loop_002__A103_M",
+        "frames": 676,
+        "elapsed_ms": "13520",
+        "missed_periods": "0",
+        "maximum_inference_ms": "3",
+        "worst_leg_nominal_target_offset_deg": 39.80530753395632,
+        "legs": [
+          {
+            "joint": "l_leg_hip_yaw_joint",
+            "measured_deg": 0.3824905935207141,
+            "target_min_deg": 17.146339006427485,
+            "target_max_deg": 21.3013790517657,
+            "maximum_target_offset_from_measured_deg": 20.918888458244986,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "l_leg_hip_roll_joint",
+            "measured_deg": 0.9507623324657749,
+            "target_min_deg": -1.721873214952324,
+            "target_max_deg": 0.8608347951093231,
+            "maximum_target_offset_from_measured_deg": 2.672635547418099,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "l_leg_hip_pitch_joint",
+            "measured_deg": 1.3004680179704278,
+            "target_min_deg": -1.1229870425344195,
+            "target_max_deg": 4.887169023018642,
+            "maximum_target_offset_from_measured_deg": 3.586701005048215,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "l_leg_knee_joint",
+            "measured_deg": 11.267243979393115,
+            "target_min_deg": 12.165303234447823,
+            "target_max_deg": 14.651032222512136,
+            "maximum_target_offset_from_measured_deg": 3.3837882431190205,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "l_leg_ankle_pitch_joint",
+            "measured_deg": -8.528148802973098,
+            "target_min_deg": -20.7998394914508,
+            "target_max_deg": -5.8364491922165715,
+            "maximum_target_offset_from_measured_deg": 12.271690688477703,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "l_leg_ankle_roll_joint",
+            "measured_deg": 2.425990544005375,
+            "target_min_deg": 24.52947455333847,
+            "target_max_deg": 42.23129807796168,
+            "maximum_target_offset_from_measured_deg": 39.80530753395632,
+            "model_range_exceeding_frames": 676
+          },
+          {
+            "joint": "r_leg_hip_yaw_joint",
+            "measured_deg": -0.5354868309289996,
+            "target_min_deg": -18.83237682778133,
+            "target_max_deg": -12.514268776341678,
+            "maximum_target_offset_from_measured_deg": 18.296889996852332,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "r_leg_hip_roll_joint",
+            "measured_deg": -1.038188753841938,
+            "target_min_deg": -21.348176338324514,
+            "target_max_deg": -16.057696338791565,
+            "maximum_target_offset_from_measured_deg": 20.309987584482574,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "r_leg_hip_pitch_joint",
+            "measured_deg": 0.5354868309289996,
+            "target_min_deg": 5.273290898155889,
+            "target_max_deg": 10.649400310488357,
+            "maximum_target_offset_from_measured_deg": 10.113913479559358,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "r_leg_knee_joint",
+            "measured_deg": 10.414836370975523,
+            "target_min_deg": 13.742135669524313,
+            "target_max_deg": 16.58117717655957,
+            "maximum_target_offset_from_measured_deg": 6.166340805584048,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "r_leg_ankle_pitch_joint",
+            "measured_deg": -7.052560122275791,
+            "target_min_deg": -11.631974781166669,
+            "target_max_deg": -1.2831319764621336,
+            "maximum_target_offset_from_measured_deg": 5.769428145813657,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "r_leg_ankle_roll_joint",
+            "measured_deg": -2.4610399464062582,
+            "target_min_deg": 6.617740554781567,
+            "target_max_deg": 18.08719074598291,
+            "maximum_target_offset_from_measured_deg": 20.548230692389165,
+            "model_range_exceeding_frames": 6
+          }
+        ],
+        "published": false,
+        "scope": "nominal policy PD targets against live observations; not measured physical motion"
+      },
+      "cpu_replay": {
+        "format": "moonrobo.e1-live-shadow-onnx-comparison.v1",
+        "backends": [
+          "LunaKine Ascend FP32",
+          "ONNX Runtime CPU FP32"
+        ],
+        "frames": [
+          0,
+          1,
+          9,
+          10,
+          100,
+          250,
+          500,
+          675
+        ],
+        "actions_compared": 232,
+        "max_absolute_error": 0.0000035762786865234375,
+        "tolerance": 0.0001,
+        "passed": true,
+        "published": false,
+        "scope": "captured diagnostic inputs; not learned control qualification"
+      },
+      "all_24_status_ids_checked": true,
+      "reserved_slot_23_inactive": true,
+      "maximum_callback_to_output_age_ms": "5"
+    },
+    {
+      "name": "typing",
+      "summary": {
+        "reference": "bones-230711__cellphone_typing_stand_one_hand_idle_R_001__A423_M",
+        "frames": 676,
+        "elapsed_ms": "13521",
+        "missed_periods": "0",
+        "maximum_inference_ms": "3",
+        "worst_leg_nominal_target_offset_deg": 34.5490065547189,
+        "legs": [
+          {
+            "joint": "l_leg_hip_yaw_joint",
+            "measured_deg": 0.3824905935207141,
+            "target_min_deg": 18.35903122690179,
+            "target_max_deg": 25.55730207060519,
+            "maximum_target_offset_from_measured_deg": 25.174811477084475,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "l_leg_hip_roll_joint",
+            "measured_deg": 0.9507623324657749,
+            "target_min_deg": -2.53532672435394,
+            "target_max_deg": 0.050544121188349105,
+            "maximum_target_offset_from_measured_deg": 3.486089056819715,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "l_leg_hip_pitch_joint",
+            "measured_deg": 1.3004680179704278,
+            "target_min_deg": -7.8162673640018285,
+            "target_max_deg": -0.2987945906471808,
+            "maximum_target_offset_from_measured_deg": 9.116735381972257,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "l_leg_knee_joint",
+            "measured_deg": 11.267243979393115,
+            "target_min_deg": 11.778158892572645,
+            "target_max_deg": 15.679728369841852,
+            "maximum_target_offset_from_measured_deg": 4.412484390448737,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "l_leg_ankle_pitch_joint",
+            "measured_deg": -8.528148802973098,
+            "target_min_deg": -8.931531213213418,
+            "target_max_deg": 18.55566716601153,
+            "maximum_target_offset_from_measured_deg": 27.083815968984627,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "l_leg_ankle_roll_joint",
+            "measured_deg": 2.425990544005375,
+            "target_min_deg": 19.773862347833308,
+            "target_max_deg": 36.97499709872428,
+            "maximum_target_offset_from_measured_deg": 34.5490065547189,
+            "model_range_exceeding_frames": 676
+          },
+          {
+            "joint": "r_leg_hip_yaw_joint",
+            "measured_deg": -0.5354868309289996,
+            "target_min_deg": -21.510625648202122,
+            "target_max_deg": -16.329636601833784,
+            "maximum_target_offset_from_measured_deg": 20.975138817273123,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "r_leg_hip_roll_joint",
+            "measured_deg": -1.038188753841938,
+            "target_min_deg": -11.097113434319855,
+            "target_max_deg": -6.264210063274049,
+            "maximum_target_offset_from_measured_deg": 10.058924680477917,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "r_leg_hip_pitch_joint",
+            "measured_deg": 0.5354868309289996,
+            "target_min_deg": 4.3887847348519875,
+            "target_max_deg": 9.04398660399006,
+            "maximum_target_offset_from_measured_deg": 8.508499773061061,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "r_leg_knee_joint",
+            "measured_deg": 10.414836370975523,
+            "target_min_deg": 14.948223390069469,
+            "target_max_deg": 18.93080666424229,
+            "maximum_target_offset_from_measured_deg": 8.515970293266767,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "r_leg_ankle_pitch_joint",
+            "measured_deg": -7.052560122275791,
+            "target_min_deg": -12.150184894447692,
+            "target_max_deg": 15.387249470631275,
+            "maximum_target_offset_from_measured_deg": 22.439809592907068,
+            "model_range_exceeding_frames": 0
+          },
+          {
+            "joint": "r_leg_ankle_roll_joint",
+            "measured_deg": -2.4610399464062582,
+            "target_min_deg": 2.911564155411452,
+            "target_max_deg": 8.19149004073669,
+            "maximum_target_offset_from_measured_deg": 10.65252998714295,
+            "model_range_exceeding_frames": 0
+          }
+        ],
+        "published": false,
+        "scope": "nominal policy PD targets against live observations; not measured physical motion"
+      },
+      "cpu_replay": {
+        "format": "moonrobo.e1-live-shadow-onnx-comparison.v1",
+        "backends": [
+          "LunaKine Ascend FP32",
+          "ONNX Runtime CPU FP32"
+        ],
+        "frames": [
+          0,
+          1,
+          9,
+          10,
+          100,
+          250,
+          500,
+          675
+        ],
+        "actions_compared": 232,
+        "max_absolute_error": 0.0000022649765014648438,
+        "tolerance": 0.0001,
+        "passed": true,
+        "published": false,
+        "scope": "captured diagnostic inputs; not learned control qualification"
+      },
+      "all_24_status_ids_checked": true,
+      "reserved_slot_23_inactive": true,
+      "maximum_callback_to_output_age_ms": "5"
+    }
+  ],
+  "motor_or_mode_commands_sent": false,
+  "physical_control_qualified": false,
+  "postrun_preflight_passed": true,
+  "raw_evidence_directory": "output/e1-minmotion-20261120-edhu16RZ",
+  "artifacts": {
+    "idle.ndjson": {
+      "sha256": "3810fdb4e57be74d1bb7cc2ed512d89ce2c4e1853f39b1c1ecd5c0b838fcd509",
+      "bytes": 10677199
+    },
+    "idle-report.json": {
+      "sha256": "614c9816d28756b4e8408f529e3a1d3ba44043e58c9e48936db64f44e6d19d1f",
+      "bytes": 18912
+    },
+    "idle-summary.json": {
+      "sha256": "b876b0170f2011e870104a5a1019792d9c893fd02b66e7bce2b2c2ff5f54baf3",
+      "bytes": 3845
+    },
+    "idle-onnx-inputs.json": {
+      "sha256": "7df78d345e08f2662cb82149e8b8c8288c1b767b5f4104bc9f3afe3de0367eb0",
+      "bytes": 76961
+    },
+    "idle-expected.json": {
+      "sha256": "74dc0d28761ddbd8d570ab3116dc0d9e890d515c999dccdcd6cbbd8fc0b292d6",
+      "bytes": 5792
+    },
+    "idle-onnx-outputs.json": {
+      "sha256": "f1bc4161cf5fe7d0e0ba86af98ca6e601d6aa2f5f55a67cefc3f52af98115de9",
+      "bytes": 7408
+    },
+    "idle-onnx-comparison.json": {
+      "sha256": "986621d2fd5c094b42e6c7a0ee9311c0a0fe1081aba3c0e6e7b8d26c37c860b1",
+      "bytes": 436
+    },
+    "typing.ndjson": {
+      "sha256": "ae9011f7af5c4de6a5a2309edf519bcf68f2857a706e4e02595c0900dc84c739",
+      "bytes": 10617102
+    },
+    "typing-report.json": {
+      "sha256": "8d350b9860557563a49d04dc3b0f9164302f8dae2d4b048a36d127428f610e07",
+      "bytes": 19492
+    },
+    "typing-summary.json": {
+      "sha256": "e18161ae432f87f99d35dc89e5fc2e3c142d154c076a705dd09ef2fdcea0c16d",
+      "bytes": 3862
+    },
+    "typing-onnx-inputs.json": {
+      "sha256": "325f5b811ca8591a27227705397854985c3ed360db3a281c9c6f5ee555384d04",
+      "bytes": 76961
+    },
+    "typing-expected.json": {
+      "sha256": "b6759364f33b6a3bc45142c8415b7cf45361d455ad82aa29e6ae87efabae3e85",
+      "bytes": 5782
+    },
+    "typing-onnx-outputs.json": {
+      "sha256": "e55d15b4e915f2fac419e76265d5c5d60514f65cfe1b650984e25cdb70a674af",
+      "bytes": 7413
+    },
+    "typing-onnx-comparison.json": {
+      "sha256": "c29a4864871dda3d8cdf0faa84c200139c9e75effd207e93d3e1a6446389661b",
+      "bytes": 436
+    },
+    "typing-reference.json": {
+      "sha256": "520d9e658d4e9ebfd8205656f6c17b2b48096922eb2fbe0bfd7d498afae9ba14",
+      "bytes": 7446380
+    },
+    "idle-reference.json": {
+      "sha256": "3a8398a6e313db090d709314d3e714d6d63e6a13f62231537d35cfabcaeb4f98",
+      "bytes": 7489864
+    },
+    "live-status.json": {
+      "sha256": "31323e98f39b460ee1b2a8aa9bd8495e1da81c6842fa12722bbc2482a2863164",
+      "bytes": 4603
+    },
+    "reference-ranking-final.json": {
+      "sha256": "f3a93ef034348b0b7a48a30ef6bec1f434f71e2ffb4002cb06f3407569a09fc2",
+      "bytes": 182207
+    },
+    "reg40-ranking.json": {
+      "sha256": "6a38c2ebc2d975c8b2c08db7bc647e9bbb8252860e1d78fb997a2a0abbeff3fa",
+      "bytes": 56036
+    },
+    "preflight-after.json": {
+      "sha256": "73e6fd5d04275bc71fa640391cc2f13a738aae0364f312edd34792193e00b110",
+      "bytes": 4604
+    },
+    "source.tar.gz": {
+      "sha256": "bae70077c65a9e95a7972fc6e5537621c24b5d382b23527b120b9299d7bf7de7",
+      "bytes": 12039
+    },
+    "final-check.log": {
+      "sha256": "9afe7f30e288fa133f3d7b94c94158a9f0fa13dbd2d97641d5f2d3393d9ef71a",
+      "bytes": 45
+    },
+    "native-tests.log": {
+      "sha256": "764157e72b2dd2e8e0a0545e7f821c609e694e542766a3c5c6666f28561c5f05",
+      "bytes": 38
+    },
+    "offline-export-build.log": {
+      "sha256": "4e83511af7e4c69ec31fac09c503a919e993276f4f29043c4ec04d5adcc6c368",
+      "bytes": 251008
+    }
+  }
+}

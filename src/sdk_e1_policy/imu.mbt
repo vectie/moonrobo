@@ -28,6 +28,7 @@ pub struct ImuFeatures {
   priv gyro : Array[Double]
   priv down : Array[Double]
   priv reference : Array[Double]
+  priv rotation : Array[Double]
 }
 
 ///|
@@ -174,6 +175,7 @@ pub fn Imu::decode(
       relative[6],
       relative[7],
     ],
+    rotation: body_to_world,
   }
   guard result.gyro.all(finite) &&
     result.down.all(finite) &&
@@ -196,4 +198,11 @@ pub fn ImuFeatures::gravity(self : Self) -> ReadOnlyArray[Double] {
 ///|
 pub fn ImuFeatures::reference_orientation(self : Self) -> ReadOnlyArray[Double] {
   ReadOnlyArray::from_array(self.reference)
+}
+
+///|
+/// Calibrated body-to-actor-world rotation used by the observation encoder.
+/// A reference owner can anchor a stationary diagnostic in this same frame.
+pub fn ImuFeatures::body_to_world(self : Self) -> ReadOnlyArray[Double] {
+  ReadOnlyArray::from_array(self.rotation)
 }

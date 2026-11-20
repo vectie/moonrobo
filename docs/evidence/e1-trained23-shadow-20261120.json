@@ -1,0 +1,246 @@
+{
+  "format": "moonrobo.e1-trained23-live-shadow-evidence.v1",
+  "date": "2026-11-20",
+  "host": "Atlas .191 / Ascend 310P3 / CANN 9.1.0",
+  "installation": "/home/jiaanguo/lunakine-deployment-20261117/trained23-20261120-DFKZGg",
+  "model": "E1 14k parent + 100-update arm-reference fine-tune; evaluation-100",
+  "profile": "noetix-e1-23-lab-v1",
+  "actor_json_sha256": "b3d9d197292acf080f020e369472168b10a0810e52c88493316aa84988c0247e",
+  "parameters_f32_sha256": "d2c5e2f4893e77f3b0a5dd0aa9b19f9e7ac55120fd75e941d22120ca23c1e43e",
+  "robot_json_sha256": "19f9a7e8c00f7b8954627608e153ea6d7ba65d6cc0d1f5b2bf03191b782328aa",
+  "actor_om_sha256": "031c4f35c09b86233d4ae05a44fdf5b6942a327224b112f7bc043b53c59727c0",
+  "readonly_status_library_sha256": "9ed1b52609c9235400f532bffee9891df3bd6e2852f2e4b9f33c7d0391eaa32d",
+  "shadow_executable_sha256": "40565500d6985ab92740aa0223a702aea8bdda8e1fe3658fb66abec1cea4400d",
+  "physical_actions": 23,
+  "status_records": 24,
+  "reserved_slot": 23,
+  "motor_or_mode_commands_sent": false,
+  "control_service_enabled": false,
+  "physical_control_qualified": false,
+  "reference": "stationary current-pose diagnostic; not an evaluated training skill",
+  "calibration": "candidate +1 direction / zero 0 / identity IMU mounting; shadow only",
+  "model_ankle_roll_range_rad": [
+    -0.26,
+    0.26
+  ],
+  "range_scope": "simulation joint travel, not a verified hardware target limit; simulated PD targets are not control-limited",
+  "runs": [
+    {
+      "frames": 750,
+      "elapsed_ms": "15000",
+      "missed_periods": "0",
+      "maximum_lateness_ms": "1",
+      "maximum_inference_ms": "3",
+      "maximum_callback_to_output_age_ms": "5",
+      "published": false,
+      "model_limit_violations_by_joint": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        750,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "run": 1,
+      "left_ankle_nominal_min_rad": 0.5030487600151736,
+      "left_ankle_nominal_max_rad": 0.9385605714748763,
+      "all_24_status_ids_and_23_target_slots_checked": true,
+      "inactive_actor_channels_zero": true
+    },
+    {
+      "frames": 750,
+      "elapsed_ms": "15000",
+      "missed_periods": "0",
+      "maximum_lateness_ms": "1",
+      "maximum_inference_ms": "3",
+      "maximum_callback_to_output_age_ms": "6",
+      "published": false,
+      "model_limit_violations_by_joint": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        750,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "run": 2,
+      "left_ankle_nominal_min_rad": 0.5330754290314064,
+      "left_ankle_nominal_max_rad": 0.9850917672954708,
+      "all_24_status_ids_and_23_target_slots_checked": true,
+      "inactive_actor_channels_zero": true
+    },
+    {
+      "frames": 750,
+      "elapsed_ms": "15000",
+      "missed_periods": "0",
+      "maximum_lateness_ms": "1",
+      "maximum_inference_ms": "3",
+      "maximum_callback_to_output_age_ms": "5",
+      "published": false,
+      "model_limit_violations_by_joint": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        750,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "run": 3,
+      "left_ankle_nominal_min_rad": 0.5334923537388392,
+      "left_ankle_nominal_max_rad": 0.9844462740034243,
+      "all_24_status_ids_and_23_target_slots_checked": true,
+      "inactive_actor_channels_zero": true
+    }
+  ],
+  "independent_comparison": {
+    "format": "moonrobo.e1-live-shadow-onnx-comparison.v1",
+    "backends": [
+      "LunaKine Ascend FP32",
+      "ONNX Runtime CPU FP32"
+    ],
+    "frames": [
+      0,
+      1,
+      9,
+      10,
+      100,
+      250,
+      500,
+      749
+    ],
+    "actions_compared": 232,
+    "max_absolute_error": 0.00000286102294921875,
+    "tolerance": 0.0001,
+    "passed": true,
+    "published": false,
+    "scope": "captured stationary diagnostic inputs; not learned control qualification"
+  },
+  "raw_evidence_directory": "output/e1-trained23-live-shadow-20261120-DFKZGg",
+  "artifacts": {
+    "shadow-v1.ndjson": {
+      "sha256": "c731dd5d40251dbd08de6a4ad563c8fa98549d5e19c966fd64f6fc85bd9af6bf",
+      "bytes": 2187062
+    },
+    "shadow-v2.ndjson": {
+      "sha256": "edd15e643e65c01d09dc7ac9c6db47361d0343045c86979f13e965e7b2d1759b",
+      "bytes": 2376888
+    },
+    "shadow-v3.ndjson": {
+      "sha256": "c827330d1224072a60ec34587960792b52e8cd03ac329f883206cd9441d1fa6a",
+      "bytes": 3698178
+    },
+    "report-v1.json": {
+      "sha256": "8b75b62aec4db341afb178d390952a14797d614ae8d824a90dcc45739bceb2ff",
+      "bytes": 4170
+    },
+    "report-v2.json": {
+      "sha256": "b54d18632f14038b817fcbd6b1afc572079d66b9fdf735713e445336f1b688cf",
+      "bytes": 4630
+    },
+    "report-v3.json": {
+      "sha256": "ce4f36e070c900e5c6cecc63efe7772fa9a96be24698cf899442bba5894c7ed8",
+      "bytes": 14997
+    },
+    "onnx-inputs-v3.json": {
+      "sha256": "ffd5f58b86769a6ac26fbc077891dfa97d35f432d38b2025ea44494bfbf5f934",
+      "bytes": 76961
+    },
+    "onnx-expected-v3.json": {
+      "sha256": "1acf16a16c876d1a9d67f45378b6cd16f93c64b9724fe85d0ceaca99c0a2f2b2",
+      "bytes": 5803
+    },
+    "onnx-outputs-v3.json": {
+      "sha256": "fde598fd839ddec777ade356773167e4529ee44b5214abaa70eb3b9ac4ac1d3e",
+      "bytes": 7411
+    },
+    "onnx-comparison-v3.json": {
+      "sha256": "2ed33184e856823cd4ea84af283fee6c4dda050661b20fea024d11d9b266a6c1",
+      "bytes": 445
+    },
+    "onnx-runtime-v3.log": {
+      "sha256": "92640615a7f9df2a4a5d3c09be8ce775c276b2c4b135ec1a193bbe4db2917830",
+      "bytes": 2823
+    },
+    "preflight-after.json": {
+      "sha256": "d60bb7d0c8732b8e8d9089f1ad6bb21b4f3ea1324cbfa3b1567ff75f116ba60f",
+      "bytes": 4964
+    },
+    "shadow-config.json": {
+      "sha256": "3c25642c45a8305be93ee32b6bf20c94f7a346a74b74031561cdc2fd1cbf3361",
+      "bytes": 8229
+    },
+    "strict-check.log": {
+      "sha256": "04b5097b9ab006d2bad7abbf4968f08cb25d581ec2a409f38ffb60b85a99c03c",
+      "bytes": 45
+    },
+    "native-tests.log": {
+      "sha256": "29250d71d26eddc15e31c1bdd9bba84e69f30e65ab60f24e083ca22ffdaddc4a",
+      "bytes": 38
+    },
+    "configuration-tests.log": {
+      "sha256": "b136ac6dbfa8a737c1c47b4ab55287d32add1374feaea7f839a55b45a9685782",
+      "bytes": 38
+    },
+    "source.tar.gz": {
+      "sha256": "e4b437ed0ea48f5f00c6be3e1a529db059392bb5269e50cd16e679f0f4434d05",
+      "bytes": 27766
+    }
+  },
+  "qualified_shadow_executable": "e1_live_actor_shadow-qualified.exe",
+  "postrun_preflight": {
+    "passed": true,
+    "healthy_complete_packets": 690,
+    "command_writers_created": false
+  }
+}

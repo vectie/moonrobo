@@ -13,10 +13,11 @@ import {
 async fn main {
   let (repo, output, role) = match @env.args()[1:] {
     [repo, output] => (repo, output, "actor")
-    [repo, output, "planner" | "sdk-shadow" as role] => (repo, output, role)
+    [repo, output, "planner" | "sdk-shadow" | "status-shadow" as role] =>
+      (repo, output, role)
     _ =>
       fail(
-        "usage: stage_lunakine_actor_host.mbtx MOONROBO NEW_OUTPUT [planner|sdk-shadow]",
+        "usage: stage_lunakine_actor_host.mbtx MOONROBO NEW_OUTPUT [planner|sdk-shadow|status-shadow]",
       )
   }
   let actor = role != "planner"
@@ -27,6 +28,11 @@ async fn main {
   let packages = if role == "planner" {
     [
       "cmd/actor_task", "src/policy_skills", "src/policy_task", "src/policy_planner",
+    ]
+  } else if role == "status-shadow" {
+    [
+      "cmd/e1_live_actor_shadow", "src/e1_actor", "src/e1_actor_reference", "src/policy_skills",
+      "src/sdk_e1_low", "src/sdk_e1_policy",
     ]
   } else if role == "sdk-shadow" {
     [

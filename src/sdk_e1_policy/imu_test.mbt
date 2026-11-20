@@ -102,3 +102,24 @@ test "invalid IMU calibration and missing orientation fail without inferred conv
     _ => fail("zero quaternion accepted")
   }
 }
+
+///|
+test "captured body rotation anchors a stationary reference without changing gravity" {
+  let imu = @sdk_e1_policy.Imu::new({
+    quaternion_order: "xyzw",
+    orientation_direction: "sensor_to_world",
+    gyro_frame: "body",
+    gyro_to_radians: 1.0,
+    sensor_to_body: identity(),
+    world_to_actor_world: identity(),
+  })
+  let q = [0.1, -0.2, 0.3, 0.9]
+  let first = imu.decode(q[:], [0.0, 0.0, 0.0], identity()[:])
+  let anchored = imu.decode(q[:], [0.0, 0.0, 0.0], first.body_to_world()[:])
+  for i, expected in [1.0, 0.0, 0.0, 1.0, 0.0, 0.0] {
+    assert_true(
+      (anchored.reference_orientation()[i] - expected).abs() < 1.0e-12,
+    )
+  }
+  assert_eq(anchored.gravity()[:].to_owned(), first.gravity()[:].to_owned())
+}

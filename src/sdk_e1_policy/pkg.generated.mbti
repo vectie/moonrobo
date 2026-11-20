@@ -62,6 +62,7 @@ pub struct ImuFeatures {
   // private fields
 }
 pub fn ImuFeatures::body_gyro(Self) -> ReadOnlyArray[Double]
+pub fn ImuFeatures::body_to_world(Self) -> ReadOnlyArray[Double]
 pub fn ImuFeatures::gravity(Self) -> ReadOnlyArray[Double]
 pub fn ImuFeatures::reference_orientation(Self) -> ReadOnlyArray[Double]
 

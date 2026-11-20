@@ -1,0 +1,207 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/encoding/base64",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+struct Tick {
+  format : String
+  published : Bool
+  frame : Int32
+  observation : Array[Double]
+  goals : Array[Double]?
+  raw_actions : Array[Double]
+} derive(FromJson)
+
+///|
+struct Report {
+  format : String
+  published : Bool
+  frames : Int32
+  goals : Array[Double]
+} derive(FromJson)
+
+///|
+struct Case {
+  frame : Int32
+  ascend_actions : Array[Double]
+} derive(ToJson, FromJson)
+
+///|
+fn ndarray(shape : Array[Int32], values : Array[Double]) -> Json {
+  let tuple = shape.map(x => x.to_string()).join(", ") + ","
+  let header = "{'descr': '<f4', 'fortran_order': False, 'shape': (" +
+    tuple +
+    "), }"
+  let padding = (64 - (10 + header.length() + 1) % 64) % 64
+  let padded = header + Array::make(padding, " ").join("") + "\n"
+  let bytes = @buffer.Buffer()
+  bytes.write_bytes(b"\x93NUMPY\x01\x00"[:])
+  bytes.write_uint16_le(padded.length().to_uint16())
+  bytes.write_bytes(@utf8.encode(padded)[:])
+  for value in values {
+    bytes.write_float_le(Float::from_double(value))
+  }
+  {
+    "array": Json(@base64.encode(bytes.to_bytes()[:])),
+    "polygraphy_class": "ndarray",
+  }
+}
+
+///|
+fn decode_array(value : Json) -> Array[Double] raise {
+  let value = match value {
+    { "values": inner, .. } => inner
+    _ => value
+  }
+  guard value is { "array": String(encoded), .. } else {
+    fail("expected Polygraphy ndarray")
+  }
+  let bytes = @base64.decode(encoded)
+  guard bytes.length() >= 10 && bytes[:8].to_owned() == b"\x93NUMPY\x01\x00" else {
+    fail("expected NPY v1 output")
+  }
+  let start = 10 + bytes[8].to_int() + (bytes[9].to_int() << 8)
+  guard start <= bytes.length() && (bytes.length() - start) % 4 == 0 else {
+    fail("invalid FP32 output payload")
+  }
+  Array::makei((bytes.length() - start) / 4, i => {
+    let p = start + i * 4
+    Float::reinterpret_from_uint(
+      bytes[p].to_uint() |
+      (bytes[p + 1].to_uint() << 8) |
+      (bytes[p + 2].to_uint() << 16) |
+      (bytes[p + 3].to_uint() << 24),
+    ).to_double()
+  })
+}
+
+///|
+async fn prepare(
+  trace : String,
+  summary : String,
+  inputs : String,
+  expected : String,
+) -> Unit {
+  let report : Report = @json.from_json(@fs.read_file(summary).json())
+  guard report.format == "moonrobo.e1-live-actor-shadow-report.v1" &&
+    !report.published &&
+    report.goals.length() == 730 &&
+    report.frames > 500 else {
+    fail("expected the recorded stationary shadow inputs")
+  }
+  let selected = [0, 1, 9, 10, 100, 250, 500, report.frames - 1]
+  let history : Array[Array[Double]] = []
+  let cases : Array[Case] = []
+  let records : Array[Json] = []
+  let mut count = 0
+  for line in @fs.read_file(trace).text().split("\n") {
+    if line == "" {
+      continue
+    }
+    let tick : Tick = @json.from_json(@json.parse(line.to_owned()))
+    guard tick.format == "moonrobo.e1-live-actor-shadow-tick.v1" &&
+      !tick.published &&
+      tick.frame == count &&
+      tick.observation.length() == 99 &&
+      tick.observation.all(x => x - x == 0.0) &&
+      tick.raw_actions.length() == 29 else {
+      fail("invalid or discontinuous shadow trace")
+    }
+    // Replay the actual raw actor inputs, without reinterpreting sensor frames
+    // or rebuilding saved feature scales. Normalization remains in the model.
+    let observation = tick.observation
+    if history.is_empty() {
+      for _ in 0..<10 {
+        history.push(observation.copy())
+      }
+    } else {
+      ignore(history.remove(0))
+      history.push(observation)
+    }
+    if selected.contains(tick.frame) {
+      let flat = []
+      for row in history {
+        flat.append(row)
+      }
+      records.push({
+        "history": ndarray([1, 10, 99], flat),
+        "goals": ndarray([1, 730], tick.goals.unwrap_or(report.goals)),
+      })
+      cases.push({ frame: tick.frame, ascend_actions: tick.raw_actions, })
+    }
+    count += 1
+  }
+  guard count == report.frames && cases.length() == 8 else {
+    fail("shadow report/trace coverage differs")
+  }
+  @fs.write_file(inputs, Json(records).stringify(), create_mode=CreateNew)
+  @fs.write_file(
+    expected,
+    Json(cases).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(
+    "Prepared eight captured live inputs for independent ONNX Runtime comparison",
+  )
+}
+
+///|
+async fn main {
+  match @env.args()[1:] {
+    ["prepare", trace, summary, inputs, expected] =>
+      prepare(trace, summary, inputs, expected)
+    ["check", expected, outputs, destination] => {
+      let cases : Array[Case] = @json.from_json(@fs.read_file(expected).json())
+      guard @fs.read_file(outputs).json()
+        is { "lst": [[String(_), Array(iterations)]], .. } &&
+        iterations.length() == cases.length() else {
+        fail("unexpected Polygraphy run result")
+      }
+      let mut maximum = 0.0
+      for i, iteration in iterations {
+        guard iteration is { "outputs": { "actions": value, .. }, .. } else {
+          fail("missing actions")
+        }
+        let actual = decode_array(value)
+        guard actual.length() == 29 && cases[i].ascend_actions.length() == 29 else {
+          fail("action count mismatch")
+        }
+        for j, value in actual {
+          guard value - value == 0.0 else { fail("nonfinite CPU output") }
+          maximum = maximum.max((value - cases[i].ascend_actions[j]).abs())
+        }
+      }
+      let report : Json = {
+        "format": "moonrobo.e1-live-shadow-onnx-comparison.v1",
+        "backends": ["LunaKine Ascend FP32", "ONNX Runtime CPU FP32"],
+        "frames": Json(cases.map(c => c.frame)),
+        "actions_compared": Json(cases.length() * 29),
+        "max_absolute_error": Json(maximum),
+        "tolerance": 0.0001,
+        "passed": Json(maximum <= 0.0001),
+        "published": false,
+        "scope": "captured diagnostic inputs; not learned control qualification",
+      }
+      @fs.write_file(
+        destination,
+        report.stringify(indent=2),
+        create_mode=CreateNew,
+      )
+      println(report.stringify())
+      guard maximum <= 0.0001 else {
+        fail("Ascend differs from independent CPU execution")
+      }
+    }
+    _ =>
+      fail(
+        "usage: compare_e1_live_shadow_onnx.mbtx prepare TRACE REPORT NEW_INPUTS NEW_EXPECTED | check EXPECTED OUTPUTS NEW_REPORT",
+      )
+  }
+}

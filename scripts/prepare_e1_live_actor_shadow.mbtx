@@ -1,0 +1,158 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+struct Profile {
+  id : String
+  joints : Array[String]
+} derive(FromJson)
+
+///|
+struct Contract {
+  profile : Profile
+  physical_actions : Int32
+} derive(FromJson)
+
+///|
+struct Robot {
+  contract : Contract
+  source_actor_directory : String
+} derive(FromJson)
+
+///|
+fn attribute(tag : String, name : String) -> String raise {
+  let parts = (" " + tag).split(" " + name + "=\"").to_array()
+  guard parts.length() == 2 else {
+    fail("missing or repeated XML attribute " + name)
+  }
+  parts[1].split("\"").next().unwrap().to_owned()
+}
+
+///|
+test "joint ranges do not match actuatorfrcrange attributes" {
+  let tag = "name=\"elbow\" range=\"-2.44 0\" actuatorfrcrange=\"-20 20\"/"
+  assert_eq(attribute(tag, "name"), "elbow")
+  assert_eq(attribute(tag, "range"), "-2.44 0")
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [repo, bundle, scene, output] else {
+    fail(
+      "usage: prepare_e1_live_actor_shadow.mbtx REPO BUNDLE MODEL_SCENE_XML NEW_CONFIG_JSON",
+    )
+  }
+  let robot : Robot = @json.from_json(
+    @fs.read_file(bundle + "/robot.json").json(),
+  )
+  let profile = robot.contract.profile
+  guard profile.joints.length() == 23 && robot.contract.physical_actions == 23 else {
+    fail("selected actor is not a 23-joint E1")
+  }
+  let slots : Map[String, Int32] = @json.from_json(
+    @fs.read_file(repo + "/deploy/e1/e1-joints.json").json(),
+  )
+  let sdk_names : Array[String] = []
+  for side in ["l", "r"] {
+    for i in 1..<=5 {
+      sdk_names.push("arm_" + side + i.to_string() + "_joint")
+    }
+    for i in 1..<=6 {
+      sdk_names.push("leg_" + side + i.to_string() + "_joint")
+    }
+  }
+  sdk_names.append(["waist_1_joint", "waist_2_joint"])
+  let used : Map[Int32, Unit] = Map([])
+  let axes : Array[Json] = []
+  for name in profile.joints {
+    let slot = slots
+      .get(name)
+      .unwrap_or_else(() => {
+        fail("joint missing from maintained E1 map: " + name)
+      })
+    guard slot >= 0 && slot < 23 && !used.contains(slot) else {
+      fail("invalid or repeated physical motor slot")
+    }
+    used[slot] = ()
+    axes.push({
+      "actor_joint": name,
+      "sdk_joint": Json(sdk_names[slot]),
+      "motor_id": Json(slot),
+      "direction": 1,
+      "zero": 0,
+      "kp": 0,
+      "kd": 0,
+    })
+  }
+  let limits : Map[String, (Double, Double)] = Map([])
+  for part in @fs.read_file(scene).text().split("<joint ").drop(1) {
+    let tag = part.split(">").next().unwrap().to_owned()
+    if !tag.contains("name=\"") {
+      continue
+    }
+    let name = attribute(tag, "name")
+    if !profile.joints.contains(name) {
+      continue
+    }
+    let range = attribute(tag, "range")
+      .split(" ")
+      .filter(x => x != "")
+      .to_array()
+    guard range.length() == 2 && !limits.contains(name) else {
+      fail("invalid or repeated model joint range")
+    }
+    limits[name] = (
+      @string.parse_double(range[0]),
+      @string.parse_double(range[1]),
+    )
+  }
+  let model_limits : Array[Json] = profile.joints.map(name => {
+    let (lower, upper) = limits
+      .get(name)
+      .unwrap_or_else(() => fail("model joint range missing: " + name))
+    { "joint": Json(name), "lower": Json(lower), "upper": Json(upper) }
+  })
+  let identity = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+  let document : Json = {
+    "format": "moonrobo.e1-live-actor-shadow.v1",
+    "source_actor_directory": robot.source_actor_directory,
+    "model_limit_source": scene,
+    "calibration_scope": "Shadow diagnostic only: documented joint IDs, candidate direction +1/zero 0 and identity IMU mounting/world transform; unit calibration and physical control are not qualified. Zero preview gains are not a control configuration.",
+    "joint_calibration": {
+      "format": "moonrobo.e1-sdk-calibration.v1",
+      "profile_id": profile.id,
+      "axes": Json(axes),
+      "fixed": [
+        {
+          "sdk_joint": "waist_2_joint",
+          "motor_id": 23,
+          "position": 0,
+          "velocity": 0,
+          "torque": 0,
+          "kp": 0,
+          "kd": 0,
+        },
+      ],
+    },
+    "imu_calibration": {
+      "quaternion_order": "xyzw",
+      "orientation_direction": "sensor_to_world",
+      "gyro_frame": "body",
+      "gyro_to_radians": 1,
+      "sensor_to_body": Json(identity),
+      "world_to_actor_world": Json(identity),
+    },
+    "reference_body_to_world": Json(identity),
+    "model_joint_limits": Json(model_limits),
+    "duration_ms": 15000,
+    "maximum_sensor_age_ms": 100,
+  }
+  @fs.write_file(output, document.stringify(indent=2), create_mode=CreateNew)
+  println("Prepared receive-only 23-joint actor diagnostic configuration")
+}

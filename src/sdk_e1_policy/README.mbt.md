@@ -72,6 +72,11 @@ must map its body into the same actor world. Relative orientation uses
 `transpose(R_AB) * R_reference`, encoded in training's row-interleaved first
 two columns (`0,1,3,4,6,7`), rather than concatenating columns.
 
+`ImuFeatures::body_to_world()` exposes that same calibrated `R_AB` as a
+read-only array. Reference owners can anchor a current-pose diagnostic in the
+observer's frame without duplicating quaternion or mounting conversion. This
+does not establish that the supplied mounting calibration matches the robot.
+
 `Observer::new(mapping,imu)` prepares the actor's saved SMC feature contract.
 `Observer::observation(sample,previous,reference_rotation)` composes raw coherent
 status -> calibrated q/qd/attitude ->99 raw actor features. Saved feature scales
