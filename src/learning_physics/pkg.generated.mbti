@@ -27,6 +27,9 @@ pub(all) struct Case {
   motion : String
   friction : Double
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn Case::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Case::to_json(Self) -> Json
+pub fn Case::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Contact {
   body_a : Int
@@ -45,6 +48,9 @@ pub(all) struct Episode {
   case_id : String
   reference_nominal_rad : Array[Double]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn Episode::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Episode::to_json(Self) -> Json
+pub fn Episode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JointSines {
   amplitude : Array[Double]
@@ -52,6 +58,9 @@ pub(all) struct JointSines {
   frequency_hz : Array[Double]
   phase_rad : Array[Double]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JointSines::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JointSines::to_json(Self) -> Json
+pub fn JointSines::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ReplayFrame {
   time_s : Double
@@ -61,6 +70,9 @@ pub(all) struct ReplayFrame {
   upright_z : Double
   contacts : Int
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ReplayFrame::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ReplayFrame::to_json(Self) -> Json
+pub fn ReplayFrame::to_repr(Self) -> @debug.Repr
 
 pub type Runtime
 pub fn Runtime::actuator_damping(Self) -> Array[Double]
@@ -157,6 +169,9 @@ pub(all) struct Transition {
   terminated : Bool
   truncated : Bool
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn Transition::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Transition::to_json(Self) -> Json
+pub fn Transition::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Trial {
   episode_id : String
@@ -172,6 +187,9 @@ pub(all) struct Trial {
   end_reason : String
   replay : Array[ReplayFrame]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn Trial::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Trial::to_json(Self) -> Json
+pub fn Trial::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

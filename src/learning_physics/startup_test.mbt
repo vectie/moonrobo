@@ -6,7 +6,7 @@ test "MuJoCo startup failure preserves library scene and actionable detail" {
       "/nonexistent/moonrobo-mujoco-library", "/nonexistent/moonrobo-scene.xml",
     )
   catch {
-    @learning_physics.PhysicsError::Invalid(message) => {
+    Invalid(message) => {
       assert_true(message.contains("/nonexistent/moonrobo-mujoco-library"))
       assert_true(message.contains("/nonexistent/moonrobo-scene.xml"))
       if @learning_physics.compiled_mujoco_header_version() == 0 {
