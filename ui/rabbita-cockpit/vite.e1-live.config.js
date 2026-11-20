@@ -6,7 +6,8 @@ export default defineConfig(({ mode }) => {
   return {
     server: { host: "127.0.0.1", port: 5300, strictPort: true },
     preview: { host: "127.0.0.1", port: 4300, strictPort: true },
-    plugins: [e1LivePose(process.env.MOONROBO_E1_LIVE_FILE ?? env.MOONROBO_E1_LIVE_FILE)],
+    plugins: [e1LivePose(process.env.MOONROBO_E1_LIVE_FILE ?? env.MOONROBO_E1_LIVE_FILE,
+      process.env.MOONROBO_E1_REPLAY_FILE ?? env.MOONROBO_E1_REPLAY_FILE)],
     build: {
       outDir: "dist-e1-live",
       rollupOptions: { input: "e1-live.html" },

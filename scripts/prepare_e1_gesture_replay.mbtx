@@ -1,0 +1,183 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+struct Profile {
+  id : String
+  joints : Array[String]
+} derive(FromJson)
+
+///|
+struct Entry {
+  id : String
+  file : String
+  sha256 : String
+} derive(FromJson)
+
+///|
+struct Dataset {
+  robot : Profile
+  entries : Array[Entry]
+} derive(FromJson)
+
+///|
+struct Report {
+  reference : String
+  joints : Array[String]
+  heading_alignment_cos_sin : Array[Double]
+  frames : Int32
+  published : Bool
+} derive(FromJson)
+
+///|
+struct Tick {
+  frame : Int32
+  reference_step : Int32
+  nominal_model_rad : Array[Double]
+  measured_model_rad : Array[Double]
+  orientation : Array[Double]
+  motor_ids : Array[Int32]
+  published : Bool
+} derive(FromJson)
+
+///|
+fn sha(bytes : Bytes) -> String {
+  let mut result = ""
+  for byte in @crypto.sha256(bytes) {
+    result += byte.to_hex()
+  }
+  result
+}
+
+///|
+fn pose(
+  orientation : ArrayView[Double],
+  joints : ArrayView[Double],
+) -> Array[Double] {
+  let result = [0.0, 0.0, 0.85]
+  result.append(orientation.to_owned())
+  result.append(joints.to_owned())
+  result
+}
+
+///|
+fn aligned_quaternion(
+  orientation : ArrayView[Double],
+  alignment : ArrayView[Double],
+) -> Array[Double] {
+  let w = ((1.0 + alignment[0]).max(0.0) / 2.0).sqrt()
+  let z = if w > 1.0e-12 { alignment[1] / (2.0 * w) } else { 1.0 }
+  let (x0, y0, z0, w0) = (
+    orientation[0],
+    orientation[1],
+    orientation[2],
+    orientation[3],
+  )
+  [w * x0 - z * y0, w * y0 + z * x0, w * z0 + z * w0, w * w0 - z * z0]
+}
+
+///|
+test "reference heading alignment preserves nonzero source tilt" {
+  let a = 0.5.sqrt()
+  let actual = aligned_quaternion([a, 0.0, 0.0, a][:], [0.0, 1.0][:])
+  for i, expected in [0.5, 0.5, 0.5, 0.5] {
+    assert_true((actual[i] - expected).abs() < 1.0e-12)
+  }
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [directory, trace_path, report_path, output] else {
+    fail(
+      "usage: prepare_e1_gesture_replay.mbtx DATASET SHADOW_TRACE SHADOW_REPORT NEW_TAPE_JSON",
+    )
+  }
+  let dataset : Dataset = @json.from_json(
+    @fs.read_file(directory + "/dataset.json").json(),
+  )
+  let report : Report = @json.from_json(@fs.read_file(report_path).json())
+  guard dataset.robot.id == "noetix-e1-23-lab-v1" &&
+    dataset.robot.joints.length() == 23 &&
+    report.joints == dataset.robot.joints &&
+    !report.published &&
+    report.heading_alignment_cos_sin.length() == 2 else {
+    fail("expected matching read-only 23-joint replay")
+  }
+  let entries : Array[Entry] = dataset.entries
+    .iter()
+    .filter(entry => entry.id == report.reference)
+    .collect()
+  guard entries is [entry] &&
+    !entry.file.contains("..") &&
+    !entry.file.has_prefix("/") else {
+    fail("reference absent from dataset")
+  }
+  let bytes = @fs.read_file(directory + "/" + entry.file).binary()
+  assert_eq(sha(bytes), entry.sha256)
+  let source : Array[Array[Double]] = @json.from_json(
+    @fs.read_file(directory + "/" + entry.file).json(),
+  )
+  let frames : Array[Json] = []
+  let mut previous = -1
+  for line in @fs.read_file(trace_path).text().split("\n") {
+    if line == "" {
+      continue
+    }
+    let tick : Tick = @json.from_json(@json.parse(line.to_owned()))
+    guard !tick.published &&
+      tick.frame == frames.length() &&
+      tick.reference_step > previous &&
+      tick.reference_step < source.length() &&
+      tick.nominal_model_rad.length() == 23 &&
+      tick.measured_model_rad.length() == 23 &&
+      tick.orientation.length() == 4 else {
+      fail("invalid or unordered shadow tape")
+    }
+    assert_eq(tick.motor_ids, Array::makei(24, i => i))
+    let row = source[tick.reference_step]
+    guard row.length() == 36 && row[30:].iter().all(x => x == 0.0) else {
+      fail("invalid source embedding")
+    }
+    let orientation = aligned_quaternion(
+      row[3:7],
+      report.heading_alignment_cos_sin[:],
+    )
+    let reference = pose(orientation[:], row[7:30])
+    let actor = pose(tick.orientation[:], tick.nominal_model_rad[:])
+    let measured = pose(tick.orientation[:], tick.measured_model_rad[:])
+    guard [reference, actor, measured].all(p => p.all(x => x - x == 0.0)) else {
+      fail("nonfinite replay pose")
+    }
+    frames.push({
+      "at_ms": Json(tick.reference_step * 20),
+      "reference": Json(reference),
+      "actor": Json(actor),
+      "measured": Json(measured),
+    })
+    previous = tick.reference_step
+  }
+  assert_eq(frames.length(), report.frames)
+  let tape : Json = {
+    "format": "moonrobo.e1-gesture-replay.v1",
+    "reference_id": report.reference,
+    "names": Json(report.joints),
+    "step_ms": 20,
+    "published": false,
+    "reference_sha256": entry.sha256,
+    "recorded_date": "2026-11-20",
+    "root_display": "fixed at (0,0,0.85); reference heading aligned to captured IMU; actor uses captured IMU, not predicted root motion",
+    "frames": Json(frames),
+  }
+  @fs.write_file(output, tape.stringify(), create_mode=CreateNew)
+  println(
+    "Prepared " +
+    frames.length().to_string() +
+    " recorded gesture frames for the read-only website",
+  )
+}

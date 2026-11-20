@@ -1,6 +1,18 @@
 # LunaKine actor deployment and LunaFlux LLM integration
 
-Status: selected architecture; dated deployment evidence updated 2026-11-19
+Status: selected architecture; dated deployment evidence updated 2026-11-20
+
+The [20 November 23-joint actor deployment](E1_TRAINED23_DEPLOYMENT_20261120.md)
+is installed on Atlas `.191` and passed three 15-second live-telemetry Ascend
+shadow runs. Motor output remains disabled: the persistent ankle PD target,
+whole-body calibration and hardware actuator behavior require resolution before
+powered learned control. The record distinguishes numerical inference success
+from physical control qualification and preserves reserved SDK slot 23.
+
+The subsequent [minimum-motion search](E1_MINIMUM_MOTION_20261120.md) ranked all
+75 curriculum references and 40 saved simulation rollouts. Typing and neutral
+idle completed live NPU shadow replays, but even these references produced
+substantial leg PD targets. Neither was activated on the robot.
 
 The [commissioning findings](E1_COMMISSIONING_FINDINGS.md) are the current
 hardware/SDK and real-elbow record. The actual Atlas is a 310P3; CANN 9.1 and

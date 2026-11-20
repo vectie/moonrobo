@@ -22,7 +22,12 @@ async fn main {
       fail("pose source timestamp required")
     }
     if stamp != previous {
-      @fs.write_file(file + ".tmp", value.stringify(), permission=0o600)
+      @fs.write_file(
+        file + ".tmp",
+        value.stringify(),
+        create_mode=CreateOrTruncate,
+        permission=0o600,
+      )
       @fs.rename(file + ".tmp", file, replace=true)
       previous = stamp
     }

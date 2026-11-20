@@ -72,6 +72,28 @@ before launching the packet observer below; its decoder can update the same
 mirror through `MIRROR_DIR`. Duplicate RTPS DATA from concurrent subscriptions
 previously tripped continuity checks. Restart the receiver after disconnection.
 
+For a recorded training gesture, set `MOONROBO_E1_REPLAY_FILE` to a private
+`moonrobo.e1-gesture-replay.v1` tape before starting the live site. The
+`/__e1_replay` endpoint is local, same-origin, GET-only and remains available
+if the separate live feed goes offline. The right-hand source selector switches
+between reference joint poses and recorded, unsent Actor PD targets; those
+targets are not predicted physical motion. The left pane stays on current
+telemetry. Playback and scrubbing never publish robot commands.
+
+Create a tape using the original hash-verified dataset and saved shadow run:
+
+```text
+moon run scripts/prepare_e1_gesture_replay.mbtx DATASET SHADOW_TRACE SHADOW_REPORT NEW_TAPE_JSON
+```
+
+The helper keeps reference, actor-target and measured channels separate, uses
+the run's recorded reference steps/heading alignment, and fixes displayed root
+position as the live mirror does. Playback uses actual recorded sample times.
+`/e1-live.html?play=1` starts the visual replay after loading, except when reduced
+motion is requested. This entry point does not start an SDK or inference session.
+See the [minimum-motion results](../../docs/E1_MINIMUM_MOTION_20261120.md) for the
+typing reference, live-shadow measurements and remaining control qualification.
+
 ## Shadow and explicit powered stages
 
 `preflight.py NEW_PREFLIGHT_JSON` is receive-only: it discovers the exact
@@ -80,22 +102,31 @@ requires complete healthy status. A preflight is valid for 120 seconds.
 Run `start_stage.mbtx` from this directory with all paths explicit:
 
 ```text
-moon run start_stage.mbtx live|shadow STAGE PREFLIGHT NEW_RUN_DIR \
+moon run --target native --release start_stage.mbtx live|shadow STAGE PREFLIGHT NEW_RUN_DIR \
   HANDBACK_OR_DASH CONTROLLER_BINARY DECODER_LIBRARY MIRROR_DIR_OR_DASH
 ```
 
 Stages are `hold`, `elbow` (15-second 5°), `elbow90` (180-second fold/return),
-`drums` (four 10° strokes) and `raised-drums` (90°/60° alternating sequence).
-Shadow accepts hold/drums/raised-drums and creates no command publisher.
+`drums` (four 10° strokes), `raised-drums` (90°/60° alternating sequence) and
+`typing-elbows` (60-second smooth entry into the typing reference's two elbow
+angles, two-second hold, 60-second return). Shadow accepts hold/drums/
+raised-drums/typing-elbows and creates no command publisher.
 Shadow motion feedback is explicitly simulated while other telemetry remains
 measured; this validates the target path, not actual elbow tracking. Live
-`elbow` requires a fresh hold/handback receipt through `HANDBACK_OR_DASH`.
+`elbow` and `typing-elbows` require a fresh hold/handback receipt through `HANDBACK_OR_DASH`.
 After reviewing a successful real hold and observing actual handheld/factory
 control, `confirm_handback.mbtx HOLD_RUN OPERATOR OBSERVATION NEW_RECEIPT`
 records that operator observation. It does not perform the physical check and
 refuses an expired or unsuccessful hold.
 Other stages retain the deployed suspended commissioning behavior; accepting
 their arguments does not establish physical support or handback.
+
+The [elbow-transfer record](../../docs/E1_ELBOW_TRANSFER_20261120.md) separates
+its isolated tests/live-shadow result from the partial powered trial. Only SDK
+motors 3 and 14 can change. This step does not commission the other arm joints
+or run the whole-body actor. `measure_elbow_transfer.mbtx RUN NEW_REPORT` checks
+every reference frame and all 22 fixed motor records from the saved planner
+targets; live runs additionally require the independent wire and telemetry audits.
 
 The launcher requires existing capture privileges (`sudo -n`); it stores no
 password. The output directory must be new. It archives status, targets,
@@ -108,6 +139,12 @@ records and host-domain timestamps. The independent sender has a 2 ms publish
 interval, 40 ms freshness checks and a 10 ms publication-lateness check. Mirror
 I/O uses a bounded worker; planner heartbeats are separate from target ticks.
 These are software checks, not hardware braking or real-time guarantees.
+The coordinator is run as a native executable for commissioning. Its saved
+`pipeline_timing_ms` reports capture archival latency, kernel-arrival-to-planner
+latency, planner pipe writes and active coordinator polling gaps. This helps
+distinguish delivery stalls from incoming telemetry gaps; it does not alter the
+40 ms or 10 ms deadlines. File serialization after control stops is excluded
+from the active polling measurement.
 
 ## Isolated regression tests
 

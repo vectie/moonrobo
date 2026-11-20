@@ -9,23 +9,24 @@
 <header class="topbar"><a class="brand" href="./e1.html">MoonRobo</a><nav aria-label="项目导航"><a href="./e1.html">E1 动作库</a><a href="./e1-live.html" aria-current="page">实机镜像</a></nav></header>
 <main class="live-lab">
   <h1>实机与参考动作</h1>
-  <p class="intro">左侧显示实机关节与 IMU，右侧可预览双肘 90° → 60° 交替击鼓。拖动任一模型可同时旋转视角。</p>
+  <p class="intro">左侧显示当前实机关节与 IMU，右侧回放站立打字参考动作，或查看同次影子测试的 Actor 目标。拖动任一模型可同时旋转视角。</p>
   <div class="pose-pair">
     <section><div class="pane-head"><h2>实机镜像</h2><span id="link-state" role="status" aria-atomic="true">等待遥测</span></div>
       <div class="viewport"><canvas id="measured" aria-label="E1 实测关节与 IMU 姿态" tabindex="0" hidden></canvas><p class="overlay" id="feed-note">等待 E1 的关节与 IMU 数据</p></div>
       <p class="caption">左肘实测 <strong id="measured-angle">—</strong> · 右肘实测 <strong id="measured-right-angle">—</strong><br>根部位置固定，朝向来自 IMU</p>
     </section>
-    <section><div class="pane-head"><h2>动作预览</h2><select id="pose-source" aria-label="右侧姿态来源"><option value="raised" selected>双肘 90° ↔ 60°</option><option value="reference">左肘旧参考</option><option value="shadow" disabled>左肘影子记录</option></select></div>
-      <div class="viewport"><canvas id="planned" aria-label="参考或影子输出的姿态预览" tabindex="0"></canvas></div>
-      <p class="caption" id="reference-caption"><span id="reference-origin">以模型默认姿态为起点</span> · 其余关节保持起始角度<br>播放与拖动仅预览，不向机器人发送指令</p>
+    <section><div class="pane-head"><h2 id="planned-heading">动作预览</h2><select id="pose-source" aria-label="右侧姿态来源"><option value="typing-reference" disabled>站立打字 · 参考动作</option><option value="typing-actor" disabled>站立打字 · Actor 目标（未发送）</option><option value="elbow-transfer" disabled>双肘 · 平滑上机过渡</option><option value="raised" selected>双肘 90° ↔ 60°</option><option value="reference">左肘旧参考</option><option value="shadow" disabled>左肘影子记录</option></select></div>
+      <div class="viewport"><canvas id="planned" aria-label="参考或影子输出的姿态预览" tabindex="0"></canvas><button id="viewport-play" class="viewport-play" type="button" hidden>播放回放</button></div>
+      <p class="caption" id="reference-caption"><span id="reference-origin">以模型默认姿态为起点</span><span id="reference-detail"> · 其余关节保持起始角度</span><br>播放与拖动仅改变网站视图，不向机器人发送指令</p>
       <p class="caption" id="shadow-caption" hidden>策略给出的左肘位置 <strong id="shadow-angle">—</strong> · 同帧实测 <strong id="recorded-angle">—</strong> · 未发送</p>
     </section>
   </div>
+  <p id="replay-note" class="replay-note" role="status" hidden></p>
   <p id="model-error" role="alert" hidden></p>
   <section class="transport" aria-labelledby="trace-heading">
     <div class="trace-head"><h2 id="trace-heading">双肘预览角度</h2><output id="delta" for="scrub">—</output></div>
     <p class="preview-phase" id="preview-phase">预览阶段：双肘抬至 90°</p>
-    <div class="trace-legend"><span class="legend-left">左肘（实线）</span><span id="right-legend" class="legend-right">右肘（虚线）</span></div>
+    <div class="trace-legend"><span id="left-legend" class="legend-left">左肘（实线）</span><span id="right-legend" class="legend-right">右肘（虚线）</span><label id="trace-joint-label" hidden>查看关节 <select id="trace-joint" aria-label="回放对比关节"></select></label></div>
     <canvas id="trace" aria-label="双肘抬至 90 度，再交替下落 30 度的预览曲线"></canvas>
     <label class="sr" for="scrub">参考动作时间</label><input id="scrub" type="range" min="0" value="0" step="1">
     <div class="transport-actions"><button id="play" type="button">播放预览</button><button id="peak" type="button">双肘 90°</button><button id="left-drop" type="button">左肘 60°</button><button id="right-drop" type="button">右肘 60°</button><output id="clock" for="scrub"></output></div>

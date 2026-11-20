@@ -2,7 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 // The relay atomically replaces one private file on arrival of a new DDS sample.
-export function e1LivePose(path) {
+export function e1LivePose(path, replayPath) {
   const install = server => {
     function route(url, read) {
       server.middlewares.use(url, async (req, res) => {
@@ -15,7 +15,6 @@ export function e1LivePose(path) {
           res.statusCode = 403; return res.end("{}");
         }
         try {
-          if (!path) throw Error();
           return res.end(await read());
         } catch {
           res.statusCode = 503; return res.end('{"live":false}');
@@ -23,10 +22,12 @@ export function e1LivePose(path) {
       });
     }
     route("/__e1_pose", async () => {
+      if (!path) throw Error();
       if (Date.now() - (await stat(path)).mtimeMs > 1200) throw Error();
       return readFile(path, "utf8");
     });
     route("/__e1_shadow", () => readFile(join(dirname(path), "shadow-poses.json"), "utf8"));
+    route("/__e1_replay", () => readFile(replayPath, "utf8"));
   };
   return {name:"read-only-e1-pose",configureServer:install,configurePreviewServer:install};
 }
