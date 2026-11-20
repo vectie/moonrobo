@@ -1,0 +1,146 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+struct Profile {
+  joints : Array[String]
+  default_q : Array[Double]
+  scales : Array[Double]
+} derive(FromJson)
+
+///|
+struct Axis {
+  actor_joint : String
+  motor_id : Int32
+  direction : Double
+  zero : Double
+} derive(FromJson)
+
+///|
+struct Configuration {
+  model_id : String
+  actor_robot : Profile
+  joint_calibration : Calibration
+} derive(FromJson)
+
+///|
+struct Calibration {
+  axes : Array[Axis]
+} derive(FromJson)
+
+///|
+struct Motor {
+  motor_id : Int32
+  pos : Double
+} derive(FromJson)
+
+///|
+struct Inference {
+  inference_sequence : Int32
+  scheduled_tick_ms : Int64
+  phase : String
+  raw_actions : Array[Double]
+  observation : Array[Double]
+  authority : Double
+} derive(FromJson)
+
+///|
+struct Row {
+  motors : Array[Motor]
+  inference : Inference
+} derive(FromJson)
+
+///|
+fn pose(joints : Array[Double]) -> Array[Double] {
+  let values = [0.0, 0.0, 0.85, 0.0, 0.0, 0.0, 1.0]
+  values.append(joints)
+  values
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [config_path, trace, new_tape] else {
+    fail("CONFIG SHADOW_TRACE NEW_TAPE required")
+  }
+  let config : Configuration = @json.from_json(
+    @fs.read_file(config_path).json(),
+  )
+  let frames : Array[Json] = []
+  let mut last = -1
+  let mut first = 0L
+  let mut stopped = false
+  let mut maximum_authority = 0.0
+  for line in @fs.read_file(trace).text().split("\n") {
+    if line == "" {
+      continue
+    }
+    let value = @json.parse(line.to_owned())
+    if value is { "kind": "stop", "reason": "stage complete", .. } {
+      stopped = true
+      continue
+    }
+    guard !stopped &&
+      value is { "kind": "target", "stage": "actor-elbows", "shadow": True, .. } else {
+      fail("completed unsent actor proposals required")
+    }
+    let row : Row = @json.from_json(value)
+    let sample = row.inference
+    if sample.inference_sequence == last {
+      continue
+    }
+    guard sample.inference_sequence == last + 1 &&
+      row.motors.length() == 24 &&
+      sample.observation.length() == 99 &&
+      sample.raw_actions.length() == 29 else {
+      fail("incomplete inference frame")
+    }
+    if last < 0 {
+      first = sample.scheduled_tick_ms
+    }
+    let robot = config.actor_robot
+    let raw = Array::makei(23, i => {
+      robot.default_q[i] + robot.scales[i] * sample.raw_actions[i]
+    })
+    let measured = Array::makei(23, i => {
+      robot.default_q[i] + sample.observation[i]
+    })
+    let applied = Array::make(23, 0.0)
+    for axis in config.joint_calibration.axes {
+      guard robot.joints.search_by(j => j == axis.actor_joint) is Some(index) &&
+        row.motors[axis.motor_id].motor_id == axis.motor_id else {
+        fail("policy pose mapping mismatch")
+      }
+      applied[index] = axis.direction *
+        (row.motors[axis.motor_id].pos - axis.zero)
+    }
+    frames.push({
+      "at_ms": Json((sample.scheduled_tick_ms - first).to_int()),
+      "phase": sample.phase,
+      "authority": sample.authority,
+      "raw": Json(pose(raw)),
+      "applied": Json(pose(applied)),
+      "measured": Json(pose(measured)),
+    })
+    last = sample.inference_sequence
+    maximum_authority = maximum_authority.max(sample.authority)
+  }
+  guard stopped && last > 500 else { fail("complete policy record required") }
+  let tape : Json = {
+    "format": "moonrobo.e1-actor-policy-replay.v1",
+    "published": false,
+    "source_kind": "recorded-input",
+    "model_id": config.model_id,
+    "names": Json(config.actor_robot.joints),
+    "step_ms": 20,
+    "fixed_motor_records": 22,
+    "maximum_authority": Json(maximum_authority),
+    "frames": Json(frames),
+    "scope": "Actual Ascend inference on saved E1 telemetry; constrained command candidates were not sent. Displayed root position and orientation are fixed.",
+  }
+  @fs.write_file(new_tape, tape.stringify(), create_mode=CreateNew)
+}

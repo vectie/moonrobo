@@ -3,11 +3,12 @@ import { RAISED_LAST, raisedPair, raisedPhase } from "./raised-drums.js";
 import { E1Viewer, loadAssets } from "./viewer.js";
 import { parseGestureReplay, replayFrameAt, replayCurves } from "./gesture-replay.js";
 import { TRANSFER_LAST, elbowTransferPair, elbowTransferPhase } from "./elbow-transfer.js";
+import { parsePolicyReplay, policyCurves } from "./policy-replay.js";
 
 const element = id => document.getElementById(id);
 const oldOffsets = reference.offset_degrees;
 const oldPeak = oldOffsets.indexOf(Math.min(...oldOffsets));
-const seconds = frame => (isGesture() ? gesture.frames[frame].at_ms : frame * reference.step_ms) / 1000;
+const seconds = frame => (isRecorded() ? recordedTape().frames[frame].at_ms : frame * reference.step_ms) / 1000;
 const degrees = radians => radians * 180 / Math.PI;
 const radians = angle => angle * Math.PI / 180;
 const validVector = (values, size) => Array.isArray(values) && values.length === size && values.every(Number.isFinite);
@@ -15,13 +16,21 @@ const trace = element("trace"), slider = element("scrub");
 const isTransfer = () => !!gesture && element("pose-source").value === "elbow-transfer";
 const isRaised = () => element("pose-source").value === "raised" || isTransfer();
 const isGesture = () => !!gesture && element("pose-source").value.startsWith("typing-");
-const lastFrame = () => isGesture() ? gesture.frames.length - 1 : isTransfer() ? TRANSFER_LAST : isRaised() ? RAISED_LAST : oldOffsets.length - 1;
+const isPolicy = () => !!policy && element("pose-source").value.startsWith("policy-");
+const isRecorded = () => isGesture() || isPolicy();
+const recordedTape = () => isPolicy() ? policy : gesture;
+const lastFrame = () => isRecorded() ? recordedTape().frames.length - 1 : isTransfer() ? TRANSFER_LAST : isRaised() ? RAISED_LAST : oldOffsets.length - 1;
 let step = 0, started = null, measured, planned, joints, elbow, rightElbow, base, baseOri = [0,0,0,1];
 let lastStamp = "", lastNew = -Infinity, shadow;
-let gesture;
+let gesture, policy;
 let curveKey = "", curves = [[], []];
 
 function updateCurves() {
+  if (isPolicy()) {
+    const key = `policy:${element("trace-joint").value}`;
+    if (key !== curveKey) { curveKey = key; curves = policyCurves(policy, Number(element("trace-joint").value)); }
+    return;
+  }
   if (isGesture()) {
     const key = `typing:${element("trace-joint").value}`;
     if (key !== curveKey) {
@@ -49,31 +58,33 @@ function drawTrace() {
   trace.width = Math.round(w*d); trace.height = Math.round(h*d);
   const ctx = trace.getContext("2d"); ctx.scale(d,d);
   const last = lastFrame(), x = i => 30 + (w-36)*i/last;
-  const minimum = isGesture() ? Math.min(...curves.flat()) - 1 : -90;
-  const maximum = isGesture() ? Math.max(...curves.flat()) + 1 : 0;
-  const y = isGesture() ? angle => 7+(h-14)*(maximum-angle)/(maximum-minimum) : angle => h-7 + (h-14)*angle/90;
+  const minimum = isRecorded() ? Math.min(...curves.flat()) - 1 : -90;
+  const maximum = isRecorded() ? Math.max(...curves.flat()) + 1 : 0;
+  const y = isRecorded() ? angle => 7+(h-14)*(maximum-angle)/(maximum-minimum) : angle => h-7 + (h-14)*angle/90;
   ctx.fillStyle = "#536368"; ctx.font = "12px sans-serif";
-  ctx.fillText(isGesture() ? `${maximum.toFixed(0)}°` : "90°", 1, 15); ctx.fillText(isGesture() ? `${minimum.toFixed(0)}°` : "0°", 1, h-4);
+  ctx.fillText(isRecorded() ? `${maximum.toFixed(0)}°` : "90°", 1, 15); ctx.fillText(isRecorded() ? `${minimum.toFixed(0)}°` : "0°", 1, h-4);
   const axis = Math.max(minimum, Math.min(maximum, 0));
   ctx.strokeStyle = "#cdd9d5"; ctx.beginPath(); ctx.moveTo(x(0), y(axis)); ctx.lineTo(x(last), y(axis)); ctx.stroke();
   const stride = Math.max(1, Math.floor(last / Math.max(1,w*2)));
   curves.forEach((values, side) => {
     if (!values.length) return;
-    ctx.strokeStyle = side ? "#315aa8" : "#006457"; ctx.lineWidth = 2;
-    ctx.setLineDash(side ? [6,4] : []); ctx.beginPath();
+    ctx.strokeStyle = ["#006457","#315aa8","#71552f"][side]; ctx.lineWidth = 2;
+    ctx.setLineDash([[],[6,4],[2,4]][side]); ctx.beginPath();
     ctx.moveTo(x(0), y(values[0]));
     for (let i = stride; i <= last; i += stride) ctx.lineTo(x(i), y(values[i]));
     ctx.lineTo(x(last), y(values[last])); ctx.stroke(); ctx.setLineDash([]);
     ctx.beginPath(); ctx.arc(x(step), y(values[step]), side ? 3 : 4, 0, 2*Math.PI);
-    ctx.fillStyle = side ? "#315aa8" : "#006457"; ctx.fill();
+    ctx.fillStyle = ["#006457","#315aa8","#71552f"][side]; ctx.fill();
   });
 }
 function reflect(next) {
   step = Math.max(0, Math.min(lastFrame(), next));
   slider.max = lastFrame(); slider.value = step;
-  element("trace-joint-label").hidden = !isGesture();
-  element("viewport-play").hidden = !isGesture() && !isTransfer();
-  element("planned-heading").textContent = isGesture() ? "记录回放" : "动作预览";
+  element("trace-joint-label").hidden = !isRecorded();
+  element("viewport-play").hidden = !isRecorded() && !isTransfer();
+  element("planned-heading").textContent = isRecorded() ? "记录回放" : "动作预览";
+  element("measured-legend").hidden = element("policy-values").hidden = !isPolicy();
+  if (isPolicy()) return reflectPolicy();
   if (gesture) {
     element("replay-note").hidden = !isGesture() && !isTransfer();
     element("replay-note").textContent = isTransfer()
@@ -136,14 +147,38 @@ function reflectGesture() {
     planned.pose(gesture.frames[step][actor ? "actor" : "reference"]); planned.render();
   }
 }
+function reflectPolicy() {
+  updateCurves();
+  const frame = policy.frames[step], source = element("pose-source").value.slice(7);
+  const values = curves.map(points => `${points[step].toFixed(2)}°`);
+  ["raw", "applied", "measured"].forEach((name, i) => element(`policy-${name}-value`).textContent = values[i]);
+  element("delta").textContent = element("trace-joint").selectedOptions[0]?.textContent ?? "";
+  element("clock").textContent = `${seconds(step).toFixed(2)} / ${seconds(lastFrame()).toFixed(2)} s`;
+  element("trace-heading").textContent = "模型目标、受限候选与历史实测";
+  const phase = {baseline:"起始保持",policy:`模型推理 · ${(frame.authority*100).toFixed(0)}% 控制权`,return:"返回起始目标 · 非策略动作"}[frame.phase];
+  element("preview-phase").textContent = `记录阶段：${phase}`;
+  element("left-legend").textContent = "模型目标（实线）";
+  element("right-legend").textContent = "受限候选（虚线）"; element("right-legend").hidden = false;
+  element("peak").textContent = "最大约束差";
+  element("left-drop").hidden = element("right-drop").hidden = true;
+  element("reference-caption").hidden = false; element("shadow-caption").hidden = true;
+  element("reference-origin").textContent = {raw:"原始神经策略的关节目标；未采用的腿部输出也会显示",applied:"受限候选：仅双肘采用模型输出，其余 22 个电机记录保持起始目标",measured:"同帧模型输入来自先前保存的 E1 遥测；不是本次控制后的反馈"}[source];
+  element("reference-detail").textContent = " · 显示根部位置与朝向固定";
+  element("replay-note").hidden = false;
+  element("replay-note").textContent = `真实 Ascend 推理记录：输入是历史 E1 遥测，不是实时数据。${Math.round(policy.maximum_authority*100)}% 模型控制权，双肘候选未发送到机器人；左侧仅在遥测新鲜时显示当前实机。`;
+  slider.setAttribute("aria-valuetext", `${seconds(step).toFixed(2)} 秒，模型 ${values[0]}，候选 ${values[1]}，历史实测 ${values[2]}`);
+  trace.setAttribute("aria-label", "所选关节的原始模型目标、受限候选目标与历史实测输入；候选未发送");
+  drawTrace();
+  if (planned) { planned.pose(frame[source]); planned.render(); }
+}
 function pause() {
-  started = null; element("play").textContent = isGesture() ? "播放回放" : "播放预览";
+  started = null; element("play").textContent = isRecorded() ? "播放回放" : "播放预览";
   element("viewport-play").textContent = isTransfer() ? "播放过渡预览" : "播放回放";
 }
 function animate(now) {
   if (started === null) return;
   const elapsed = now-started;
-  const next = isGesture() ? replayFrameAt(gesture, elapsed) : Math.min(lastFrame(), Math.floor(elapsed/reference.step_ms));
+  const next = isRecorded() ? replayFrameAt(recordedTape(), elapsed) : Math.min(lastFrame(), Math.floor(elapsed/reference.step_ms));
   if (next !== step) reflect(next);
   if (next === lastFrame()) pause(); else requestAnimationFrame(animate);
 }
@@ -157,7 +192,7 @@ element("viewport-play").onclick = () => element("play").click();
 slider.oninput = () => { pause(); reflect(Number(slider.value)); };
 element("peak").onclick = () => {
   pause();
-  if (isGesture()) {
+  if (isRecorded()) {
     updateCurves();
     const differences = curves[0].map((v,i) => Math.abs(v-curves[1][i]));
     return reflect(differences.indexOf(Math.max(...differences)));
@@ -230,7 +265,7 @@ async function start() {
     });
   }
   reflect(step); poll();
-  loadGesture();
+  loadGesture(); loadPolicy();
   try {
     const response = await fetch("./__e1_shadow", {cache:"no-store",signal:AbortSignal.timeout(2500)});
     if (!response.ok) return;
@@ -250,6 +285,7 @@ async function loadGesture() {
     gesture = parseGestureReplay(await response.json(), joints);
     for (const option of element("pose-source").querySelectorAll('[value^="typing-"]')) option.disabled = false;
     element("pose-source").querySelector('[value="elbow-transfer"]').disabled = false;
+    if (new URLSearchParams(location.search).get("gesture") === "policy") return;
     element("pose-source").value = new URLSearchParams(location.search).get("gesture") === "elbows" ? "elbow-transfer" : "typing-reference";
     element("replay-note").hidden = false;
     element("replay-note").textContent = "站立打字：参考中的最大腿部关节变化约 2.10°。记录的 Actor 左踝目标约 20–37°，因此这段动作未在实机执行。左侧为当前实时遥测。";
@@ -260,6 +296,18 @@ async function loadGesture() {
     element("replay-note").hidden = false;
     element("replay-note").textContent = "站立打字记录暂不可用；其他参考预览仍可使用。";
   }
+}
+async function loadPolicy() {
+  try {
+    const response = await fetch("./__e1_policy", {cache:"no-store",signal:AbortSignal.timeout(5000)});
+    if (!response.ok) return;
+    policy = parsePolicyReplay(await response.json(), joints);
+    for (const option of element("pose-source").querySelectorAll('[value^="policy-"]')) option.disabled = false;
+    if (new URLSearchParams(location.search).get("gesture") === "policy") {
+      element("pose-source").value = "policy-applied"; pause(); element("trace-joint").value = elbow; reflect(0);
+      if (new URLSearchParams(location.search).get("play") === "1" && !matchMedia("(prefers-reduced-motion: reduce)").matches) element("play").click();
+    }
+  } catch { /* Optional inference record never changes live telemetry or control. */ }
 }
 start().catch(error => {
   element("model-error").hidden = false; element("model-error").textContent = "三维模型载入失败。" + error.message;

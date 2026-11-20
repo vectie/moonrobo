@@ -22,6 +22,10 @@
 .preview-phase {font-size:14px;color:#43595a;margin:10px 0 8px}
 .trace-legend {display:flex;flex-wrap:wrap;gap:18px;font-size:13px;margin:0 0 6px}
 .legend-left {color:#006457}.legend-right {color:#315aa8}
+.legend-measured {color:#71552f}
+.policy-values {display:flex;flex-wrap:wrap;gap:12px 24px;font-size:14px;padding:8px 0}
+.policy-values strong {font-variant-numeric:tabular-nums;margin-left:6px}
+.policy-values[hidden] {display:none}
 .trace-legend [hidden] {display:none}
 .replay-note {margin:14px 0 0;padding:12px 16px;background:#eef5f2;border:1px solid #c8dcd3;border-radius:10px;color:#24483f;font-size:14px;line-height:1.6}
 .trace-legend label {margin-left:auto;display:flex;align-items:center;gap:8px;color:#43595a;white-space:nowrap}
