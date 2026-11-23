@@ -8,6 +8,10 @@ from cyclonedds.sub import DataReader
 from cyclonedds.topic import Topic
 from cyclonedds.util import duration
 
+def endpoint_summary(ep):
+    return dict(topic=ep.topic_name,
+                type_id=None if ep.type_id is None else ep.type_id.serialize().hex())
+
 def main():
     output=pathlib.Path(sys.argv[1]);assert not output.exists()
     p=DomainParticipant(0)
@@ -16,16 +20,21 @@ def main():
     found={};reader=None;good=0;first=None;last=None
     torque_min=[math.inf]*24;torque_max=[-math.inf]*24
     torque_nonzero=[0]*24
+    publications={};subscriptions={}
     expected={"Motor_Cmd_Topic":"00070000f2f315417f2fd893ffc1e75f2c4f08",
               "Control_Mode_Topic":"00070000f2cc773776cccd5cf6f3ba76cf79c6"}
     end=time.monotonic()+15
     try:
         while time.monotonic()<end:
             for ep in sinks.take(64):
+                if ep.sample_info.valid_data:
+                    subscriptions[ep.key.hex]=endpoint_summary(ep)
                 if ep.sample_info.valid_data and ep.topic_name in expected:
                     assert ep.type_id.serialize().hex()==expected[ep.topic_name],"E1 interface changed"
                     found[ep.topic_name]=ep.key.hex
             for ep in sources.take(64):
+                if ep.sample_info.valid_data:
+                    publications[ep.key.hex]=endpoint_summary(ep)
                 if ep.sample_info.valid_data and ep.topic_name in expected:
                     raise RuntimeError("another motor or mode publisher is already present")
                 if ep.sample_info.valid_data and ep.topic_name=="Robot_Status_Topic":
@@ -56,6 +65,7 @@ def main():
         output.write_text(json.dumps({"passed":True,"created_epoch":time.time(),"peer_prefix":prefix,
             "status_guid":found["Robot_Status_Topic"],"expected_reader_types":expected,"received_samples":good,
             "motor_ids":list(range(24)),"last_motors":last,"command_writers_created":False,
+            "discovered_publications":publications,"discovered_subscriptions":subscriptions,
             "holding_effort":dict(reported_torque_min_nm=torque_min,reported_torque_max_nm=torque_max,
                 nonzero_reported_torque_samples=torque_nonzero,
                 factory_commanded_effort_available=False,

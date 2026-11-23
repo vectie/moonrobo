@@ -1,0 +1,277 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+fn integer(bytes : BytesView, at : Int32, n : Int32, little : Bool) -> Int64 {
+  let mut bits = 0L
+  for i in 0..<n {
+    bits = bits |
+      (
+        bytes[at + i].to_int().to_int64() <<
+        ((if little { i } else { n - i - 1 }) * 8)
+      )
+  }
+  bits
+}
+
+///|
+fn hex(bytes : BytesView) -> String {
+  let mut result = ""
+  for byte in bytes {
+    result += byte.to_hex()
+  }
+  result
+}
+
+///|
+struct Packet {
+  seq : Int32
+  q : Array[Double]
+  qd : Array[Double]
+  tau : Array[Double]
+} derive(FromJson)
+
+///|
+struct Row {
+  packet : Packet
+} derive(FromJson)
+
+///|
+async fn main {
+  guard @env.args()[1:] is [capture, decoded, guid, output] &&
+    guid.length() == 32 else {
+    fail("PCAP DECODED_STATUS WRITER_GUID NEW_REPORT required")
+  }
+  let bytes = @fs.read_file(capture).binary()
+  guard bytes.length() >= 24 else { fail("missing pcap header") }
+  let little = bytes[:4] == b"\xd4\xc3\xb2\xa1" ||
+    bytes[:4] == b"\x4d\x3c\xb2\xa1"
+  let nanos = bytes[:4] == b"\x4d\x3c\xb2\xa1" ||
+    bytes[:4] == b"\xa1\xb2\x3c\x4d"
+  guard little ||
+    bytes[:4] == b"\xa1\xb2\xc3\xd4" ||
+    bytes[:4] == b"\xa1\xb2\x3c\x4d" else {
+    fail("pcap magic")
+  }
+  assert_eq(integer(bytes[:], 20, 4, little), 1L)
+  let seen : Map[Int32, Bytes] = Map([])
+  let records : Map[Int32, Array[Int64]] = Map([])
+  let masks : Map[Int32, Int32] = Map([])
+  let zero_temperature : Array[Array[Int32]] = Array::makei(24, _ => [])
+  let nonzero_temperature : Array[Array[Int32]] = Array::makei(24, _ => [])
+  let hip_events : Array[Json] = []
+  let mut previous_hip : Double? = None
+  let mut duplicates = 0
+  let mut first_ns = 0L
+  let mut last_ns = 0L
+  let mut at = 24
+  while at < bytes.length() {
+    guard at + 16 <= bytes.length() else { fail("truncated pcap record") }
+    let length = integer(bytes[:], at + 8, 4, little).to_int()
+    guard length == integer(bytes[:], at + 12, 4, little).to_int() &&
+      at + 16 + length <= bytes.length() else {
+      fail("truncated frame")
+    }
+    let arrival = integer(bytes[:], at, 4, little) * 1000000000L +
+      integer(bytes[:], at + 4, 4, little) * (if nanos { 1L } else { 1000L })
+    let frame = bytes[at + 16:at + 16 + length]
+    at += 16 + length
+    guard frame.length() >= 42 && frame[12:14] == b"\x08\x00" else { continue }
+    let ip = frame[14:]
+    guard ip[9] == 17 && ip[12:20] == b"\xc0\xa8\x37\x66\xc0\xa8\x37\x65" else {
+      continue
+    }
+    guard (integer(ip, 6, 2, false) & 0x3fffL) == 0L else {
+      fail("fragmented status")
+    }
+    let header = (ip[0].to_int() & 15) * 4
+    let size = integer(ip, 2, 2, false).to_int()
+    guard size <= ip.length() && size >= header + 8 else {
+      fail("invalid IPv4 length")
+    }
+    let data = ip[header + 8:size]
+    guard data.length() >= 20 && data[:4] == b"RTPS" else { continue }
+    let prefix = hex(data[8:20])
+    let mut sub = 20
+    while sub < data.length() {
+      guard sub + 4 <= data.length() else { fail("truncated RTPS header") }
+      let tag = data[sub].to_int()
+      let flags = data[sub + 1].to_int()
+      let le = (flags & 1) == 1
+      let length = integer(data, sub + 2, 2, le).to_int()
+      let end = if length == 0 { data.length() } else { sub + 4 + length }
+      guard end <= data.length() else { fail("truncated RTPS submessage") }
+      let body = data[sub + 4:end]
+      sub = end
+      if tag != 0x15 || body.length() < 20 || prefix + hex(body[8:12]) != guid {
+        continue
+      }
+      guard flags == 5 else { fail("unreviewed DATA encoding") }
+      let payload_at = 4 + integer(body, 2, 2, true).to_int()
+      let payload = body[payload_at:]
+      guard payload.length() == 1156 &&
+        payload[0] == 0 &&
+        (payload[1] == 0 || payload[1] == 1) else {
+        fail("status shape")
+      }
+      let lcdr = payload[1] == 1
+      assert_eq(integer(payload, 372, 4, lcdr), 24L)
+      for slot in 0..<24 {
+        assert_eq(
+          integer(payload, 380 + 32 * slot + 24, 2, lcdr),
+          slot.to_int64(),
+        )
+      }
+      assert_eq(integer(body, 12, 4, true), 0L)
+      let seq = integer(body, 16, 4, true).to_int()
+      if seen.get(seq) is Some(old) {
+        assert_eq(old[:], payload)
+        duplicates += 1
+        continue
+      }
+      if seen.is_empty() {
+        first_ns = arrival
+      }
+      last_ns = arrival
+      seen[seq] = payload.to_owned()
+      let fields : Array[Int64] = []
+      let mut mask = 0
+      for slot in 0..<24 {
+        let motor = 380 + 32 * slot
+        for field in 0..<3 {
+          let bits = integer(payload, motor + field * 8, 8, lcdr)
+          assert_true(
+            bits.reinterpret_as_double() - bits.reinterpret_as_double() == 0.0,
+          )
+          fields.push(bits)
+        }
+        let torque = fields[3 * slot + 2].reinterpret_as_double()
+        let temperature = integer(payload, motor + 28, 4, lcdr).to_int()
+        assert_eq(integer(payload, motor + 26, 2, lcdr), 0L)
+        if torque == 0.0 {
+          zero_temperature[slot].push(temperature)
+        } else {
+          mask = mask | (1 << slot)
+          nonzero_temperature[slot].push(temperature)
+        }
+        if slot == 7 && previous_hip != Some(torque) && hip_events.length() < 30 {
+          hip_events.push({
+            "seq": Json(seq),
+            "relative_ms": Json((arrival - first_ns).to_double() / 1000000.0),
+            "q": Json(fields[3 * slot].reinterpret_as_double()),
+            "qd": Json(fields[3 * slot + 1].reinterpret_as_double()),
+            "tau": Json(torque),
+            "tau_bytes": hex(payload[motor + 16:motor + 24]),
+            "temperature": Json(temperature),
+          })
+        }
+        if slot == 7 {
+          previous_hip = Some(torque)
+        }
+      }
+      records[seq] = fields
+      masks[mask] = masks.get(mask).unwrap_or(0) + 1
+    }
+  }
+  let mut matched = 0
+  let decoded_seen : Set[Int32] = Set([])
+  for line in @fs.read_file(decoded).text().split("\n") {
+    if line == "" {
+      continue
+    }
+    let row : Row = @json.from_json(@json.parse(line.to_owned()))
+    guard !decoded_seen.contains(row.packet.seq) else {
+      fail("duplicate decoded sequence")
+    }
+    decoded_seen.add(row.packet.seq)
+    assert_eq(row.packet.q.length(), 24)
+    assert_eq(row.packet.qd.length(), 24)
+    assert_eq(row.packet.tau.length(), 24)
+    guard records.get(row.packet.seq) is Some(bits) else {
+      fail("decoded sequence absent from capture")
+    }
+    for slot in 0..<24 {
+      assert_eq(row.packet.q[slot].reinterpret_as_int64(), bits[3 * slot])
+      assert_eq(row.packet.qd[slot].reinterpret_as_int64(), bits[3 * slot + 1])
+      assert_eq(row.packet.tau[slot].reinterpret_as_int64(), bits[3 * slot + 2])
+    }
+    matched += 1
+  }
+  assert_eq(matched, seen.length())
+  guard matched > 1000 else { fail("insufficient samples") }
+  let report : Json = {
+    "passed": true,
+    "method": "independent MoonBit pcap/RTPS/XCDR1 IEEE754 double reader; no SDK or C decoder",
+    "unique_samples": Json(seen.length()),
+    "duplicate_deliveries": Json(duplicates),
+    "matching_decoded_samples": Json(matched),
+    "matching_motor_fields": Json(matched * 24 * 3),
+    "writer_guid": guid,
+    "torque_presence_masks": Json(
+      masks
+      .to_array()
+      .map(pair => { "mask": Json(pair.0), "samples": Json(pair.1) }),
+    ),
+    "temperature_by_torque_presence": Json(
+      Array::makei(24, slot => {
+        let zero = zero_temperature[slot]
+        let nonzero = nonzero_temperature[slot]
+        zero.sort()
+        nonzero.sort()
+        {
+          "slot": Json(slot),
+          "zero_torque_samples": Json(zero.length()),
+          "nonzero_torque_samples": Json(nonzero.length()),
+          "zero_torque_temperature_range": Json(
+            if zero.is_empty() {
+              []
+            } else {
+              [zero[0], zero[zero.length() - 1]]
+            },
+          ),
+          "nonzero_torque_temperature_range": Json(
+            if nonzero.is_empty() {
+              []
+            } else {
+              [nonzero[0], nonzero[nonzero.length() - 1]]
+            },
+          ),
+        }
+      }),
+    ),
+    "hip_changes": Json(hip_events),
+    "capture_span_ms": Json((last_ns - first_ns) / 1000000L),
+    "torque_validity_semantics_identified": false,
+    "robot_commands_or_calibration_writes": false,
+  }
+  @fs.write_file(output, report.stringify(indent=2), create_mode=CreateNew)
+  println(
+    "Raw IEEE754 torque audit passed: " +
+    matched.to_string() +
+    " unique samples; " +
+    output,
+  )
+}
+
+///|
+test "raw torque reader handles zero, signed zero and known motor torque in either endian" {
+  assert_eq(
+    integer(b"\x00\x00\x00\x00\x68\x90\x06\x40", 0, 8, true).reinterpret_as_double(),
+    2.8205108642578125,
+  )
+  assert_eq(
+    integer(b"\x40\x06\x90\x68\x00\x00\x00\x00", 0, 8, false).reinterpret_as_double(),
+    2.8205108642578125,
+  )
+  assert_eq(integer(b"\x00\x00\x00\x00\x00\x00\x00\x00", 0, 8, true), 0L)
+  assert_eq(
+    integer(b"\x00\x00\x00\x00\x00\x00\x00\x80", 0, 8, true).reinterpret_as_double(),
+    -0.0,
+  )
+  assert_true(integer(b"\x00\x00\x00\x00\x00\x00\x00\x80", 0, 8, true) != 0L)
+}
