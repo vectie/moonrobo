@@ -69,11 +69,15 @@ The website at `/e1-live.html?gesture=policy` serves the larger shadow candidate
 on the right and fresh measured telemetry on the left. Its unpublished candidate
 labels remain: this preview tape is not a claim that the physical run exactly
 reproduced shadow targets. The policy and fresh-pose endpoints returned HTTP 200.
-After both captures and the post-trial preflight completed, a standalone
-`deploy/e1/receive.py` subscriber was started against the same mirror directory
-to keep the left view fresh. It creates no command writer. Stop this owned
-read-only receiver before a subsequent commissioning capture so that it has
-only one status subscription. No automatic control service was installed.
+The existing read-only mirror receiver in the older `typing-transfer-20261120`
+deployment was retained. An attempted additional subscriber exited on a shared
+temporary-file collision; no duplicate subscriber was left running. The web
+relay uses prebuilt native follow/relay binaries so compiler diagnostics cannot
+enter its JSON stream. Stop the existing read-only receiver before a subsequent
+commissioning capture so that it has only one status subscription. The capture
+decoder's existing byte-exact retransmission deduplication was active; both real
+trials passed complete input/continuity audits. No automatic control service was
+installed by this work.
 
 ## Real trials
 
