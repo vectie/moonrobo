@@ -2,10 +2,48 @@
 import json
 import pathlib
 import sys
-from shadow_effort_validation import PositionHoldAudit, validate_shadow_effort, verify_seed_capture
+from shadow_effort_validation import PositionHoldAudit, load_position_trial, validate_shadow_effort, verify_seed_capture
+
+
+def audit_position_trial(directory, profile_path, evidence_path, output):
+    assert not output.exists()
+    profile=load_position_trial(profile_path,evidence_path)
+    session=json.loads((directory/"session.json").read_text())
+    live=session["kind"]=="live"
+    assert session["kind"] in ("live","shadow") and session["stage"]=="hold"
+    assert session["command_writers_created"] is live
+    audit=PositionHoldAudit(profile)
+    reason=None
+    for line in (directory/"targets.ndjson").open():
+        if not line.startswith("{"):
+            assert reason is not None and line.strip()==reason
+            continue
+        row=json.loads(line)
+        if row["kind"]=="stop":
+            assert reason is None
+            reason=row["reason"]
+            continue
+        assert reason is None and row["shadow"] is (not live)
+        audit.observe(row)
+    assert audit.count>0 and reason is not None
+    audit.verify_capture(directory/"status.ndjson")
+    complete=reason=="stage complete" and session["planner_status"]==session["sender_status"]==0
+    if complete:
+        planner=json.loads((directory/"planner.json").read_text())
+        assert planner["software_stage_completed"] is True and 1000<=planner["active_ms"]<=1040
+        assert planner["fixed_position_records"]==24 and planner["fixed_motor_records"]==12
+    result=dict(calculation_audit_passed=True,hold_completed=complete,live=live,
+        stop_reason=reason,target_heartbeats=audit.count,fixed_position_records=24,
+        maximum_bias_nm=audit.maximum_bias_nm,physical_handback_verified=False,
+        powered_takeover_qualified=False)
+    output.write_text(json.dumps(result,indent=2)+"\n")
+    print(json.dumps(result,indent=2))
 
 
 def main():
+    if len(sys.argv)==6 and sys.argv[1]=="--trial":
+        audit_position_trial(*map(pathlib.Path,sys.argv[2:]))
+        return
     directory, output = map(pathlib.Path, sys.argv[1:])
     assert not output.exists()
     session=json.loads((directory/"session.json").read_text())

@@ -1,0 +1,14 @@
+{
+  "format": "moonrobo.e1-position-hold-trial.v1",
+  "power_qualified": false,
+  "maximum_active_ms": 1000,
+  "shadow_audit_sha256": "14e323836ba6824014c7e4ab9a7b76810c4ed5638c762bc383b88e7076eb0f89",
+  "feedback": {
+    "format": "moonrobo.e1-position-hold-shadow.v1",
+    "power_qualified": false,
+    "integral_gain_nm_per_rad_s": 50.0,
+    "bias_limit_nm": [0, 0, 0, 0, 0, 4.5, 4.5, 7.5, 7.5, 3.5, 3.5, 0, 0, 0, 0, 0, 4.5, 4.5, 7.5, 7.5, 3.5, 3.5, 0, 0],
+    "slew_limit_nm_per_s": [0, 0, 0, 0, 0, 4.5, 4.5, 7.5, 7.5, 3.5, 3.5, 0, 0, 0, 0, 0, 4.5, 4.5, 7.5, 7.5, 3.5, 3.5, 0, 0],
+    "maximum_error_rad": 0.017453292519943295
+  }
+}

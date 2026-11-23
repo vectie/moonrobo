@@ -54,6 +54,14 @@ async fn main {
     )
   }
   let live = kind == "live"
+  let position_trial = @env.get_env_var("MOONROBO_E1_POSITION_HOLD_TRIAL")
+  if position_trial is Some(path) {
+    guard stage == "hold" && @fs.exists(path) &&
+      @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW") is None &&
+      @env.get_env_var("MOONROBO_E1_REPORTED_EFFORT_SHADOW") != Some("1") else {
+      fail("finite position-feedback commissioning is a separate hold-only stage")
+    }
+  }
   if @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW") is Some(_) {
     guard !live && stage == "hold" else {
       fail("position-feedback experiment requires a receive-only hold shadow")
@@ -92,6 +100,12 @@ async fn main {
     ]
   } else {
     [dir + "/shadow-sink.ndjson"]
+  }
+  if live && position_trial is Some(profile) {
+    guard @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW_AUDIT") is Some(audit) && @fs.exists(audit) else {
+      fail("position-feedback shadow evidence required before commissioning")
+    }
+    sender_args.append(["--position-hold-trial", profile, "--position-hold-shadow-audit", audit])
   }
   if live &&
     (stage == "elbow" || stage == "typing-elbows" || stage == "actor-elbows") {

@@ -32,6 +32,13 @@ async fn main {
       fail("position-feedback experiment cannot create live command publishers or actor stages")
     }
   }
+  if @env.get_env_var("MOONROBO_E1_POSITION_HOLD_TRIAL") is Some(path) {
+    guard stage == "hold" && @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW") is None &&
+      @env.get_env_var("MOONROBO_E1_REPORTED_EFFORT_SHADOW") != Some("1") &&
+      @fs.exists(path) && @fs.exists(required("MOONROBO_E1_POSITION_HOLD_SHADOW_AUDIT")) else {
+      fail("finite position-hold trial requires separate evidence and hold-only admission")
+    }
+  }
   let deploy = required("MOONROBO_E1_DEPLOY_DIR")
   let coordinator = required("MOONROBO_E1_COORDINATOR")
   let controller = required(

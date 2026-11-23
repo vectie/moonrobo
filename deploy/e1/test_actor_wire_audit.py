@@ -1,9 +1,17 @@
 """Network-free tests of captured actor frame/proposal identity and freshness."""
 import copy
 import unittest
-from e1_command_packets import actor_wire_matches, motor_signature
+from e1_command_packets import actor_wire_matches, position_hold_wire_matches, motor_signature
 
 class ActorWireTests(unittest.TestCase):
+    def test_position_hold_wire_requires_identical_effort_and_fresh_clocks(self):
+        values=[dict(motor_id=i,pos=0.,vel=0.,tau=.01 if i==7 else 0.,kp=50.,kd=5.) for i in range(24)]
+        proposals={motor_signature(values):[dict(receipt_ms="1000",telemetry_receipt_ms="1000")]}
+        self.assertTrue(position_hold_wire_matches(values,1001000123,1001000,proposals))
+        self.assertFalse(position_hold_wire_matches(values,1041000000,1041000,proposals))
+        self.assertFalse(position_hold_wire_matches(values,999000000,999000,proposals))
+        changed=copy.deepcopy(values);changed[7]["tau"]+=.01
+        self.assertFalse(position_hold_wire_matches(changed,1001000123,1001000,proposals))
     def test_identical_fresh_proposal_matches_and_changed_wire_values_fail(self):
         values=[dict(motor_id=i,pos=0.,vel=0.,tau=0.,kp=50.,kd=5.) for i in range(24)]
         row=dict(receipt_ms="1000",telemetry_receipt_ms="1000",

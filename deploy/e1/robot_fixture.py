@@ -11,6 +11,8 @@ motor=DataReader(p,Topic(p,"Motor_Cmd_Topic",MotorCmdArray),qos=Qos(Policy.Relia
  Policy.Liveliness.Automatic(lease_duration=500000000),Policy.Deadline(deadline=2000000),Policy.History.KeepLast(256)))
 mode=DataReader(p,Topic(p,"Control_Mode_Topic",SetMode))
 baseline=None; count=0; peak=0.; last=0.; modes=[]; seen=False; first=None; finish=None
+position_hold=len(sys.argv)>2 and sys.argv[2]=="position-hold"
+maximum_position_hold_bias_nm=0.
 raised=len(sys.argv)>2 and sys.argv[2]=="raised-drums"
 typing=len(sys.argv)>2 and sys.argv[2]=="typing-elbows"
 actor=len(sys.argv)>2 and sys.argv[2]=="actor-elbows"
@@ -40,6 +42,13 @@ while time.monotonic()<end:
         assert len(values)==24 and [x["motor_id"] for x in values]==list(range(24))
         if baseline is None:baseline=values;first=time.monotonic()
         for i,m in enumerate(values):
+            if position_hold:
+                assert all(m[k]==baseline[i][k] for k in ("motor_id","pos","vel","kp","kd"))
+                if i==7:
+                    assert 0<=m["tau"]<.1
+                    maximum_position_hold_bias_nm=max(maximum_position_hold_bias_nm,m["tau"])
+                else:assert m["tau"]==0
+                continue
             if i not in ((3,14) if drums else (3,)):assert m==baseline[i]
             for name in ("kp","kd","tau","vel"):assert m[name]==baseline[i][name]
         last=math.degrees(values[3]["pos"]-baseline[3]["pos"])
@@ -74,6 +83,7 @@ while time.monotonic()<end:
 assert finish is not None,"DDS writer still alive"
 assert modes in ([],[2]),modes
 pathlib.Path(sys.argv[1]).write_text(json.dumps({"motor_samples":count,"motor_records_checked":24*count,
+ "maximum_position_hold_bias_nm":maximum_position_hold_bias_nm,
  "mode_requests":modes,"elbow_peak_deg":peak,"elbow_final_deg":last,"right_peak_deg":right_peak,
  "right_final_deg":right_last,"left_strokes":left_strokes,"right_strokes":right_strokes,"max_other_target_delta":0,
  "left_absolute_min":left_absolute_min,"right_absolute_min":right_absolute_min,"left_drop":left_drop,"right_drop":right_drop,

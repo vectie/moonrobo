@@ -15,7 +15,8 @@ async fn read_status() -> (@ankle.Packet, Array[Double]?) {
   decode_status(
     value,
     position_only=@env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW")
-      is Some(_),
+      is Some(_) ||
+      @env.get_env_var("MOONROBO_E1_POSITION_HOLD_TRIAL") is Some(_),
   )
 }
 

@@ -32,6 +32,20 @@ async fn commission(
       Some(settings)
     }
   }
+  let position_trial : @elbow.PositionHoldTrialSettings? = match
+    @env.get_env_var("MOONROBO_E1_POSITION_HOLD_TRIAL") {
+    None => None
+    Some(path) => {
+      guard stage == "hold" && !effort_shadow && position_settings is None else {
+        fail("position hold commissioning is a separate hold-only request")
+      }
+      let settings : @elbow.PositionHoldTrialSettings = @json.from_json(
+        @fs.read_file(path).json(),
+      )
+      settings.validate()
+      Some(settings)
+    }
+  }
   guard stage == "hold" ||
     stage == "elbow" ||
     stage == "elbow90" ||
@@ -53,6 +67,9 @@ async fn commission(
       }
       Some(@json.from_json(@fs.read_file(path).json()))
     }
+  }
+  guard position_trial is None || current_pose is Some(_) else {
+    fail("position hold commissioning requires explicit measured-pose profile")
   }
   let (opening, opening_tau) = @async.with_timeout(10000, read_status)
   let (first, first_tau) = if opening.starts_on_standing_spike() {
@@ -183,6 +200,10 @@ async fn commission(
               position_hold = Some(
                 PositionHoldExperiment::new(settings, p, shadow~),
               )
+            } else if position_trial is Some(settings) {
+              position_hold = Some(
+                PositionHoldExperiment::new_trial(settings, p),
+              )
             }
             active_start = now
             if current_pose is Some(_) {
@@ -228,7 +249,9 @@ async fn commission(
             // A longer receive-only window exercises the experimental
             // integrator. Existing powered and other shadow stages keep their
             // one-second initial hold.
-            let initial_hold_ms = if position_hold is Some(_) {
+            let initial_hold_ms = if position_trial is Some(_) {
+              1000L
+            } else if position_hold is Some(_) {
               15000L
             } else {
               1000L
@@ -331,7 +354,16 @@ async fn commission(
               "kind": "target",
               "shadow": Json(shadow),
               "reported_leg_effort_shadow": effort_seed,
-              "position_hold_shadow": position_meta,
+              "position_hold_shadow": if position_trial is None {
+                position_meta
+              } else {
+                Json::null()
+              },
+              "position_hold_trial": if position_trial is Some(_) {
+                position_meta
+              } else {
+                Json::null()
+              },
               "current_pose_commissioning": current_pose
               .map(p => p.to_json())
               .unwrap_or(Json::null()),
@@ -384,7 +416,16 @@ async fn commission(
     "software_stage_completed": true,
     "shadow": Json(shadow),
     "reported_leg_effort_shadow": effort_seed,
-    "position_hold_shadow": position_meta,
+    "position_hold_shadow": if position_trial is None {
+      position_meta
+    } else {
+      Json::null()
+    },
+    "position_hold_trial": if position_trial is Some(_) {
+      position_meta
+    } else {
+      Json::null()
+    },
     "fixed_position_records": if stage == "hold" {
       24
     } else if dual {
@@ -410,7 +451,9 @@ async fn commission(
     .map(p => p.to_json())
     .unwrap_or(Json::null()),
     "physical_handback_verified": false,
-    "leg_acceptance": if position_hold is Some(_) {
+    "leg_acceptance": if position_trial is Some(_) {
+      "finite one-second position-feedback commissioning; fixed targets; stationary/glitch guard"
+    } else if position_hold is Some(_) {
       "fixed raw position targets; bounded position-error effort shadow; stationary/glitch guard"
     } else if current_pose is Some(_) {
       "explicit measured raw-pose hold; stationary/glitch guard; all targets fixed"

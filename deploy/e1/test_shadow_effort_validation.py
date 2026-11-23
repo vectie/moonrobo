@@ -3,7 +3,8 @@ import json
 import pathlib
 import tempfile
 import unittest
-from shadow_effort_validation import PositionHoldAudit, validate_shadow_effort, verify_seed_capture, LEGS
+from shadow_effort_validation import PositionHoldAudit, load_position_trial, validate_position_trial_profile, validate_shadow_effort, verify_seed_capture, LEGS
+import time
 from test_drum_transport import row
 from january_transport import validate_frame
 
@@ -131,6 +132,64 @@ class PositionFeedbackTests(unittest.TestCase):
         current["shadow"]=False
         with self.assertRaisesRegex(AssertionError,"unqualified position feedback"):
             validate_frame(current,None,None,"hold")
+
+
+def trial_candidates():
+    profile=json.loads(pathlib.Path(__file__).with_name("position-hold-trial.json").read_text())
+    rows=position_candidates()
+    start=time.time_ns()//1000000-20
+    for tick,current in enumerate(rows):
+        meta=current.pop("position_hold_shadow")
+        meta["settings"]=copy.deepcopy(profile["feedback"])
+        meta["trial_profile"]=copy.deepcopy(profile)
+        meta["seed_arrival_ns"]=str(start*1000000)
+        meta["input_arrival_ns"]=str((start+tick*20)*1000000)
+        current.update(shadow=False,position_hold_trial=meta,
+            receipt_ms=str(start+tick*20),telemetry_receipt_ms=str(start+tick*20))
+        knee=-0.00476837158203125
+        current["motors"][19]["pos"]=meta["seed_position"][19]=meta["input_position"][19]=knee
+        current["current_pose_commissioning"]=dict(format="moonrobo.e1-current-pose-commissioning.v1",
+            scope="unchanged-raw-hold-and-elbows-only",expected_knee_raw_rad=knee,evidence_sha256="a"*64)
+    return profile,rows
+
+
+class PositionHoldTrialTests(unittest.TestCase):
+    def test_live_trial_requires_explicit_profile_and_independent_math(self):
+        profile,(first,second)=trial_candidates()
+        with self.assertRaisesRegex(AssertionError,"explicit finite"):
+            validate_frame(first,None,None,"hold")
+        validator=PositionHoldAudit(profile)
+        baseline=validate_frame(first,None,None,"hold",position_validator=validator)
+        validate_frame(second,baseline,first,"hold",position_validator=validator)
+        self.assertGreater(second["motors"][7]["tau"],0)
+        self.assertEqual([m["pos"] for m in baseline],[m["pos"] for m in second["motors"]])
+
+    def test_trial_rejects_forged_effort_changed_positions_and_missing_metadata(self):
+        for fault in ("effort","position","gain","metadata","nonleg","shadow"):
+            profile,(first,second)=trial_candidates()
+            validator=PositionHoldAudit(profile)
+            baseline=validate_frame(first,None,None,"hold",position_validator=validator)
+            if fault=="effort":second["motors"][7]["tau"]+=.1
+            if fault=="position":second["motors"][7]["pos"]+=.001
+            if fault=="gain":second["motors"][7]["kp"]+=1
+            if fault=="metadata":second.pop("position_hold_trial")
+            if fault=="nonleg":second["motors"][3]["tau"]+=.1
+            if fault=="shadow":second["shadow"]=True
+            with self.subTest(fault=fault),self.assertRaises(AssertionError):
+                validate_frame(second,baseline,first,"hold",position_validator=validator)
+
+    def test_profile_and_shadow_evidence_cannot_be_silently_changed(self):
+        profile,_=trial_candidates()
+        for field,value in (("maximum_active_ms",15000),("power_qualified",True)):
+            changed=copy.deepcopy(profile)
+            changed[field]=value
+            with self.assertRaises(AssertionError):validate_position_trial_profile(changed)
+        with tempfile.TemporaryDirectory() as directory:
+            config=pathlib.Path(directory)/"trial.json"
+            evidence=pathlib.Path(directory)/"proof.json"
+            config.write_text(json.dumps(profile))
+            evidence.write_text("{}")
+            with self.assertRaisesRegex(AssertionError,"digest mismatch"):load_position_trial(config,evidence)
 
 
 if __name__=="__main__":unittest.main()

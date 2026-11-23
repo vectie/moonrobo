@@ -1,6 +1,31 @@
 """Independent validation of an unqualified, non-publishable effort hypothesis."""
 import json
 import math
+import hashlib
+
+
+def validate_position_trial_profile(profile):
+    assert profile["format"] == "moonrobo.e1-position-hold-trial.v1"
+    assert profile["power_qualified"] is False and profile["maximum_active_ms"] == 1000
+    digest=profile["shadow_audit_sha256"]
+    assert len(digest)==64 and all(c in "0123456789abcdef" for c in digest)
+    settings=profile["feedback"]
+    assert settings["format"]=="moonrobo.e1-position-hold-shadow.v1" and settings["power_qualified"] is False
+    assert settings["integral_gain_nm_per_rad_s"]==50. and settings["maximum_error_rad"]==math.pi/180
+    expected=[7.5 if i in (7,8,18,19) else 4.5 if i in (5,6,16,17) else 3.5 if i in (9,10,20,21) else 0. for i in range(24)]
+    assert settings["bias_limit_nm"]==expected and settings["slew_limit_nm_per_s"]==expected
+
+
+def load_position_trial(profile_path, shadow_audit_path):
+    profile=json.loads(profile_path.read_text())
+    validate_position_trial_profile(profile)
+    proof=shadow_audit_path.read_bytes()
+    assert hashlib.sha256(proof).hexdigest()==profile["shadow_audit_sha256"], "shadow evidence digest mismatch"
+    evidence=json.loads(proof)
+    assert evidence["passed"] is True and evidence["position_feedback_shadow"] is True
+    assert evidence["command_writers_created"] is False and evidence["powered_takeover_qualified"] is False
+    assert evidence["fixed_position_records"]==24 and evidence["target_heartbeats"]>=1000
+    return profile
 
 LEGS = tuple(range(5, 11)) + tuple(range(16, 22))
 
@@ -11,7 +36,10 @@ class PositionHoldAudit:
     This verifies a shadow calculation, never the response of a powered joint.
     Reported torque is deliberately not an input to the calculation or admission.
     """
-    def __init__(self):
+    def __init__(self, trial_profile=None):
+        if trial_profile is not None:validate_position_trial_profile(trial_profile)
+        self.trial_profile=trial_profile
+        self.started_ms=self.shadow=None
         self.seed = self.settings = self.baseline = self.previous = None
         self.bias = [0.]*24
         self.inputs = {}
@@ -19,10 +47,23 @@ class PositionHoldAudit:
         self.maximum_bias_nm = 0.
 
     def observe(self, row):
-        assert row["shadow"] is True and row["stage"] == "hold"
+        assert row["stage"] == "hold"
+        if self.trial_profile is None:
+            assert row["shadow"] is True and row.get("position_hold_trial") is None
+            meta = row["position_hold_shadow"]
+        else:
+            assert row.get("position_hold_shadow") is None
+            assert type(row["shadow"]) is bool
+            if self.shadow is None:self.shadow=row["shadow"]
+            assert row["shadow"]==self.shadow
+            meta=row["position_hold_trial"]
+            assert meta["trial_profile"]==self.trial_profile
+            assert meta["settings"]==self.trial_profile["feedback"]
+            if self.started_ms is None:self.started_ms=int(row["receipt_ms"])
+            assert 0<=int(row["receipt_ms"])-self.started_ms<=1000
+        assert row["sequence"]==self.count
         assert row["action"] == 11 and row["axes"] == [0., 0.]
         assert row.get("reported_leg_effort_shadow") is None
-        meta = row["position_hold_shadow"]
         assert meta["power_qualified"] is False
         settings = meta["settings"]
         assert settings["format"] == "moonrobo.e1-position-hold-shadow.v1"

@@ -21,6 +21,7 @@ from cyclonedds.builtin import BuiltinDataReader, BuiltinTopicDcpsPublication
 from cyclonedds.dynamic import get_types_for_typeid
 from cyclonedds.util import duration
 from actor_validation import ActorValidator
+from shadow_effort_validation import LEGS, PositionHoldAudit, load_position_trial
 
 @a.final
 @dataclasses.dataclass
@@ -92,11 +93,15 @@ def validate_current_pose_profile(profile, motors, stage):
     for slot,(lower,upper) in bounds.items():
         assert math.radians(lower)<=motors[slot]["pos"]<=math.radians(upper), "uncommissioned leg range discrepancy"
 
-def validate_frame(row, baseline, previous, stage, actor_validator=None):
+def validate_frame(row, baseline, previous, stage, actor_validator=None, position_validator=None):
     dual=stage in ("drums","raised-drums","typing-elbows","actor-elbows")
     assert not row.get("shadow",False), "shadow targets cannot drive live transport"
     assert row.get("position_hold_shadow") is None, "unqualified position feedback cannot drive live transport"
     assert row.get("reported_leg_effort_shadow") is None, "unqualified reported effort cannot drive live transport"
+    if row.get("position_hold_trial") is not None:
+        assert stage=="hold" and position_validator is not None, "explicit finite position-hold trial required"
+    else:
+        assert position_validator is None, "position-hold trial metadata disappeared"
     assert row["kind"]=="target" and row["stage"]==stage and row["profile"]=="suspended"
     assert row["action"]==11 and row["axes"]==[0,0]
     motors=row["motors"]
@@ -107,15 +112,22 @@ def validate_frame(row, baseline, previous, stage, actor_validator=None):
     assert row["sequence"] == (previous["sequence"]+1 if previous else 0)
     for i,m in enumerate(motors):
         assert all(math.isfinite(m[k]) for k in ("pos","vel","tau","kp","kd"))
-        assert m["vel"]==m["tau"]==0
+        assert m["vel"]==0
+        if position_validator is None or i not in LEGS:assert m["tau"]==0
         assert m["kp"]==(0 if i==23 else 50)
         assert m["kd"]==(1 if i in (9,10,20,21) else 5)
         movable = (3,14) if dual else (3,)
-        if baseline and (i not in movable or stage=="hold"): assert m==baseline[i]
+        if baseline and (i not in movable or stage=="hold"):
+            if position_validator is not None and i in LEGS:
+                assert all(m[k]==baseline[i][k] for k in ("motor_id","pos","vel","kp","kd"))
+            else:assert m==baseline[i]
     assert motors[23]["pos"]==0 and -2.44 <= motors[3]["pos"] <=0
     validate_current_pose_profile(row.get("current_pose_commissioning"),motors,stage)
     if previous:
         assert row.get("current_pose_commissioning")==previous.get("current_pose_commissioning"), "commissioning profile changed"
+    if position_validator is not None:
+        assert row.get("current_pose_commissioning") is not None
+        position_validator.observe(row)
     if dual:
         assert all(-math.radians(130)<=motors[slot]["pos"]<=0 for slot in (3,14))
     if stage=="actor-elbows":
@@ -172,6 +184,8 @@ def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--stage",required=True,choices=("hold","elbow","elbow90","drums","raised-drums","typing-elbows","actor-elbows"))
     ap.add_argument("--actor-profile")
+    ap.add_argument("--position-hold-trial")
+    ap.add_argument("--position-hold-shadow-audit")
     ap.add_argument("--live",action="store_true")
     ap.add_argument("--execute",action="store_true")
     ap.add_argument("--peer-prefix",default="")
@@ -181,6 +195,13 @@ def main():
     ap.add_argument("--receipt",required=True)
     args=ap.parse_args()
     actor_validator=None
+    position_validator=None
+    position_profile=None
+    if args.position_hold_trial:
+        assert args.stage=="hold" and args.position_hold_shadow_audit
+        position_profile=load_position_trial(pathlib.Path(args.position_hold_trial),pathlib.Path(args.position_hold_shadow_audit))
+        position_validator=PositionHoldAudit(position_profile)
+    else:assert args.position_hold_shadow_audit is None
     handback_profile=None
     if args.stage=="actor-elbows":
         assert args.actor_profile, "actor profile required"
@@ -201,6 +222,7 @@ def main():
             assert previous["peer_prefix"]==args.peer_prefix
             assert previous.get("operator_confirmed_factory_control") is True
             assert previous.get("hold_session_verified") is True
+            assert previous.get("position_hold_trial") is None, "position-feedback hold trial does not commission actor takeover"
             assert 0<=time.time()-previous["finished_epoch"]<=600
             handback_profile=previous.get("current_pose_commissioning")
     else:
@@ -282,7 +304,7 @@ def main():
                     if row["kind"]=="stop":
                         result=row["reason"]
                         return
-                    motors=validate_frame(row,baseline,latest,args.stage,actor_validator)
+                    motors=validate_frame(row,baseline,latest,args.stage,actor_validator,position_validator)
                     if args.live and args.stage=="actor-elbows":
                         assert row.get("current_pose_commissioning")==handback_profile, "hold and actor commissioning profiles differ"
                     if baseline is None:baseline=motors
@@ -323,6 +345,7 @@ def main():
             "finished_epoch":time.time(),"action":11,"axes":[0,0],"mode_request":2,
             "mode_requests_sent":modes,"motor_samples_sent":count,"live":args.live,
             "current_pose_commissioning":None if latest is None else latest.get("current_pose_commissioning"),
+            "position_hold_trial":position_profile,
             "participant_deleted":True,"active_seconds":None if first_send is None else last_send-first_send}
         pathlib.Path(args.receipt).write_text(json.dumps(receipt,indent=2)+"\n")
 

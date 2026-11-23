@@ -45,7 +45,7 @@ async fn main {
         let fixture = @process.spawn(
           g,
           python,
-          ["-B", "robot_fixture.py", dir + "/wire.json", stage],
+          ["-B", "robot_fixture.py", dir + "/wire.json", if scenario == "position-hold" { scenario } else { stage }],
           stderr=@process.redirect_to_file(
             dir + "/fixture.log",
             create_mode=CreateNew,
@@ -56,19 +56,20 @@ async fn main {
         let (source_read, source_output) = @process.read_from_process()
         let (commands, command_feed) = @process.write_to_process()
         let (command_read, planner_output) = @process.read_from_process()
+        let sender_args = [
+            "-B", "january_transport.py", "--stage", stage,
+            "--ready", dir + "/ready.json", "--receipt", dir + "/transport.json",
+        ]
+        if scenario == "position-hold" {
+          sender_args.append([
+            "--position-hold-trial", @env.get_env_var("MOONROBO_E1_POSITION_HOLD_TRIAL").unwrap(),
+            "--position-hold-shadow-audit", @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW_AUDIT").unwrap(),
+          ])
+        }
         let sender = @process.spawn(
           g,
           python,
-          [
-            "-B",
-            "january_transport.py",
-            "--stage",
-            stage,
-            "--ready",
-            dir + "/ready.json",
-            "--receipt",
-            dir + "/transport.json",
-          ],
+          sender_args,
           stdin=commands,
           stderr=@process.redirect_to_file(
             dir + "/transport.log",
@@ -154,6 +155,7 @@ async fn main {
         let sender_status = sender.wait()
         guard fixture.wait() == 0 else { fail("wire receiver failed") }
         let expected_complete = scenario == "hold" ||
+          scenario == "position-hold" ||
           scenario == "recorded-hold" ||
           scenario == "settling" ||
           scenario == "elbow" ||
@@ -190,6 +192,11 @@ async fn main {
           )
         }
         let wire = @fs.read_file(dir + "/wire.json").json()
+        if scenario == "position-hold" {
+          guard wire is { "maximum_position_hold_bias_nm": Number(bias, ..), .. } && bias > 0.02 && bias < 0.1 else {
+            fail("isolated position feedback did not reach the DDS wire")
+          }
+        }
         guard wire
           is {
             "motor_and_mode_writers_disconnected": True,
