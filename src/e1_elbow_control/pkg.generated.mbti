@@ -75,6 +75,24 @@ pub fn Path::cancel(Self) -> Unit
 pub fn Path::new(Clip, ArrayView[@sdk_e1_low.MotorCommand], suspended? : Bool) -> Self raise
 pub fn Path::next(Self, Sample, Int64) -> Array[@sdk_e1_low.MotorCommand] raise
 
+pub(all) struct PositionHoldSettings {
+  format : String
+  power_qualified : Bool
+  integral_gain_nm_per_rad_s : Double
+  bias_limit_nm : Array[Double]
+  slew_limit_nm_per_s : Array[Double]
+  maximum_error_rad : Double
+} derive(ToJson, @json.FromJson)
+pub fn PositionHoldSettings::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PositionHoldSettings::to_json(Self) -> Json
+pub fn PositionHoldSettings::validate(Self) -> Unit raise
+
+pub struct PositionHoldShadow {
+  // private fields
+}
+pub fn PositionHoldShadow::new(PositionHoldSettings, Sample, shadow~ : Bool) -> Self raise
+pub fn PositionHoldShadow::next(Self, Sample, Int64, shadow~ : Bool) -> Array[@sdk_e1_low.MotorCommand] raise
+
 pub(all) struct Sample {
   source_ns : Int64
   receipt_ms : Int64
