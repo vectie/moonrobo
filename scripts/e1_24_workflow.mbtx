@@ -1,0 +1,398 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+async fn read(path : String) -> Json {
+  @json.parse(@utf8.decode(@fs.read_file(path).binary()))
+}
+
+///|
+fn[T : FromJson] field(value : Json, name : String) -> T raise {
+  guard value is Object(fields) && fields.get(name) is Some(v) else {
+    fail(name)
+  }
+  @json.from_json(v)
+}
+
+///|
+async fn command(name : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(name, args)
+  guard code == 0 else { fail(name + ": " + err.text()) }
+  out.text().trim().to_owned()
+}
+
+///|
+async fn sha(path : String) -> String {
+  command("sha256sum", [path]).split(" ").collect()[0].to_owned()
+}
+
+///|
+async fn save(path : String, value : Json) -> Unit {
+  @fs.write_file(
+    path + ".tmp",
+    @utf8.encode(value.stringify(indent=2)),
+    create_mode=CreateOrTruncate,
+  )
+  @fs.rename(path + ".tmp", path, replace=true)
+}
+
+///|
+async fn main {
+  guard @env.args() is [_, root, mode] &&
+    ["build", "prepare", "run", "continue"].contains(mode) else {
+    fail("e1_24_workflow.mbtx RUN_ROOT build|prepare|run|continue")
+  }
+  let base = "/home/wlc004s/moonrobo"
+  assert_eq(root, base + "/private/e1-24-retrain-20261120")
+  let prior = base + "/private/e1-arm-retrain-20261115"
+  let parent = base + "/private/e1-arm-ft-20261115/data"
+  let original = base + "/private/e1-native-20261110"
+  let assets = root + "/vendor/assets"
+  let mj = "/opt/isaaclab-venv/lib/python3.12/site-packages/mujoco/libmujoco.so.3.15.0"
+  let tensor = original + "/libmoonrobo_learning_tensor.so"
+  let source = root + "/src/moonrobo"
+  let binary = root + "/e1-train"
+  let image = "sha256:5b1332bafb8e0bd31065cfd4a7ea2d57b81dd68f96c4cb6b4ebac477bf921b23"
+  if mode == "continue" {
+    let unit = "moonrobo-e1-24-prepare-v2-20261120.service"
+    while command("systemctl", [
+            "--user", "show", unit, "--property=ActiveState", "--value",
+          ]) ==
+          "active" {
+      @async.sleep(30000)
+    }
+    assert_eq(
+      command("systemctl", [
+        "--user", "show", unit, "--property=Result", "--value",
+      ]),
+      "success",
+    )
+    assert_true(
+      read(root + "/status.json") is { "stage": "references_ready", .. },
+    )
+  }
+  async fn stage(
+    name : String,
+    executable : String,
+    args : Array[String],
+    gpu : Bool,
+  ) -> Unit {
+    let tag = "moonrobo-e1-24-" + name + "-20261120"
+    let (exists, out, _) = @process.collect_output("docker", [
+      "inspect", "--format", "{{json .State}}", tag,
+    ])
+    if exists == 0 {
+      guard @json.parse(out.text())
+        is {
+          "Status": "exited",
+          "ExitCode": Number(0, ..),
+          "OOMKilled": False,
+          ..
+        } else {
+        fail("prior stage needs inspection: " + tag)
+      }
+      return
+    }
+    if gpu {
+      guard command("nvidia-smi", [
+          "--query-compute-apps=pid", "--format=csv,noheader,nounits",
+        ]) ==
+        "" else {
+        save(root + "/status.json", {
+          "stage": name,
+          "state": "waiting_for_free_gpu",
+          "reason": "Another compute process owns the GPU. Rerun workflow in run mode when free.",
+        })
+        fail(
+          "GPU has another compute process; existing work was not interrupted",
+        )
+      }
+    }
+    let limit = if gpu { "100g" } else { "20g" }
+    let options = [
+      "run",
+      "--name",
+      tag,
+      "--label",
+      "moonrobo.run=" + root,
+      "--network",
+      "none",
+      "--user",
+      "1000:1000",
+      "--cpus",
+      "4",
+      "--memory",
+      limit,
+      "--memory-swap",
+      limit,
+      "--pids-limit",
+      "512",
+      "--cap-drop",
+      "ALL",
+      "--security-opt",
+      "no-new-privileges",
+      "-v",
+      base + ":" + base + ":ro",
+      "-v",
+      root + ":" + root,
+      "--workdir",
+      source,
+      "-e",
+      "MOON_HOME=" + base + "/toolchain",
+      "-e",
+      "PATH=" + base + "/toolchain/bin:/usr/local/bin:/usr/bin:/bin",
+      "-e",
+      "CPATH=" + original + "/mujoco-include",
+      "-e",
+      "OMP_NUM_THREADS=1",
+      "-e",
+      "MKL_NUM_THREADS=1",
+      "-e",
+      "MOONROBO_TENSOR_LIBRARY=" + tensor,
+      "-e",
+      "MOONROBO_MUJOCO_LIBRARY=" + mj,
+      "-e",
+      "MOONROBO_E1_RETRAIN_DATASET=" + root + "/data-24",
+      "-e",
+      "MOONROBO_E1_DATASET=" + root + "/data-24",
+    ]
+    if gpu {
+      options.append(["--gpus", "device=0"])
+    }
+    if name == "archive-check" {
+      options.append([
+        "-e",
+        "MOONROBO_E1_ACTOR=" + root + "/gate/evaluation-2/actor",
+        "-e",
+        "MOONROBO_E1_CHECKPOINT=" + root + "/gate/current.json",
+      ])
+    }
+    options.append(["--entrypoint", executable, image])
+    options.append(args)
+    save(root + "/status.json", {
+      "stage": name,
+      "container": tag,
+      "args": args,
+      "state": "starting",
+    })
+    let log = @process.redirect_to_file(
+      root + "/" + name + ".log",
+      create_mode=CreateNew,
+    )
+    let code = @process.run("docker", options, stdout=log, stderr=log)
+    let state = @json.parse(
+      command("docker", ["inspect", "--format", "{{json .State}}", tag]),
+    )
+    save(root + "/" + name + "-exit.json", state)
+    save(root + "/status.json", {
+      "stage": name,
+      "container": tag,
+      "state": "exited",
+      "result": state,
+    })
+    assert_true(
+      code == 0 &&
+      state is { "ExitCode": Number(0, ..), "OOMKilled": False, .. },
+    )
+  }
+  if mode == "build" {
+    stage(
+      "build-retarget",
+      base + "/toolchain/bin/moon",
+      [
+        "build", "cmd/e1_train", "--release", "--target", "native", "--frozen", "-j",
+        "2",
+      ],
+      false,
+    )
+    ignore(
+      command("cp", [
+        source +
+        "/_build/native/release/build/vectie/moonrobo/cmd/e1_train/e1_train.exe",
+        binary,
+      ]),
+    )
+    save(root + "/build.json", {
+      "binary_sha256": sha(binary),
+      "source_model_validation_sha256": sha(
+        source + "/src/learning_e1_training/model_validation.mbt",
+      ),
+      "source_reembody_sha256": sha(
+        source + "/src/learning_e1_training/reembody.mbt",
+      ),
+      "image": image,
+      "baseline": prior + "/src",
+    })
+    return
+  }
+  assert_eq(
+    sha(binary),
+    (field(read(root + "/build.json"), "binary_sha256") : String),
+  )
+  if mode == "prepare" {
+    stage(
+      "scene",
+      binary,
+      [
+        "prepare",
+        "--lab-assets",
+        assets,
+        "--joints",
+        "24",
+        "--output",
+        root + "/staged-24",
+      ],
+      false,
+    )
+    stage(
+      "model",
+      binary,
+      [
+        "validate-model",
+        "--lab-assets",
+        assets,
+        "--dataset",
+        root + "/staged-24",
+        "--library",
+        mj,
+        "--output",
+        root + "/model-validation",
+      ],
+      false,
+    )
+    let audit = read(root + "/model-validation/validation.json")
+    assert_true(
+      audit is { "passed": True, "target_waist_roll_locked": False, .. },
+    )
+    stage(
+      "retarget",
+      binary,
+      [
+        "prepare-reembodied",
+        "--training-dataset",
+        parent,
+        "--dataset",
+        root + "/staged-24",
+        "--lab-assets",
+        assets,
+        "--library",
+        mj,
+        "--g1-directory",
+        base + "/private/e1-arm-ft-20261115/lafan",
+        "--bones-directory",
+        base + "/private/bones-seed/aligned-g1-v1",
+        "--g1-scene",
+        base + "/private/e1-panel40-20261111/g1/scene.xml",
+        "--model-validation",
+        root + "/model-validation/validation.json",
+        "--output",
+        root + "/data-24",
+      ],
+      false,
+    )
+    stage(
+      "tests-v2",
+      base + "/toolchain/bin/moon",
+      [
+        "test", "src/learning_e1_training", "--release", "--target", "native", "--frozen",
+        "-j", "2",
+      ],
+      false,
+    )
+    save(root + "/status.json", {
+      "stage": "references_ready",
+      "admission": read(root + "/data-24/admission.json"),
+    })
+    return
+  }
+  let admission = read(root + "/data-24/admission.json")
+  assert_true(
+    read(root + "/tests-v2-exit.json")
+    is { "ExitCode": Number(0, ..), "OOMKilled": False, .. },
+  )
+  assert_true(admission is { "passed": True, .. })
+  assert_eq(
+    (field(admission, "dataset_sha256") : String),
+    sha(root + "/data-24/dataset.json"),
+  )
+  save(root + "/experiment.json", {
+    "purpose": "24-joint simulation experiment explicitly retained after confirming the hardware has 23 motors",
+    "simulated_actuators": 24,
+    "hardware_motors": 23,
+    "hardware_deployment": false,
+    "binary_sha256": sha(binary),
+    "dataset_sha256": sha(root + "/data-24/dataset.json"),
+    "reference_parent": parent,
+    "training_baseline": prior,
+  })
+  if !@fs.exists(root + "/training.json") {
+    ignore(command("cp", [prior + "/training.json", root + "/training.json"]))
+    let config = read(root + "/training.json")
+    guard config is Object(fields) else { fail("invalid training config") }
+    fields["world_only_iterations"] = Json(0)
+    fields["checkpoint_every"] = Json(1)
+    fields["learning_rate_decay_iterations"] = Json(2)
+    save(root + "/gate.json", config)
+  }
+  let common = [
+    "--dataset",
+    root + "/data-24",
+    "--library",
+    mj,
+    "--tensor-library",
+    tensor,
+    "--device",
+    "0",
+  ]
+  for
+    (tag, n, cadence, config) in [
+      ("gate", "2", "1", "gate.json"),
+      ("train", "14000", "500", "training.json"),
+    ] {
+    let args = ["train"] +
+      common +
+      [
+        "--config",
+        root + "/" + config,
+        "--iterations",
+        n,
+        "--evaluate-every",
+        cadence,
+        "--output",
+        root + "/" + tag,
+      ]
+    stage(tag, binary, args, true)
+    let report = read(root + "/" + tag + "/report.json")
+    assert_false((field(report, "diagnostic") : Bool))
+    let contract : Json = field(report, "contract")
+    assert_eq((field(contract, "physical_actions") : Int32), 24)
+    if tag == "gate" {
+      let counters : Json = field(report, "counters")
+      assert_eq((field(counters, "model_updates") : String), "20")
+      assert_eq((field(counters, "actor_updates") : String), "2")
+      assert_eq((field(counters, "critic_updates") : String), "40")
+      stage(
+        "archive-check",
+        base + "/toolchain/bin/moon",
+        [
+          "test", "src/learning_e1_training", "--release", "--target", "native",
+          "--frozen", "-j", "2", "--filter", "exported E1 actor matches checkpoint actions and rejects a corrupt receipt",
+        ],
+        false,
+      )
+    }
+  }
+  save(root + "/status.json", {
+    "stage": "training_completed",
+    "checkpoint": root + "/train/current.json",
+    "actor": root + "/train/evaluation-14000/actor",
+    "dataset_sha256": sha(root + "/data-24/dataset.json"),
+  })
+}
