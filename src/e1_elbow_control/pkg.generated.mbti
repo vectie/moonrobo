@@ -78,6 +78,7 @@ pub(all) struct Sample {
   receipt_ms : Int64
   motors : Array[Motor]
 } derive(@json.FromJson)
+pub fn Sample::effort_matched_candidate(Self, ArrayView[@sdk_e1_low.MotorCommand]) -> Array[@sdk_e1_low.MotorCommand] raise
 pub fn Sample::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn Sample::stand_candidate(Self) -> Array[@sdk_e1_low.MotorCommand] raise
 
