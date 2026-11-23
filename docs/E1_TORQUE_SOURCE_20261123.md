@@ -139,3 +139,61 @@ Local report copies are in ignored `output/e1-torque-source-20261123/`.
 `ready_for_powered_takeover:false`. The software counterfactual is exercised;
 the requested reliable holding-effort source and physical takeover fix remain
 unresolved under the read-only constraint.
+
+## Official online documentation and SDK search
+
+The old SDK-guide URL is obsolete. Noetix's document-center link now leads to
+the current [E1 comprehensive guide](https://web.noetixrobotics.com/docs/通用人形机器人/E1%20综合使用文档/),
+which was accessible during this follow-up. Its motor-state definition still
+contains position, velocity, reported torque, ID, error and temperature, without
+a torque-validity flag or individual field age. The generic status overview
+mentions gains, but the concrete state structure exposes no active gain/target
+snapshot. The documented error codes describe motor faults; no rule was found
+making an error-free zero a qualified holding-effort measurement.
+
+The official SDK repository was fetched independently of the existing `vectie/sdk`
+copy. All 16 public commits were reviewed through head
+`3055bdc644f61caf948d935ee274c5c48703c24f` dated 16 September 2026. The public
+branch list contains only `main`, with no tags. The issue history contains one
+merged January low-control PR and no torque-validity clarification. This is a
+search result within the reviewed public sources, not proof that Noetix has no
+private firmware/support documentation.
+
+The [current header](https://github.com/Noetix-Robotics/noetix_sdk_e1/blob/3055bdc644f61caf948d935ee274c5c48703c24f/include/lowcontroller.h)
+and Python binding expose hardware-status subscriptions, not factory active
+commands. The September callback migration `77c52e0` replaced the earlier
+getter interface without adding torque validity or a new effort source. The
+January callback/getter both copy the same reported `tau`. Inspection of the
+installed static archives found DDS serialization, callbacks, controller send
+methods and peripheral drivers; no callable alternate motor-effort readback
+was found. No SDK initializer was executed during that inspection.
+
+The legacy Feishu SDK link was not accessible through the search tool. It was
+not treated as reviewed content. No mode, parameter or firmware changes were
+attempted to expose otherwise undocumented telemetry. There is no verified
+new rule to apply to the takeover controller, so its power qualification and
+admission settings remain unchanged.
+
+The [source review receipt](evidence/e1-official-effort-source-20261123.json)
+pins the official commit and header blob identities. The precise remaining
+vendor question is whether these zeros mean measured zero or absent updates,
+how torque validity/age is represented, and how to read current factory
+holding effort before takeover. The evidence package is prepared for that
+clarification; no message was sent to Noetix.
+
+A fresh `.191` hold shadow (`official-source-hold-shadow-20261123-1`)
+completed 1,002 ms, 87 proposal heartbeats and 1,136 observed packets. Its
+independent seed/target audit passed with all 24 command records fixed. The
+relative leg guard stayed active: accepted variation was at most 0.0218566°,
+with five isolated left-ankle events and one right-only event cleared. The
+full passive capture retained 13,836 status samples. No motor/mode publisher
+was created, and planner/decoder/sink exits and feed diagnostics were clean.
+This rechecks the existing unqualified counterfactual, not a new validity rule
+or a physical hold. The unchanged actor result was retained without another
+model run. No controller logic, gains, admission rules or firmware changed in
+this official-source review.
+
+The review receipt and fresh hold evidence were attached to
+`.191`'s `official-source-trial-preparation-20261123-1.json`, with readiness
+still false. A reliable source and the physical takeover fix remain unresolved;
+the public search did not supply the missing protocol information.

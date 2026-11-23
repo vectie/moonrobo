@@ -37,9 +37,10 @@ position offset was selected to overcome the previous hip drift.
 
 The current vendor [standing/policy example](https://github.com/Noetix-Robotics/noetix_sdk_e1/blob/main/examples/cpp/example_low.cpp)
 was checked as supplementary source evidence. It does not establish this older
-unit's current factory settings. The vendor documentation URL presently returns
-an nginx placeholder, so the already-delivered guides and local source remain
-the usable reference.
+unit's current factory settings. The old SDK-guide URL returns an nginx
+placeholder; the later [official-source review](E1_TORQUE_SOURCE_20261123.md#official-online-documentation-and-sdk-search)
+located the accessible replacement E1 comprehensive guide and checked it
+against the public SDK history.
 
 ## Torque visibility fix and actual measurements
 
