@@ -55,24 +55,22 @@ pub fn PositionHoldSettings::validate(self : Self) -> Unit raise {
 }
 
 ///|
-pub struct PositionHoldShadow {
-  priv settings : PositionHoldSettings
-  priv hold : Array[@low.MotorCommand]
-  priv bias : Array[Double]
-  priv source_start : Int64
-  priv receipt_start : Int64
-  priv mut previous_source : Int64?
-  priv mut previous_receipt : Int64
-  priv mut stopped : Bool
+priv struct PositionHoldState {
+  settings : PositionHoldSettings
+  hold : Array[@low.MotorCommand]
+  bias : Array[Double]
+  source_start : Int64
+  receipt_start : Int64
+  mut previous_source : Int64?
+  mut previous_receipt : Int64
+  mut stopped : Bool
 }
 
 ///|
-pub fn PositionHoldShadow::new(
+fn PositionHoldState::new(
   settings : PositionHoldSettings,
   baseline : Sample,
-  shadow~ : Bool,
 ) -> Self raise {
-  guard shadow else { fail("position-feedback hold is shadow only") }
   settings.validate()
   guard baseline.source_ns > 0L && baseline.receipt_ms >= 0L else {
     fail("invalid position hold baseline clock")
@@ -97,16 +95,14 @@ pub fn PositionHoldShadow::new(
 /// No torque readback is accepted. The bounded applied bias is the entire
 /// integral state, preventing windup behind amplitude or slew saturation.
 /// Errors latch; callers must discard the owner after any failure.
-pub fn PositionHoldShadow::next(
+fn PositionHoldState::next(
   self : Self,
   sample : Sample,
   now_ms : Int64,
-  shadow~ : Bool,
 ) -> Array[@low.MotorCommand] raise {
   guard !self.stopped else { fail("position hold stopped") }
   self.stopped = true
-  guard shadow &&
-    now_ms >= sample.receipt_ms &&
+  guard now_ms >= sample.receipt_ms &&
     now_ms - sample.receipt_ms <= 40L &&
     sample.motors.length() == 24 else {
     fail("invalid or stale position hold input")

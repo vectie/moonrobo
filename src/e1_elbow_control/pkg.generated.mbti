@@ -93,6 +93,23 @@ pub struct PositionHoldShadow {
 pub fn PositionHoldShadow::new(PositionHoldSettings, Sample, shadow~ : Bool) -> Self raise
 pub fn PositionHoldShadow::next(Self, Sample, Int64, shadow~ : Bool) -> Array[@sdk_e1_low.MotorCommand] raise
 
+pub struct PositionHoldTrial {
+  // private fields
+}
+pub fn PositionHoldTrial::new(PositionHoldTrialSettings, Sample) -> Self raise
+pub fn PositionHoldTrial::next(Self, Sample, Int64) -> Array[@sdk_e1_low.MotorCommand] raise
+
+pub(all) struct PositionHoldTrialSettings {
+  format : String
+  power_qualified : Bool
+  maximum_active_ms : Int
+  shadow_audit_sha256 : String
+  feedback : PositionHoldSettings
+} derive(ToJson, @json.FromJson)
+pub fn PositionHoldTrialSettings::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PositionHoldTrialSettings::to_json(Self) -> Json
+pub fn PositionHoldTrialSettings::validate(Self) -> Unit raise
+
 pub(all) struct Sample {
   source_ns : Int64
   receipt_ms : Int64
