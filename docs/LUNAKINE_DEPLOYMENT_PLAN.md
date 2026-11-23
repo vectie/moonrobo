@@ -1,6 +1,14 @@
 # LunaKine actor deployment and LunaFlux LLM integration
 
-Status: selected architecture; dated deployment evidence updated 2026-11-21
+Status: selected architecture; dated deployment evidence updated 2026-11-23
+
+The [23 November live-shadow record](E1_ACTOR_LIVE_SHADOW_20261123.md) confirms
+the restored E1 link and a completed 750-update live Ascend inference diagnostic.
+The constrained elbow owner was also tested with fresh telemetry and no command
+writer. Exact DDS duplicate delivery was fixed, after which the owner stopped
+on right-knee motor 19 reading −0.273° against the configured 0° lower bound.
+The full constrained shadow trial and powered actor trial remain incomplete;
+the separate diagnostic does not qualify them.
 
 The [21 November constrained actor deployment](E1_ACTOR_CONTROL_20261121.md)
 adds a genuine feedback-to-Ascend-to-command owner for the two commissioned

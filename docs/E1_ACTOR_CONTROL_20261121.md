@@ -1,5 +1,11 @@
 # E1 constrained actor deployment — 21 November 2026
 
+Follow-up: the [23 November live-shadow check](E1_ACTOR_LIVE_SHADOW_20261123.md)
+restored the link and passed a separate live numerical diagnostic. The constrained
+owner stopped on the right-knee reading/range discrepancy after exact duplicate
+status delivery was corrected. No powered commands were sent. The text below
+retains the original 21 November deployment evidence and hardware state.
+
 The real-inference elbow controller is installed on Atlas `.191`. Software
 qualification covers real Ascend inference on saved E1 telemetry, an independent
 FP32 oracle, closed-loop MuJoCo feedback and isolated January DDS transport.
