@@ -95,6 +95,7 @@ def validate_current_pose_profile(profile, motors, stage):
 def validate_frame(row, baseline, previous, stage, actor_validator=None):
     dual=stage in ("drums","raised-drums","typing-elbows","actor-elbows")
     assert not row.get("shadow",False), "shadow targets cannot drive live transport"
+    assert row.get("reported_leg_effort_shadow") is None, "unqualified reported effort cannot drive live transport"
     assert row["kind"]=="target" and row["stage"]==stage and row["profile"]=="suspended"
     assert row["action"]==11 and row["axes"]==[0,0]
     motors=row["motors"]

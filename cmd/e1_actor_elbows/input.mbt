@@ -4,6 +4,7 @@ priv struct Status {
   motor_ids : Array[Int32]
   orientation : Array[Double]
   angular_velocity : Array[Double]
+  reported_tau : Array[Double]?
 } derive(FromJson)
 
 ///|
@@ -12,7 +13,13 @@ async fn read_status() -> Status {
   guard input.read_until("\n") is Some(line) else {
     fail("end of actor telemetry")
   }
-  let s : Status = @json.from_json(@json.parse(line))
+  let value = @json.parse(line)
+  guard value is Object(fields) else { fail("actor status object required") }
+  fields["reported_tau"] = match value {
+    { "packet": { "tau": tau, .. }, .. } => tau
+    _ => Json::null()
+  }
+  let s : Status = @json.from_json(Json(fields))
   guard s.motor_ids == Array::makei(24, i => i) &&
     s.orientation.length() == 4 &&
     s.angular_velocity.length() == 3 else {
@@ -41,8 +48,8 @@ async fn timed_status(timeout : Int32, context : String) -> Status {
 }
 
 ///|
-fn hold_from(s : Status) -> Array[@low.MotorCommand] raise {
-  let sample : @elbow.Sample = {
+fn sample_from(s : Status) -> @elbow.Sample {
+  {
     source_ns: s.packet.source_ns,
     receipt_ms: s.packet.arrival_ns / 1000000L,
     motors: Array::makei(24, i => {
@@ -52,7 +59,11 @@ fn hold_from(s : Status) -> Array[@low.MotorCommand] raise {
       error: s.packet.error[i],
     }),
   }
-  sample.stand_candidate()
+}
+
+///|
+fn hold_from(s : Status) -> Array[@low.MotorCommand] raise {
+  sample_from(s).stand_candidate()
 }
 
 ///|

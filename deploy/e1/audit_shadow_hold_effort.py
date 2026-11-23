@@ -1,0 +1,42 @@
+"""Audit a completed shadow hold and its experimental effort seed; no sockets."""
+import json
+import pathlib
+import sys
+from shadow_effort_validation import validate_shadow_effort, verify_seed_capture
+
+
+def main():
+    directory, output = map(pathlib.Path, sys.argv[1:])
+    assert not output.exists()
+    session=json.loads((directory/"session.json").read_text())
+    planner=json.loads((directory/"planner.json").read_text())
+    assert session["kind"]=="shadow" and session["command_writers_created"] is False
+    assert session["planner_status"]==session["sender_status"]==0
+    assert planner["stage"]=="hold" and planner["software_stage_completed"] is True
+    assert planner["moving_slots"]==[] and planner["active_ms"]>=1000
+    baseline=seed=None
+    stopped=False
+    count=0
+    for line in (directory/"targets.ndjson").open():
+        row=json.loads(line)
+        if row["kind"]=="stop":
+            assert row["reason"]=="stage complete" and not stopped
+            stopped=True
+            continue
+        assert not stopped and row["stage"]=="hold" and row["sequence"]==count
+        current=validate_shadow_effort(row,baseline)
+        if baseline is None:
+            seed=current
+            verify_seed_capture(seed,directory/"status.ndjson")
+            baseline=row["motors"]
+        assert current==seed
+        count+=1
+    assert stopped and count>0 and planner["reported_leg_effort_shadow"]==seed
+    report=dict(passed=True,scope="unqualified reported-effort hold shadow; no physical qualification",
+                command_writers_created=False,powered_takeover_qualified=False,
+                target_heartbeats=count,fixed_records=24,reported_leg_effort_shadow=seed)
+    output.write_text(json.dumps(report,indent=2)+"\n")
+    print(json.dumps(report,indent=2))
+
+
+if __name__=="__main__":main()

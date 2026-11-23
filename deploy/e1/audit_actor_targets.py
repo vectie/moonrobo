@@ -4,10 +4,14 @@ import math
 import pathlib
 import sys
 from actor_validation import ActorValidator
+from shadow_effort_validation import validate_shadow_effort, verify_seed_capture
 
 
 def main():
-    config_path, trace_path, output = map(pathlib.Path, sys.argv[1:])
+    args = sys.argv[1:]
+    assert len(args) == 3 or len(args) == 5 and args[3] == "--status"
+    config_path, trace_path, output = map(pathlib.Path, args[:3])
+    status_path = pathlib.Path(args[4]) if len(args) == 5 else None
     assert not output.exists()
     profile = json.loads(config_path.read_text())
     validator = ActorValidator(profile)
@@ -19,6 +23,7 @@ def main():
     applied_min, applied_max = [math.inf]*2, [-math.inf]*2
     stopped = False
     shadow = None
+    effort_seed = None
     for line in trace_path.open():
         row = json.loads(line)
         if row["kind"] == "stop":
@@ -33,10 +38,20 @@ def main():
         if shadow is None:shadow = row["shadow"]
         assert row["shadow"] == shadow
         motors = row["motors"]
+        if row.get("reported_leg_effort_shadow") is not None:
+            current_seed=validate_shadow_effort(row,baseline)
+            if baseline is None:
+                assert status_path is not None, "captured status required for reported-effort shadow"
+                verify_seed_capture(current_seed,status_path)
+                effort_seed=current_seed
+            assert current_seed==effort_seed
+        else:
+            assert effort_seed is None, "shadow effort seed disappeared"
         assert len(motors) == 24 and [m["motor_id"] for m in motors] == list(range(24))
         for slot, motor in enumerate(motors):
             assert all(math.isfinite(motor[k]) for k in ("pos", "vel", "tau", "kp", "kd"))
-            assert motor["vel"] == motor["tau"] == 0
+            assert motor["vel"] == 0
+            if effort_seed is None:assert motor["tau"] == 0
             assert motor["kp"] == (0 if slot == 23 else 50)
             assert motor["kd"] == (1 if slot in (9, 10, 20, 21) else 5)
             if baseline and slot not in (3, 14):assert motor == baseline[slot]
@@ -64,6 +79,7 @@ def main():
     for slot in (3, 14):assert previous["motors"][slot] == baseline[slot]
     report = dict(passed=True, scope="saved command proposals; not a physical wire audit",
                   shadow=shadow, model_id=profile["model_id"], target_heartbeats=packets,
+                  reported_leg_effort_shadow=effort_seed, powered_takeover_qualified=False,
                   inference_updates=model_steps, policy_updates=policy, status_motor_records=24,
                   fixed_motor_records=22, max_fixed_target_change=0, targets_returned_exactly=True,
                   policy_authority=profile["adapter"]["policy_authority"],

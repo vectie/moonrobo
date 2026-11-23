@@ -1,5 +1,10 @@
 ///|
 async fn run(report : String, shadow : Bool) -> Unit {
+  let effort_shadow = @env.get_env_var("MOONROBO_E1_REPORTED_EFFORT_SHADOW")
+    is Some("1")
+  guard !effort_shadow || shadow else {
+    fail("reported-effort hypothesis is shadow only")
+  }
   let preparation_started = @env.now().reinterpret_as_int64()
   let (bundle, actor, clip, config) = load()
   let current_pose = current_pose_profile()
@@ -49,6 +54,8 @@ async fn run(report : String, shadow : Bool) -> Unit {
   )
   let opening_ms = s.packet.arrival_ns / 1000000L
   let mut baseline : Array[@low.MotorCommand] = []
+  let mut effort_commands : Array[@low.MotorCommand] = []
+  let mut effort_seed : Json = Json::null()
   let mut adapter : @adapter.Adapter? = None
   let mut previous = Array::make(29, 0.0)
   let history : Array[Array[Double]] = []
@@ -96,10 +103,35 @@ async fn run(report : String, shadow : Bool) -> Unit {
       Stop(reason, slot) => fail(reason + " slot " + slot.to_string())
       Wait => ()
       Use => {
-        if adapter is None && now - opening_ms >= 1000L {
+        let effort_available = s.reported_tau is Some(tau) &&
+          @elbow.reported_leg_effort_shadow_available(tau[:])
+        if adapter is None && effort_shadow {
+          guard now - opening_ms <= 10000L else {
+            fail("no complete shadow leg effort seed")
+          }
+        }
+        if adapter is None &&
+          now - opening_ms >= 1000L &&
+          (!effort_shadow || effort_available) {
           baseline = hold_from(s)
           commands = baseline.copy()
           adapter = Some(@adapter.Adapter::new(config.adapter, baseline[:]))
+          if effort_shadow {
+            let tau = s.reported_tau.unwrap()
+            effort_commands = sample_from(s).reported_leg_effort_shadow_candidate(
+              tau[:],
+              shadow~,
+            )
+            effort_seed = {
+              "format": "moonrobo.e1-reported-leg-effort-shadow.v1",
+              "power_qualified": false,
+              "seed_packet_sequence": Json(s.packet.seq),
+              "seed_arrival_ns": s.packet.arrival_ns.to_string(),
+              "reported_torque": Json(tau),
+              "seed_position": Json(s.packet.q),
+              "seed_velocity": Json(s.packet.qd),
+            }
+          }
           previous = mapping.actions_for_commands(commands[:])
           let attitude = imu.decode(
             s.orientation[:],
@@ -194,6 +226,16 @@ async fn run(report : String, shadow : Bool) -> Unit {
             let nominal = mapping.commands(raw[:])
             let step = control.next(nominal[:], now, policy_elapsed, phase)
             commands = step.commands
+            if effort_shadow {
+              for slot in 0..<23 {
+                if @elbow.leg_slot(slot) {
+                  commands[slot] = {
+                    ..commands[slot],
+                    torque: effort_commands[slot].torque,
+                  }
+                }
+              }
+            }
             previous = mapping.actions_for_commands(commands[:])
             maximum_inference_ms = maximum_inference_ms.max(inferred - before)
             maximum_input_to_output_age_ms = maximum_input_to_output_age_ms.max(
@@ -248,6 +290,7 @@ async fn run(report : String, shadow : Bool) -> Unit {
               "kind": "target",
               "stage": "actor-elbows",
               "shadow": Json(shadow),
+              "reported_leg_effort_shadow": effort_seed,
               "current_pose_commissioning": current_pose
               .map(p => p.to_json())
               .unwrap_or(Json::null()),
@@ -316,6 +359,7 @@ async fn run(report : String, shadow : Bool) -> Unit {
     "stage": "actor-elbows",
     "software_stage_completed": true,
     "shadow": Json(shadow),
+    "reported_leg_effort_shadow": effort_seed,
     "model_id": config.model_id,
     "backend": "LunaKine Ascend FP32",
     "policy_updates": Json(policy_updates),

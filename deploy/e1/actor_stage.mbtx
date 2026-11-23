@@ -23,6 +23,10 @@ async fn main {
       "usage: shadow|live hold|actor-elbows PREFLIGHT NEW_RUN HANDBACK_OR_DASH",
     )
   }
+  guard kind == "shadow" ||
+    @env.get_env_var("MOONROBO_E1_REPORTED_EFFORT_SHADOW") != Some("1") else {
+    fail("reported-effort hypothesis cannot create live command publishers")
+  }
   let deploy = required("MOONROBO_E1_DEPLOY_DIR")
   let coordinator = required("MOONROBO_E1_COORDINATOR")
   let controller = required(

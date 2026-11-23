@@ -11,6 +11,11 @@ async fn commission(
   report_file : String,
   shadow~ : Bool = false,
 ) -> Unit {
+  let effort_shadow = @env.get_env_var("MOONROBO_E1_REPORTED_EFFORT_SHADOW")
+    is Some("1")
+  guard !effort_shadow || (shadow && stage == "hold") else {
+    fail("reported-effort hypothesis is hold shadow only")
+  }
   guard stage == "hold" ||
     stage == "elbow" ||
     stage == "elbow90" ||
@@ -33,15 +38,15 @@ async fn commission(
       Some(@json.from_json(@fs.read_file(path).json()))
     }
   }
-  let opening = @async.with_timeout(10000, read_status)
-  let first = if opening.starts_on_standing_spike() {
+  let (opening, opening_tau) = @async.with_timeout(10000, read_status)
+  let (first, first_tau) = if opening.starts_on_standing_spike() {
     let recovery = @async.with_timeout(6, read_status)
-    guard recovery.confirms_standing_start(opening) else {
+    guard recovery.0.confirms_standing_start(opening) else {
       fail("startup ankle did not recover")
     }
     recovery
   } else {
-    opening
+    (opening, opening_tau)
   }
   let mut detector = @ankle.Detector::new(first, confirm_isolated=true)
   let mut hold : Array[@low.MotorCommand]? = None
@@ -56,6 +61,8 @@ async fn commission(
   let mut updates = 0
   let mut packets = 0
   let mut p = first
+  let mut reported_tau = first_tau
+  let mut effort_seed : Json = Json::null()
   let mut final_start = 0L
   let mut max_leg_feedback_change_deg = 0.0
   let mut max_other_feedback_change_deg = 0.0
@@ -102,6 +109,11 @@ async fn commission(
       Use => {
         let s = status_sample(p)
         if hold is None {
+          if effort_shadow {
+            guard now - first.arrival_ns / 1000000L <= 10000L else {
+              fail("no complete shadow leg effort seed")
+            }
+          }
           guard (p.q[3] - first.q[3]).abs() <= @ankle.RAD else {
             fail("elbow moving during baseline")
           }
@@ -110,8 +122,25 @@ async fn commission(
               fail("right elbow moving during baseline")
             }
           }
-          if now - first.arrival_ns / 1000000L >= 1000L {
-            let current = s.stand_candidate()
+          let effort_available = reported_tau is Some(tau) &&
+            @elbow.reported_leg_effort_shadow_available(tau[:])
+          if now - first.arrival_ns / 1000000L >= 1000L &&
+            (!effort_shadow || effort_available) {
+            let current = if effort_shadow {
+              let tau = reported_tau.unwrap()
+              effort_seed = {
+                "format": "moonrobo.e1-reported-leg-effort-shadow.v1",
+                "power_qualified": false,
+                "seed_packet_sequence": Json(p.seq),
+                "seed_arrival_ns": p.arrival_ns.to_string(),
+                "reported_torque": Json(tau),
+                "seed_position": Json(p.q),
+                "seed_velocity": Json(p.qd),
+              }
+              s.reported_leg_effort_shadow_candidate(tau[:], shadow~)
+            } else {
+              s.stand_candidate()
+            }
             if current_pose is Some(profile) {
               profile.validate_baseline(p.q[:])
             }
@@ -262,6 +291,7 @@ async fn commission(
             emit_event({
               "kind": "target",
               "shadow": Json(shadow),
+              "reported_leg_effort_shadow": effort_seed,
               "current_pose_commissioning": current_pose
               .map(p => p.to_json())
               .unwrap_or(Json::null()),
@@ -298,7 +328,9 @@ async fn commission(
     } else {
       40
     }
-    p = @async.with_timeout(timeout, read_status)
+    let (next, next_tau) = @async.with_timeout(timeout, read_status)
+    p = next
+    reported_tau = next_tau
   }
   emit_event({ "kind": "stop", "reason": "stage complete" })
   let report : Json = {
@@ -311,6 +343,7 @@ async fn commission(
     },
     "software_stage_completed": true,
     "shadow": Json(shadow),
+    "reported_leg_effort_shadow": effort_seed,
     "current_pose_commissioning": current_pose
     .map(p => p.to_json())
     .unwrap_or(Json::null()),

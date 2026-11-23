@@ -6,12 +6,17 @@ priv struct StatusLine {
 } derive(FromJson)
 
 ///|
-async fn read_status() -> @ankle.Packet {
+async fn read_status() -> (@ankle.Packet, Array[Double]?) {
   let input : &@io.Reader = @stdio.stdin
   guard input.read_until("\n") is Some(line) else {
     fail("end of packet stream")
   }
-  let status : StatusLine = @json.from_json(@json.parse(line))
+  let value = @json.parse(line)
+  let status : StatusLine = @json.from_json(value)
+  let reported_tau : Array[Double]? = match value {
+    { "packet": { "tau": tau, .. }, .. } => Some(@json.from_json(tau))
+    _ => None
+  }
   let p = status.packet
   guard status.motor_ids.length() == 24 &&
     p.q.length() == 24 &&
@@ -22,7 +27,7 @@ async fn read_status() -> @ankle.Packet {
   for i, id in status.motor_ids {
     guard i == id else { fail("SDK motor ID mismatch") }
   }
-  p
+  (p, reported_tau)
 }
 
 ///|

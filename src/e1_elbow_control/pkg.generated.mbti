@@ -33,6 +33,8 @@ pub fn leg_slot(Int) -> Bool
 
 pub fn raised_drum_targets(Int, Double, Double) -> (Double, Double) raise
 
+pub fn reported_leg_effort_shadow_available(ArrayView[Double]) -> Bool
+
 pub fn typing_elbow_targets(Int, Double, Double) -> (Double, Double) raise
 
 // Errors
@@ -80,6 +82,7 @@ pub(all) struct Sample {
 } derive(@json.FromJson)
 pub fn Sample::effort_matched_candidate(Self, ArrayView[@sdk_e1_low.MotorCommand]) -> Array[@sdk_e1_low.MotorCommand] raise
 pub fn Sample::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Sample::reported_leg_effort_shadow_candidate(Self, ArrayView[Double], shadow~ : Bool) -> Array[@sdk_e1_low.MotorCommand] raise
 pub fn Sample::stand_candidate(Self) -> Array[@sdk_e1_low.MotorCommand] raise
 
 // Type aliases
