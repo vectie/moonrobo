@@ -194,7 +194,11 @@ pub async fn validate_model(
       let ufk = ukin.forward(s)
       set_pose(mjcf, layout, s)
       let locked_q = s.q.copy()
-      locked_q[13] = 0.0
+      // The source must have the same available axes as the target. The
+      // 24-axis scene retains waist roll; only the 23-axis scene locks it.
+      if !target_data.robot.joints.contains("waist_roll_joint") {
+        locked_q[robot.joints.search("waist_roll_joint").unwrap()] = 0.0
+      }
       let locked_fk = kin.forward({ ..s, q: locked_q, })
       let projected = target_data.robot.embed(
         target_data.robot.joints.map(j => s.q[robot.joints.search(j).unwrap()]),
@@ -259,6 +263,9 @@ pub async fn validate_model(
     "source_record_rotation_max_rad": maximum_source_angle,
     "urdf_vs_mjcf_max_m": maximum_urdf,
     "locked_variant_vs_source_max_m": maximum_lock,
+    "target_waist_roll_locked": !target_data.robot.joints.contains(
+      "waist_roll_joint",
+    ),
     "clips": clips,
     "accepted_source_clips": accepted_sources,
     "source_clips_all_passed": accepted_sources == clips.length(),

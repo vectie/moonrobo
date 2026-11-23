@@ -130,7 +130,22 @@ evaluate --actor DIR --dataset DIR --tensor-library FILE --library FILE
          --output NEW_REPORT.json [--split validation] [--clip-indices '[0]']
 retarget --dataset DIR --library FILE --g1-scene FILE --g1-csv FILE
          --fps SOURCE_FPS --output NEW_CANDIDATE
+prepare-reembodied --training-dataset PARENT_CATALOG --dataset STAGED_TARGET
+         --lab-assets DIR --library FILE --model-validation TARGET_AUDIT/validation.json
+         --g1-directory LAFAN_ROOT --bones-directory BONES_ROOT --g1-scene FILE
+         --output NEW_CATALOG
 ```
+
+For a 24-axis experiment, stage a new scene with `prepare --joints 24`, run
+`validate-model` on that scene, then use `prepare-reembodied`. This reloads
+the parent curriculum's original source recordings and fits every trajectory
+on the new body, including the native E1 clips. The whole-body fit can use
+waist roll before guarded shoulder/elbow refinement. Source hashes, splits,
+tempo and full durations are checked against the parent. Every candidate has
+an acceptance or rejection report under the existing geometry thresholds.
+Train a fresh model against this catalog and regenerate evaluation references
+using the same target scene. Existing 23-axis checkpoints keep their original
+joint indices and references.
 
 The repository-owned `scripts/e1_spark_workflow.mbtx` records the original diagnostic two-host
 setup, verified source/input packages, container images and resource limits.

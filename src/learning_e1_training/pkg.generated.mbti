@@ -62,6 +62,8 @@ pub async fn prepare_bones_supplement(String, String, String, String, String, St
 
 pub async fn prepare_qualified(String, String, String, String, String, String, String, locomotion? : Bool, moving? : Bool) -> Json
 
+pub async fn prepare_reembodied(String, String, String, String, String, String, String, String, String) -> Json
+
 pub fn profile(joints? : Int) -> Profile raise
 
 pub async fn read_bounded(String, Int64) -> Bytes

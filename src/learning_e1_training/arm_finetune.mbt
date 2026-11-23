@@ -35,28 +35,7 @@ pub async fn prepare_arm_finetune(
   for path in @fs.readdir(base + "/meshes") {
     copy("meshes/" + path)
   }
-  let sources : Map[String, (String, String)] = Map([])
-  for
-    (manifest, dir, prefix) in [
-      ("source-bones-selection.json", bones, "bones-"),
-      ("source-g1-manifest.json", lafan, "g1-"),
-    ] {
-    let catalog = @json.parse(
-      @utf8.decode(read_bounded(base + "/" + manifest, 4194304L)),
-    )
-    let list : Array[Json] = json_field(catalog, "clips")
-    for reference in list {
-      let name : String = json_field(reference, "id")
-      let id = prefix + name.replace_all(old="/", new="__")
-      let path : String = json_field(reference, "path")
-      guard !path.has_prefix("/") &&
-        !path.contains("..") &&
-        !sources.contains(id) else {
-        fail("invalid source in " + manifest)
-      }
-      sources[id] = (dir + "/" + path, json_field(reference, "sha256"))
-    }
-  }
+  let sources = pinned_cross_robot_sources(base, lafan, bones)
   let target = @sim.Runtime::open(library, staging + "/scene.xml")
   let kin = @tracking.kinematics(
     target,
@@ -161,4 +140,35 @@ pub async fn prepare_arm_finetune(
   ignore(require_admission(staging, result_dataset, library))
   @fs.rename(staging, output, replace=false)
   result
+}
+
+///|
+async fn pinned_cross_robot_sources(
+  base : String,
+  lafan : String,
+  bones : String,
+) -> Map[String, (String, String)] {
+  let sources : Map[String, (String, String)] = Map([])
+  for
+    (manifest, dir, prefix) in [
+      ("source-bones-selection.json", bones, "bones-"),
+      ("source-g1-manifest.json", lafan, "g1-"),
+    ] {
+    let catalog = @json.parse(
+      @utf8.decode(read_bounded(base + "/" + manifest, 4194304L)),
+    )
+    let list : Array[Json] = json_field(catalog, "clips")
+    for reference in list {
+      let name : String = json_field(reference, "id")
+      let id = prefix + name.replace_all(old="/", new="__")
+      let path : String = json_field(reference, "path")
+      guard !path.has_prefix("/") &&
+        !path.contains("..") &&
+        !sources.contains(id) else {
+        fail("invalid source in " + manifest)
+      }
+      sources[id] = (dir + "/" + path, json_field(reference, "sha256"))
+    }
+  }
+  sources
 }

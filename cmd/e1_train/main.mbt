@@ -69,6 +69,18 @@ async fn main {
         required(args, "--recorded"),
         required(args, "--output"),
       )
+    "prepare-reembodied" =>
+      @e1.prepare_reembodied(
+        required(args, "--training-dataset"),
+        required(args, "--dataset"),
+        required(args, "--lab-assets"),
+        required(args, "--library"),
+        required(args, "--g1-directory"),
+        required(args, "--bones-directory"),
+        required(args, "--g1-scene"),
+        required(args, "--model-validation"),
+        required(args, "--output"),
+      )
     "prepare-arm-finetune" =>
       @e1.prepare_arm_finetune(
         required(args, "--training-dataset"),

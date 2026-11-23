@@ -62,7 +62,9 @@ async test "qualified E1 scratch curriculum preserves all control frames and arm
       let preview = m.goal(f, 10)
       for k, future in m.future_frames(f, 10) {
         for j, name in robot.joints {
-          if name.contains("shoulder") || name.contains("elbow") {
+          if name.contains("shoulder") ||
+            name.contains("elbow") ||
+            name == "waist_roll_joint" {
             assert_eq(preview[k * 73 + 15 + j], m.states[future].q[j])
             assert_eq(preview[k * 73 + 44 + j], m.states[future].qd[j] * 0.1)
           }
