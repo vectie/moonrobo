@@ -238,7 +238,11 @@ def main():
     if args.actor_hold_profile:
         assert args.stage=="actor-elbows"
         actor_hold_profile=json.loads(pathlib.Path(args.actor_hold_profile).read_text())
-        actor_hold_validator=ActorHoldValidator(actor_hold_profile)
+        # Offline admission below requires a lo-only namespace before creating
+        # any participant. Recorded shadow elbows never executed the targets;
+        # their physical tracking is not a transport-replay assertion. Actual
+        # live admission reloads the default strict validator below.
+        actor_hold_validator=ActorHoldValidator(actor_hold_profile,tracking_required=args.live)
     else:assert args.actor_hold_shadow_audit is None
     for path in (args.ready,args.receipt):
         assert not pathlib.Path(path).exists(), "output exists"

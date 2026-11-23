@@ -23,6 +23,16 @@ def initial():
 
 
 class ActorHoldTests(unittest.TestCase):
+    def test_large_unsent_replay_is_not_physical_tracking_but_live_still_enforces_it(self):
+        profile,row=initial()
+        row["motors"][3]["pos"]=-.3
+        # Position-only leg feedback is unaffected by elbow following. The
+        # actor validator separately verifies the recorded elbow target path.
+        ActorHoldValidator(profile,tracking_required=False).validate(row)
+        with self.assertRaises(AssertionError):ActorHoldValidator(profile).validate(row)
+        row["motors"][7]["tau"]=.01
+        with self.assertRaises(AssertionError):ActorHoldValidator(profile,tracking_required=False).validate(row)
+
     def test_powered_transport_requires_both_explicit_feedback_and_model_validation(self):
         from january_transport import validate_frame
         from actor_validation import ActorValidator

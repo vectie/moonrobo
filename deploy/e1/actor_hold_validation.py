@@ -12,12 +12,13 @@ from supported_elbow_validation import SupportedElbowValidator
 
 
 class ActorHoldValidator:
-    def __init__(self, profile):
+    def __init__(self, profile, tracking_required=True):
         # Reuse exact v2 profile validation, without implying its reference
         # trajectory or nineteen-second deadline applies to the actor.
         SupportedElbowValidator(profile, True)
         assert profile["format"] == "moonrobo.e1-supported-elbow.v2"
         self.profile = copy.deepcopy(profile)
+        self.tracking_required = tracking_required
         self.feedback = PositionHoldAudit()
         self.previous = None
 
@@ -38,7 +39,7 @@ class ActorHoldValidator:
             if slot in (3,14):
                 assert -2.44<=actual<=0.
                 previous_target=(self.previous or row)["motors"][slot]["pos"]
-                if not row["shadow"]:assert abs(actual-previous_target)<=5.*math.pi/180
+                if self.tracking_required and not row["shadow"]:assert abs(actual-previous_target)<=5.*math.pi/180
             else:assert abs(actual-meta["seed_position"][slot])<=5.*math.pi/180
         if self.previous is not None:
             old = self.previous

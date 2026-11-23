@@ -162,7 +162,7 @@ async fn main {
           "passed": true,
           "scenario": Json(scenario),
           "isolation": "loopback-only namespace",
-          "scope": "replay of recorded Ascend proposals through real DDS transport; not fresh inference or physical robot execution",
+          "scope": "replay of recorded Ascend proposals through real DDS transport; no fresh inference or physical elbow following; recorded shadow feedback never executed the targets",
           "transport": receipt,
           "wire": @fs.read_file(dir + "/wire.json").json(),
         }
