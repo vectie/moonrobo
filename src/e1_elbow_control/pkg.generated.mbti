@@ -128,6 +128,8 @@ pub(all) struct SupportedElbowSettings {
   return_hold_ms : Int
   maximum_total_ms : Int
   amplitude_deg : Double
+  stationary_tolerance_deg : Double
+  following_tolerance_deg : Double
   feedback : PositionHoldSettings
 } derive(ToJson, @json.FromJson)
 pub fn SupportedElbowSettings::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError

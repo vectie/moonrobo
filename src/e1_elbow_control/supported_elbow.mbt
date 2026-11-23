@@ -9,6 +9,8 @@ pub(all) struct SupportedElbowSettings {
   return_hold_ms : Int32
   maximum_total_ms : Int32
   amplitude_deg : Double
+  stationary_tolerance_deg : Double
+  following_tolerance_deg : Double
   feedback : PositionHoldSettings
 } derive(FromJson, ToJson)
 
@@ -20,15 +22,17 @@ pub extend SupportedElbowSettings with @json.ToJson::{to_json}
 
 ///|
 pub fn SupportedElbowSettings::validate(self : Self) -> Unit raise {
-  validate_feedback_budgets(self.feedback, 3.0 * RAD)
-  guard self.format == "moonrobo.e1-supported-elbow.v1" &&
+  validate_feedback_budgets(self.feedback, 5.0 * RAD)
+  guard self.format == "moonrobo.e1-supported-elbow.v2" &&
     !self.power_qualified &&
     self.hold_ms == 3000 &&
     self.motion_ms == 15000 &&
     self.return_hold_ms == 500 &&
     self.maximum_total_ms == 19000 &&
     self.amplitude_deg == 5.0 &&
-    self.feedback.maximum_error_rad == 3.0 * RAD else {
+    self.stationary_tolerance_deg == 5.0 &&
+    self.following_tolerance_deg == 5.0 &&
+    self.feedback.maximum_error_rad == 5.0 * RAD else {
     fail("invalid supported elbow request")
   }
 }
@@ -94,7 +98,7 @@ pub fn SupportedElbowTrial::next(
   let actual = sample.motors[3].position
   guard actual >= -2.44 &&
     actual <= 0.0 &&
-    (shadow || (actual - self.previous_elbow).abs() <= RAD) else {
+    (shadow || (actual - self.previous_elbow).abs() <= 5.0 * RAD) else {
     fail("supported elbow following error")
   }
   let frame = if elapsed < 3000L {

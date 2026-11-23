@@ -45,3 +45,24 @@ test "supported envelope still quarantines sub-three-degree ankle glitches" {
     assert_eq(d.left_events + d.right_only_events, 1)
   }
 }
+
+///|
+test "explicit five-degree stationary profile accepts four degrees and stops beyond five" {
+  for slot in [1, 7, 12, 18, 22] {
+    let first = post_hold(0, 0)
+    let d = Detector::new(first, confirm_isolated=true)
+    assert_true(d.observe(first) is Use)
+    let d = d.begin_hold(
+      leg_tolerance_rad=5.0 * @ankle.RAD,
+      stationary_tolerance_rad=5.0 * @ankle.RAD,
+    )
+    let within = post_hold(1, 0)
+    within.q[slot] -= 4.5 * @ankle.RAD
+    assert_true(d.observe(within) is Use)
+    let beyond = post_hold(2, 0)
+    beyond.q[slot] -= 5.1 * @ankle.RAD
+    assert_true(
+      d.observe(beyond) is Stop("stationary joint outside tolerance", _),
+    )
+  }
+}

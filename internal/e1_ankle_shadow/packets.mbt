@@ -29,6 +29,7 @@ pub struct Detector {
   suspended : Bool
   moving_right_elbow : Bool
   leg_tolerance_rad : Double
+  stationary_tolerance_rad : Double
   mut healthy_streak : Int32
   mut good : Packet
   mut last : Packet?
@@ -50,6 +51,7 @@ pub fn Detector::new(
     suspended,
     moving_right_elbow: false,
     leg_tolerance_rad: RAD,
+    stationary_tolerance_rad: RAD,
     healthy_streak: 0,
     good: first,
     last: None,
@@ -69,8 +71,12 @@ pub fn Detector::begin_hold(
   self : Detector,
   moving_right_elbow~ : Bool = false,
   leg_tolerance_rad~ : Double = RAD,
+  stationary_tolerance_rad~ : Double = RAD,
 ) -> Detector raise {
-  guard leg_tolerance_rad >= RAD && leg_tolerance_rad <= 3.0 * RAD else {
+  guard leg_tolerance_rad >= RAD &&
+    leg_tolerance_rad <= 5.0 * RAD &&
+    stationary_tolerance_rad >= RAD &&
+    stationary_tolerance_rad <= 5.0 * RAD else {
     fail("invalid explicit supported leg tolerance")
   }
   guard self.pending is None &&
@@ -85,6 +91,7 @@ pub fn Detector::begin_hold(
     suspended: self.suspended,
     moving_right_elbow,
     leg_tolerance_rad,
+    stationary_tolerance_rad,
     healthy_streak: self.healthy_streak,
     good: self.good,
     last: self.last,
@@ -323,7 +330,7 @@ pub fn Detector::observe(self : Detector, p : Packet) -> Verdict {
     let tolerance = if @elbow.leg_slot(slot) {
       self.leg_tolerance_rad
     } else {
-      RAD
+      self.stationary_tolerance_rad
     }
     if slot != @elbow.ELBOW_SLOT &&
       !(self.moving_right_elbow && slot == @elbow.RIGHT_ELBOW_SLOT) &&

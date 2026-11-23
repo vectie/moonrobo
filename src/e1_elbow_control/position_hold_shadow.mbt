@@ -24,7 +24,7 @@ pub fn PositionHoldSettings::validate(self : Self) -> Unit raise {
     self.integral_gain_nm_per_rad_s > 0.0 &&
     finite(self.maximum_error_rad) &&
     self.maximum_error_rad > 0.0 &&
-    self.maximum_error_rad <= 3.0 * RAD &&
+    self.maximum_error_rad <= 5.0 * RAD &&
     self.bias_limit_nm.length() == 24 &&
     self.slew_limit_nm_per_s.length() == 24 else {
     fail("invalid position-only hold shadow settings")
