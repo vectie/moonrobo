@@ -3,7 +3,7 @@ import json
 import pathlib
 import tempfile
 import unittest
-from shadow_effort_validation import validate_shadow_effort, verify_seed_capture, LEGS
+from shadow_effort_validation import PositionHoldAudit, validate_shadow_effort, verify_seed_capture, LEGS
 from test_drum_transport import row
 from january_transport import validate_frame
 
@@ -60,6 +60,76 @@ class ShadowEffortTests(unittest.TestCase):
         current["shadow"]=False
         for motor in current["motors"]:motor["tau"]=0.
         with self.assertRaisesRegex(AssertionError,"unqualified reported effort"):
+            validate_frame(current,None,None,"hold")
+
+
+def position_candidates():
+    first=row()
+    first.update(shadow=True,stage="hold",reported_leg_effort_shadow=None)
+    seed_q=[m["pos"] for m in first["motors"]]
+    settings=dict(format="moonrobo.e1-position-hold-shadow.v1",power_qualified=False,
+        integral_gain_nm_per_rad_s=50.,maximum_error_rad=0.017453292519943295,
+        bias_limit_nm=[7.5 if i in LEGS else 0. for i in range(24)],
+        slew_limit_nm_per_s=[7.5 if i in LEGS else 0. for i in range(24)])
+    rows=[]
+    for tick in range(2):
+        current=copy.deepcopy(first)
+        source=1000000000+tick*20000000
+        arrival=1000000000+tick*20000000
+        current.update(sequence=tick,receipt_ms=str(arrival//1000000),
+            telemetry_receipt_ms=str(arrival//1000000),telemetry_source_ns=str(source))
+        q=seed_q.copy()
+        q[7]-=.001*tick
+        current["motors"][7]["tau"]=50.*(seed_q[7]-q[7])*.02 if tick else 0.
+        current["position_hold_shadow"]=dict(settings=copy.deepcopy(settings),power_qualified=False,
+            seed_packet_sequence=10,seed_arrival_ns="1000000000",seed_source_ns="1000000000",
+            seed_position=seed_q.copy(),input_packet_sequence=10+tick,
+            input_arrival_ns=str(arrival),input_source_ns=str(source),
+            input_position=q,input_velocity=[0.]*24)
+        rows.append(current)
+    return rows
+
+
+class PositionFeedbackTests(unittest.TestCase):
+    def test_position_math_and_raw_binding_do_not_depend_on_reported_torque(self):
+        rows=position_candidates()
+        for torque in (None,[0.]*24,[90.]*24):
+            audit=PositionHoldAudit()
+            for current in rows:audit.observe(current)
+            capture=[]
+            for current in rows:
+                meta=current["position_hold_shadow"]
+                packet=dict(seq=meta["input_packet_sequence"],arrival_ns=meta["input_arrival_ns"],
+                    source_ns=meta["input_source_ns"],q=meta["input_position"],qd=meta["input_velocity"],error=[0]*24)
+                if torque is not None:packet["tau"]=torque
+                capture.append(dict(motor_ids=list(range(24)),packet=packet))
+            with tempfile.TemporaryDirectory() as directory:
+                path=pathlib.Path(directory)/"status.ndjson"
+                path.write_text("\n".join(map(json.dumps,capture))+"\n")
+                audit.verify_capture(path)
+                capture[1]["packet"]["q"]=capture[1]["packet"]["q"].copy()
+                capture[1]["packet"]["q"][7]+=.0001
+                path.write_text("\n".join(map(json.dumps,capture))+"\n")
+                with self.assertRaises(AssertionError):audit.verify_capture(path)
+
+    def test_forged_position_effort_gains_missing_mode_and_drift_are_rejected(self):
+        for fault in ("position","effort","gains","shadow","drift","settings","reserved"):
+            first,second=position_candidates()
+            audit=PositionHoldAudit()
+            audit.observe(first)
+            if fault=="position":second["motors"][7]["pos"]+=.001
+            if fault=="effort":second["motors"][7]["tau"]+=.001
+            if fault=="gains":second["motors"][7]["kp"]+=1.
+            if fault=="shadow":second["shadow"]=False
+            if fault=="drift":second["position_hold_shadow"]["input_position"][7]-=.02
+            if fault=="settings":second["position_hold_shadow"]["settings"]["integral_gain_nm_per_rad_s"]+=1.
+            if fault=="reserved":second["motors"][23]["tau"]=.001
+            with self.subTest(fault=fault),self.assertRaises(AssertionError):audit.observe(second)
+
+    def test_position_shadow_cannot_be_promoted_even_after_zeroing_effort(self):
+        current=position_candidates()[0]
+        current["shadow"]=False
+        with self.assertRaisesRegex(AssertionError,"unqualified position feedback"):
             validate_frame(current,None,None,"hold")
 
 

@@ -1,0 +1,8 @@
+{
+  "format": "moonrobo.e1-position-hold-shadow.v1",
+  "power_qualified": false,
+  "integral_gain_nm_per_rad_s": 50.0,
+  "bias_limit_nm": [0, 0, 0, 0, 0, 4.5, 4.5, 7.5, 7.5, 3.5, 3.5, 0, 0, 0, 0, 0, 4.5, 4.5, 7.5, 7.5, 3.5, 3.5, 0, 0],
+  "slew_limit_nm_per_s": [0, 0, 0, 0, 0, 4.5, 4.5, 7.5, 7.5, 3.5, 3.5, 0, 0, 0, 0, 0, 4.5, 4.5, 7.5, 7.5, 3.5, 3.5, 0, 0],
+  "maximum_error_rad": 0.017453292519943295
+}

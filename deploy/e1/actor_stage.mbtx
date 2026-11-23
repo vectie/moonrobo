@@ -27,6 +27,11 @@ async fn main {
     @env.get_env_var("MOONROBO_E1_REPORTED_EFFORT_SHADOW") != Some("1") else {
     fail("reported-effort hypothesis cannot create live command publishers")
   }
+  if @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW") is Some(_) {
+    guard kind == "shadow" && stage == "hold" else {
+      fail("position-feedback experiment cannot create live command publishers or actor stages")
+    }
+  }
   let deploy = required("MOONROBO_E1_DEPLOY_DIR")
   let coordinator = required("MOONROBO_E1_COORDINATOR")
   let controller = required(

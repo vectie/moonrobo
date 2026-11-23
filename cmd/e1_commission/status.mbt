@@ -12,10 +12,26 @@ async fn read_status() -> (@ankle.Packet, Array[Double]?) {
     fail("end of packet stream")
   }
   let value = @json.parse(line)
+  decode_status(
+    value,
+    position_only=@env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW")
+      is Some(_),
+  )
+}
+
+///|
+fn decode_status(
+  value : Json,
+  position_only~ : Bool,
+) -> (@ankle.Packet, Array[Double]?) raise {
   let status : StatusLine = @json.from_json(value)
-  let reported_tau : Array[Double]? = match value {
-    { "packet": { "tau": tau, .. }, .. } => Some(@json.from_json(tau))
-    _ => None
+  let reported_tau : Array[Double]? = if position_only {
+    None
+  } else {
+    match value {
+      { "packet": { "tau": tau, .. }, .. } => Some(@json.from_json(tau))
+      _ => None
+    }
   }
   let p = status.packet
   guard status.motor_ids.length() == 24 &&

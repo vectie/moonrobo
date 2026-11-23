@@ -16,6 +16,22 @@ async fn commission(
   guard !effort_shadow || (shadow && stage == "hold") else {
     fail("reported-effort hypothesis is hold shadow only")
   }
+  let position_settings : @elbow.PositionHoldSettings? = match
+    @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW") {
+    None => None
+    Some(path) => {
+      guard shadow && stage == "hold" && !effort_shadow else {
+        fail(
+          "position-feedback experiment requires hold shadow without reported effort",
+        )
+      }
+      let settings : @elbow.PositionHoldSettings = @json.from_json(
+        @fs.read_file(path).json(),
+      )
+      settings.validate()
+      Some(settings)
+    }
+  }
   guard stage == "hold" ||
     stage == "elbow" ||
     stage == "elbow90" ||
@@ -63,6 +79,8 @@ async fn commission(
   let mut p = first
   let mut reported_tau = first_tau
   let mut effort_seed : Json = Json::null()
+  let mut position_hold : PositionHoldExperiment? = None
+  let mut position_meta : Json = Json::null()
   let mut final_start = 0L
   let mut max_leg_feedback_change_deg = 0.0
   let mut max_other_feedback_change_deg = 0.0
@@ -161,6 +179,11 @@ async fn commission(
             }
             hold = Some(current)
             latest = current
+            if position_settings is Some(settings) {
+              position_hold = Some(
+                PositionHoldExperiment::new(settings, p, shadow~),
+              )
+            }
             active_start = now
             if current_pose is Some(_) {
               detector = detector.begin_hold()
@@ -202,7 +225,15 @@ async fn commission(
                 fail("right elbow drift during hold")
               }
             }
-            if now - active_start >= 1000L {
+            // A longer receive-only window exercises the experimental
+            // integrator. Existing powered and other shadow stages keep their
+            // one-second initial hold.
+            let initial_hold_ms = if position_hold is Some(_) {
+              15000L
+            } else {
+              1000L
+            }
+            if now - active_start >= initial_hold_ms {
               if stage == "hold" {
                 break
               }
@@ -277,12 +308,20 @@ async fn commission(
           // A 10 ms planner heartbeat avoids serializing identical 24-motor
           // frames on every status packet while retaining the 40 ms deadline.
           if now - last_tick >= 10L {
+            if position_hold is Some(owner) {
+              let (commands, metadata) = owner.next(p, now, shadow~)
+              latest = commands
+              position_meta = metadata
+            }
             for i, m in latest {
               guard (
                   i == 3 || (dual && i == 14) || m.position == base[i].position
                 ) &&
                 m.velocity == base[i].velocity &&
-                m.torque == base[i].torque &&
+                (
+                  m.torque == base[i].torque ||
+                  (position_hold is Some(_) && @elbow.leg_slot(i))
+                ) &&
                 m.kp == base[i].kp &&
                 m.kd == base[i].kd else {
                 fail("fixed target changed")
@@ -292,6 +331,7 @@ async fn commission(
               "kind": "target",
               "shadow": Json(shadow),
               "reported_leg_effort_shadow": effort_seed,
+              "position_hold_shadow": position_meta,
               "current_pose_commissioning": current_pose
               .map(p => p.to_json())
               .unwrap_or(Json::null()),
@@ -344,11 +384,35 @@ async fn commission(
     "software_stage_completed": true,
     "shadow": Json(shadow),
     "reported_leg_effort_shadow": effort_seed,
+    "position_hold_shadow": position_meta,
+    "fixed_position_records": if stage == "hold" {
+      24
+    } else if dual {
+      22
+    } else {
+      23
+    },
+    "fixed_motor_records": if position_hold is Some(_) {
+      12
+    } else if stage == "hold" {
+      24
+    } else if dual {
+      22
+    } else {
+      23
+    },
+    "adaptive_effort_slots": if position_hold is Some(_) {
+      Json([5, 6, 7, 8, 9, 10, 16, 17, 18, 19, 20, 21])
+    } else {
+      Json(Array::make(0, 0))
+    },
     "current_pose_commissioning": current_pose
     .map(p => p.to_json())
     .unwrap_or(Json::null()),
     "physical_handback_verified": false,
-    "leg_acceptance": if current_pose is Some(_) {
+    "leg_acceptance": if position_hold is Some(_) {
+      "fixed raw position targets; bounded position-error effort shadow; stationary/glitch guard"
+    } else if current_pose is Some(_) {
       "explicit measured raw-pose hold; stationary/glitch guard; all targets fixed"
     } else {
       "feedback motion accepted within SDK leg ranges; command targets remain fixed"

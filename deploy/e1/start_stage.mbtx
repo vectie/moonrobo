@@ -54,6 +54,11 @@ async fn main {
     )
   }
   let live = kind == "live"
+  if @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW") is Some(_) {
+    guard !live && stage == "hold" else {
+      fail("position-feedback experiment requires a receive-only hold shadow")
+    }
+  }
   let preflight = @fs.read_file(preflight_file).json()
   guard preflight
     is {
