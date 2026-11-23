@@ -127,3 +127,10 @@ contains the exact receipts, measurements, independent audits and archive hashes
 Endpoint deletion does not establish physical factory handback. Supported
 holding does not qualify balance, walking, shoulder actuation or whole-body
 policy deployment. The final operator observation after the repeat is pending.
+
+Subsequent requested repetitions exposed a closely spaced ankle-spike state
+bug, which was fixed without changing the protection thresholds. Two further
+real elbow gestures completed and the operator confirmed seeing stable motion
+and normal handheld response. See the [failure, fix and further trials](E1_CLOSE_ANKLE_SPIKES_20261123.md).
+The operator then said they were shutting down for charging and requested shoulders for the next
+session; current powered authorization remains elbow-only.
