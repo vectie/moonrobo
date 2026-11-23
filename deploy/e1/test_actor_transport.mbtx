@@ -17,8 +17,10 @@ async fn main {
     }
   }
   guard interfaces == ["lo"] else { fail("isolated namespace required") }
-  guard @env.args()[1:] is [trace, profile, directory] else {
-    fail("TRACE CONFIG NEW_DIRECTORY required")
+  let (trace, profile, directory, hold) = match @env.args()[1:] {
+    [trace, profile, directory] => (trace, profile, directory, None)
+    [trace, profile, directory, hold] => (trace, profile, directory, Some(hold))
+    _ => fail("TRACE CONFIG NEW_DIRECTORY [SUPPORTED_HOLD_PROFILE] required")
   }
   @fs.mkdir(directory)
   guard @process.run("/usr/sbin/ip", ["link", "set", "lo", "up"]) == 0 else {
@@ -40,7 +42,16 @@ async fn main {
         let fixture = @process.spawn(
           g,
           "/usr/bin/python3",
-          ["-B", "robot_fixture.py", dir + "/wire.json", "actor-elbows"],
+          [
+            "-B",
+            "robot_fixture.py",
+            dir + "/wire.json",
+            if hold is Some(_) {
+              "actor-supported"
+            } else {
+              "actor-elbows"
+            },
+          ],
           stderr=@process.redirect_to_file(
             dir + "/fixture.log",
             create_mode=CreateNew,
@@ -48,21 +59,25 @@ async fn main {
         )
         defer fixture.cancel()
         let (input, feed) = @process.write_to_process()
+        let sender_args = [
+          "-B",
+          "january_transport.py",
+          "--stage",
+          "actor-elbows",
+          "--actor-profile",
+          profile,
+          "--ready",
+          dir + "/ready.json",
+          "--receipt",
+          dir + "/transport.json",
+        ]
+        if hold is Some(path) {
+          sender_args.append(["--actor-hold-profile", path])
+        }
         let sender = @process.spawn(
           g,
           "/usr/bin/python3",
-          [
-            "-B",
-            "january_transport.py",
-            "--stage",
-            "actor-elbows",
-            "--actor-profile",
-            profile,
-            "--ready",
-            dir + "/ready.json",
-            "--receipt",
-            dir + "/transport.json",
-          ],
+          sender_args,
           stdin=input,
           stderr=@process.redirect_to_file(
             dir + "/sender.log",

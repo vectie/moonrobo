@@ -29,24 +29,48 @@ async fn main {
   }
   if @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW") is Some(_) {
     guard kind == "shadow" && stage == "hold" else {
-      fail("position-feedback experiment cannot create live command publishers or actor stages")
+      fail(
+        "position-feedback experiment cannot create live command publishers or actor stages",
+      )
     }
   }
   if @env.get_env_var("MOONROBO_E1_POSITION_HOLD_TRIAL") is Some(path) {
-    guard stage == "hold" && @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW") is None &&
+    guard stage == "hold" &&
+      @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW") is None &&
       @env.get_env_var("MOONROBO_E1_REPORTED_EFFORT_SHADOW") != Some("1") &&
-      @fs.exists(path) && @fs.exists(required("MOONROBO_E1_POSITION_HOLD_SHADOW_AUDIT")) else {
-      fail("finite position-hold trial requires separate evidence and hold-only admission")
+      @fs.exists(path) &&
+      @fs.exists(required("MOONROBO_E1_POSITION_HOLD_SHADOW_AUDIT")) else {
+      fail(
+        "finite position-hold trial requires separate evidence and hold-only admission",
+      )
     }
   }
   let deploy = required("MOONROBO_E1_DEPLOY_DIR")
-  guard @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE") is None || stage == "supported-elbow" else {
+  if @env.get_env_var("MOONROBO_E1_ACTOR_HOLD_PROFILE") is Some(path) {
+    guard stage == "actor-elbows" &&
+      @fs.exists(path) &&
+      @env.get_env_var("MOONROBO_E1_POSITION_HOLD_TRIAL") is None &&
+      @env.get_env_var("MOONROBO_E1_REPORTED_EFFORT_SHADOW") != Some("1") else {
+      fail("supported actor feedback requires its explicit actor-only path")
+    }
+    if kind == "live" {
+      guard @fs.exists(required("MOONROBO_E1_ACTOR_HOLD_SHADOW_AUDIT")) else {
+        fail("supported actor shadow audit missing")
+      }
+    }
+  }
+  guard @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE") is None ||
+    stage == "supported-elbow" else {
     fail("supported-elbow profile cannot select another stage")
   }
   if stage == "supported-elbow" {
-    guard @fs.exists(required("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE")) else { fail("supported elbow profile missing") }
+    guard @fs.exists(required("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE")) else {
+      fail("supported elbow profile missing")
+    }
     if kind == "live" {
-      guard @fs.exists(required("MOONROBO_E1_SUPPORTED_ELBOW_SHADOW_AUDIT")) else { fail("supported elbow shadow proof missing") }
+      guard @fs.exists(required("MOONROBO_E1_SUPPORTED_ELBOW_SHADOW_AUDIT")) else {
+        fail("supported elbow shadow proof missing")
+      }
     }
   }
   let coordinator = required("MOONROBO_E1_COORDINATOR")

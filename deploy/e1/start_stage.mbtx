@@ -56,15 +56,19 @@ async fn main {
     )
   }
   let live = kind == "live"
-  guard @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE") is None || stage == "supported-elbow" else {
+  guard @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE") is None ||
+    stage == "supported-elbow" else {
     fail("supported elbow profile is stage-specific")
   }
   let position_trial = @env.get_env_var("MOONROBO_E1_POSITION_HOLD_TRIAL")
   if position_trial is Some(path) {
-    guard stage == "hold" && @fs.exists(path) &&
+    guard stage == "hold" &&
+      @fs.exists(path) &&
       @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW") is None &&
       @env.get_env_var("MOONROBO_E1_REPORTED_EFFORT_SHADOW") != Some("1") else {
-      fail("finite position-feedback commissioning is a separate hold-only stage")
+      fail(
+        "finite position-feedback commissioning is a separate hold-only stage",
+      )
     }
   }
   if @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW") is Some(_) {
@@ -107,20 +111,30 @@ async fn main {
     [dir + "/shadow-sink.ndjson"]
   }
   if live && position_trial is Some(profile) {
-    guard @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW_AUDIT") is Some(audit) && @fs.exists(audit) else {
+    guard @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW_AUDIT")
+      is Some(audit) &&
+      @fs.exists(audit) else {
       fail("position-feedback shadow evidence required before commissioning")
     }
-    sender_args.append(["--position-hold-trial", profile, "--position-hold-shadow-audit", audit])
+    sender_args.append([
+      "--position-hold-trial", profile, "--position-hold-shadow-audit", audit,
+    ])
   }
   if stage == "supported-elbow" {
-    guard @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE") is Some(profile) && @fs.exists(profile) else {
+    guard @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE")
+      is Some(profile) &&
+      @fs.exists(profile) else {
       fail("explicit supported elbow profile required")
     }
     if live {
-      guard @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_SHADOW_AUDIT") is Some(proof) && @fs.exists(proof) else {
+      guard @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_SHADOW_AUDIT")
+        is Some(proof) &&
+        @fs.exists(proof) else {
         fail("matching supported elbow shadow proof required")
       }
-      sender_args.append(["--supported-elbow-profile", profile, "--supported-elbow-shadow-audit", proof])
+      sender_args.append([
+        "--supported-elbow-profile", profile, "--supported-elbow-shadow-audit", proof,
+      ])
     }
   }
   if live &&
@@ -134,6 +148,17 @@ async fn main {
       fail("actor configuration required")
     }
     sender_args.push(config)
+    if @env.get_env_var("MOONROBO_E1_ACTOR_HOLD_PROFILE") is Some(profile) {
+      guard @env.get_env_var("MOONROBO_E1_ACTOR_HOLD_SHADOW_AUDIT")
+        is Some(proof) &&
+        @fs.exists(profile) &&
+        @fs.exists(proof) else {
+        fail("supported actor feedback proof missing")
+      }
+      sender_args.append([
+        "--actor-hold-profile", profile, "--actor-hold-shadow-audit", proof,
+      ])
+    }
   }
   @async.with_timeout(
     if stage == "raised-drums" ||

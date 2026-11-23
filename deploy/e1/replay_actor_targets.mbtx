@@ -62,6 +62,18 @@ async fn main {
     row["telemetry_source_ns"] = Json(
       (source + offset.unwrap() * 1000000L).to_string(),
     )
+    if row.get("actor_position_hold") is Some(Object(meta)) {
+      for
+        key in [
+          "seed_arrival_ns", "seed_source_ns", "input_arrival_ns", "input_source_ns",
+        ] {
+        let stamp : Int64 = @json.from_json(meta[key])
+        meta[key] = Json((stamp + offset.unwrap() * 1000000L).to_string())
+      }
+      let stamp : Int64 = @json.from_json(meta["update_ms"])
+      meta["update_ms"] = Json((stamp + offset.unwrap()).to_string())
+      row["actor_position_hold"] = Json(meta)
+    }
     row["shadow"] = Json(false)
     let due = receipt + offset.unwrap()
     let now = @env.now().reinterpret_as_int64()

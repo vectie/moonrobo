@@ -16,8 +16,9 @@ supported=len(sys.argv)>2 and sys.argv[2]=="supported-elbow"
 maximum_position_hold_bias_nm=0.
 raised=len(sys.argv)>2 and sys.argv[2]=="raised-drums"
 typing=len(sys.argv)>2 and sys.argv[2]=="typing-elbows"
-actor=len(sys.argv)>2 and sys.argv[2]=="actor-elbows"
-drums=len(sys.argv)>2 and sys.argv[2] in ("drums","raised-drums","typing-elbows","actor-elbows")
+actor_supported=len(sys.argv)>2 and sys.argv[2]=="actor-supported"
+actor=len(sys.argv)>2 and sys.argv[2] in ("actor-elbows","actor-supported")
+drums=len(sys.argv)>2 and sys.argv[2] in ("drums","raised-drums","typing-elbows","actor-elbows","actor-supported")
 left_absolute_min=right_absolute_min=0.;left_drop=right_drop=0.;raised_seen=False
 last_feedback=0.
 right_peak=0.;right_last=0.;left_strokes=right_strokes=0;left_active=right_active=False
@@ -43,6 +44,13 @@ while time.monotonic()<end:
         assert len(values)==24 and [x["motor_id"] for x in values]==list(range(24))
         if baseline is None:baseline=values;first=time.monotonic()
         for i,m in enumerate(values):
+            if actor_supported:
+                assert all(m[k]==baseline[i][k] for k in ("motor_id","vel","kp","kd"))
+                if i not in (3,14):assert m["pos"]==baseline[i]["pos"]
+                limit=7.5 if i in (7,8,18,19) else 4.5 if i in (5,6,16,17) else 3.5 if i in (9,10,20,21) else 0.
+                assert abs(m["tau"])<=limit
+                maximum_position_hold_bias_nm=max(maximum_position_hold_bias_nm,abs(m["tau"]))
+                continue
             if supported:
                 assert all(m[k]==baseline[i][k] for k in ("motor_id","vel","kp","kd"))
                 if i!=3:assert m["pos"]==baseline[i]["pos"]

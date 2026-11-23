@@ -3,15 +3,23 @@ import json
 import math
 import pathlib
 import sys
+import hashlib
+from actor_hold_validation import ActorHoldValidator
+from shadow_effort_validation import LEGS
 from actor_validation import ActorValidator
 from shadow_effort_validation import validate_shadow_effort, verify_seed_capture
 
 
 def main():
     args = sys.argv[1:]
-    assert len(args) == 3 or len(args) == 5 and args[3] == "--status"
+    assert len(args) >= 3 and (len(args)-3)%2 == 0
     config_path, trace_path, output = map(pathlib.Path, args[:3])
-    status_path = pathlib.Path(args[4]) if len(args) == 5 else None
+    options = dict(zip(args[3::2],args[4::2]))
+    assert set(options) <= {"--status", "--hold-profile"}
+    status_path = pathlib.Path(options["--status"]) if "--status" in options else None
+    hold_path = pathlib.Path(options["--hold-profile"]) if "--hold-profile" in options else None
+    hold_validator = ActorHoldValidator(json.loads(hold_path.read_text())) if hold_path else None
+    if hold_validator:assert status_path is not None
     assert not output.exists()
     profile = json.loads(config_path.read_text())
     validator = ActorValidator(profile)
@@ -38,6 +46,8 @@ def main():
         if shadow is None:shadow = row["shadow"]
         assert row["shadow"] == shadow
         motors = row["motors"]
+        if hold_validator:hold_validator.validate(row)
+        else:assert row.get("actor_position_hold") is None
         if row.get("reported_leg_effort_shadow") is not None:
             current_seed=validate_shadow_effort(row,baseline)
             if baseline is None:
@@ -51,10 +61,13 @@ def main():
         for slot, motor in enumerate(motors):
             assert all(math.isfinite(motor[k]) for k in ("pos", "vel", "tau", "kp", "kd"))
             assert motor["vel"] == 0
-            if effort_seed is None:assert motor["tau"] == 0
+            if effort_seed is None and not (hold_validator and slot in LEGS):assert motor["tau"] == 0
             assert motor["kp"] == (0 if slot == 23 else 50)
             assert motor["kd"] == (1 if slot in (9, 10, 20, 21) else 5)
-            if baseline and slot not in (3, 14):assert motor == baseline[slot]
+            if baseline and slot not in (3, 14):
+                if hold_validator and slot in LEGS:
+                    assert all(motor[k]==baseline[slot][k] for k in ("motor_id","pos","vel","kp","kd"))
+                else:assert motor == baseline[slot]
         assert motors[23]["pos"] == 0
         if baseline is None:baseline = motors
         if previous:
@@ -77,11 +90,18 @@ def main():
         packets += 1
     assert stopped and policy > 500
     for slot in (3, 14):assert previous["motors"][slot] == baseline[slot]
+    if hold_validator:hold_validator.verify_capture(status_path)
     report = dict(passed=True, scope="saved command proposals; not a physical wire audit",
                   shadow=shadow, model_id=profile["model_id"], target_heartbeats=packets,
                   reported_leg_effort_shadow=effort_seed, powered_takeover_qualified=False,
                   inference_updates=model_steps, policy_updates=policy, status_motor_records=24,
-                  fixed_motor_records=22, max_fixed_target_change=0, targets_returned_exactly=True,
+                  fixed_motor_records=10 if hold_validator else 22,
+                  fixed_position_records=22, actor_position_hold=hold_validator is not None,
+                  raw_inputs_verified=hold_validator is not None,
+                  actor_config_sha256=hashlib.sha256(config_path.read_bytes()).hexdigest(),
+                  hold_profile_sha256=hashlib.sha256(hold_path.read_bytes()).hexdigest() if hold_path else None,
+                  maximum_holding_bias_nm=hold_validator.feedback.maximum_bias_nm if hold_validator else None,
+                  max_fixed_target_change=0, targets_returned_exactly=True,
                   policy_authority=profile["adapter"]["policy_authority"],
                   position_bounded_policy_ticks=clipped, rate_limited_policy_ticks=limited,
                   raw_elbow_range_rad=dict(minimum=raw_min, maximum=raw_max),
