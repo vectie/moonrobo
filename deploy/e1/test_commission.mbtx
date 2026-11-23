@@ -201,6 +201,11 @@ async fn main {
           )
         }
         let wire = @fs.read_file(dir + "/wire.json").json()
+        if scenario == "supported-elbow" {
+          guard @fs.read_file(dir + "/planner.json").json() is { "startup_restarts": 1, .. } else {
+            fail("passive startup gap did not restart full stationary qualification")
+          }
+        }
         if scenario == "position-hold" {
           guard wire is { "maximum_position_hold_bias_nm": Number(bias, ..), .. } && bias > 0.02 && bias < 0.1 else {
             fail("isolated position feedback did not reach the DDS wire")

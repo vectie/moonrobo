@@ -81,7 +81,9 @@ async fn main {
     let row = rows[index % rows.length()]
     let p = row.packet
     let cycle = index / rows.length()
-    let delta = p.arrival_ns - input_start + cycle.to_int64() * period
+    // Lose one packet before arming: qualification must restart, not the guard.
+    let skipped = if scenario == "supported-elbow" && index >= 200 { 3000000L } else { 0L }
+    let delta = p.arrival_ns - input_start + cycle.to_int64() * period + skipped
     if delta >
       (if scenario == "raised-drums" { 210000000000L } else { 184000000000L }) {
       break
@@ -104,7 +106,7 @@ async fn main {
     if scenario == "position-hold" && delta >= 1200000000L {
       p.q[7] = -0.001 // A test-only 0.057-degree displacement after capture.
     }
-    if scenario == "supported-elbow" && delta >= 1200000000L { p.q[7] = -0.02 }
+    if scenario == "supported-elbow" && delta >= 2200000000L { p.q[7] = -0.02 }
     if scenario == "elbow" || scenario == "elbow90" {
       let duration = if scenario == "elbow90" { 180000.0 } else { 15000.0 }
       let half_peak = if scenario == "elbow90" { 45.0 } else { 2.5 }
@@ -141,8 +143,8 @@ async fn main {
     }
     let line : Json = {
       "packet": {
-        "seq": Json(rows[0].packet.seq + index),
-        "source_ns": (p.source_ns + cycle.to_int64() * period).to_string(),
+        "seq": Json(rows[0].packet.seq + index + (if skipped > 0L { 1 } else { 0 })),
+        "source_ns": (p.source_ns + cycle.to_int64() * period + skipped).to_string(),
         "arrival_ns": (start * 1000000L + delta).to_string(),
         "q": Json(p.q),
         "qd": Json(p.qd),

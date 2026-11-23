@@ -1,4 +1,23 @@
 ///|
+/// A forward gap may restart passive qualification; it never admits a command
+/// or resets an armed guard. A fresh full second must follow the replacement.
+fn supported_startup_rebaseline(
+  armed : Bool,
+  detector : @ankle.Detector,
+  packet : @ankle.Packet,
+) -> Bool {
+  !armed &&
+  detector.pending is None &&
+  !packet.starts_on_standing_spike() &&
+  detector.last is Some(before) &&
+  packet.seq > before.seq &&
+  packet.source_ns > before.source_ns &&
+  packet.source_ns - before.source_ns <= 40000000L &&
+  packet.arrival_ns > before.arrival_ns &&
+  packet.arrival_ns - before.arrival_ns <= 40000000L
+}
+
+///|
 /// One crane-supported, fixed-leg-target commissioning gesture. Shadow and
 /// powered runs share the same calculation; only shadow omits elbow following.
 async fn supported_elbow(report_file : String, shadow : Bool) -> Unit {
@@ -17,7 +36,7 @@ async fn supported_elbow(report_file : String, shadow : Bool) -> Unit {
     @fs.read_file(pose_path).json(),
   )
   let (opening, _) = @async.with_timeout(10000, read_status)
-  let first = if opening.starts_on_standing_spike() {
+  let mut first = if opening.starts_on_standing_spike() {
     let (next, _) = @async.with_timeout(6, read_status)
     guard next.confirms_standing_start(opening) else {
       fail("startup ankle did not recover")
@@ -36,9 +55,15 @@ async fn supported_elbow(report_file : String, shadow : Bool) -> Unit {
   let mut packets = 0
   let mut max_leg_feedback_deg = 0.0
   let mut final_frame = -1
+  let startup_origin = first.arrival_ns / 1000000L
+  let mut startup_restarts = 0
   for ;; {
     packets += 1
     let now = @env.now().reinterpret_as_int64()
+    guard owner is Some(_) ||
+      (now >= startup_origin && now - startup_origin <= 10000L) else {
+      fail("supported elbow stationary baseline timeout")
+    }
     guard now >= p.arrival_ns / 1000000L && now - p.arrival_ns / 1000000L <= 40L else {
       fail("stale telemetry")
     }
@@ -48,7 +73,18 @@ async fn supported_elbow(report_file : String, shadow : Bool) -> Unit {
       }
     }
     match detector.observe(p) {
-      Stop(reason, slot) => fail(reason + " slot " + slot.to_string())
+      Stop(reason, slot) =>
+        if reason == "packet continuity lost" &&
+          supported_startup_rebaseline(owner is Some(_), detector, p) {
+          first = p
+          detector = @ankle.Detector::new(p, confirm_isolated=true)
+          guard detector.observe(p) is Use else {
+            fail("invalid replacement startup sample")
+          }
+          startup_restarts += 1
+        } else {
+          fail(reason + " slot " + slot.to_string())
+        }
       Wait => ()
       Use => {
         if owner is None && now - first.arrival_ns / 1000000L >= 1000L {
@@ -147,6 +183,7 @@ async fn supported_elbow(report_file : String, shadow : Bool) -> Unit {
           (@env.now().reinterpret_as_int64() - active_start).to_int(),
         ),
         "guarded_updates": Json(count),
+        "startup_restarts": Json(startup_restarts),
         "packets": Json(packets),
         "final_reference_frame": Json(final_frame),
         "fixed_position_records": 23,

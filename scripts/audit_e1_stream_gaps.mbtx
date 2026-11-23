@@ -1,0 +1,46 @@
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+struct Packet {
+  seq : Int
+  source_ns : Int64
+  arrival_ns : Int64
+} derive(FromJson)
+struct Row { packet : Packet } derive(FromJson)
+
+async fn main {
+  guard @env.args()[1:] is [path, output] else { fail("STATUS_NDJSON NEW_REPORT") }
+  let mut previous : Packet? = None
+  let mut count = 0
+  let mut faults = 0
+  let mut max_source = 0L
+  let mut max_receipt = 0L
+  let examples : Array[Json] = []
+  for line in @fs.read_file(path).text().split("\n") {
+    if line.is_empty() { continue }
+    let row : Row = @json.from_json(@json.parse(line.to_owned()))
+    let p = row.packet
+    if previous is Some(before) {
+      let source_gap = p.source_ns-before.source_ns
+      let receipt_gap = p.arrival_ns-before.arrival_ns
+      max_source = max_source.max(source_gap)
+      max_receipt = max_receipt.max(receipt_gap)
+      if p.seq != before.seq+1 || source_gap <= 0L || receipt_gap <= 0L || source_gap > 6000000L || receipt_gap > 6000000L {
+        faults += 1
+        if examples.length() < 12 { examples.push({ "before": Json(before.seq), "after": Json(p.seq),
+          "source_gap_ns": source_gap.to_string(), "receipt_gap_ns": receipt_gap.to_string(), }) }
+      }
+    }
+    previous = Some(p)
+    count += 1
+  }
+  let result : Json = { "source": "saved capture; no connection", "packets": Json(count),
+    "gaps_over_six_ms_or_nonmonotonic": Json(faults), "maximum_source_gap_ns": max_source.to_string(),
+    "maximum_receipt_gap_ns": max_receipt.to_string(), "examples": Json(examples), }
+  @fs.write_file(output, result.stringify(indent=2), create_mode=CreateNew)
+  println(result.stringify(indent=2))
+}
