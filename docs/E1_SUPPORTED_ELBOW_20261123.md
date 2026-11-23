@@ -1,12 +1,17 @@
 # Supported elbow commissioning, 23 November 2026
 
-The requested elbow gesture has **not yet executed on the E1**. The operator
-accepted approximately three degrees of temporary leg settling while the crane
-bears weight. A separate commissioning profile was implemented and validated;
-the actual attempt then stopped during its initial hold because the left
-shoulder roll exceeded the unchanged non-leg one-degree bound. Acceptance of a
-three-degree bound for other non-target joints, and current physical/handheld
-observations after that stop, are pending. No further real commands are queued.
+This page preserves the earlier v1/3° leg-only trial. The operator subsequently
+allowed 5° for all joints; the separate
+[v2 supported gesture](E1_SUPPORTED_ELBOW_5DEG_20261123.md) completed and its
+measured left-elbow fold was approximately 4.66°.
+
+Under the historical v1 profile, the elbow gesture did not execute. The operator
+had accepted approximately three degrees of temporary leg settling while the
+crane bore weight. That attempt stopped in its initial hold because left
+shoulder roll exceeded the unchanged non-leg one-degree bound. The scope
+question raised at that point was subsequently resolved by the operator's
+explicit five-degree instruction; the v2 results linked above supersede that
+pending operational status without changing this v1 trial's failed result.
 
 ## Explicit scope
 

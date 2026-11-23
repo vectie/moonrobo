@@ -29,8 +29,9 @@
   "calculation_audit_passed": true,
   "wire_frames_matched_to_fresh_admitted_proposals": 61,
   "participant_deleted": true,
-  "further_powered_attempt_performed": false,
-  "pending": "Acceptance of approximately 3-degree non-target joint settling and operator observations after the powered stop.",
+  "further_v1_powered_attempt_performed": false,
+  "status_after_v1_attempt": "Stopped before gesture; non-target joint scope was pending at that time.",
+  "superseded_by": "e1-supported-elbow-5deg-20261123.json; operator subsequently allowed five degrees for all joints",
   "startup_attempt": {
     "directory": "supported-elbow-powered-20261123-1",
     "motor_samples_sent": 0,

@@ -309,3 +309,11 @@ proposal independently. No actor qualification is implied.
 The actual attempt stopped in the initial hold at the left shoulder's 1°
 bound, before any elbow fold target. See
 [test results and remaining scope confirmation](../../docs/E1_SUPPORTED_ELBOW_20261123.md).
+
+The operator subsequently authorized a 5° envelope for all joints. The new
+supported owner uses the explicit v2
+[`supported-elbow-5deg.json`](supported-elbow-5deg.json), with a fresh matching
+shadow audit. Default hold/actor profiles remain unchanged. The prior v1 JSON
+is retained for historical Python audits and requires its corresponding older
+owner for reproduction. See the
+[completed v2 run and measured tracking limits](../../docs/E1_SUPPORTED_ELBOW_5DEG_20261123.md).
