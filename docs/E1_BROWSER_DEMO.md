@@ -28,6 +28,50 @@ initial measured orientation.
 
 [Compare the 40 shared holdouts](http://127.0.0.1:5300/compare.html?motion=M_Move3) opens both 14k MuJoCo rollouts on one 50 Hz clock. Select a dance or karate recording, scrub the timeline, or click a robot’s stop time to inspect its final pose. The shared panel uses Experiential Technologies’ G1 Moves recordings.
 
+## Physical camera access audit — 2026-11-23
+
+Camera integration is **blocked on a supported, accessible E1 image source**.
+The live page currently displays joint/IMU telemetry, not camera images. On this
+date the local `/__e1_pose` endpoint still returned fresh data for 23 joints.
+
+- The public [E1 SDK](https://github.com/Noetix-Robotics/noetix_sdk_e1/tree/3055bdc644f61caf948d935ee274c5c48703c24f)
+  was checked at commit `3055bdc644f61caf948d935ee274c5c48703c24f`, version
+  `3.1.0`. Its complete tree, high/low controller headers, common data types and
+  high-controller Python bindings expose no camera subscriber, image type or
+  media controller. The repository had one public branch and no GitHub releases.
+- The [Chinese E1 guide](https://web.noetixrobotics.com/docs/通用人形机器人/E1%20综合使用文档/)
+  and [English E1 guide](https://web.noetixrobotics.com/docs/en/通用人形机器人/E1%20综合使用文档/)
+  do not document a network image endpoint. The English specification table
+  distinguishes standard E1's `DC_V93` from Education E1's `RealSense D435I`.
+  The camera installed in this particular robot has not been identified; do
+  not assume D435i from the generic camera-information link.
+- [NOETIX Run's official release history](https://apps.apple.com/cn/app/noetix-run/id6751874215)
+  lists E1 compatibility in 2.0.6, video transmission in 2.0.0, and dual-board
+  video compatibility in 3.1.0. These establish an app route to investigate,
+  not a public E1 stream URL or proof that this unit supplies video. App pairing
+  and live video on this unit remain unverified.
+- The camera methods in the public
+  [Bumi MediaController](https://github.com/Noetix-Robotics/noetix_sdk_bumi/blob/95b264598ed671a76f7959a69c21b1b99f40c0b2/include/MediaController.h)
+  include `subscribe_internal_video_capture` and
+  `subscribe_internal_video_desensed`. These are **Bumi interfaces**; no
+  E1-compatibility claim was found. They were not run against E1. Some Bumi
+  documentation uses the older name `get_video_capture_data`; do not invent
+  that method in the E1 adapter.
+
+The user has ruled out logging into the motion-control board at
+`192.168.55.102`. This audit did not connect to that board or change any robot
+service. Earlier external checks found no camera on Atlas and no image publisher
+in a bounded domain-0 DDS discovery; those checks do not establish absence of
+an internal camera or a feed on another transport/domain. Atlas currently uses
+`192.168.55.101`, so that address cannot be assumed to identify a separate Jetson.
+
+To complete integration, obtain either a vendor-confirmed E1 video subscription
+API/stream for this firmware, or an identified camera device on an accessible
+development computer. A paired NOETIX Run video check can confirm that the
+robot's camera works, but does not by itself provide a browser-embeddable feed.
+No placeholder image, Bumi protocol experiment or controller login substitutes
+for receiving and verifying real E1 frames.
+
 ## What it shows
 
 - The actual E1 MJCF hierarchy, joint axes and visual meshes.
