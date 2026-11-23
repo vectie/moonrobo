@@ -1,5 +1,11 @@
 # Holding transition investigation, 23 November 2026
 
+A later [position-feedback hold experiment](E1_POSITION_HOLD_SHADOW_20261123.md)
+completed 15 seconds of receive-only live shadow without consuming reported
+torque. This provides an alternative to the active-effort source requirements
+below for shadow investigation; it does not establish instantaneous preload
+continuity or qualify powered takeover.
+
 The robot's powered holding transition is **not yet fixed or qualified**. This
 pass fixed a torque-visibility omission, implemented and tested an effort-matching
 calculation, and repeated receive-only hold and real-inference actor shadow on

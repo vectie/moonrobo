@@ -260,3 +260,19 @@ saved capture. Repeated runs use fresh ignored `runs/` subdirectories.
 `measure_trial.mbtx`, `measure_strokes.mbtx` and the Python transport auditors
 analyze completed archives; they do not publish commands. Retain raw archives
 outside Git and record their hashes alongside a sanitized report.
+
+## Position-feedback hold experiment
+
+`MOONROBO_E1_POSITION_HOLD_SHADOW` selects an explicit
+[`position-hold-shadow.json`](position-hold-shadow.json) configuration for the
+existing **`shadow hold`** stage only. It keeps all 24 position records fixed
+and computes bounded leg effort from position error without using reported
+torque. This stage observes 15 seconds; it creates no mode/motor publishers.
+Live and actor stages reject this experiment. Its target marker is also
+rejected by the independent live transport, even with the shadow flag removed.
+Do not combine it with `MOONROBO_E1_REPORTED_EFFORT_SHADOW=1`.
+
+After a completed run, `audit_shadow_hold_effort.py RUN NEW_REPORT` independently
+checks every proposal against the captured inputs. See the
+[implementation, parameters and live evidence](../../docs/E1_POSITION_HOLD_SHADOW_20261123.md).
+The successful shadow does not prove powered holding or handback.
