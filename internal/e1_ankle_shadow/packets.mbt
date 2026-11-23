@@ -27,6 +27,7 @@ pub struct Detector {
   baseline : Packet
   confirm_isolated : Bool
   suspended : Bool
+  moving_right_elbow : Bool
   mut healthy_streak : Int32
   mut good : Packet
   mut last : Packet?
@@ -46,6 +47,7 @@ pub fn Detector::new(
     baseline: first,
     confirm_isolated,
     suspended,
+    moving_right_elbow: false,
     healthy_streak: 0,
     good: first,
     last: None,
@@ -61,7 +63,10 @@ pub fn Detector::new(
 /// discarding continuity or the stationary history needed to confirm a spike.
 /// Provisional and unobserved samples cannot become a hold reference.
 /// As with observe, callers must terminate on Stop rather than reuse a detector.
-pub fn Detector::begin_hold(self : Detector) -> Detector raise {
+pub fn Detector::begin_hold(
+  self : Detector,
+  moving_right_elbow~ : Bool = false,
+) -> Detector raise {
   guard self.pending is None &&
     self.last is Some(last) &&
     last.seq == self.good.seq &&
@@ -72,6 +77,7 @@ pub fn Detector::begin_hold(self : Detector) -> Detector raise {
     baseline: self.good,
     confirm_isolated: self.confirm_isolated,
     suspended: self.suspended,
+    moving_right_elbow,
     healthy_streak: self.healthy_streak,
     good: self.good,
     last: self.last,
@@ -308,6 +314,7 @@ pub fn Detector::observe(self : Detector, p : Packet) -> Verdict {
   let mut ankle_slot : Int32? = None
   for slot in 0..<23 {
     if slot != @elbow.ELBOW_SLOT &&
+      !(self.moving_right_elbow && slot == @elbow.RIGHT_ELBOW_SLOT) &&
       (p.q[slot] - self.baseline.q[slot]).abs() > RAD {
       match slot {
         9 | 10 | 20 | 21 => if ankle_slot is None { ankle_slot = Some(slot) }

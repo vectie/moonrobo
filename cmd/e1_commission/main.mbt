@@ -23,6 +23,16 @@ async fn commission(
     stage == "raised-drums" ||
     stage == "typing-elbows"
   let raised = stage == "raised-drums" || stage == "typing-elbows"
+  let current_pose : @actor_elbows.CurrentPoseProfile? = match
+    @env.get_env_var("MOONROBO_E1_CURRENT_POSE_PROFILE") {
+    None => None
+    Some(path) => {
+      guard stage == "hold" else {
+        fail("measured-pose commissioning applies only to the hold stage")
+      }
+      Some(@json.from_json(@fs.read_file(path).json()))
+    }
+  }
   let opening = @async.with_timeout(10000, read_status)
   let first = if opening.starts_on_standing_spike() {
     let recovery = @async.with_timeout(6, read_status)
@@ -102,6 +112,9 @@ async fn commission(
           }
           if now - first.arrival_ns / 1000000L >= 1000L {
             let current = s.stand_candidate()
+            if current_pose is Some(profile) {
+              profile.validate_baseline(p.q[:])
+            }
             if dual {
               ignore(
                 if raised {
@@ -120,12 +133,21 @@ async fn commission(
             hold = Some(current)
             latest = current
             active_start = now
-            detector = @ankle.Detector::new(
-              p,
-              confirm_isolated=true,
-              suspended=true,
-            )
-            ignore(detector.observe(p))
+            if current_pose is Some(_) {
+              detector = detector.begin_hold()
+            } else {
+              detector = @ankle.Detector::new(
+                p,
+                confirm_isolated=true,
+                suspended=true,
+              )
+              match detector.observe(p) {
+                Use => ()
+                Stop(reason, slot) => fail(reason + " slot " + slot.to_string())
+                Wait =>
+                  fail("provisional telemetry cannot establish a powered hold")
+              }
+            }
           }
         }
         if hold is Some(base) {
@@ -240,6 +262,9 @@ async fn commission(
             emit_event({
               "kind": "target",
               "shadow": Json(shadow),
+              "current_pose_commissioning": current_pose
+              .map(p => p.to_json())
+              .unwrap_or(Json::null()),
               "stage": stage,
               "reference_frame": Json(frames - 1),
               "profile": "suspended",
@@ -279,14 +304,22 @@ async fn commission(
   let report : Json = {
     "stage": stage,
     "profile": "suspended",
-    "feedback": if shadow {
+    "feedback": if shadow && dual {
       "live telemetry with explicitly simulated elbow tracking"
     } else {
       "live telemetry"
     },
     "software_stage_completed": true,
+    "shadow": Json(shadow),
+    "current_pose_commissioning": current_pose
+    .map(p => p.to_json())
+    .unwrap_or(Json::null()),
     "physical_handback_verified": false,
-    "leg_acceptance": "feedback motion accepted within SDK leg ranges; command targets remain fixed",
+    "leg_acceptance": if current_pose is Some(_) {
+      "explicit measured raw-pose hold; stationary/glitch guard; all targets fixed"
+    } else {
+      "feedback motion accepted within SDK leg ranges; command targets remain fixed"
+    },
     "frames": Json(frames),
     "guarded_updates": Json(updates),
     "packets": Json(packets),
@@ -296,7 +329,9 @@ async fn commission(
     "action": 11,
     "axes": [0.0, 0.0],
     "max_fixed_target_change": 0.0,
-    "moving_slots": if dual {
+    "moving_slots": if stage == "hold" {
+      Json(Array::make(0, 0))
+    } else if dual {
       Json([3, 14])
     } else {
       Json([3])
@@ -316,6 +351,7 @@ async fn commission(
 async fn main {
   let (stage, report_file, shadow) = match @env.args()[1:] {
     [stage, report_file] => (stage, report_file, false)
+    ["hold", report_file, "--shadow"] => ("hold", report_file, true)
     ["drums", report_file, "--shadow"] => ("drums", report_file, true)
     ["raised-drums", report_file, "--shadow"] =>
       ("raised-drums", report_file, true)

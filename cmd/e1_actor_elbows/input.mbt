@@ -77,17 +77,29 @@ fn assessed_hold(
   previous : @ankle.Detector,
   packet : @ankle.Packet,
   shadow : Bool,
+  current_pose : @adapter.CurrentPoseProfile?,
 ) -> @ankle.Detector raise {
-  if shadow {
+  if current_pose is Some(profile) {
+    profile.validate_baseline(packet.q[:])
+  }
+  if shadow || current_pose is Some(_) {
     // A measured pose is not an encoder-zero calibration. Read-only proposals
     // keep the validated stationary/glitch history rather than applying nominal
     // mechanical travel limits directly to unqualified raw feedback.
     guard !previous.suspended && previous.good.seq == packet.seq else {
       fail("shadow hold requires the current stationary assessment")
     }
-    previous.begin_hold()
+    previous.begin_hold(moving_right_elbow=current_pose is Some(_))
   } else {
     hold_detector(packet)
+  }
+}
+
+///|
+async fn current_pose_profile() -> @adapter.CurrentPoseProfile? {
+  match @env.get_env_var("MOONROBO_E1_CURRENT_POSE_PROFILE") {
+    None => None
+    Some(path) => Some(@json.from_json(@fs.read_file(path).json()))
   }
 }
 

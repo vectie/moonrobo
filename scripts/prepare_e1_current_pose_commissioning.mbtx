@@ -1,0 +1,50 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [audit, output] else {
+    fail("RAW_KNEE_AUDIT NEW_PROFILE required")
+  }
+  let bytes = @fs.read_file(audit).binary()
+  guard @fs.read_file(audit).json()
+    is {
+      "passed": True,
+      "motor_id": Number(19, ..),
+      "unique_samples": Number(samples, ..),
+      "matching_decoded_samples": Number(matched, ..),
+      "distinct_position_bit_patterns": Number(1, ..),
+      "minimum_rad": Number(minimum, ..),
+      "maximum_rad": Number(maximum, ..),
+      "encoder_zero_identified": False,
+      "robot_commands_or_calibration_writes": False,
+      ..
+    } &&
+    samples > 1000 &&
+    samples == matched &&
+    minimum == maximum &&
+    minimum < 0 &&
+    minimum >= -0.017453292519943295 else {
+    fail("stable sub-degree raw knee discrepancy evidence required")
+  }
+  let mut hash = ""
+  for byte in @crypto.sha256(bytes) {
+    hash += byte.to_hex()
+  }
+  let profile : Json = {
+    "format": "moonrobo.e1-current-pose-commissioning.v1",
+    "scope": "unchanged-raw-hold-and-elbows-only",
+    "expected_knee_raw_rad": Json(minimum),
+    "evidence_sha256": hash,
+  }
+  @fs.write_file(output, profile.stringify(indent=2), create_mode=CreateNew)
+  println(
+    "Prepared explicit measured-pose commissioning profile; no encoder zero or robot command",
+  )
+}

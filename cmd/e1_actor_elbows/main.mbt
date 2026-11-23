@@ -2,6 +2,7 @@
 async fn run(report : String, shadow : Bool) -> Unit {
   let preparation_started = @env.now().reinterpret_as_int64()
   let (bundle, actor, clip, config) = load()
+  let current_pose = current_pose_profile()
   defer (actor.close() catch { _ => () })
   diagnose(
     "actor artifacts verified and NPU prepared in " +
@@ -109,7 +110,7 @@ async fn run(report : String, shadow : Bool) -> Unit {
             attitude.body_to_world()[:],
             clip.frame(execution, 0).body_to_world[:],
           )
-          detector = assessed_hold(detector, s.packet, shadow)
+          detector = assessed_hold(detector, s.packet, shadow, current_pose)
           started = now
           scheduled_inference = now
           diagnose("actor baseline established")
@@ -247,7 +248,12 @@ async fn run(report : String, shadow : Bool) -> Unit {
               "kind": "target",
               "stage": "actor-elbows",
               "shadow": Json(shadow),
-              "feedback_assessment": if shadow {
+              "current_pose_commissioning": current_pose
+              .map(p => p.to_json())
+              .unwrap_or(Json::null()),
+              "feedback_assessment": if current_pose is Some(_) {
+                "measured current-pose commissioning; fixed non-elbow targets; relative guard"
+              } else if shadow {
                 "relative stationary shadow; nominal SDK ranges diagnostic"
               } else {
                 "powered SDK feedback range validation"
@@ -326,7 +332,12 @@ async fn run(report : String, shadow : Bool) -> Unit {
     "moving_slots": [3, 14],
     "target_positions_returned_exactly": true,
     "physical_handback_verified": false,
-    "feedback_assessment": if shadow {
+    "current_pose_commissioning": current_pose
+    .map(p => p.to_json())
+    .unwrap_or(Json::null()),
+    "feedback_assessment": if current_pose is Some(_) {
+      "measured current-pose commissioning; fixed non-elbow targets; relative guard"
+    } else if shadow {
       "relative stationary shadow; nominal SDK ranges diagnostic"
     } else {
       "powered SDK feedback range validation"

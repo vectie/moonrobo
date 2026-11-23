@@ -300,6 +300,7 @@ async fn main {
         let planner_args = [stage, dir + "/planner.json"]
         if !live &&
           (
+            stage == "hold" ||
             stage == "drums" ||
             stage == "raised-drums" ||
             stage == "typing-elbows" ||

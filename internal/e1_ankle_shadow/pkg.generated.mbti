@@ -17,6 +17,7 @@ pub struct Detector {
   baseline : Packet
   confirm_isolated : Bool
   suspended : Bool
+  moving_right_elbow : Bool
   mut healthy_streak : Int
   mut good : Packet
   mut last : Packet?
@@ -25,7 +26,7 @@ pub struct Detector {
   mut right_only_events : Int
   mut max_confirmation_ns : Int64
 }
-pub fn Detector::begin_hold(Self) -> Self raise
+pub fn Detector::begin_hold(Self, moving_right_elbow? : Bool) -> Self raise
 pub fn Detector::new(Packet, confirm_isolated? : Bool, suspended? : Bool) -> Self
 pub fn Detector::observe(Self, Packet) -> Verdict
 

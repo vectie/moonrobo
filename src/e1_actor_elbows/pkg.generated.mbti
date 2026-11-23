@@ -19,6 +19,16 @@ pub fn Adapter::next(Self, ArrayView[@sdk_e1_low.MotorCommand], Int64, Int64, St
 pub fn Adapter::preview(Self, ArrayView[@sdk_e1_low.MotorCommand], Int64, Int64, String) -> Step raise
 pub fn Adapter::returned(Self) -> Bool
 
+pub(all) struct CurrentPoseProfile {
+  format : String
+  scope : String
+  expected_knee_raw_rad : Double
+  evidence_sha256 : String
+} derive(ToJson, @json.FromJson)
+pub fn CurrentPoseProfile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CurrentPoseProfile::to_json(Self) -> Json
+pub fn CurrentPoseProfile::validate_baseline(Self, ArrayView[Double]) -> Unit raise
+
 pub(all) struct Settings {
   lower_rad : Array[Double]
   upper_rad : Array[Double]

@@ -77,6 +77,21 @@ def typing_targets(frame, baseline):
     if frame>3100:blend=1-blend
     return tuple(x+(y-x)*blend for x,y in zip(initial,target))
 
+def validate_current_pose_profile(profile, motors, stage):
+    if profile is None:return
+    assert stage in ("hold", "actor-elbows"), "commissioned raw pose is limited to hold and actor elbows"
+    assert profile["format"]=="moonrobo.e1-current-pose-commissioning.v1"
+    assert profile["scope"]=="unchanged-raw-hold-and-elbows-only"
+    expected=profile["expected_knee_raw_rad"]
+    assert math.isfinite(expected) and -math.radians(1)<=expected<0
+    digest=profile["evidence_sha256"]
+    assert len(digest)==64 and all(c in "0123456789abcdef" for c in digest)
+    assert motors[19]["pos"]==expected, "current knee differs from commissioned raw hold"
+    bounds={5:(-40,53),6:(-40,35),7:(-85,50),8:(0,135),9:(-58,24),10:(-90,90),
+            16:(-53,40),17:(-35,40),18:(-85,50),20:(-58,24),21:(-15,15)}
+    for slot,(lower,upper) in bounds.items():
+        assert math.radians(lower)<=motors[slot]["pos"]<=math.radians(upper), "uncommissioned leg range discrepancy"
+
 def validate_frame(row, baseline, previous, stage, actor_validator=None):
     dual=stage in ("drums","raised-drums","typing-elbows","actor-elbows")
     assert not row.get("shadow",False), "shadow targets cannot drive live transport"
@@ -96,6 +111,9 @@ def validate_frame(row, baseline, previous, stage, actor_validator=None):
         movable = (3,14) if dual else (3,)
         if baseline and (i not in movable or stage=="hold"): assert m==baseline[i]
     assert motors[23]["pos"]==0 and -2.44 <= motors[3]["pos"] <=0
+    validate_current_pose_profile(row.get("current_pose_commissioning"),motors,stage)
+    if previous:
+        assert row.get("current_pose_commissioning")==previous.get("current_pose_commissioning"), "commissioning profile changed"
     if dual:
         assert all(-math.radians(130)<=motors[slot]["pos"]<=0 for slot in (3,14))
     if stage=="actor-elbows":
@@ -161,6 +179,7 @@ def main():
     ap.add_argument("--receipt",required=True)
     args=ap.parse_args()
     actor_validator=None
+    handback_profile=None
     if args.stage=="actor-elbows":
         assert args.actor_profile, "actor profile required"
         actor_validator=ActorValidator(json.loads(pathlib.Path(args.actor_profile).read_text()))
@@ -181,6 +200,7 @@ def main():
             assert previous.get("operator_confirmed_factory_control") is True
             assert previous.get("hold_session_verified") is True
             assert 0<=time.time()-previous["finished_epoch"]<=600
+            handback_profile=previous.get("current_pose_commissioning")
     else:
         assert interfaces==["lo"], "offline run requires isolated loopback"
     assert MotorCmdArray.__idl__.get_type_id().serialize().hex()=="00070000f2f315417f2fd893ffc1e75f2c4f08"
@@ -261,6 +281,8 @@ def main():
                         result=row["reason"]
                         return
                     motors=validate_frame(row,baseline,latest,args.stage,actor_validator)
+                    if args.live and args.stage=="actor-elbows":
+                        assert row.get("current_pose_commissioning")==handback_profile, "hold and actor commissioning profiles differ"
                     if baseline is None:baseline=motors
                     latest=row
                     last_update=time.monotonic()
@@ -298,6 +320,7 @@ def main():
             "operator_confirmed_factory_control":False,"peer_prefix":args.peer_prefix,
             "finished_epoch":time.time(),"action":11,"axes":[0,0],"mode_request":2,
             "mode_requests_sent":modes,"motor_samples_sent":count,"live":args.live,
+            "current_pose_commissioning":None if latest is None else latest.get("current_pose_commissioning"),
             "participant_deleted":True,"active_seconds":None if first_send is None else last_send-first_send}
         pathlib.Path(args.receipt).write_text(json.dumps(receipt,indent=2)+"\n")
 
