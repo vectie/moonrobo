@@ -1,0 +1,119 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+struct Packet {
+  seq : Int32
+  arrival_ns : Int64
+  q : Array[Double]
+  qd : Array[Double]
+  tau : Array[Double]
+} derive(FromJson)
+
+///|
+struct Row {
+  packet : Packet
+} derive(FromJson)
+
+///|
+async fn main {
+  guard @env.args()[1:] is [trace, output] else {
+    fail("DECODED_STATUS_WITH_TORQUE NEW_REPORT required")
+  }
+  let nonzero : Array[Array[Double]] = Array::makei(24, _ => [])
+  let gaps = Array::make(24, 0.0)
+  let previous = Array::make(24, 0L)
+  let burst_counts = Array::make(25, 0)
+  let hip_events : Array[Json] = []
+  let mut count = 0
+  let mut first_ns = 0L
+  let mut last_ns = 0L
+  for line in @fs.read_file(trace).text().split("\n") {
+    if line.is_empty() {
+      continue
+    }
+    let row : Row = @json.from_json(@json.parse(line.to_owned()))
+    let p = row.packet
+    guard p.q.length() == 24 &&
+      p.qd.length() == 24 &&
+      p.tau.length() == 24 &&
+      p.tau.all(x => x - x == 0.0) else {
+      fail("complete finite torque telemetry required")
+    }
+    if count == 0 {
+      first_ns = p.arrival_ns
+    }
+    last_ns = p.arrival_ns
+    let mut burst = 0
+    for slot in 0..<24 {
+      if p.tau[slot] == 0.0 {
+        continue
+      }
+      burst += 1
+      nonzero[slot].push(p.tau[slot])
+      if previous[slot] > 0L {
+        gaps[slot] = gaps[slot].max(
+          (p.arrival_ns - previous[slot]).to_double() / 1000000.0,
+        )
+      }
+      previous[slot] = p.arrival_ns
+      if slot == 7 && hip_events.length() < 25 {
+        hip_events.push({
+          "seq": Json(p.seq),
+          "relative_ms": Json((p.arrival_ns - first_ns).to_double() / 1000000.0),
+          "reported_tau_nm": Json(p.tau[slot]),
+          "q_rad": Json(p.q[slot]),
+          "qd_rad_s": Json(p.qd[slot]),
+        })
+      }
+    }
+    burst_counts[burst] += 1
+    count += 1
+  }
+  guard count > 300 else { fail("insufficient fresh torque samples") }
+  let motors = Array::makei(24, slot => {
+    let values = nonzero[slot]
+    values.sort()
+    let n = values.length()
+    let median = if n == 0 { Json::null() } else { Json(values[n / 2]) }
+    let minimum = if n == 0 { Json::null() } else { Json(values[0]) }
+    let maximum = if n == 0 { Json::null() } else { Json(values[n - 1]) }
+    let sum = values.fold(init=0.0, (a, b) => a + b)
+    {
+      "motor_id": Json(slot),
+      "reserved": Json(slot == 23),
+      "samples": Json(count),
+      "nonzero_samples": Json(n),
+      "zero_samples": Json(count - n),
+      "nonzero_min_nm": minimum,
+      "nonzero_max_nm": maximum,
+      "nonzero_median_nm": median,
+      "all_sample_mean_nm": Json(sum / count.to_double()),
+      "max_nonzero_arrival_gap_ms": Json(gaps[slot]),
+      "last_nonzero_relative_ms": if n == 0 {
+        Json::null()
+      } else {
+        Json((previous[slot] - first_ns).to_double() / 1000000.0)
+      },
+    }
+  })
+  let report : Json = {
+    "source": "saved raw motor telemetry; no commands or calibration writes",
+    "samples": Json(count),
+    "span_ms": Json((last_ns - first_ns).to_double() / 1000000.0),
+    "packets_by_nonzero_motor_count_including_reserved": Json(burst_counts),
+    "motors": Json(motors),
+    "first_nonzero_hip_events": Json(hip_events),
+    "zero_fill_semantics_identified": false,
+    "factory_commanded_effort_available": false,
+    "powered_takeover_qualified": false,
+    "warning": "Nonzero-only statistics are diagnostic, not an admitted holding-torque estimate; zero may be valid or missing and the protocol supplies no per-motor torque-valid flag.",
+  }
+  @fs.write_file(output, report.stringify(indent=2), create_mode=CreateNew)
+  println("Audited " + count.to_string() + " torque packets; see " + output)
+}

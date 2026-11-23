@@ -66,6 +66,11 @@ unchanged. Both command endpoints were deleted after the stop. The planner
 failed, so there is no completed hold planner report or valid hold/handback
 qualification for the actor stage.
 
+The subsequent [holding-effort investigation](E1_HOLDING_EFFORT_20261123.md)
+exposed intermittent nonzero torque that the earlier single-frame snapshots and
+shadow JSON did not reveal. It records the remaining prerequisites for an
+effort-preserving transition; the powered hold here remains an aborted trial.
+
 The saved telemetry gives a different signature from the isolated ankle
 glitches:
 

@@ -1,0 +1,115 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn sha(bytes : Bytes) -> String {
+  let mut result = ""
+  for byte in @crypto.sha256(bytes) {
+    result += byte.to_hex()
+  }
+  result
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [hold, actor, effort, january_sdk, output] else {
+    fail(
+      "HOLD_SHADOW ACTOR_SHADOW EFFORT_AUDIT JANUARY_SDK NEW_PREPARATION required",
+    )
+  }
+  for dir in [hold, actor] {
+    guard @fs.read_file(dir + "/session.json").json()
+      is {
+        "kind": "shadow",
+        "command_writers_created": False,
+        "planner_status": Number(0, ..),
+        "sender_status": Number(0, ..),
+        "decoder_status": Number(0, ..),
+        "observer_status": Number(0, ..),
+        "capture_status": Number(124, ..),
+        ..
+      } else {
+      fail("completed receive-only session required: " + dir)
+    }
+    guard @fs.read_file(dir + "/planner.json").json()
+      is {
+        "shadow": True,
+        "software_stage_completed": True,
+        "max_fixed_target_change": Number(0, ..),
+        ..
+      } else {
+      fail("completed fixed-target shadow required: " + dir)
+    }
+  }
+  let actor_report = @fs.read_file(actor + "/planner.json").json()
+  guard @fs.read_file(hold + "/planner.json").json()
+    is { "stage": "hold", "moving_slots": [], .. } else {
+    fail("no-motion hold shadow required")
+  }
+  guard actor_report
+    is {
+      "stage": "actor-elbows",
+      "moving_slots": [3, 14],
+      "target_positions_returned_exactly": True,
+      "model_id": String(model),
+      ..
+    } else {
+    fail("elbows-only model shadow and exact return required")
+  }
+  guard @fs.read_file(effort).json()
+    is {
+      "samples": Number(samples, ..),
+      "powered_takeover_qualified": False,
+      "factory_commanded_effort_available": False,
+      ..
+    } &&
+    samples > 300 else {
+    fail("current unresolved holding-effort audit required")
+  }
+  let report : Json = {
+    "format": "moonrobo.e1-hold-trial-preparation.v1",
+    "prepared_epoch_ms": @env.now().to_string(),
+    "ready_for_powered_takeover": false,
+    "commands_sent_by_preparation": false,
+    "hold_shadow": hold,
+    "actor_shadow": actor,
+    "session_diagnostics": Json([
+      @fs.read_file(hold + "/session.json").json(),
+      @fs.read_file(actor + "/session.json").json(),
+    ]),
+    "effort_audit": effort,
+    "effort_audit_sha256": sha(@fs.read_file(effort).binary()),
+    "model_id": model,
+    "january_sdk": january_sdk,
+    "january_sdk_source_sha256": sha(
+      @fs.read_file(january_sdk + "/lowcontroller.cpp").binary(),
+    ),
+    "january_gain_config_sha256": sha(
+      @fs.read_file(january_sdk + "/config/ning_user.yaml").binary(),
+    ),
+    "gain_selection": "SDK standing candidate: kp 50, kd 5; ankle kd 1; reserved 23 kp 0. No gain increase selected.",
+    "transition_calculation": "Sample::effort_matched_candidate: preserve prior commanded PD+feedforward effort at the measured pose, compensate new damping, keep every physical position target fixed",
+    "missing_inputs": [
+      "fresh trustworthy active command targets/gains/feedforward, or independently qualified holding effort with validity and age",
+      "per-unit confirmation of effort sign/units, allowed effort limits and transfer/handback behavior",
+    ],
+    "sequence_after_effort_is_qualified": [
+      "Replay and live-shadow the effort-matched candidate; audit all 24 records; keep existing drift/freshness/ankle checks",
+      "Obtain current physical setup facts, run a new finite 1-second hold with no elbow movement, inspect actual leg response and sender disconnect",
+      "Record the operator's observed handback only after a genuinely completed hold",
+      "Run the existing constrained Ascend actor at 25% authority on elbows 3/14 only; freeze all other complete command records; return and audit",
+    ],
+    "scope": "Reviewable preparation only. Intermittent reported torque is not promoted to a live command. Existing sender continues rejecting nonzero torque.",
+  }
+  @fs.write_file(output, report.stringify(indent=2), create_mode=CreateNew)
+  println(
+    "Prepared hold/actor sequence; powered takeover remains unqualified: " +
+    output,
+  )
+}
