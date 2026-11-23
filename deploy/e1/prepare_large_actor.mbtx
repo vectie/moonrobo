@@ -1,0 +1,59 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/math",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [base, reference, output] else {
+    fail(
+      "BASE_ACTOR_CONFIG PREPARED_REFERENCE NEW_CONFIG; offline preparation only",
+    )
+  }
+  guard @fs.read_file(base).json() is Object(config) &&
+    config["format"] is String("moonrobo.e1-actor-elbows.v1") &&
+    config["adapter"] is Object(adapter) &&
+    @fs.read_file(reference).json()
+    is {
+      "format": "moonrobo.e1-actor-reference.v1",
+      "reference_id": String(id),
+      "control_dt_ms": Number(20, ..),
+      "frames": Array(frames),
+      ..
+    } &&
+    frames.length() > 1 else {
+    fail("actor/reference schema mismatch")
+  }
+  let mut digest = ""
+  for byte in @crypto.sha256(@fs.read_file(reference).binary()) {
+    digest += byte.to_hex()
+  }
+  let rad = 0.017453292519943295
+  adapter["lower_rad"] = [-90.0 * rad, -90.0 * rad]
+  adapter["upper_rad"] = [0.0, 0.0]
+  // Same peak speed as the previously completed supported 90/60-degree
+  // elbow commissioning strokes: 30*pi/16 degrees per second.
+  adapter["maximum_speed_rad_s"] = [
+    30.0 * @math.PI / 16.0 * rad,
+    30.0 * @math.PI / 16.0 * rad,
+  ]
+  adapter["policy_authority"] = 1.0
+  config["adapter"] = Json(adapter)
+  config["reference_id"] = Json(id)
+  config["reference_sha256"] = Json(digest)
+  config["reference_duration_ms"] = Json((frames.length() - 1) * 20)
+  config["scope"] = "crane-supported live Ascend actor conditioned on a different reference; only elbow pitch 3/14; absolute elbow bounds [-90,0] degrees; 5.89 degree/s slew; full neural elbow authority with filtering; other 22 positions fixed; explicit 5-degree feedback guards"
+  @fs.write_file(
+    output,
+    Json(config).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(
+    "Prepared larger constrained neural elbows; no robot connection or command",
+  )
+}
