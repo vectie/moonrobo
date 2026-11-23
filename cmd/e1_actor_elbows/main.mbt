@@ -8,6 +8,12 @@ async fn run(report : String, shadow : Bool) -> Unit {
   let preparation_started = @env.now().reinterpret_as_int64()
   let (bundle, actor, clip, config) = load()
   let current_pose = current_pose_profile()
+  let supported = supported_hold_profile()
+  guard supported is None || (current_pose is Some(_) && !effort_shadow) else {
+    fail(
+      "supported actor requires the measured pose and position-only feedback",
+    )
+  }
   defer (actor.close() catch { _ => () })
   diagnose(
     "actor artifacts verified and NPU prepared in " +
@@ -57,6 +63,9 @@ async fn run(report : String, shadow : Bool) -> Unit {
   let mut effort_commands : Array[@low.MotorCommand] = []
   let mut effort_seed : Json = Json::null()
   let mut adapter : @adapter.Adapter? = None
+  let mut hold_feedback : @elbow.SupportedHoldFeedback? = None
+  let mut hold_seed : Status? = None
+  let mut hold_meta : Json = Json::null()
   let mut previous = Array::make(29, 0.0)
   let history : Array[Array[Double]] = []
   let execution : @skills.Execution = {
@@ -116,6 +125,12 @@ async fn run(report : String, shadow : Bool) -> Unit {
           baseline = hold_from(s)
           commands = baseline.copy()
           adapter = Some(@adapter.Adapter::new(config.adapter, baseline[:]))
+          if supported is Some(profile) {
+            hold_feedback = Some(
+              @elbow.SupportedHoldFeedback::new(profile, sample_from(s)),
+            )
+            hold_seed = Some(s)
+          }
           if effort_shadow {
             let tau = s.reported_tau.unwrap()
             effort_commands = sample_from(s).reported_leg_effort_shadow_candidate(
@@ -143,6 +158,13 @@ async fn run(report : String, shadow : Bool) -> Unit {
             clip.frame(execution, 0).body_to_world[:],
           )
           detector = assessed_hold(detector, s.packet, shadow, current_pose)
+          if supported is Some(_) {
+            detector = detector.begin_hold(
+              moving_right_elbow=true,
+              leg_tolerance_rad=5.0 * @ankle.RAD,
+              stationary_tolerance_rad=5.0 * @ankle.RAD,
+            )
+          }
           started = now
           scheduled_inference = now
           diagnose("actor baseline established")
@@ -226,6 +248,20 @@ async fn run(report : String, shadow : Bool) -> Unit {
             let nominal = mapping.commands(raw[:])
             let step = control.next(nominal[:], now, policy_elapsed, phase)
             commands = step.commands
+            if hold_feedback is Some(feedback) &&
+              supported is Some(profile) &&
+              hold_seed is Some(seed) {
+              let held = feedback.next(sample_from(s), now)
+              for slot in 0..<23 {
+                if @elbow.leg_slot(slot) {
+                  commands[slot] = {
+                    ..commands[slot],
+                    torque: held[slot].torque,
+                  }
+                }
+              }
+              hold_meta = hold_metadata(profile, seed, s, now)
+            }
             if effort_shadow {
               for slot in 0..<23 {
                 if @elbow.leg_slot(slot) {
@@ -291,6 +327,7 @@ async fn run(report : String, shadow : Bool) -> Unit {
               "stage": "actor-elbows",
               "shadow": Json(shadow),
               "reported_leg_effort_shadow": effort_seed,
+              "actor_position_hold": hold_meta,
               "current_pose_commissioning": current_pose
               .map(p => p.to_json())
               .unwrap_or(Json::null()),
@@ -360,6 +397,9 @@ async fn run(report : String, shadow : Bool) -> Unit {
     "software_stage_completed": true,
     "shadow": Json(shadow),
     "reported_leg_effort_shadow": effort_seed,
+    "actor_position_hold_profile": supported
+    .map(p => p.to_json())
+    .unwrap_or(Json::null()),
     "model_id": config.model_id,
     "backend": "LunaKine Ascend FP32",
     "policy_updates": Json(policy_updates),

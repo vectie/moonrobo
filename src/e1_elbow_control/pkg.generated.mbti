@@ -144,6 +144,12 @@ pub fn SupportedElbowTrial::new(SupportedElbowSettings, Sample) -> Self raise
 pub fn SupportedElbowTrial::next(Self, Sample, Int64, shadow~ : Bool) -> Array[@sdk_e1_low.MotorCommand] raise
 pub fn SupportedElbowTrial::reference_frame(Self) -> Int
 
+pub struct SupportedHoldFeedback {
+  // private fields
+}
+pub fn SupportedHoldFeedback::new(SupportedElbowSettings, Sample) -> Self raise
+pub fn SupportedHoldFeedback::next(Self, Sample, Int64) -> Array[@sdk_e1_low.MotorCommand] raise
+
 // Type aliases
 
 // Traits

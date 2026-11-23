@@ -19,6 +19,30 @@ fn supported_settings() -> @e1_elbow_control.SupportedElbowSettings {
 }
 
 ///|
+test "supported actor feedback preserves all positions and latches excessive drift" {
+  let owner = @e1_elbow_control.SupportedHoldFeedback::new(
+    supported_settings(),
+    position_sample(0),
+  )
+  let initial = owner.next(position_sample(0), 1000L)
+  let next = owner.next(position_sample(1, error=0.001), 1020L)
+  assert_true((next[7].torque - 0.001).abs() < 1.0e-12)
+  for i in 0..<24 {
+    assert_eq(next[i].position, initial[i].position)
+  }
+  try owner.next(position_sample(2, error=0.09), 1040L) catch {
+    _ => ()
+  } noraise {
+    _ => fail("supported feedback accepted excessive drift")
+  }
+  try owner.next(position_sample(3), 1060L) catch {
+    _ => ()
+  } noraise {
+    _ => fail("supported feedback did not latch")
+  }
+}
+
+///|
 test "supported gesture keeps leg references fixed permits approved settling and returns left elbow" {
   let profile = supported_settings()
   let baseline = position_sample(0)
