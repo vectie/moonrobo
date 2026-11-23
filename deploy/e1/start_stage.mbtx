@@ -330,6 +330,14 @@ async fn main {
           for ;; {
             guard source.read_until("\n") is Some(line) else { break }
             commands.push(line.trim().to_owned())
+            if line.trim().has_prefix("{") &&
+              @json.parse(line.trim().to_owned()) is { "kind": "stop", .. } {
+              // The owner no longer consumes telemetry after its terminal row.
+              // NPU teardown can take seconds; do not fill its stdin while it
+              // closes or count cleanup stalls as active control latency.
+              feeding = false
+              monitor_active = false
+            }
             if sending {
               target.write(line.trim().to_owned() + "\n") catch {
                 err => {
