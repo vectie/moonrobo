@@ -1,6 +1,6 @@
 """Receive-decoder identity tests; no SDK load or network participant."""
 import unittest
-from e1_status_packets import StatusDeduplicator
+from e1_status_packets import StatusDeduplicator, motor_packet
 
 
 class StatusDeduplicatorTests(unittest.TestCase):
@@ -39,6 +39,26 @@ class StatusDeduplicatorTests(unittest.TestCase):
         delivered = [(arrival, source) for arrival, source in ((1000, 100), (9000, 100))
                      if samples.accept(10, source, b"same raw CDR")]
         self.assertEqual(delivered, [(1000, 100)])
+
+
+class MotorFieldsTests(unittest.TestCase):
+    def test_torque_uses_sdk_stride_without_replacing_missing_effort(self):
+        values = [0.] * 171
+        for i in range(24):
+            values[6*i:6*i+6] = [i, i+.1, i+.2, -(i+.3), 0, 30]
+        ids, packet = motor_packet(values, 4, 1000, 2000)
+        self.assertEqual(ids, list(range(24)))
+        self.assertEqual(packet["q"], [i+.1 for i in range(24)])
+        self.assertEqual(packet["qd"], [i+.2 for i in range(24)])
+        self.assertEqual(packet["tau"], [-(i+.3) for i in range(24)])
+        self.assertEqual((packet["arrival_ns"], packet["source_ns"]), ("1000", "2000"))
+        values[7*6+3] = float("nan")
+        with self.assertRaisesRegex(ValueError, "nonfinite"):
+            motor_packet(values, 4, 1000, 2000)
+        values[7*6+3] = 0.
+        values[7*6] = 8
+        with self.assertRaisesRegex(ValueError, "IDs"):
+            motor_packet(values, 4, 1000, 2000)
 
 
 if __name__ == "__main__":

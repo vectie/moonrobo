@@ -14,6 +14,8 @@ def main():
     sources=BuiltinDataReader(p,BuiltinTopicDcpsPublication)
     sinks=BuiltinDataReader(p,BuiltinTopicDcpsSubscription)
     found={};reader=None;good=0;first=None;last=None
+    torque_min=[math.inf]*24;torque_max=[-math.inf]*24
+    torque_nonzero=[0]*24
     expected={"Motor_Cmd_Topic":"00070000f2f315417f2fd893ffc1e75f2c4f08",
               "Control_Mode_Topic":"00070000f2cc773776cccd5cf6f3ba76cf79c6"}
     end=time.monotonic()+15
@@ -38,7 +40,11 @@ def main():
                     if not s.sample_info.valid_data:continue
                     motors=s.motorstatearray.motorstates
                     assert len(motors)==24 and [m.motor_id for m in motors]==list(range(24))
-                    assert all(m.error==0 and math.isfinite(m.pos) and math.isfinite(m.vel) for m in motors)
+                    assert all(m.error==0 and all(map(math.isfinite,(m.pos,m.vel,m.tau))) for m in motors)
+                    for i,m in enumerate(motors):
+                        torque_min[i]=min(torque_min[i],m.tau)
+                        torque_max[i]=max(torque_max[i],m.tau)
+                        torque_nonzero[i]+=int(m.tau!=0)
                     good+=1
                     last=[dataclasses.asdict(m) for m in motors]
                     if first is None:first=time.monotonic()
@@ -50,6 +56,11 @@ def main():
         output.write_text(json.dumps({"passed":True,"created_epoch":time.time(),"peer_prefix":prefix,
             "status_guid":found["Robot_Status_Topic"],"expected_reader_types":expected,"received_samples":good,
             "motor_ids":list(range(24)),"last_motors":last,"command_writers_created":False,
+            "holding_effort":dict(reported_torque_min_nm=torque_min,reported_torque_max_nm=torque_max,
+                nonzero_reported_torque_samples=torque_nonzero,
+                factory_commanded_effort_available=False,
+                reported_torque_semantics_qualified=False,
+                zero_reported_torque_proves_zero_load=False),
             "physical_controller_mode":"operator must identify"},indent=2)+"\n")
     finally:p.__del__()
 if __name__=="__main__":main()

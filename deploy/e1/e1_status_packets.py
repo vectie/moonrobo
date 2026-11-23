@@ -168,6 +168,23 @@ def status_samples(data, writer):
             yield (high << 32) + low, stamp, body[payload_at:]
 
 
+def motor_packet(values, seq, arrival, stamp):
+    """Preserve every motor's reported torque alongside raw position/velocity.
+
+    Reported torque is not the factory controller's commanded holding effort.
+    A stream of zero values must not be treated as verified zero load.
+    """
+    ids = list(map(int, values[:144:6]))
+    if ids != list(range(24)):
+        raise ValueError("invalid SDK motor IDs")
+    packet = dict(seq=seq, arrival_ns=str(arrival), source_ns=str(stamp),
+                  q=list(values[1:144:6]), qd=list(values[2:144:6]),
+                  tau=list(values[3:144:6]), error=list(map(int, values[4:144:6])))
+    if not all(math.isfinite(x) for name in ("q", "qd", "tau") for x in packet[name]):
+        raise ValueError("nonfinite motor telemetry")
+    return ids, packet
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("library")
@@ -203,11 +220,7 @@ def main():
                 continue
             if decode(0, payload, len(payload), values, len(values), error, len(error)):
                 raise ValueError(error.value.decode())
-            ids = list(map(int, values[:144:6]))
-            if ids != list(range(24)):
-                raise ValueError("invalid SDK motor IDs")
-            packet = dict(seq=seq, arrival_ns=str(arrival), source_ns=str(stamp),
-                          q=values[1:144:6], qd=values[2:144:6], error=list(map(int, values[4:144:6])))
+            ids, packet = motor_packet(values, seq, arrival, stamp)
             if mirror_dir and arrival - last_mirror >= 80000000:
                 positions = [packet["q"][slot] for slot in joint_map.values()]
                 orientation = list(values[144:148])
