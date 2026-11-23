@@ -112,7 +112,7 @@ test "position hold rejects powered use and invalid budgets" {
     let s = settings()
     let s = match kind {
       0 => { ..s, power_qualified: true, }
-      1 => { ..s, maximum_error_rad: 0.02, }
+      1 => { ..s, maximum_error_rad: 0.06, }
       2 => { ..s, integral_gain_nm_per_rad_s: 0.0 / 0.0, }
       3 => {
         s.bias_limit_nm[3] = 0.1

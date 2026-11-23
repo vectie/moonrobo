@@ -120,6 +120,28 @@ pub fn Sample::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeErr
 pub fn Sample::reported_leg_effort_shadow_candidate(Self, ArrayView[Double], shadow~ : Bool) -> Array[@sdk_e1_low.MotorCommand] raise
 pub fn Sample::stand_candidate(Self) -> Array[@sdk_e1_low.MotorCommand] raise
 
+pub(all) struct SupportedElbowSettings {
+  format : String
+  power_qualified : Bool
+  hold_ms : Int
+  motion_ms : Int
+  return_hold_ms : Int
+  maximum_total_ms : Int
+  amplitude_deg : Double
+  feedback : PositionHoldSettings
+} derive(ToJson, @json.FromJson)
+pub fn SupportedElbowSettings::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupportedElbowSettings::to_json(Self) -> Json
+pub fn SupportedElbowSettings::validate(Self) -> Unit raise
+
+pub struct SupportedElbowTrial {
+  // private fields
+}
+pub fn SupportedElbowTrial::elapsed_ms(Self, Int64) -> Int64
+pub fn SupportedElbowTrial::new(SupportedElbowSettings, Sample) -> Self raise
+pub fn SupportedElbowTrial::next(Self, Sample, Int64, shadow~ : Bool) -> Array[@sdk_e1_low.MotorCommand] raise
+pub fn SupportedElbowTrial::reference_frame(Self) -> Int
+
 // Type aliases
 
 // Traits

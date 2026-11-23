@@ -46,17 +46,27 @@ pub extend PositionHoldTrialSettings with @json.ToJson::{to_json}
 
 ///|
 pub fn PositionHoldTrialSettings::validate(self : Self) -> Unit raise {
-  self.feedback.validate()
+  validate_feedback_budgets(self.feedback, RAD)
   guard self.format == "moonrobo.e1-position-hold-trial.v1" &&
     !self.power_qualified &&
     self.maximum_active_ms == 1000 &&
     self.shadow_audit_sha256.length() == 64 &&
     self.shadow_audit_sha256
     .iter()
-    .all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) &&
-    self.feedback.integral_gain_nm_per_rad_s == 50.0 &&
-    self.feedback.maximum_error_rad == RAD else {
+    .all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) else {
     fail("invalid finite position-hold commissioning request")
+  }
+}
+
+///|
+fn validate_feedback_budgets(
+  settings : PositionHoldSettings,
+  maximum_error_rad : Double,
+) -> Unit raise {
+  settings.validate()
+  guard settings.integral_gain_nm_per_rad_s == 50.0 &&
+    settings.maximum_error_rad == maximum_error_rad else {
+    fail("unexpected position-feedback commissioning parameters")
   }
   // Only the exact parameters exercised in the fifteen-second shadow may be
   // requested for this first commissioning hold. No tuning is implicit.
@@ -70,8 +80,8 @@ pub fn PositionHoldTrialSettings::validate(self : Self) -> Unit raise {
     } else {
       0.0
     }
-    guard self.feedback.bias_limit_nm[slot] == budget &&
-      self.feedback.slew_limit_nm_per_s[slot] == budget else {
+    guard settings.bias_limit_nm[slot] == budget &&
+      settings.slew_limit_nm_per_s[slot] == budget else {
       fail("position-hold commissioning parameters differ from tested shadow")
     }
   }

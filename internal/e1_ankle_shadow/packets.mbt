@@ -28,6 +28,7 @@ pub struct Detector {
   confirm_isolated : Bool
   suspended : Bool
   moving_right_elbow : Bool
+  leg_tolerance_rad : Double
   mut healthy_streak : Int32
   mut good : Packet
   mut last : Packet?
@@ -48,6 +49,7 @@ pub fn Detector::new(
     confirm_isolated,
     suspended,
     moving_right_elbow: false,
+    leg_tolerance_rad: RAD,
     healthy_streak: 0,
     good: first,
     last: None,
@@ -66,7 +68,11 @@ pub fn Detector::new(
 pub fn Detector::begin_hold(
   self : Detector,
   moving_right_elbow~ : Bool = false,
+  leg_tolerance_rad~ : Double = RAD,
 ) -> Detector raise {
+  guard leg_tolerance_rad >= RAD && leg_tolerance_rad <= 3.0 * RAD else {
+    fail("invalid explicit supported leg tolerance")
+  }
   guard self.pending is None &&
     self.last is Some(last) &&
     last.seq == self.good.seq &&
@@ -78,6 +84,7 @@ pub fn Detector::begin_hold(
     confirm_isolated: self.confirm_isolated,
     suspended: self.suspended,
     moving_right_elbow,
+    leg_tolerance_rad,
     healthy_streak: self.healthy_streak,
     good: self.good,
     last: self.last,
@@ -313,12 +320,33 @@ pub fn Detector::observe(self : Detector, p : Packet) -> Verdict {
   }
   let mut ankle_slot : Int32? = None
   for slot in 0..<23 {
+    let tolerance = if @elbow.leg_slot(slot) {
+      self.leg_tolerance_rad
+    } else {
+      RAD
+    }
     if slot != @elbow.ELBOW_SLOT &&
       !(self.moving_right_elbow && slot == @elbow.RIGHT_ELBOW_SLOT) &&
-      (p.q[slot] - self.baseline.q[slot]).abs() > RAD {
+      (p.q[slot] - self.baseline.q[slot]).abs() > tolerance {
       match slot {
         9 | 10 | 20 | 21 => if ankle_slot is None { ankle_slot = Some(slot) }
         _ => return Stop("stationary joint outside tolerance", slot)
+      }
+    }
+  }
+  // The supported leg envelope changes allowable gradual settling, not the
+  // independent ankle glitch signature. Keep abrupt, velocity-inconsistent
+  // >1° ankle packets provisional even when their absolute drift is below 3°.
+  if self.confirm_isolated &&
+    self.leg_tolerance_rad > RAD &&
+    ankle_slot is None &&
+    self.pending is None &&
+    self.healthy_streak >= 2 &&
+    slow_standing_ankles(self.good, p) {
+    for slot in [9, 10, 20, 21] {
+      if (p.q[slot] - self.good.q[slot]).abs() > RAD {
+        ankle_slot = Some(slot)
+        break
       }
     }
   }
@@ -327,7 +355,8 @@ pub fn Detector::observe(self : Detector, p : Packet) -> Verdict {
       return Stop("ankle excursion persisted", slot)
     }
     let bilateral = [9, 10].any(i => {
-      (suspect.q[i] - self.baseline.q[i]).abs() > RAD
+      (suspect.q[i] - self.good.q[i]).abs() > RAD ||
+      (suspect.q[i] - self.baseline.q[i]).abs() > self.leg_tolerance_rad
     })
     if !slow_standing_ankles(suspect, p) ||
       (
@@ -369,7 +398,7 @@ pub fn Detector::observe(self : Detector, p : Packet) -> Verdict {
       // Only an abrupt, velocity-inconsistent ankle-only sample is provisional.
       // Gradual baseline drift still fails on its first over-limit packet.
       for ankle in [9, 10, 20, 21] {
-        if (p.q[ankle] - self.baseline.q[ankle]).abs() > RAD &&
+        if (p.q[ankle] - self.baseline.q[ankle]).abs() > self.leg_tolerance_rad &&
           (p.q[ankle] - self.good.q[ankle]).abs() <= RAD {
           return Stop("gradual ankle drift", ankle)
         }
