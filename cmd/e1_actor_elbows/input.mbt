@@ -54,3 +54,20 @@ fn hold_from(s : Status) -> Array[@low.MotorCommand] raise {
   }
   sample.stand_candidate()
 }
+
+///|
+// Admit the captured pose before any baseline proposal can reach the sink.
+// A rejected first packet must never be ignored merely because no later packet
+// has arrived yet. The same suspended guard is used for subsequent packets.
+fn hold_detector(packet : @ankle.Packet) -> @ankle.Detector raise {
+  let detector = @ankle.Detector::new(
+    packet,
+    confirm_isolated=true,
+    suspended=true,
+  )
+  match detector.observe(packet) {
+    Use => detector
+    Stop(reason, slot) => fail(reason + " slot " + slot.to_string())
+    Wait => fail("provisional telemetry cannot establish an actor hold")
+  }
+}

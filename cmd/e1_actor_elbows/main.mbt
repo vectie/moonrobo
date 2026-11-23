@@ -109,12 +109,7 @@ async fn run(report : String, shadow : Bool) -> Unit {
             attitude.body_to_world()[:],
             clip.frame(execution, 0).body_to_world[:],
           )
-          detector = @ankle.Detector::new(
-            s.packet,
-            confirm_isolated=true,
-            suspended=true,
-          )
-          ignore(detector.observe(s.packet))
+          detector = hold_detector(s.packet)
           started = now
           scheduled_inference = now
           diagnose("actor baseline established")
