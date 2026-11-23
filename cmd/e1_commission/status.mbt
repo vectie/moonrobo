@@ -16,7 +16,8 @@ async fn read_status() -> (@ankle.Packet, Array[Double]?) {
     value,
     position_only=@env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW")
       is Some(_) ||
-      @env.get_env_var("MOONROBO_E1_POSITION_HOLD_TRIAL") is Some(_),
+      @env.get_env_var("MOONROBO_E1_POSITION_HOLD_TRIAL") is Some(_) ||
+      @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE") is Some(_),
   )
 }
 

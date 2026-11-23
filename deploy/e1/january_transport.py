@@ -22,6 +22,7 @@ from cyclonedds.dynamic import get_types_for_typeid
 from cyclonedds.util import duration
 from actor_validation import ActorValidator
 from shadow_effort_validation import LEGS, PositionHoldAudit, load_position_trial
+from supported_elbow_validation import SupportedElbowValidator, load_profile as load_supported_profile
 
 @a.final
 @dataclasses.dataclass
@@ -80,7 +81,7 @@ def typing_targets(frame, baseline):
 
 def validate_current_pose_profile(profile, motors, stage):
     if profile is None:return
-    assert stage in ("hold", "actor-elbows"), "commissioned raw pose is limited to hold and actor elbows"
+    assert stage in ("hold", "actor-elbows", "supported-elbow"), "commissioned raw pose is limited to explicit commissioning stages"
     assert profile["format"]=="moonrobo.e1-current-pose-commissioning.v1"
     assert profile["scope"]=="unchanged-raw-hold-and-elbows-only"
     expected=profile["expected_knee_raw_rad"]
@@ -93,7 +94,17 @@ def validate_current_pose_profile(profile, motors, stage):
     for slot,(lower,upper) in bounds.items():
         assert math.radians(lower)<=motors[slot]["pos"]<=math.radians(upper), "uncommissioned leg range discrepancy"
 
-def validate_frame(row, baseline, previous, stage, actor_validator=None, position_validator=None):
+def validate_frame(row, baseline, previous, stage, actor_validator=None, position_validator=None, supported_validator=None):
+    if stage=="supported-elbow":
+        assert supported_validator is not None and row["shadow"] is False
+        assert 0<=time.time_ns()//1000000-int(row["receipt_ms"])<=40
+        assert 0<=time.time_ns()//1000000-int(row["telemetry_receipt_ms"])<=40
+        assert row.get("current_pose_commissioning") is not None
+        validate_current_pose_profile(row["current_pose_commissioning"],row["motors"],stage)
+        if previous:assert row["current_pose_commissioning"]==previous["current_pose_commissioning"]
+        supported_validator.validate(row)
+        return row["motors"]
+    assert row.get("supported_elbow_trial") is None, "supported elbow metadata requires its explicit stage"
     dual=stage in ("drums","raised-drums","typing-elbows","actor-elbows")
     assert not row.get("shadow",False), "shadow targets cannot drive live transport"
     assert row.get("position_hold_shadow") is None, "unqualified position feedback cannot drive live transport"
@@ -182,7 +193,9 @@ def command_timestamp_ns(row, host_now_ns, domain, previous_ns):
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--stage",required=True,choices=("hold","elbow","elbow90","drums","raised-drums","typing-elbows","actor-elbows"))
+    ap.add_argument("--stage",required=True,choices=("hold","elbow","elbow90","drums","raised-drums","typing-elbows","actor-elbows","supported-elbow"))
+    ap.add_argument("--supported-elbow-profile")
+    ap.add_argument("--supported-elbow-shadow-audit")
     ap.add_argument("--actor-profile")
     ap.add_argument("--position-hold-trial")
     ap.add_argument("--position-hold-shadow-audit")
@@ -197,6 +210,13 @@ def main():
     actor_validator=None
     position_validator=None
     position_profile=None
+    supported_validator=None
+    supported_profile=None
+    if args.stage=="supported-elbow":
+        assert args.supported_elbow_profile and args.supported_elbow_shadow_audit
+        supported_profile=load_supported_profile(pathlib.Path(args.supported_elbow_profile),pathlib.Path(args.supported_elbow_shadow_audit))
+        supported_validator=SupportedElbowValidator(supported_profile,False)
+    else:assert args.supported_elbow_profile is None and args.supported_elbow_shadow_audit is None
     if args.position_hold_trial:
         assert args.stage=="hold" and args.position_hold_shadow_audit
         position_profile=load_position_trial(pathlib.Path(args.position_hold_trial),pathlib.Path(args.position_hold_shadow_audit))
@@ -304,7 +324,7 @@ def main():
                     if row["kind"]=="stop":
                         result=row["reason"]
                         return
-                    motors=validate_frame(row,baseline,latest,args.stage,actor_validator,position_validator)
+                    motors=validate_frame(row,baseline,latest,args.stage,actor_validator,position_validator,supported_validator)
                     if args.live and args.stage=="actor-elbows":
                         assert row.get("current_pose_commissioning")==handback_profile, "hold and actor commissioning profiles differ"
                     if baseline is None:baseline=motors
@@ -320,7 +340,7 @@ def main():
             assert 0<=time.time_ns()//1000000-int(latest["receipt_ms"])<=40,"telemetry expired"
             assert 0<=time.time_ns()//1000000-int(latest["telemetry_receipt_ms"])<=40,"source telemetry expired"
             if first_send is not None:
-                assert now-first_send <= (actor_validator.profile["maximum_total_ms"]/1000 if actor_validator else 203.0 if args.stage in ("raised-drums","typing-elbows") else 1.25 if args.stage=="hold" else 50.0 if args.stage=="drums" else 182.0 if args.stage=="elbow90" else 17.0),"stage time limit"
+                assert now-first_send <= (19.0 if supported_validator else actor_validator.profile["maximum_total_ms"]/1000 if actor_validator else 203.0 if args.stage in ("raised-drums","typing-elbows") else 1.25 if args.stage=="hold" else 50.0 if args.stage=="drums" else 182.0 if args.stage=="elbow90" else 17.0),"stage time limit"
             if now>=due:
                 assert now-due<=.010,"publication deadline missed"
                 stamp_ns=command_timestamp_ns(latest,time.time_ns(),args.timestamp_domain,last_command_timestamp)
@@ -346,6 +366,7 @@ def main():
             "mode_requests_sent":modes,"motor_samples_sent":count,"live":args.live,
             "current_pose_commissioning":None if latest is None else latest.get("current_pose_commissioning"),
             "position_hold_trial":position_profile,
+            "supported_elbow_trial":supported_profile,
             "participant_deleted":True,"active_seconds":None if first_send is None else last_send-first_send}
         pathlib.Path(args.receipt).write_text(json.dumps(receipt,indent=2)+"\n")
 

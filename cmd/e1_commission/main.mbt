@@ -492,6 +492,8 @@ async fn main {
   let (stage, report_file, shadow) = match @env.args()[1:] {
     [stage, report_file] => (stage, report_file, false)
     ["hold", report_file, "--shadow"] => ("hold", report_file, true)
+    ["supported-elbow", report_file, "--shadow"] =>
+      ("supported-elbow", report_file, true)
     ["drums", report_file, "--shadow"] => ("drums", report_file, true)
     ["raised-drums", report_file, "--shadow"] =>
       ("raised-drums", report_file, true)
@@ -503,8 +505,18 @@ async fn main {
       )
   }
   let mut reason = "commissioning interrupted"
+  guard @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE") is None ||
+    stage == "supported-elbow" else {
+    fail("supported elbow profile is stage-specific")
+  }
   errdefer emit_event({ "kind": "stop", "reason": Json(reason) })
-  let result = try commission(stage, report_file, shadow~) catch {
+  let result = try {
+    if stage == "supported-elbow" {
+      supported_elbow(report_file, shadow)
+    } else {
+      commission(stage, report_file, shadow~)
+    }
+  } catch {
     error => Err(error)
   } noraise {
     _ => Ok(())

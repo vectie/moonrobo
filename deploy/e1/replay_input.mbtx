@@ -39,7 +39,7 @@ async fn main {
       let q = Array::make(24, 0.0)
       q[3] = -0.1
       q[14] = -0.1
-      if scenario == "position-hold" { q[19] = -0.00476837158203125 }
+      if scenario == "position-hold" || scenario == "supported-elbow" { q[19] = -0.00476837158203125 }
       rows.push({
         packet: {
           seq: i,
@@ -104,6 +104,7 @@ async fn main {
     if scenario == "position-hold" && delta >= 1200000000L {
       p.q[7] = -0.001 // A test-only 0.057-degree displacement after capture.
     }
+    if scenario == "supported-elbow" && delta >= 1200000000L { p.q[7] = -0.02 }
     if scenario == "elbow" || scenario == "elbow90" {
       let duration = if scenario == "elbow90" { 180000.0 } else { 15000.0 }
       let half_peak = if scenario == "elbow90" { 45.0 } else { 2.5 }
@@ -124,7 +125,7 @@ async fn main {
       p.q[3] = elbow + (if stroke % 2 == 0 { offset } else { 0.0 })
       p.q[14] = right_elbow + (if stroke % 2 == 1 { offset } else { 0.0 })
     }
-    if scenario == "raised-drums" || scenario == "typing-elbows" {
+    if scenario == "raised-drums" || scenario == "typing-elbows" || scenario == "supported-elbow" {
       guard feedback_file != "" else { fail("isolated feedback file required") }
       // This test-only plant follows positions decoded by the isolated DDS
       // receiver. It does not fabricate wall-clock progress while the paced

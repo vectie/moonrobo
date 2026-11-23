@@ -2,6 +2,8 @@
 import json
 import pathlib
 import sys
+import hashlib
+from supported_elbow_validation import SupportedElbowValidator, load_profile
 from shadow_effort_validation import PositionHoldAudit, load_position_trial, validate_shadow_effort, verify_seed_capture
 
 
@@ -41,6 +43,42 @@ def audit_position_trial(directory, profile_path, evidence_path, output):
 
 
 def main():
+    if len(sys.argv)==5 and sys.argv[1]=="--supported-elbow":
+        directory,profile_path,output=map(pathlib.Path,sys.argv[2:])
+        assert not output.exists()
+        session=json.loads((directory/"session.json").read_text())
+        live=session["kind"]=="live"
+        assert session["kind"] in ("live","shadow") and session["stage"]=="supported-elbow"
+        assert session["command_writers_created"] is live
+        validator=SupportedElbowValidator(load_profile(profile_path),not live)
+        reason=None
+        for line in (directory/"targets.ndjson").open():
+            if not line.startswith("{"):
+                assert reason is not None and line.strip()==reason
+                continue
+            row=json.loads(line)
+            if row["kind"]=="stop":
+                assert reason is None
+                reason=row["reason"]
+            else:
+                assert reason is None
+                validator.validate(row)
+        assert validator.feedback.count>0 and reason is not None
+        validator.verify_capture(directory/"status.ndjson")
+        complete=reason=="stage complete" and session["planner_status"]==session["sender_status"]==0
+        if complete:
+            assert validator.returned()
+            planner=json.loads((directory/"planner.json").read_text())
+            assert planner["software_stage_completed"] is True and 18500<=planner["active_ms"]<=18540
+        report=dict(passed=complete,calculation_audit_passed=True,live=live,
+            command_writers_created=live,profile_sha256=hashlib.sha256(profile_path.read_bytes()).hexdigest(),
+            target_heartbeats=validator.feedback.count,final_reference_frame=validator.previous_frame,
+            targets_returned_exactly=validator.returned(),fixed_leg_position_records=12,
+            moving_slots=[3],maximum_bias_nm=validator.feedback.maximum_bias_nm,
+            physical_handback_verified=False,powered_takeover_qualified=False,stop_reason=reason)
+        output.write_text(json.dumps(report,indent=2)+"\n")
+        print(json.dumps(report,indent=2))
+        return
     if len(sys.argv)==6 and sys.argv[1]=="--trial":
         audit_position_trial(*map(pathlib.Path,sys.argv[2:]))
         return

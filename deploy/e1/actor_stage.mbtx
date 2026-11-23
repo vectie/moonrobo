@@ -18,7 +18,7 @@ fn required(name : String) -> String raise {
 async fn main {
   guard @env.args()[1:] is [kind, stage, preflight, directory, handback] &&
     (kind == "shadow" || kind == "live") &&
-    (stage == "hold" || stage == "actor-elbows") else {
+    (stage == "hold" || stage == "actor-elbows" || stage == "supported-elbow") else {
     fail(
       "usage: shadow|live hold|actor-elbows PREFLIGHT NEW_RUN HANDBACK_OR_DASH",
     )
@@ -40,9 +40,18 @@ async fn main {
     }
   }
   let deploy = required("MOONROBO_E1_DEPLOY_DIR")
+  guard @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE") is None || stage == "supported-elbow" else {
+    fail("supported-elbow profile cannot select another stage")
+  }
+  if stage == "supported-elbow" {
+    guard @fs.exists(required("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE")) else { fail("supported elbow profile missing") }
+    if kind == "live" {
+      guard @fs.exists(required("MOONROBO_E1_SUPPORTED_ELBOW_SHADOW_AUDIT")) else { fail("supported elbow shadow proof missing") }
+    }
+  }
   let coordinator = required("MOONROBO_E1_COORDINATOR")
   let controller = required(
-    if stage == "hold" {
+    if stage != "actor-elbows" {
       "MOONROBO_E1_HOLD_CONTROLLER"
     } else {
       "MOONROBO_E1_ACTOR_CONTROLLER"

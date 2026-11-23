@@ -34,6 +34,7 @@ async fn main {
     (kind == "live" || kind == "shadow") &&
     (
       stage == "hold" ||
+      stage == "supported-elbow" ||
       stage == "elbow" ||
       stage == "elbow90" ||
       stage == "drums" ||
@@ -44,6 +45,7 @@ async fn main {
     (
       kind == "live" ||
       stage == "hold" ||
+      stage == "supported-elbow" ||
       stage == "drums" ||
       stage == "raised-drums" ||
       stage == "typing-elbows" ||
@@ -54,6 +56,9 @@ async fn main {
     )
   }
   let live = kind == "live"
+  guard @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE") is None || stage == "supported-elbow" else {
+    fail("supported elbow profile is stage-specific")
+  }
   let position_trial = @env.get_env_var("MOONROBO_E1_POSITION_HOLD_TRIAL")
   if position_trial is Some(path) {
     guard stage == "hold" && @fs.exists(path) &&
@@ -106,6 +111,17 @@ async fn main {
       fail("position-feedback shadow evidence required before commissioning")
     }
     sender_args.append(["--position-hold-trial", profile, "--position-hold-shadow-audit", audit])
+  }
+  if stage == "supported-elbow" {
+    guard @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE") is Some(profile) && @fs.exists(profile) else {
+      fail("explicit supported elbow profile required")
+    }
+    if live {
+      guard @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_SHADOW_AUDIT") is Some(proof) && @fs.exists(proof) else {
+        fail("matching supported elbow shadow proof required")
+      }
+      sender_args.append(["--supported-elbow-profile", profile, "--supported-elbow-shadow-audit", proof])
+    }
   }
   if live &&
     (stage == "elbow" || stage == "typing-elbows" || stage == "actor-elbows") {
@@ -320,6 +336,7 @@ async fn main {
         if !live &&
           (
             stage == "hold" ||
+            stage == "supported-elbow" ||
             stage == "drums" ||
             stage == "raised-drums" ||
             stage == "typing-elbows" ||
@@ -385,6 +402,8 @@ async fn main {
             "195"
           } else if stage == "drums" {
             "60"
+          } else if stage == "supported-elbow" {
+            "30"
           } else {
             "22"
           },

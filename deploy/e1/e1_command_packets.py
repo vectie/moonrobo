@@ -15,6 +15,7 @@ from e1_status_packets import ethernet_packets, status_samples
 from january_transport import MotorCmdArray, SetMode
 from actor_validation import ActorValidator
 from shadow_effort_validation import LEGS, PositionHoldAudit
+from supported_elbow_validation import SupportedElbowValidator
 
 
 def motor_signature(values):
@@ -54,6 +55,20 @@ def read_position_hold_proposals(path, profile):
     return indexed
 
 
+def read_supported_proposals(path,profile):
+    validator=SupportedElbowValidator(profile,False)
+    indexed={}
+    for line in path.open():
+        if not line.startswith("{"):continue
+        row=json.loads(line)
+        if row["kind"]=="stop":continue
+        validator.validate(row)
+        indexed.setdefault(motor_signature(row["motors"]),[]).append(row)
+    assert indexed
+    validator.verify_capture(path.parent/"status.ndjson")
+    return indexed
+
+
 def read_actor_proposals(path, profile):
     validator=ActorValidator(profile)
     indexed={}
@@ -77,7 +92,8 @@ def main():
     expect_empty = len(arguments) == 4 and arguments[-1] == "--expect-no-commands"
     actor_profile = pathlib.Path(arguments[4]) if len(arguments)==5 and arguments[3]=="--actor-profile" else None
     position_profile = pathlib.Path(arguments[4]) if len(arguments)==5 and arguments[3]=="--position-hold-trial" else None
-    assert len(arguments) == 3 or expect_empty or actor_profile is not None or position_profile is not None
+    supported_profile = pathlib.Path(arguments[4]) if len(arguments)==5 and arguments[3]=="--supported-elbow-profile" else None
+    assert len(arguments) == 3 or expect_empty or actor_profile is not None or position_profile is not None or supported_profile is not None
     capture, ready_path, output = map(pathlib.Path, arguments[:3])
     assert not output.exists()
     prefix = bytes.fromhex(json.loads(ready_path.read_text())["command_owner_prefix"])
@@ -87,6 +103,7 @@ def main():
     typing = receipt["stage"] == "typing-elbows"
     actor = receipt["stage"] == "actor-elbows"
     position_hold=receipt.get("position_hold_trial") is not None
+    supported=receipt["stage"]=="supported-elbow"
     drums = actor or receipt["stage"] in ("drums","raised-drums","typing-elbows")
     proposals=None
     profile=None
@@ -99,6 +116,11 @@ def main():
         profile=json.loads(position_profile.read_text())
         assert profile==receipt["position_hold_trial"]
         proposals=read_position_hold_proposals(capture.parent/"targets.ndjson",profile)
+    if supported and not expect_empty:
+        assert supported_profile is not None and receipt["timestamp_domain"]=="host"
+        profile=json.loads(supported_profile.read_text())
+        assert profile==receipt["supported_elbow_trial"]
+        proposals=read_supported_proposals(capture.parent/"targets.ndjson",profile)
     peak_degrees = 90 if raised else 10 if drums else 90 if receipt["stage"] == "elbow90" else 5
     assert len(prefix) == 12
     addresses = ipaddress.IPv4Address("192.168.55.101").packed + ipaddress.IPv4Address("192.168.55.102").packed
@@ -169,13 +191,13 @@ def main():
                     for i, motor in enumerate(values):
                         assert all(math.isfinite(motor[k]) for k in ("pos", "vel", "tau", "kp", "kd"))
                         if receipt["stage"]=="hold" or i not in ((3,14) if drums else (3,)):
-                            if position_hold and i in LEGS:
+                            if (position_hold or supported) and i in LEGS:
                                 assert all(motor[k]==baseline[i][k] for k in ("motor_id","pos","vel","kp","kd"))
                             else:assert motor == baseline[i], "non-elbow target changed on wire"
                         for field in ("vel", "tau", "kp", "kd"):
-                            if position_hold and i in LEGS and field=="tau":continue
+                            if (position_hold or supported) and i in LEGS and field=="tau":continue
                             assert motor[field] == baseline[i][field]
-                    if position_hold:
+                    if position_hold or supported:
                         assert position_hold_wire_matches(values,stamp,command.timestamp,proposals), "wire position-hold frame lacks identical fresh admitted proposal"
                     final = math.degrees(values[3]["pos"] - baseline[3]["pos"])
                     if actor:
@@ -226,6 +248,7 @@ def main():
         assert motors > 0 and modes == [2] and sorted(entities.values()) == ["mode", "motor"]
         if actor and receipt["result"]=="stage complete":
             assert final==0 and right_final==0,"completed actor wire targets did not return exactly"
+        if supported and receipt["result"]=="stage complete":assert final==0
     report = {"passed": True, "source": "outbound captured RTPS DATA decoded with exact CDR types",
         "command_owner_prefix": prefix.hex(), "motor_samples": motors,
         "motor_records_checked": motors * 24, "mode_requests": modes,
@@ -243,6 +266,7 @@ def main():
         "physical_handback_verified": False,
         "wire_frames_matched_to_fresh_actor_proposals":motors if actor and not expect_empty else None,
         "wire_frames_matched_to_fresh_position_hold_proposals":motors if position_hold and not expect_empty else None,
+        "wire_frames_matched_to_fresh_supported_elbow_proposals":motors if supported and not expect_empty else None,
         "stage_completed":receipt["result"]=="stage complete"}
     output.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))

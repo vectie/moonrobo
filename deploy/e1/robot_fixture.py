@@ -12,6 +12,7 @@ motor=DataReader(p,Topic(p,"Motor_Cmd_Topic",MotorCmdArray),qos=Qos(Policy.Relia
 mode=DataReader(p,Topic(p,"Control_Mode_Topic",SetMode))
 baseline=None; count=0; peak=0.; last=0.; modes=[]; seen=False; first=None; finish=None
 position_hold=len(sys.argv)>2 and sys.argv[2]=="position-hold"
+supported=len(sys.argv)>2 and sys.argv[2]=="supported-elbow"
 maximum_position_hold_bias_nm=0.
 raised=len(sys.argv)>2 and sys.argv[2]=="raised-drums"
 typing=len(sys.argv)>2 and sys.argv[2]=="typing-elbows"
@@ -34,7 +35,7 @@ while time.monotonic()<end:
         assert previous_stamp is None or row.timestamp > previous_stamp
         previous_stamp=row.timestamp
         values=[dataclasses.asdict(x) for x in row.motorcmds]
-        if (raised or typing) and time.monotonic()-last_feedback>=.010:
+        if (raised or typing or supported) and time.monotonic()-last_feedback>=.010:
             temporary=pathlib.Path(sys.argv[1]).parent/"feedback.tmp"
             temporary.write_text(json.dumps([values[3]["pos"],values[14]["pos"]]))
             os.replace(temporary,temporary.with_name("feedback.json"))
@@ -42,6 +43,14 @@ while time.monotonic()<end:
         assert len(values)==24 and [x["motor_id"] for x in values]==list(range(24))
         if baseline is None:baseline=values;first=time.monotonic()
         for i,m in enumerate(values):
+            if supported:
+                assert all(m[k]==baseline[i][k] for k in ("motor_id","vel","kp","kd"))
+                if i!=3:assert m["pos"]==baseline[i]["pos"]
+                if i==7:
+                    assert 0<=m["tau"]<=7.5
+                    maximum_position_hold_bias_nm=max(maximum_position_hold_bias_nm,m["tau"])
+                else:assert m["tau"]==0
+                continue
             if position_hold:
                 assert all(m[k]==baseline[i][k] for k in ("motor_id","pos","vel","kp","kd"))
                 if i==7:

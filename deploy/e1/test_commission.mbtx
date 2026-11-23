@@ -21,7 +21,9 @@ async fn main {
   let controller = @env.get_env_var("MOONROBO_E1_CONTROLLER").unwrap_or(
     "../../_build/native/debug/build/cmd/e1_commission/e1_commission.exe",
   )
-  let stage = if scenario == "typing-elbows" {
+  let stage = if scenario == "supported-elbow" {
+    "supported-elbow"
+  } else if scenario == "typing-elbows" {
     "typing-elbows"
   } else if scenario == "raised-drums" {
     "raised-drums"
@@ -64,6 +66,12 @@ async fn main {
           sender_args.append([
             "--position-hold-trial", @env.get_env_var("MOONROBO_E1_POSITION_HOLD_TRIAL").unwrap(),
             "--position-hold-shadow-audit", @env.get_env_var("MOONROBO_E1_POSITION_HOLD_SHADOW_AUDIT").unwrap(),
+          ])
+        }
+        if scenario == "supported-elbow" {
+          sender_args.append([
+            "--supported-elbow-profile", @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_PROFILE").unwrap(),
+            "--supported-elbow-shadow-audit", @env.get_env_var("MOONROBO_E1_SUPPORTED_ELBOW_SHADOW_AUDIT").unwrap(),
           ])
         }
         let sender = @process.spawn(
@@ -155,6 +163,7 @@ async fn main {
         let sender_status = sender.wait()
         guard fixture.wait() == 0 else { fail("wire receiver failed") }
         let expected_complete = scenario == "hold" ||
+          scenario == "supported-elbow" ||
           scenario == "position-hold" ||
           scenario == "recorded-hold" ||
           scenario == "settling" ||
@@ -206,7 +215,7 @@ async fn main {
           } else {
           fail("mode or isolation mismatch")
         }
-        if scenario == "elbow" || scenario == "elbow90" {
+        if scenario == "elbow" || scenario == "elbow90" || scenario == "supported-elbow" {
           guard wire
             is {
               "elbow_peak_deg": Number(peak, ..),
