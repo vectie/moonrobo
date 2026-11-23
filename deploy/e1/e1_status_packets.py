@@ -4,6 +4,7 @@ Output is one SDK-ordered status line per DDS sample. The only SDK symbol
 called here consumes serialized bytes. This process opens no network socket.
 """
 import argparse
+from collections import OrderedDict
 import ctypes
 import ipaddress
 import json
@@ -14,6 +15,41 @@ import queue
 import struct
 import sys
 import threading
+
+
+class StatusDeduplicator:
+    """Deliver each exact RTPS writer sample once, as a DDS reader would.
+
+    Different local reader destinations can receive copies of the same DATA.
+    Keep the first kernel receipt; a duplicate never refreshes a sample's age.
+    The bounded cache is for identity comparison, not for reordering or filling
+    missing sequences. Unknown old samples and conflicting identities fail.
+    """
+
+    def __init__(self, capacity=2048):
+        if capacity < 1:
+            raise ValueError("positive sample cache capacity required")
+        self.capacity = capacity
+        self.recent = OrderedDict()
+        self.latest = None
+        self.unique = 0
+        self.duplicates = 0
+
+    def accept(self, sequence, source_ns, payload):
+        identity = (source_ns, payload)
+        if sequence in self.recent:
+            if self.recent[sequence] != identity:
+                raise ValueError("conflicting duplicate E1 status sample")
+            self.duplicates += 1
+            return False
+        if self.latest is not None and sequence <= self.latest:
+            raise ValueError("unknown old E1 status sample")
+        self.recent[sequence] = identity
+        self.latest = sequence
+        self.unique += 1
+        if len(self.recent) > self.capacity:
+            self.recent.popitem(last=False)
+        return True
 
 
 class MirrorWriter:
@@ -157,11 +193,14 @@ def main():
     mirror = MirrorWriter(mirror_dir) if mirror_dir else None
     baseline = baseline_ori = None
     last_mirror = 0
+    samples = StatusDeduplicator()
     for arrival, frame in ethernet_packets(sys.stdin.buffer):
         data = rtps_payload(frame, addresses)
         if data is None:
             continue
         for seq, stamp, payload in status_samples(data, writer):
+            if not samples.accept(seq, stamp, payload):
+                continue
             if decode(0, payload, len(payload), values, len(values), error, len(error)):
                 raise ValueError(error.value.decode())
             ids = list(map(int, values[:144:6]))
@@ -185,6 +224,9 @@ def main():
                              separators=(",", ":"), allow_nan=False), flush=True)
     if mirror:
         mirror.close()
+    print(json.dumps(dict(status_unique_samples=samples.unique,
+                          exact_duplicate_samples=samples.duplicates)),
+          file=sys.stderr, flush=True)
 
 
 if __name__ == "__main__":

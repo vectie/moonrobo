@@ -198,6 +198,13 @@ receipt is required before either live shadow or a powered stage.
 proposal, model sequence, original model-input age, affine conversion, applied
 previous action, authority/filter/slew, fixed records and exact return. It does
 not open network sockets or assert that a proposal reached the physical wire.
+The passive status decoder deduplicates exact RTPS writer sequences before
+delivering samples. Multiple local DDS readers can receive identical copies.
+Only matching raw CDR bytes and source timestamps are suppressed, and the first
+kernel receipt remains authoritative. Conflicting duplicates and unknown old
+samples fail; missing unique sequences still reach the continuity guard as gaps.
+The bounded identity cache does not reorder, interpolate or refresh telemetry.
+`test_status_packets.py` exercises those cases without SDK or network access.
 `extract_e1_actor_inference.mbtx` preserves exact observed model inputs for
 sampled CPU ONNX comparison; `compare_e1_live_shadow_onnx.mbtx prepare-phased`
 selects baseline and advancing-reference frames without changing tolerances.
