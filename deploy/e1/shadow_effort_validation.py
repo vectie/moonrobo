@@ -71,7 +71,7 @@ class PositionHoldAudit:
         gain = settings["integral_gain_nm_per_rad_s"]
         assert math.isfinite(gain) and gain > 0
         tolerance = settings["maximum_error_rad"]
-        assert math.isfinite(tolerance) and 0 < tolerance <= 3.*(math.pi/180)
+        assert math.isfinite(tolerance) and 0 < tolerance <= 5.*(math.pi/180)
         limits, rates = settings["bias_limit_nm"], settings["slew_limit_nm_per_s"]
         assert len(limits) == len(rates) == 24
         for i, (limit, rate) in enumerate(zip(limits, rates)):

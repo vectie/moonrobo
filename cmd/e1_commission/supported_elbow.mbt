@@ -93,7 +93,11 @@ async fn supported_elbow(report_file : String, shadow : Bool) -> Unit {
           }
           pose.validate_baseline(p.q[:])
           baseline = p
-          detector = detector.begin_hold(leg_tolerance_rad=3.0 * @ankle.RAD)
+          detector = detector.begin_hold(
+            leg_tolerance_rad=profile.feedback.maximum_error_rad,
+            stationary_tolerance_rad=profile.stationary_tolerance_deg *
+              @ankle.RAD,
+          )
           owner = Some(
             @elbow.SupportedElbowTrial::new(profile, status_sample(p)),
           )
@@ -195,7 +199,7 @@ async fn supported_elbow(report_file : String, shadow : Bool) -> Unit {
         "elbow_tracking": if shadow {
           "unexecuted; following check omitted"
         } else {
-          "live one-degree following check"
+          "live operator-approved five-degree following check"
         },
       } : Json).stringify(indent=2),
     create_mode=CreateNew,

@@ -22,6 +22,24 @@ def candidates():
 
 
 class SupportedElbowTests(unittest.TestCase):
+    def test_five_degree_profile_covers_all_non_target_joints_and_elbow_tracking(self):
+        profile=json.loads(pathlib.Path(__file__).with_name("supported-elbow-5deg.json").read_text())
+        for slot in (1,7,12,18,22,3):
+            _,(first,second)=candidates()
+            for row in (first,second):
+                row["supported_elbow_trial"].update(profile=copy.deepcopy(profile),settings=copy.deepcopy(profile["feedback"]))
+            validator=SupportedElbowValidator(profile,False)
+            validator.validate(first)
+            meta=second["supported_elbow_trial"]
+            meta["input_position"][slot]=meta["seed_position"][slot]-4.5*RAD
+            if slot in (7,18):second["motors"][slot]["tau"]=50.*(meta["seed_position"][slot]-meta["input_position"][slot])*.02
+            validator.validate(second)
+            # A new owner evaluates a fresh copy: no failed validation is reused.
+            validator=SupportedElbowValidator(profile,False)
+            validator.validate(first)
+            meta["input_position"][slot]=meta["seed_position"][slot]-5.1*RAD
+            with self.subTest(slot=slot),self.assertRaises(AssertionError):validator.validate(second)
+
     def test_explicit_three_degree_profile_admits_settling_without_changing_leg_targets(self):
         profile,(first,second)=candidates()
         validator=SupportedElbowValidator(profile,False)

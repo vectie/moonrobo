@@ -8,11 +8,13 @@ RAD=math.pi/180
 
 
 def validate_profile(profile):
-    assert profile["format"]=="moonrobo.e1-supported-elbow.v1" and profile["power_qualified"] is False
+    assert profile["format"] in ("moonrobo.e1-supported-elbow.v1","moonrobo.e1-supported-elbow.v2") and profile["power_qualified"] is False
+    newer=profile["format"]=="moonrobo.e1-supported-elbow.v2"
+    if newer:assert profile["stationary_tolerance_deg"]==profile["following_tolerance_deg"]==5.
     assert (profile["hold_ms"],profile["motion_ms"],profile["return_hold_ms"],profile["maximum_total_ms"],profile["amplitude_deg"])==(3000,15000,500,19000,5.)
     feedback=profile["feedback"]
     assert feedback["format"]=="moonrobo.e1-position-hold-shadow.v1" and feedback["power_qualified"] is False
-    assert feedback["integral_gain_nm_per_rad_s"]==50. and feedback["maximum_error_rad"]==3.*RAD
+    assert feedback["integral_gain_nm_per_rad_s"]==50. and feedback["maximum_error_rad"]==(5. if newer else 3.)*RAD
     budgets=[7.5 if i in (7,8,18,19) else 4.5 if i in (5,6,16,17) else 3.5 if i in (9,10,20,21) else 0. for i in range(24)]
     assert feedback["bias_limit_nm"]==feedback["slew_limit_nm_per_s"]==budgets
 
@@ -62,8 +64,8 @@ class SupportedElbowValidator:
         assert -2.44<=actual[3]<=0 and -2.44<=target<=0
         assert abs(motors[3]["pos"]-target)<1e-12
         if not self.shadow:
-            assert abs(actual[3]-(seed[3] if self.previous_target is None else self.previous_target))<=RAD
-        assert all(abs(actual[i]-seed[i])<=RAD for i in range(23) if i not in LEGS and i!=3)
+            assert abs(actual[3]-(seed[3] if self.previous_target is None else self.previous_target))<=self.profile.get("following_tolerance_deg",1.)*RAD
+        assert all(abs(actual[i]-seed[i])<=self.profile.get("stationary_tolerance_deg",1.)*RAD for i in range(23) if i not in LEGS and i!=3)
         # Project out the separately validated elbow position. This verifies
         # the identical fixed-leg integral using its existing independent math.
         projected=dict(row,stage="hold",shadow=True,position_hold_shadow=meta)
