@@ -348,7 +348,6 @@ pub fn Detector::observe(self : Detector, p : Packet) -> Verdict {
     self.leg_tolerance_rad > RAD &&
     ankle_slot is None &&
     self.pending is None &&
-    self.healthy_streak >= 2 &&
     slow_standing_ankles(self.good, p) {
     for slot in [9, 10, 20, 21] {
       if (p.q[slot] - self.good.q[slot]).abs() > RAD {
@@ -399,7 +398,17 @@ pub fn Detector::observe(self : Detector, p : Packet) -> Verdict {
       p.arrival_ns - suspect.arrival_ns,
     )
     self.pending = None
-    self.healthy_streak = 0
+    // In a supported relative envelope the retained good reference and this
+    // confirmed recovery are two validated healthy samples. Preserve that
+    // evidence so a second isolated spike after one recovery is quarantined,
+    // rather than silently admitted inside the wider absolute envelope.
+    // The default one-degree path retains its conservative rearming rule.
+    self.healthy_streak = if self.confirm_isolated &&
+      self.leg_tolerance_rad > RAD {
+      1
+    } else {
+      0
+    }
   } else if ankle_slot is Some(slot) {
     if self.confirm_isolated {
       // Only an abrupt, velocity-inconsistent ankle-only sample is provisional.
