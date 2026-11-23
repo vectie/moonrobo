@@ -1,0 +1,99 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+struct HoldInput {
+  seed_position : Array[Double]
+  input_position : Array[Double]
+} derive(FromJson)
+
+///|
+struct Inference {
+  inference_sequence : Int32
+  raw_actions : Array[Double]
+} derive(FromJson)
+
+///|
+struct Target {
+  actor_position_hold : HoldInput
+  inference : Inference
+} derive(FromJson)
+
+///|
+async fn main {
+  guard @env.args()[1:] is [trace, output] else {
+    fail("TARGETS NEW_REPORT required; reads saved files only")
+  }
+  let rad = 0.017453292519943295
+  let peak = Array::make(24, 0.0)
+  let elbow_min = [0.0, 0.0]
+  let elbow_max = [0.0, 0.0]
+  let elbow_last = [0.0, 0.0]
+  let mut previous : Inference? = None
+  let mut updates = 0
+  let mut maximum_action_change = 0.0
+  for line in @fs.read_file(trace).text().split("\n") {
+    if line.is_empty() {
+      continue
+    }
+    let value = @json.parse(line.to_owned())
+    if value is { "kind": "stop", .. } {
+      continue
+    }
+    let row : Target = @json.from_json(value)
+    if previous is Some(p) &&
+      p.inference_sequence == row.inference.inference_sequence {
+      continue
+    }
+    guard row.inference.inference_sequence == updates &&
+      row.actor_position_hold.input_position.length() == 24 &&
+      row.actor_position_hold.seed_position.length() == 24 &&
+      row.inference.raw_actions.length() == 29 else {
+      fail("incomplete inference input")
+    }
+    if previous is Some(p) {
+      for i in 0..<29 {
+        maximum_action_change = maximum_action_change.max(
+          (p.raw_actions[i] - row.inference.raw_actions[i]).abs(),
+        )
+      }
+    }
+    for slot in 0..<24 {
+      let delta = (
+          row.actor_position_hold.input_position[slot] -
+          row.actor_position_hold.seed_position[slot]
+        ) /
+        rad
+      peak[slot] = peak[slot].max(delta.abs())
+      if slot is (3 | 14) {
+        let side = if slot == 3 { 0 } else { 1 }
+        elbow_min[side] = elbow_min[side].min(delta)
+        elbow_max[side] = elbow_max[side].max(delta)
+        elbow_last[side] = delta
+      }
+    }
+    updates += 1
+    previous = Some(row.inference)
+  }
+  guard updates > 500 else { fail("complete trained actor trace required") }
+  let leg_peak = [5, 6, 7, 8, 9, 10, 16, 17, 18, 19, 20, 21]
+  let maximum_leg = leg_peak.fold(init=0.0, (a, i) => a.max(peak[i]))
+  let report : Json = {
+    "source": "saved accepted model-input samples, once per inference; no robot connection",
+    "inference_updates": Json(updates),
+    "maximum_successive_raw_action_change": Json(maximum_action_change),
+    "measured_elbow_min_offset_deg": Json(elbow_min),
+    "measured_elbow_max_offset_deg": Json(elbow_max),
+    "measured_elbow_last_input_offset_deg": Json(elbow_last),
+    "maximum_accepted_leg_offset_deg": Json(maximum_leg),
+    "accepted_max_offsets_deg_by_slot": Json(peak),
+    "note": "Accepted model inputs exclude provisional ankle packets. Raw maxima and post-disconnect motion require the separate full status measurement. Slot 23 is reserved.",
+  }
+  @fs.write_file(output, report.stringify(indent=2), create_mode=CreateNew)
+  println(report.stringify(indent=2))
+}
