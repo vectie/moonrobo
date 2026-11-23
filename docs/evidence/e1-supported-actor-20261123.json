@@ -1,0 +1,80 @@
+{
+  "format": "moonrobo.e1-supported-actor-evidence.v1",
+  "date": "2026-11-23",
+  "host": "192.168.2.191",
+  "archive_root": "/home/jiaanguo/lunakine-deployment-20261117/actor-elbows-20261121",
+  "model_id": "031c4f35c09b86233d4ae05a44fdf5b6942a327224b112f7bc043b53c59727c0",
+  "backend": "LunaKine Ascend FP32",
+  "scope": "finite crane-supported live-inference elbows; other 22 position references fixed; explicit 5-degree feedback envelope",
+  "actor_config_sha256": "bced3686c0fe4a3d7d76f73748d838c5c1b41afd227aa9cea82ca912b2130ffe",
+  "hold_profile_sha256": "739579e0d822a954cce3fa5713dcd8bf0ad10964b4fd299e1f504ba1ddd1afb9",
+  "shadow": {
+    "run": "supported-actor-shadow-20261123-1",
+    "passed": true,
+    "command_writers_created": false,
+    "inference_updates": 1576,
+    "policy_updates": 1177,
+    "target_heartbeats": 2714,
+    "raw_inputs_verified": true,
+    "targets_returned_exactly": true,
+    "sha256": {
+      "targets.ndjson": "477537e1364a3474673654f25d6310c9d94441990ed1602f80004c75a5c9db9a",
+      "status.ndjson": "8d6fe9fbba36310140ebb8d9952d6d4d3dab34f0f4f55a25d14ad8d70d9dc4df",
+      "wire.pcap": "e5a3da311afd11596c411955bf5088f3fc74344ec65a17993ea68b958e896137"
+    }
+  },
+  "isolated_transport": {
+    "run": "supported-actor-isolated-20261123-2",
+    "isolation": "loopback-only network namespace",
+    "complete_passed": true,
+    "motor_frames": 15040,
+    "motor_records_checked": 360960,
+    "stale_model_input_rejected": true,
+    "stale_model_stop_reason": "actor input expired",
+    "scope": "saved proposal replay through DDS, not fresh inference or real E1 motion"
+  },
+  "powered": {
+    "run": "supported-actor-powered-20261123-1",
+    "result": "stage complete",
+    "proposal_and_raw_input_audit_passed": true,
+    "wire_audit_passed": true,
+    "active_seconds": 32.280577020021155,
+    "inference_updates": 1615,
+    "policy_updates": 1177,
+    "target_heartbeats": 2784,
+    "motor_frames": 15400,
+    "motor_records_checked": 369600,
+    "maximum_inference_ms": 3,
+    "maximum_input_to_result_ms": 4,
+    "maximum_lateness_ms": 5,
+    "fixed_position_records": 22,
+    "fixed_complete_motor_records": 10,
+    "commanded_elbow_min_offset_deg": [-4.87438482478189, -3.66021334076104],
+    "measured_elbow_min_offset_deg": [-4.677422826651452, -3.4096850751837255],
+    "measured_elbow_last_active_offset_deg": [-1.2895943568117674, -1.224024540779645],
+    "measured_elbow_post_disconnect_3s_offset_deg": [0, -0.04371321068808161],
+    "maximum_accepted_leg_offset_deg": 3.2566888377754397,
+    "maximum_holding_bias_nm": 7.5,
+    "targets_returned_exactly": true,
+    "mode_requests": [2],
+    "action": 11,
+    "axes": [0, 0],
+    "participant_deleted": true,
+    "physical_handback_verified": false,
+    "operator_observation": null,
+    "sha256": {
+      "targets.ndjson": "f3289da3fea09d5a05324ac6fefe04405e16b2dd7102cc4a89e20192aa261324",
+      "status.ndjson": "f5cf16567744fe4ec84536e7caf1e39271f7d88a670938e5f855434e6c9cf0db",
+      "wire.pcap": "d33da87f47f6872d677dd22c6e2c522a91b335db614f65e2186ee55af69f13f1"
+    }
+  },
+  "limitations": [
+    "Crane-supported constrained elbows only; not whole-body policy qualification.",
+    "Fixed leg targets do not imply physically motionless legs.",
+    "Leg holding bias reached its cap; precision/preload continuity is unresolved.",
+    "Participant deletion and telemetry do not establish physical factory handback.",
+    "Operator observation is pending."
+  ],
+  "validation": {"native_tests_passed": 68, "python_tests_on_191_passed": 42, "warnings_denied": true},
+  "implementation_commits": ["f30a303a", "41f95b3b", "70fb3f38"]
+}

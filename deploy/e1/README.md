@@ -317,3 +317,19 @@ shadow audit. Default hold/actor profiles remain unchanged. The prior v1 JSON
 is retained for historical Python audits and requires its corresponding older
 owner for reproduction. See the
 [completed v2 run and measured tracking limits](../../docs/E1_SUPPORTED_ELBOW_5DEG_20261123.md).
+
+## Supported live-inference elbows
+
+`MOONROBO_E1_ACTOR_HOLD_PROFILE` opts `actor-elbows` into the explicitly
+supported v2 position-feedback holding path. Live admission also requires
+`MOONROBO_E1_ACTOR_HOLD_SHADOW_AUDIT`, a complete matching read-only actor audit,
+and a successful actual supported-elbow transport receipt supplied through
+`HANDBACK_OR_DASH`. This separate commissioning evidence is not an old default
+hold/handback certificate. Set neither reported-effort nor hold-shadow flags.
+
+Audit with `audit_actor_targets.py CONFIG TARGETS NEW_REPORT --status STATUS
+--hold-profile supported-elbow-5deg.json`. The audit verifies both original
+actor mathematics and the fixed-position leg integral against captured inputs.
+`test_actor_transport.mbtx TRACE CONFIG NEW_DIRECTORY SUPPORTED_HOLD_PROFILE`
+tests the combined sender in a loopback-only namespace, including stale model
+input rejection. See [live inference findings](../../docs/E1_SUPPORTED_ACTOR_20261123.md).
