@@ -294,3 +294,18 @@ feedback calculation and deadline. See
 The first real attempt stopped for continuous left-hip drift; powered holding
 has not been qualified. The operator reported steadiness and normal handheld
 response after the stop. Do not use this failed trial to commission actor takeover.
+
+## Explicitly supported elbow trial
+
+The separate `supported-elbow` stage uses
+[`supported-elbow.json`](supported-elbow.json) for the operator-accepted 3° leg
+envelope, fixed leg targets and continuous leg compensation across an initial
+hold and the deterministic 15-second 5° left-elbow reference. Non-target
+non-leg joints retain 1°. Set `MOONROBO_E1_SUPPORTED_ELBOW_PROFILE` and, for a
+real attempt, `MOONROBO_E1_SUPPORTED_ELBOW_SHADOW_AUDIT` to a matching completed
+shadow report. The live sender verifies the profile-file digest and each
+proposal independently. No actor qualification is implied.
+
+The actual attempt stopped in the initial hold at the left shoulder's 1°
+bound, before any elbow fold target. See
+[test results and remaining scope confirmation](../../docs/E1_SUPPORTED_ELBOW_20261123.md).

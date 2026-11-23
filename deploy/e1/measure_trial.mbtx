@@ -36,7 +36,11 @@ fn magnitude(x : Double) -> Double {
 
 ///|
 async fn main {
-  guard @env.args()[1:] is [dir] else { fail("trial directory required") }
+  let (dir, output) = match @env.args()[1:] {
+    [dir] => (dir, dir + "/measured-motion.json")
+    [dir, output] => (dir, output)
+    _ => fail("TRIAL_DIRECTORY [NEW_REPORT]")
+  }
   let transport = @fs.read_file(dir + "/transport.json").json()
   guard transport
     is { "finished_epoch": Number(finished, ..), "result": String(reason), .. } else {
@@ -99,6 +103,8 @@ async fn main {
   let mut max_near_stop_arrival_gap_ms = 0.0
   let mut max_near_stop_source_gap_ms = 0.0
   let changes = Array::make(24, 0.0)
+  let post_changes = Array::make(24, 0.0)
+  let post_offsets = Array::make(24, 0.0)
   for line in @fs.read_file(dir + "/status.ndjson").text().split("\n") {
     if line.is_empty() {
       continue
@@ -149,6 +155,11 @@ async fn main {
       post += 1
       post_last = delta
       right_post = p.q[14] - initial[14].pos
+      for slot in 0..<24 {
+        let delta = p.q[slot]-initial[slot].pos
+        post_changes[slot] = post_changes[slot].max(magnitude(delta))
+        post_offsets[slot] = delta
+      }
     }
   }
   guard active > 0 && post > 0 else {
@@ -188,10 +199,12 @@ async fn main {
     "raw_max_offsets_deg_by_slot_including_spikes_and_reserved_slot": Json(
       changes.map(x => x / rad),
     ),
+    "raw_post_disconnect_3s_max_offsets_deg_by_slot": Json(post_changes.map(x => x/rad)),
+    "raw_post_disconnect_3s_last_offsets_deg_by_slot": Json(post_offsets.map(x => x/rad)),
     "note": "Raw ankle maxima include unfiltered spikes. Slot 23 is reserved; its raw value is not a joint angle. Telemetry does not prove controller ownership.",
   }
   @fs.write_file(
-    dir + "/measured-motion.json",
+    output,
     report.stringify(indent=2),
     create_mode=CreateNew,
   )
