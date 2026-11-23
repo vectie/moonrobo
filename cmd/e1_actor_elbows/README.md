@@ -21,9 +21,12 @@ Artifact hashes are verified before opening the NPU. Invoke
 `e1_actor_elbows.exe actor-elbows NEW_REPORT [--shadow]` only through the staged
 supervisor, which supplies decoded status on stdin and archives stdout proposals.
 `--shadow` disables physical following-error checking because commands are not
-executed; it retains range, leg, motor-error and timing checks. It does not create
-a command publisher. The independent supervisor decides whether proposals reach
-the January transport or a file sink.
+executed. It preserves the validated stationary/glitch history and reports
+nominal SDK leg-range discrepancies without treating raw feedback as unit-zero
+calibration. Elbow bounds, motor errors, continuity and timing remain enforced.
+Powered admission retains strict SDK leg-range checks. Shadow does not create
+a command publisher, and its marked proposals are rejected by the powered
+transport. The supervisor selects the January transport or a file sink.
 
 See [deployment evidence](../../docs/E1_ACTOR_CONTROL_20261121.md) and
 [transport instructions](../../deploy/e1/README.md). No boot service, website

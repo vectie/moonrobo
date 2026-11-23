@@ -71,3 +71,29 @@ fn hold_detector(packet : @ankle.Packet) -> @ankle.Detector raise {
     Wait => fail("provisional telemetry cannot establish an actor hold")
   }
 }
+
+///|
+fn assessed_hold(
+  previous : @ankle.Detector,
+  packet : @ankle.Packet,
+  shadow : Bool,
+) -> @ankle.Detector raise {
+  if shadow {
+    // A measured pose is not an encoder-zero calibration. Read-only proposals
+    // keep the validated stationary/glitch history rather than applying nominal
+    // mechanical travel limits directly to unqualified raw feedback.
+    guard !previous.suspended && previous.good.seq == packet.seq else {
+      fail("shadow hold requires the current stationary assessment")
+    }
+    previous.begin_hold()
+  } else {
+    hold_detector(packet)
+  }
+}
+
+///|
+fn nominal_leg_range_discrepancies(packet : @ankle.Packet) -> Array[Int32] {
+  Array::makei(24, i => i).filter(slot => {
+    @elbow.leg_slot(slot) && !@elbow.leg_position_in_range(slot, packet.q[slot])
+  })
+}

@@ -109,7 +109,7 @@ async fn run(report : String, shadow : Bool) -> Unit {
             attitude.body_to_world()[:],
             clip.frame(execution, 0).body_to_world[:],
           )
-          detector = hold_detector(s.packet)
+          detector = assessed_hold(detector, s.packet, shadow)
           started = now
           scheduled_inference = now
           diagnose("actor baseline established")
@@ -247,6 +247,14 @@ async fn run(report : String, shadow : Bool) -> Unit {
               "kind": "target",
               "stage": "actor-elbows",
               "shadow": Json(shadow),
+              "feedback_assessment": if shadow {
+                "relative stationary shadow; nominal SDK ranges diagnostic"
+              } else {
+                "powered SDK feedback range validation"
+              },
+              "nominal_sdk_leg_range_discrepancies": Json(
+                nominal_leg_range_discrepancies(s.packet),
+              ),
               "profile": "suspended",
               "receipt_ms": @env.now().to_string(),
               "telemetry_receipt_ms": (s.packet.arrival_ns / 1000000L).to_string(),
@@ -318,6 +326,21 @@ async fn run(report : String, shadow : Bool) -> Unit {
     "moving_slots": [3, 14],
     "target_positions_returned_exactly": true,
     "physical_handback_verified": false,
+    "feedback_assessment": if shadow {
+      "relative stationary shadow; nominal SDK ranges diagnostic"
+    } else {
+      "powered SDK feedback range validation"
+    },
+    "nominal_sdk_leg_range_discrepancies_at_hold": Json(
+      if baseline.is_empty() {
+        []
+      } else {
+        Array::makei(24, i => i).filter(slot => {
+          @elbow.leg_slot(slot) &&
+          !@elbow.leg_position_in_range(slot, baseline[slot].position)
+        })
+      },
+    ),
     "calibration_scope": config.scope,
     "following_check": if shadow {
       "not applicable to read-only shadow; no motor targets executed"

@@ -156,7 +156,11 @@ authority to SDK elbows 3/14, holds all 22 other full records, and feeds the
 inverse applied command back into the next observation. Its shadow mode keeps
 **measured** joint feedback; it does not synthesize elbow tracking. It creates
 only a file sink and exempts the physical following-error requirement while
-retaining ranges, freshness, motor errors and the glitch-aware leg guard.
+retaining elbow bounds, freshness, motor errors and the stationary/glitch guard.
+Nominal SDK leg ranges are reported as diagnostics for unqualified raw feedback
+in shadow. Powered admission keeps the strict SDK range gate. See the
+[right-knee investigation](../../docs/E1_KNEE_SHADOW_FIX_20261123.md); shadow does
+not calibrate zeros or qualify a physical hold.
 Live execution requires the same fresh real hold and observed-handback receipt
 as the typing stage. Neither offline qualification nor a shadow result proves
 handback or physical following.
