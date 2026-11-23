@@ -1,0 +1,131 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+struct Packet {
+  seq : Int32
+  arrival_ns : Int64
+  source_ns : Int64
+  q : Array[Double]
+  qd : Array[Double]
+  error : Array[Int32]
+} derive(FromJson)
+
+///|
+struct Status {
+  packet : Packet
+  motor_ids : Array[Int32]
+} derive(FromJson)
+
+///|
+struct Input {
+  input_packet_sequence : Int32
+  input_arrival_ns : Int64
+  input_source_ns : Int64
+  input_position : Array[Double]
+  input_velocity : Array[Double]
+} derive(FromJson)
+
+///|
+async fn main {
+  guard @env.args()[1:] is [original, replay, a_text, b_text, output] else {
+    fail(
+      "ORIGINAL_STATUS RECORDED_SHADOW_DIR BAD_SEQUENCE_A BAD_SEQUENCE_B NEW_REPORT",
+    )
+  }
+  let a = @string.parse_int(a_text)
+  let b = @string.parse_int(b_text)
+  guard a > 0 && b == a + 2 else {
+    fail("two isolated packets with one recovery between required")
+  }
+  let originals : Map[Int32, Status] = Map([])
+  for line in @fs.read_file(original).text().split("\n") {
+    if !line.is_empty() {
+      let s : Status = @json.from_json(@json.parse(line.to_owned()))
+      originals[s.packet.seq] = s
+    }
+  }
+  let mut offset : Int64? = None
+  for seq in [a, b] {
+    assert_true(originals.contains(seq))
+  }
+  let mut last_input = -1
+  let mut last_inference = -1
+  let mut updates = 0
+  let mut stop_reason = ""
+  for line in @fs.read_file(replay + "/targets.ndjson").text().split("\n") {
+    if !line.has_prefix("{") {
+      continue
+    }
+    let value = @json.parse(line.to_owned())
+    if value is { "kind": "stop", "reason": String(reason), .. } {
+      stop_reason = reason
+    } else {
+      guard value
+        is {
+          "kind": "target",
+          "shadow": True,
+          "actor_position_hold": meta,
+          "inference": {
+            "input_packet_sequence": Number(seq, ..),
+            "inference_sequence": Number(tick, ..),
+            ..
+          },
+          ..
+        } else {
+        fail("only recorded shadow proposals are admitted")
+      }
+      let seq = seq.to_int()
+      let input : Input = @json.from_json(meta)
+      assert_eq(input.input_packet_sequence, seq)
+      guard originals.get(seq) is Some(source) else {
+        fail("model input absent from original capture")
+      }
+      assert_eq(source.motor_ids, Array::makei(24, i => i))
+      assert_eq(source.packet.error, Array::make(24, 0))
+      assert_eq(input.input_position, source.packet.q)
+      assert_eq(input.input_velocity, source.packet.qd)
+      let translation = input.input_arrival_ns - source.packet.arrival_ns
+      if offset is None {
+        offset = Some(translation)
+      }
+      assert_eq(translation, offset.unwrap())
+      assert_eq(input.input_source_ns - source.packet.source_ns, translation)
+      assert_true(seq != a && seq != b)
+      assert_true(seq >= last_input)
+      last_input = seq
+      if tick.to_int() != last_inference {
+        assert_eq(tick.to_int(), last_inference + 1)
+        updates += 1
+        last_inference = tick.to_int()
+      }
+    }
+  }
+  guard last_input > b + 1 &&
+    updates > 0 &&
+    stop_reason.contains("TimeoutError") else {
+    fail(
+      "expected continuation past both recovered spikes, followed by the recorded input gap",
+    )
+  }
+  let report : Json = {
+    "diagnostic_passed": true,
+    "completed_policy_trial": false,
+    "command_writers_created": false,
+    "scope": "recorded-input NPU prefix regression; exact source values and one constant clock translation; not a completed live-shadow or physical trial",
+    "unchanged_recorded_model_inputs": Json(updates),
+    "source_anomalous_sequences": Json([a, b]),
+    "anomalous_packets_used_as_model_inputs": 0,
+    "last_model_input_sequence": Json(last_input),
+    "inference_updates": Json(updates),
+    "terminal_reason": Json(stop_reason),
+  }
+  @fs.write_file(output, report.stringify(indent=2), create_mode=CreateNew)
+  println(report.stringify(indent=2))
+}
