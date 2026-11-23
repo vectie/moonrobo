@@ -1,0 +1,189 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+fn integer(bytes : BytesView, at : Int32, n : Int32, little : Bool) -> Int64 {
+  let mut bits = 0L
+  for i in 0..<n {
+    bits = bits |
+      (
+        bytes[at + i].to_int().to_int64() <<
+        ((if little { i } else { n - i - 1 }) * 8)
+      )
+  }
+  bits
+}
+
+///|
+fn hex(bytes : BytesView) -> String {
+  let mut result = ""
+  for byte in bytes {
+    result += byte.to_hex()
+  }
+  result
+}
+
+///|
+struct Packet {
+  seq : Int32
+  q : Array[Double]
+} derive(FromJson)
+
+///|
+struct Row {
+  packet : Packet
+} derive(FromJson)
+
+///|
+async fn main {
+  guard @env.args()[1:] is [capture, decoded, guid, output] &&
+    guid.length() == 32 else {
+    fail("PCAP DECODED_STATUS WRITER_GUID NEW_REPORT required")
+  }
+  let bytes = @fs.read_file(capture).binary()
+  let little = bytes[:4] == b"\xd4\xc3\xb2\xa1" ||
+    bytes[:4] == b"\x4d\x3c\xb2\xa1"
+  let nanos = bytes[:4] == b"\x4d\x3c\xb2\xa1" ||
+    bytes[:4] == b"\xa1\xb2\x3c\x4d"
+  guard little ||
+    bytes[:4] == b"\xa1\xb2\xc3\xd4" ||
+    bytes[:4] == b"\xa1\xb2\x3c\x4d" else {
+    fail("pcap magic")
+  }
+  assert_eq(integer(bytes[:], 20, 4, little), 1L)
+  let seen : Map[Int32, Int64] = Map([])
+  let positions : Set[Int64] = Set([])
+  let mut duplicates = 0
+  let mut minimum = 1.0e100
+  let mut maximum = -1.0e100
+  let mut min_velocity = 1.0e100
+  let mut max_velocity = -1.0e100
+  let mut first_ns = 0L
+  let mut last_ns = 0L
+  let mut first_hex = ""
+  let mut at = 24
+  while at < bytes.length() {
+    guard at + 16 <= bytes.length() else { fail("truncated pcap record") }
+    let length = integer(bytes[:], at + 8, 4, little).to_int()
+    guard length == integer(bytes[:], at + 12, 4, little).to_int() &&
+      at + 16 + length <= bytes.length() else {
+      fail("truncated frame")
+    }
+    let arrival = integer(bytes[:], at, 4, little) * 1000000000L +
+      integer(bytes[:], at + 4, 4, little) * (if nanos { 1L } else { 1000L })
+    let frame = bytes[at + 16:at + 16 + length]
+    at += 16 + length
+    guard frame.length() >= 42 && frame[12:14] == b"\x08\x00" else { continue }
+    let ip = frame[14:]
+    guard ip[9] == 17 && ip[12:20] == b"\xc0\xa8\x37\x66\xc0\xa8\x37\x65" else {
+      continue
+    }
+    guard (integer(ip, 6, 2, false) & 0x3fffL) == 0L else {
+      fail("fragmented status")
+    }
+    let header = (ip[0].to_int() & 15) * 4
+    let size = integer(ip, 2, 2, false).to_int()
+    guard size <= ip.length() && size >= header + 8 else {
+      fail("invalid IPv4 length")
+    }
+    let data = ip[header + 8:size]
+    guard data.length() >= 20 && data[:4] == b"RTPS" else { continue }
+    let prefix = hex(data[8:20])
+    let mut sub = 20
+    while sub < data.length() {
+      guard sub + 4 <= data.length() else { fail("truncated RTPS header") }
+      let tag = data[sub].to_int()
+      let flags = data[sub + 1].to_int()
+      let le = (flags & 1) == 1
+      let length = integer(data, sub + 2, 2, le).to_int()
+      let end = if length == 0 { data.length() } else { sub + 4 + length }
+      guard end <= data.length() else { fail("truncated RTPS submessage") }
+      let body = data[sub + 4:end]
+      sub = end
+      if tag != 0x15 || body.length() < 20 || prefix + hex(body[8:12]) != guid {
+        continue
+      }
+      guard flags == 5 else { fail("unreviewed DATA encoding") }
+      let payload_at = 4 + integer(body, 2, 2, true).to_int()
+      let payload = body[payload_at:]
+      guard payload.length() == 1156 &&
+        payload[0] == 0 &&
+        (payload[1] == 0 || payload[1] == 1) else {
+        fail("status shape")
+      }
+      let lcdr = payload[1] == 1
+      assert_eq(integer(payload, 372, 4, lcdr), 24L)
+      for slot in 0..<24 {
+        assert_eq(
+          integer(payload, 380 + 32 * slot + 24, 2, lcdr),
+          slot.to_int64(),
+        )
+      }
+      let motor = 380 + 32 * 19
+      assert_eq(integer(payload, motor + 26, 2, lcdr), 0L)
+      let bits = integer(payload, motor, 8, lcdr)
+      let value = bits.reinterpret_as_double()
+      let velocity = integer(payload, motor + 8, 8, lcdr).reinterpret_as_double()
+      assert_true(value - value == 0.0 && velocity - velocity == 0.0)
+      assert_eq(integer(body, 12, 4, true), 0L)
+      let seq = integer(body, 16, 4, true).to_int()
+      if seen.get(seq) is Some(old) {
+        assert_eq(old, bits)
+        duplicates += 1
+        continue
+      }
+      if seen.is_empty() {
+        first_ns = arrival
+        first_hex = hex(payload[motor:motor + 8])
+      }
+      last_ns = arrival
+      seen[seq] = bits
+      positions.add(bits)
+      minimum = minimum.min(value)
+      maximum = maximum.max(value)
+      min_velocity = min_velocity.min(velocity)
+      max_velocity = max_velocity.max(velocity)
+    }
+  }
+  let mut matched = 0
+  for line in @fs.read_file(decoded).text().split("\n") {
+    if line == "" {
+      continue
+    }
+    let row : Row = @json.from_json(@json.parse(line.to_owned()))
+    assert_eq(row.packet.q.length(), 24)
+    guard seen.get(row.packet.seq) is Some(bits) else {
+      fail("decoded sequence absent from capture")
+    }
+    assert_eq(row.packet.q[19].reinterpret_as_int64(), bits)
+    matched += 1
+  }
+  assert_eq(matched, seen.length())
+  guard matched > 1000 else { fail("insufficient samples") }
+  let report : Json = {
+    "passed": true,
+    "method": "independent MoonBit pcap/RTPS/XCDR1 IEEE754 double reader; no SDK or C decoder",
+    "motor_id": 19,
+    "unique_samples": Json(seen.length()),
+    "duplicate_deliveries": Json(duplicates),
+    "matching_decoded_samples": Json(matched),
+    "distinct_position_bit_patterns": Json(positions.length()),
+    "raw_position_bytes_hex": first_hex,
+    "minimum_rad": minimum,
+    "maximum_rad": maximum,
+    "minimum_deg": minimum / 0.017453292519943295,
+    "maximum_deg": maximum / 0.017453292519943295,
+    "minimum_velocity_rad_s": min_velocity,
+    "maximum_velocity_rad_s": max_velocity,
+    "capture_span_ms": Json((last_ns - first_ns) / 1000000L),
+    "encoder_zero_identified": false,
+    "robot_commands_or_calibration_writes": false,
+  }
+  @fs.write_file(output, report.stringify(indent=2), create_mode=CreateNew)
+  println(report.stringify())
+}
