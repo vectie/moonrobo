@@ -13,12 +13,47 @@ import struct
 import sys
 from e1_status_packets import ethernet_packets, status_samples
 from january_transport import MotorCmdArray, SetMode
+from actor_validation import ActorValidator
+
+
+def motor_signature(values):
+    return tuple(tuple(m[k] for k in ("motor_id","pos","vel","tau","kp","kd")) for m in values)
+
+
+def actor_wire_matches(values, stamp_ns, command_timestamp_us, proposals):
+    if abs(command_timestamp_us*1000-stamp_ns)>1001:return False
+    for row in proposals.get(motor_signature(values), ()):
+        sample=row["inference"]
+        if int(row["receipt_ms"])*1000000<=stamp_ns and all(
+                0<=stamp_ns-int(value)*1000000<=40000000 for value in
+                (row["telemetry_receipt_ms"],sample["inferred_at_ms"],sample["input_receipt_ms"])):
+            return True
+    return False
+
+
+def read_actor_proposals(path, profile):
+    validator=ActorValidator(profile)
+    indexed={}
+    baseline=previous=None
+    for line in path.open():
+        if line.startswith("Failure("):continue
+        row=json.loads(line)
+        if row["kind"]=="stop":continue
+        assert row["stage"]=="actor-elbows" and row["shadow"] is False
+        assert [m["motor_id"] for m in row["motors"]]==list(range(24))
+        if baseline is None:baseline=row["motors"]
+        validator.validate(row,baseline,previous)
+        indexed.setdefault(motor_signature(row["motors"]),[]).append(row)
+        previous=row
+    assert indexed,"recorded powered actor proposals required"
+    return indexed
 
 
 def main():
     arguments = sys.argv[1:]
     expect_empty = len(arguments) == 4 and arguments[-1] == "--expect-no-commands"
-    assert len(arguments) == 3 or expect_empty
+    actor_profile = pathlib.Path(arguments[4]) if len(arguments)==5 and arguments[3]=="--actor-profile" else None
+    assert len(arguments) == 3 or expect_empty or actor_profile is not None
     capture, ready_path, output = map(pathlib.Path, arguments[:3])
     assert not output.exists()
     prefix = bytes.fromhex(json.loads(ready_path.read_text())["command_owner_prefix"])
@@ -26,7 +61,14 @@ def main():
     assert receipt["profile"] == "suspended"
     raised = receipt["stage"] == "raised-drums"
     typing = receipt["stage"] == "typing-elbows"
-    drums = receipt["stage"] in ("drums","raised-drums","typing-elbows")
+    actor = receipt["stage"] == "actor-elbows"
+    drums = actor or receipt["stage"] in ("drums","raised-drums","typing-elbows")
+    proposals=None
+    profile=None
+    if actor and not expect_empty:
+        assert actor_profile is not None and receipt["timestamp_domain"]=="host"
+        profile=json.loads(actor_profile.read_text())
+        proposals=read_actor_proposals(capture.parent/"targets.ndjson",profile)
     peak_degrees = 90 if raised else 10 if drums else 90 if receipt["stage"] == "elbow90" else 5
     assert len(prefix) == 12
     addresses = ipaddress.IPv4Address("192.168.55.101").packed + ipaddress.IPv4Address("192.168.55.102").packed
@@ -96,20 +138,28 @@ def main():
                         first = arrival
                     for i, motor in enumerate(values):
                         assert all(math.isfinite(motor[k]) for k in ("pos", "vel", "tau", "kp", "kd"))
-                        if i not in ((3,14) if drums else (3,)):
+                        if receipt["stage"]=="hold" or i not in ((3,14) if drums else (3,)):
                             assert motor == baseline[i], "non-elbow target changed on wire"
                         for field in ("vel", "tau", "kp", "kd"):
                             assert motor[field] == baseline[i][field]
                     final = math.degrees(values[3]["pos"] - baseline[3]["pos"])
-                    if not raised and not typing:assert -peak_degrees-.000001 <= final <= .000001
+                    if actor:
+                        assert actor_wire_matches(values,stamp,command.timestamp,proposals), "wire actor frame has no identical fresh admitted proposal"
+                        for side,slot in enumerate((3,14)):
+                            assert profile["adapter"]["lower_rad"][side]<=values[slot]["pos"]<=profile["adapter"]["upper_rad"][side]
+                    if not raised and not typing and not actor:assert -peak_degrees-.000001 <= final <= .000001
                     minimum, maximum = min(minimum, final), max(maximum, final)
                     if drums:
                         right_final = math.degrees(values[14]["pos"]-baseline[14]["pos"])
-                        if not raised and not typing:
+                        if not raised and not typing and not actor:
                             assert -peak_degrees-.000001<=right_final<=.000001
                             assert abs(final*right_final)<1e-8
                         right_minimum=min(right_minimum,right_final)
-                        if typing:
+                        if actor:
+                            left_absolute_min=min(left_absolute_min,math.degrees(values[3]["pos"]))
+                            right_absolute_min=min(right_absolute_min,math.degrees(values[14]["pos"]))
+                            lactive=ractive=False
+                        elif typing:
                             for slot,target in ((3,-1.4477981791899937),(14,-0.5434064639344343)):
                                 angle=values[slot]["pos"]
                                 assert -math.radians(130)<=angle<=0
@@ -139,6 +189,8 @@ def main():
         assert motors == 0 and modes == [] and entities == {}, "unexpected command DATA"
     else:
         assert motors > 0 and modes == [2] and sorted(entities.values()) == ["mode", "motor"]
+        if actor and receipt["result"]=="stage complete":
+            assert final==0 and right_final==0,"completed actor wire targets did not return exactly"
     report = {"passed": True, "source": "outbound captured RTPS DATA decoded with exact CDR types",
         "command_owner_prefix": prefix.hex(), "motor_samples": motors,
         "motor_records_checked": motors * 24, "mode_requests": modes,
@@ -153,7 +205,9 @@ def main():
         "left_strokes":left_strokes,"right_strokes":right_strokes,
         "left_absolute_min":left_absolute_min,"right_absolute_min":right_absolute_min,
         "left_drop":left_drop,"right_drop":right_drop,
-        "physical_handback_verified": False}
+        "physical_handback_verified": False,
+        "wire_frames_matched_to_fresh_actor_proposals":motors if actor and not expect_empty else None,
+        "stage_completed":receipt["result"]=="stage complete"}
     output.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
 
