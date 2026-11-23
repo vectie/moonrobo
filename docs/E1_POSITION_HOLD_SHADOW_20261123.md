@@ -64,8 +64,10 @@ The versioned [configuration](../deploy/e1/position-hold-shadow.json) specifies
 | Relative leg error | Existing maximum 1°; no relaxation |
 | Active shadow hold | 15 seconds; existing powered hold duration unchanged |
 
-The effort caps are 5% of the documented peak ceilings and bound a numerical
-experiment. They are **not** commissioned continuous-torque limits or a claim
+The effort caps are 5% of the values in Noetix's
+[joint torque table](https://web.noetixrobotics.com/docs/%E9%80%9A%E7%94%A8%E4%BA%BA%E5%BD%A2%E6%9C%BA%E5%99%A8%E4%BA%BA/E1%20%E7%BB%BC%E5%90%88%E4%BD%BF%E7%94%A8%E6%96%87%E6%A1%A3/)
+and bound a numerical experiment. That table does not establish this unit's
+continuous-effort rating. These are **not** commissioned torque limits or a claim
 that these parameters can prevent the previous settling. No gain increase,
 knee-zero correction, position-reference adjustment, torque median or last
 nonzero torque seed is used. The measured-pose profile still preserves the

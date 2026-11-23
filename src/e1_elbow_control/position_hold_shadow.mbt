@@ -34,8 +34,8 @@ pub fn PositionHoldSettings::validate(self : Self) -> Unit raise {
     let slew = self.slew_limit_nm_per_s[slot]
     guard finite(limit) && finite(slew) else { fail("nonfinite hold budget") }
     if leg_slot(slot) {
-      // Published peak ceilings bound the numerical experiment, not permission
-      // to use a peak effort continuously or to run this controller powered.
+      // Published torque-table values bound this numerical experiment, not
+      // permission for continuous effort or powered use on this unit.
       let peak = if slot is (7 | 8 | 18 | 19) {
         150.0
       } else if slot is (5 | 6 | 16 | 17) {
