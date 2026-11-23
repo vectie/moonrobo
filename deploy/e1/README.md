@@ -276,3 +276,21 @@ After a completed run, `audit_shadow_hold_effort.py RUN NEW_REPORT` independentl
 checks every proposal against the captured inputs. See the
 [implementation, parameters and live evidence](../../docs/E1_POSITION_HOLD_SHADOW_20261123.md).
 The successful shadow does not prove powered holding or handback.
+
+## Finite position-feedback hold commissioning
+
+The separate [`position-hold-trial.json`](position-hold-trial.json) request
+admits a one-second **hold-only** commissioning attempt after explicit operator
+authorization and current physical setup confirmation. Set
+`MOONROBO_E1_POSITION_HOLD_TRIAL` to this request and
+`MOONROBO_E1_POSITION_HOLD_SHADOW_AUDIT` to its pinned prior shadow audit. Use
+`shadow hold` to preview this exact path, then one separately requested
+`live hold`. Keep older shadow/reported-effort flags unset. No actor or elbow
+stage follows automatically.
+
+The sender independently checks the evidence digest, fixed references,
+feedback calculation and deadline. See
+[completed tests and handback verification](../../docs/E1_POSITION_HOLD_TRIAL_20261123.md).
+The first real attempt stopped for continuous left-hip drift; powered holding
+has not been qualified. The operator reported steadiness and normal handheld
+response after the stop. Do not use this failed trial to commission actor takeover.

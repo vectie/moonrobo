@@ -131,3 +131,8 @@ have prevented the earlier one-degree stop at roughly 93 ms. Physical response,
 adequate gain/effort limits and handback remain to be commissioned separately
 before combining this candidate with the elbow actor. No prepared powered-test
 receipt has been promoted by this shadow result.
+
+The subsequent [finite commissioning preparation](E1_POSITION_HOLD_TRIAL_20261123.md)
+adds a separate one-second hold request and independent sending checks. Its
+isolated transmission and fresh E1 shadow passed. The subsequent real hold
+attempt stopped for continuous hip drift; it did not qualify powered holding.
