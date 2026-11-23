@@ -1,0 +1,136 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+}
+
+///|
+struct Packet {
+  seq : Int32
+  arrival_ns : Int64
+  source_ns : Int64
+  q : Array[Double]
+  qd : Array[Double]
+} derive(FromJson)
+
+///|
+struct Row {
+  packet : Packet
+} derive(FromJson)
+
+///|
+async fn main {
+  guard @env.args()[1:] is [dir] else { fail("trial directory required") }
+  let measurement = @fs.read_file(dir + "/measured-motion.json").json()
+  guard measurement is { "active_window_start_epoch_ms": start, .. } else {
+    fail("measurement required")
+  }
+  let start_ms : Int64 = @json.from_json(start)
+  let mut commanded : Double? = None
+  for line in @fs.read_file(dir + "/targets.ndjson").text().split("\n") {
+    if !line.has_prefix("{") {
+      continue
+    }
+    let value = @json.parse(line.to_owned())
+    if value is { "kind": "target", "motors": Array(motors), .. } {
+      guard motors.length() == 24 &&
+        motors[7] is { "motor_id": 7, "pos": Number(position, ..), .. } else {
+        fail("ordered 24-motor hold target required")
+      }
+      commanded = Some(position)
+      break
+    }
+  }
+  guard commanded is Some(baseline) else { fail("hold target required") }
+  let rows : Array[Json] = []
+  let mut previous : Packet? = None
+  let mut integrated = 0.0
+  let mut integral_origin = 0.0
+  let mut last_print = -1000000.0
+  let mut max_delta = 0.0
+  let mut over_count = 0
+  let mut over_start : Double? = None
+  let mut last_over = 0.0
+  let mut peak_ms = 0.0
+  let mut integral_at_peak = 0.0
+  let mut signed_peak = 0.0
+  let rad = 0.017453292519943295
+  for line in @fs.read_file(dir + "/status.ndjson").text().split("\n") {
+    if line.is_empty() {
+      continue
+    }
+    let row : Row = @json.from_json(@json.parse(line.to_owned()))
+    let p = row.packet
+    let relative = (p.arrival_ns - start_ms * 1000000L).to_double() / 1000000.0
+    if relative < -50.0 || relative > 3000.0 {
+      continue
+    }
+    guard p.q.length() == 24 && p.qd.length() == 24 else {
+      fail("complete raw telemetry required")
+    }
+    if previous is None {
+      integral_origin = (p.q[7] - baseline) / rad
+    }
+    if previous is Some(prev) {
+      guard p.source_ns > prev.source_ns else {
+        fail("non-increasing robot source clock")
+      }
+      integrated += (p.qd[7] + prev.qd[7]) *
+        0.5 *
+        (p.source_ns - prev.source_ns).to_double() /
+        1000000000.0
+    }
+    let delta = (p.q[7] - baseline) / rad
+    if delta.abs() > max_delta {
+      max_delta = delta.abs()
+      signed_peak = delta
+      peak_ms = relative
+      integral_at_peak = integral_origin + integrated / rad
+    }
+    if delta.abs() > 1.0 {
+      over_count += 1
+      if over_start is None {
+        over_start = Some(relative)
+      }
+      last_over = relative
+    }
+    if relative - last_print >= (if relative < 300.0 { 9.0 } else { 99.0 }) {
+      rows.push({
+        "relative_ms": Json(relative),
+        "seq": Json(p.seq),
+        "hip7_delta_deg": Json(delta),
+        "hip7_velocity_deg_s": Json(p.qd[7] / rad),
+        "hip7_integrated_velocity_deg": Json(integrated / rad),
+        "hip18_deg": Json(p.q[18] / rad),
+      })
+      last_print = relative
+    }
+    previous = Some(p)
+  }
+  let report : Json = {
+    "source": "saved capture; no robot connection",
+    "baseline_hip7_deg": Json(baseline / rad),
+    "max_abs_hip7_delta_deg": Json(max_delta),
+    "signed_peak_deg": Json(signed_peak),
+    "peak_ms": Json(peak_ms),
+    "integrated_velocity_at_peak_deg": Json(integral_at_peak),
+    "position_minus_velocity_integral_at_peak_deg": Json(
+      signed_peak - integral_at_peak,
+    ),
+    "packets_over_one_degree": Json(over_count),
+    "first_over_ms": match over_start {
+      Some(t) => Json(t)
+      None => Json::null()
+    },
+    "last_over_ms": Json(last_over),
+    "trace": Json(rows),
+  }
+  @fs.write_file(
+    dir + "/hip-stop-audit-v2.json",
+    report.stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(report.stringify(indent=2))
+}
