@@ -1,5 +1,11 @@
 # E1 live actor shadow — 23 November 2026
 
+Follow-up: the [right-knee investigation](E1_KNEE_SHADOW_FIX_20261123.md) verifies
+the stable on-wire value and corrects the read-only shadow admission rule.
+The complete constrained live-shadow path subsequently passes with raw values
+retained and nominal-range discrepancies reported. Powered admission remains
+unchanged. This record preserves the earlier attempts and separate diagnostic.
+
 `eno1` on Atlas `.191` is connected: carrier `1`, state `UP`, address
 `192.168.55.101/24`, persistent connection `E1 robot (eno1)`. The 310P3 reports
 healthy. Receive-only discovery identified E1 status writer

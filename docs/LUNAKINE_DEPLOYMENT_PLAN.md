@@ -2,13 +2,15 @@
 
 Status: selected architecture; dated deployment evidence updated 2026-11-23
 
-The [23 November live-shadow record](E1_ACTOR_LIVE_SHADOW_20261123.md) confirms
-the restored E1 link and a completed 750-update live Ascend inference diagnostic.
-The constrained elbow owner was also tested with fresh telemetry and no command
-writer. Exact DDS duplicate delivery was fixed, after which the owner stopped
-on right-knee motor 19 reading −0.273° against the configured 0° lower bound.
-The full constrained shadow trial and powered actor trial remain incomplete;
-the separate diagnostic does not qualify them.
+The [23 November knee investigation and shadow fix](E1_KNEE_SHADOW_FIX_20261123.md)
+confirms a stable on-wire −0.273° knee reading and corrects the read-only path's
+use of nominal mechanical limits on unqualified raw feedback. The complete
+constrained live-shadow owner now passes 1,177 policy updates with both elbow
+candidates returning exactly and all other 22 target records held. Raw readings
+and nominal-range discrepancies remain visible; relative stationary/glitch
+assessment remains active. Powered range admission is unchanged and physical
+calibration remains unqualified. The [earlier record](E1_ACTOR_LIVE_SHADOW_20261123.md)
+preserves the stopped attempts and separate 750-update numerical diagnostic.
 
 The [21 November constrained actor deployment](E1_ACTOR_CONTROL_20261121.md)
 adds a genuine feedback-to-Ascend-to-command owner for the two commissioned
