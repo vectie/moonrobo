@@ -221,6 +221,24 @@ telemetry. It cannot reach `eno1`; it is transport qualification, not a fresh
 closed-loop model run. `replay_actor_input.mbtx STATUS SKIP_MS` separately
 rebases saved sensor clocks for recorded-input NPU tests and never sends commands.
 
+### Reported leg-effort shadow hypothesis
+
+The raw-packet [torque investigation](../../docs/E1_TORQUE_SOURCE_20261123.md)
+locates intermittent zeros upstream of the host SDK. Set
+`MOONROBO_E1_REPORTED_EFFORT_SHADOW=1` only with `shadow hold` or
+`shadow actor-elbows` to test the nonzero preload counterfactual. It waits for
+a complete nonzero leg report after stationary validation, freezes the leg
+positions and damping-compensated feedforward, and records the full source
+sample with `power_qualified:false`. This does not establish torque validity.
+The launcher/owners/sender prohibit promoting this hypothesis to live control.
+Default powered gains, zero feedforward and admission limits are unchanged.
+
+`audit_shadow_hold_effort.py RUN NEW_REPORT` checks the hold. For actor traces
+with this marker, `audit_actor_targets.py CONFIG TARGETS NEW_REPORT --status STATUS`
+requires a captured-status match in addition to the original model/target
+checks. `prepare_hold_trial.mbtx` preserves both hypotheses and remains unarmed
+until a reliable active effort source and the physical transition are qualified.
+
 ### Existing commissioning regression suite
 
 Build the controller first. From this directory on Linux, set absolute paths

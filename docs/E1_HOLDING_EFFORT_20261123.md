@@ -7,6 +7,10 @@ calculation, and repeated receive-only hold and real-inference actor shadow on
 hold and elbow trial remain unarmed because the previous controller's active
 holding effort is not established.
 
+The [raw-packet follow-up](E1_TORQUE_SOURCE_20261123.md) locates the zeros in
+the transmitted status records and implements an explicitly unqualified
+reported-effort shadow candidate. It does not qualify the powered transition.
+
 ## Gain sources checked
 
 The installed 3.1 SDK standing example uses `kp=50`, `kd=5`, with `kd=1` for the

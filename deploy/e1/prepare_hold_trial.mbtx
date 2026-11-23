@@ -79,6 +79,15 @@ async fn main {
     "commands_sent_by_preparation": false,
     "hold_shadow": hold,
     "actor_shadow": actor,
+    "hold_reported_effort_hypothesis": match
+      @fs.read_file(hold + "/planner.json").json() {
+      { "reported_leg_effort_shadow": hypothesis, .. } => hypothesis
+      _ => Json::null()
+    },
+    "actor_reported_effort_hypothesis": match actor_report {
+      { "reported_leg_effort_shadow": hypothesis, .. } => hypothesis
+      _ => Json::null()
+    },
     "session_diagnostics": Json([
       @fs.read_file(hold + "/session.json").json(),
       @fs.read_file(actor + "/session.json").json(),
@@ -105,7 +114,7 @@ async fn main {
       "Record the operator's observed handback only after a genuinely completed hold",
       "Run the existing constrained Ascend actor at 25% authority on elbows 3/14 only; freeze all other complete command records; return and audit",
     ],
-    "scope": "Reviewable preparation only. Intermittent reported torque is not promoted to a live command. Existing sender continues rejecting nonzero torque.",
+    "scope": "Reviewable preparation only. Intermittent reported torque, including a complete nonzero seed packet, is not promoted to a live command. Existing sender rejects the shadow-effort marker and nonzero torque.",
   }
   @fs.write_file(output, report.stringify(indent=2), create_mode=CreateNew)
   println(
