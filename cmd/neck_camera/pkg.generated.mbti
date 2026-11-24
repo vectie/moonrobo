@@ -1,0 +1,15 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/cmd/neck_camera"
+
+// Values
+
+// Errors
+
+// Types and methods
+type Camera
+
+type JpegDecoder
+
+// Type aliases
+
+// Traits

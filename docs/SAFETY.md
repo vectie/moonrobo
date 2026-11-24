@@ -19,6 +19,15 @@ complete, but live control must not bypass it.
 - Bridge failure blocks execution.
 - Silent fallback is forbidden on actuation paths.
 
+For the external E1 STS3215 neck, apply the additional
+[neck control contract](E1_NECK_CONTROL.md). A position write is a motion
+command even after torque-off. Never restore saved motion-register blocks,
+replay an old target on reconnect, or treat position-mode speed zero as a
+stop command. Successful shutdown holds the last bounded pose; releasing a
+loaded joint is an explicit operation because gravity can move it. All neck
+actuation goes through the MoonBit guard, existing execution receipt, fresh
+feedback, audit persistence and durable fault/replay checks.
+
 ## Safety Gate
 
 Every physical command goes through:

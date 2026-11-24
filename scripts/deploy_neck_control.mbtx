@@ -1,0 +1,150 @@
+///|
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn run(program : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(program, args)
+  guard code == 0 else { fail("\{program} failed: \{err.text()}") }
+  out.text()
+}
+
+///|
+async fn main {
+  let root = @env.current_dir().unwrap()
+  let socket = @env.args()
+    .get(1)
+    .unwrap_or("/tmp/moonrobo-elf2-neck-20261125.sock")
+  let moon_root = @env.get_env_var("MOON_HOME").unwrap_or(
+    @env.get_env_var("HOME").unwrap() + "/.moon",
+  )
+  let stage = root + "/_build/neck-control-elf"
+  if !@fs.exists(stage) {
+    @fs.mkdir(stage, recursive=true)
+  }
+  run("moon", ["build", "--target", "native", "--release", "cmd/neck_control"])
+  |> ignore
+  let files = [
+    (
+      root +
+      "/_build/native/release/build/vectie/moonrobo/cmd/neck_control/neck_control.c",
+      "main.c",
+    ),
+    (root + "/src/neck_control/serial.c", "serial.c"),
+    (root + "/.mooncakes/moonbitlang/x/fs/fs_native.c", "fs_native.c"),
+    (root + "/tests/neck_serial_transport.c", "transport_test.c"),
+  ]
+  for (source, name) in files {
+    @fs.write_file(stage + "/" + name, @fs.read_file(source))
+  }
+  for name in ["runtime.c", "env.c", "sync_io.c", "utf.c", "backtrace.c"] {
+    @fs.write_file(
+      stage + "/" + name,
+      @fs.read_file(moon_root + "/lib/runtime/" + name),
+    )
+  }
+  for
+    name in [
+      "moonbit.h", "moonbit_runtime.h", "moonbit_simd.h", "moonbit-fundamental.h",
+      "backtrace.h",
+    ] {
+    @fs.write_file(
+      stage + "/" + name,
+      @fs.read_file(moon_root + "/include/" + name),
+    )
+  }
+  let ssh = ["-S", socket, "-o", "BatchMode=yes", "elf@192.168.2.192"]
+  run("ssh", ssh + ["mkdir -p /home/elf/moonrobo-neck"]) |> ignore
+  run("scp", [
+    "-r",
+    "-o",
+    "ControlPath=" + socket,
+    "-o",
+    "BatchMode=yes",
+    stage,
+    "elf@192.168.2.192:/home/elf/moonrobo-neck/",
+  ])
+  |> ignore
+  let base = "/home/elf/moonrobo-neck/neck-control-elf/"
+  let sources = [
+    "main.c", "serial.c", "fs_native.c", "runtime.c", "env.c", "sync_io.c", "utf.c",
+    "backtrace.c",
+  ]
+  let cc = "gcc -O2 -DMOONBIT_TRIAL_DELETION=1 -I" +
+    base +
+    " " +
+    sources.map(s => base + s).join(" ") +
+    " -lm -o /home/elf/moonrobo-neck/neck-control.next"
+  println(run("ssh", ssh + [cc]))
+  let test_sources = [
+    "transport_test.c", "serial.c", "runtime.c", "env.c", "sync_io.c", "utf.c", "backtrace.c",
+  ]
+  let asan = "gcc -O1 -g -fsanitize=address -fno-omit-frame-pointer -I" +
+    base +
+    " " +
+    test_sources.map(s => base + s).join(" ") +
+    " -lm -o /home/elf/moonrobo-neck/transport-test-asan"
+  run("ssh", ssh + [asan]) |> ignore
+  let transport = run(
+    "ssh",
+    ssh + ["/home/elf/moonrobo-neck/transport-test-asan"],
+  )
+  @fs.write_file(stage + "/elf-transport-asan.json", transport)
+  println(transport)
+  // Hardware stays read-only during deployment. Simulation never opens UART.
+  let simulation = run(
+    "ssh",
+    ssh + ["/home/elf/moonrobo-neck/neck-control.next simulate left 2"],
+  )
+  @fs.write_file(stage + "/elf-simulation.json", simulation)
+  let status = run(
+    "ssh",
+    ssh + ["/home/elf/moonrobo-neck/neck-control.next status"],
+  )
+  @fs.write_file(stage + "/elf-status.json", status)
+  println(status)
+  let audit = run("ssh", ssh + ["cat /home/elf/moonrobo-neck/neck-audit.jsonl"])
+  let mut reads = 0
+  for line in audit.split("\n") {
+    if line.trim().is_empty() {
+      continue
+    }
+    let entry = @json.parse(line)
+    if entry
+      is {
+        "event": "tx-before-send",
+        "detail": { "instruction": Number(opcode, ..), .. },
+        ..
+      } {
+      guard opcode == 2.0 else {
+        fail("Hardware deployment audit contains a non-READ instruction")
+      }
+      reads += 1
+    }
+  }
+  guard reads >= 4 else { fail("Missing physical UART read audit") }
+  @fs.write_file(stage + "/elf-hardware-audit.jsonl", audit)
+  println("Verified hardware audit: \{reads} READ packets, zero WRITE packets.")
+  run(
+    "ssh",
+    ssh +
+    [
+      "mv /home/elf/moonrobo-neck/neck-control.next /home/elf/moonrobo-neck/neck-control",
+    ],
+  )
+  |> ignore
+  let hash = run(
+    "ssh",
+    ssh + ["sha256sum /home/elf/moonrobo-neck/neck-control"],
+  )
+  @fs.write_file(stage + "/elf-binary.sha256", hash)
+  println(hash)
+  println(
+    "Deployed native MoonBit controller. Simulation and READ-ONLY status verified; no new motor movement requested.",
+  )
+}

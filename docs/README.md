@@ -11,6 +11,10 @@ durable robot data artifacts.
 
 ## Reading Map
 
+- [External E1 neck control](E1_NECK_CONTROL.md): the stale-target incident,
+  MoonBit controller, command invariants, regression tests, native ELF build,
+  audit log and recovery procedure.
+
 - [Native test setup and precision profiles](NATIVE_TESTING.md): explicit
   dependencies, matching qualified E1 runtime and independent Float64 validation.
 - [Native test corrections and execution evidence](NATIVE_TEST_FIXES_20261119.md):

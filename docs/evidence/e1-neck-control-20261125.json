@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-25",
+  "scope": "External E1 two-axis STS3215 neck controller rewrite and local D455 viewer",
+  "implementation": "MoonBit protocol, command guard, startup, movement, receipts, simulation and audit; thin Linux C serial and durable-file binding",
+  "targeted_tests": {"neck_control": 16, "neck_camera": 1, "passed": 17, "failed": 0},
+  "native_transport_qualification": {
+    "host": "ELF 2 RK3588 / Linux aarch64",
+    "sanitizer": "GCC AddressSanitizer, system allocator, matching MoonBit runtime sources",
+    "physical_device_opened": false,
+    "transport_test_failures": 0,
+    "cases": ["exclusive serial ownership", "fragmented reply", "partial reply timeout", "expired dispatch sends zero bytes", "invalid buffer bound", "close and reopen ownership"],
+    "source": "tests/neck_serial_transport.c"
+  },
+  "deployment": {
+    "host": "elf@192.168.2.192",
+    "path": "/home/elf/moonrobo-neck/neck-control",
+    "sha256": "a670b2ebb3ed21ea01c8cb5fc56ca44033182070dfca40fe9bd9e06c20e5d6cd",
+    "native_compiler": "GCC 11.4.0",
+    "simulation_verified": true,
+    "hardware_verification": "READ-ONLY status",
+    "cumulative_hardware_audit_read_packets": 12,
+    "hardware_audit_write_packets": 0,
+    "new_motion_test_during_rewrite": false,
+    "readback": [
+      {"id": 7, "position": 1925, "goal": 1927, "torque": 1, "speed_limit": 20, "acceleration": 3, "torque_limit": 300, "velocity": 0, "servo_status": 0},
+      {"id": 8, "position": 2056, "goal": 2047, "torque": 1, "speed_limit": 20, "acceleration": 3, "torque_limit": 300, "velocity": 0, "servo_status": 0}
+    ]
+  },
+  "viewer": {
+    "browser_verified": ["live frames", "pause and resume", "snapshot download", "crosshair", "fullscreen", "375px layout without horizontal overflow"],
+    "user_requested_closed": true,
+    "tab_closed": true,
+    "local_port_4195_stopped": true,
+    "elf_camera_capture_stopped": true
+  },
+  "legacy_one_off_helpers": "slow_neck_test, recover_neck and disable_neck were archived as non-executable text and replaced with failing stubs outside the repository",
+  "limitations": ["Software cannot guarantee zero motion after hardware power loss or torque release", "Movement bounds are a conservative commissioning envelope, not a full mechanical clearance qualification", "The CLI monitors only while a command runs; it is not a continuous safety-rated watchdog", "Execution receipt files are trusted local MoonRobo artifacts", "No new physical movement was used to qualify the rewrite"],
+  "local_qualification_artifacts": "_build/neck-control-elf/"
+}

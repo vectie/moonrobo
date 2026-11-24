@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Live camera · MoonRobo</title>
+  <style>
+    :root{--bg:#101317;--surface:#191e24;--line:#333c46;--text:#f1f5f8;--muted:#a8b4c0;--accent:#a8dbc8;--ink:#11231d;--warning:#f4c479;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:var(--bg);font-size:16px}
+    *{box-sizing:border-box}body{margin:0}button,a{font:inherit}button{min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);padding:0 16px;cursor:pointer;transition:background .18s,border-color .18s}button:hover{background:#28323b;border-color:#687b8c}button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:4px}button[aria-pressed=true]{color:var(--accent);border-color:var(--accent)}button:disabled{opacity:.5;cursor:default}.primary{background:var(--accent);border-color:var(--accent);color:var(--ink);font-weight:600}.primary:hover{background:#c1eadc}.icon{width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.brand{display:flex;gap:11px;align-items:center;font-weight:650;letter-spacing:-.025em;font-size:20px}.brand .icon{width:25px;height:25px;color:var(--accent)}header{height:80px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 36px;gap:20px}.header-left{display:flex;align-items:center;gap:28px}.divider{height:24px;width:1px;background:var(--line)}.context{color:var(--muted);font-size:14px}.context strong{color:var(--text);font-weight:500;margin-right:10px}.status{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--warning);white-space:nowrap}.dot{width:7px;height:7px;border-radius:50%;background:currentColor}.status[data-state=live]{color:var(--accent)}main{max-width:1376px;margin:auto;padding:30px 36px 28px}.intro{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:22px}h1{font-size:28px;font-weight:550;letter-spacing:-.035em;margin:0 0 8px}.description{color:var(--muted);font-size:14px;margin:0;line-height:1.5}.source{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px}.viewer{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#090c0f}.stage{position:relative;display:flex;justify-content:center;align-items:center;min-height:260px;background:#090c0f;aspect-ratio:16/9;max-height:calc(100vh - 300px)}canvas{display:block;width:100%;height:100%;object-fit:contain}.waiting{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:10px;background:#090c0f;color:var(--muted);padding:24px}.waiting strong{color:var(--text);font-size:20px;font-weight:500}.waiting[hidden]{display:none}.crosshair{display:none;position:absolute;left:50%;top:50%;width:40px;height:40px;transform:translate(-50%,-50%);filter:drop-shadow(0 1px 2px #000);pointer-events:none}.crosshair:before,.crosshair:after{content:"";position:absolute;background:#fff9}.crosshair:before{height:1px;width:40px;top:20px}.crosshair:after{height:40px;width:1px;left:20px}.crosshair.visible{display:block}.paused-label{position:absolute;left:20px;top:20px;padding:7px 11px;border:1px solid #ffffff55;background:#101317dd;border-radius:5px;font-size:13px}.paused-label[hidden]{display:none}.toolbar{padding:14px 18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface)}.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.controls button{display:flex;align-items:center;justify-content:center;gap:8px}.metrics{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--muted);font-size:13px;display:flex;gap:20px;white-space:nowrap}.metrics strong{font-weight:500;color:var(--text)}footer{display:flex;justify-content:space-between;align-items:start;gap:24px;margin-top:18px;color:var(--muted);font-size:13px;line-height:1.6}.hint{max-width:690px;margin:0}.connection{text-align:right;white-space:nowrap}.viewer:fullscreen{display:flex;flex-direction:column;justify-content:center;border:0;border-radius:0;background:#090c0f}.viewer:fullscreen .stage{flex:1;max-height:none;aspect-ratio:auto}.viewer:fullscreen .toolbar{flex-shrink:0}#notice{font-size:14px;color:var(--warning);min-height:22px;margin:10px 0 0}button span{white-space:nowrap}
+    @media(max-width:760px){header{height:auto;min-height:72px;padding:16px 20px}.header-left{gap:14px}.divider,.context{display:none}main{padding:24px 16px}.intro{align-items:start}.source{display:none}h1{font-size:25px}.stage{aspect-ratio:4/3;max-height:none;min-height:0}.toolbar{align-items:start;flex-direction:column;padding:12px}.controls{width:100%;gap:8px}.controls button{flex:1;padding:0 11px}.controls button span{font-size:14px}.metrics{padding:6px 2px;font-size:12px;gap:16px}footer{flex-direction:column;gap:8px}.connection{text-align:left}.viewer:fullscreen .stage{min-height:0}.viewer:fullscreen .toolbar{padding-bottom:max(12px,env(safe-area-inset-bottom))}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+  </style>
+</head>
+<body>
+  <svg style="display:none" aria-hidden="true"><defs>
+    <symbol id="cube" viewBox="0 0 24 24"><path d="m12 2 9 5v10l-9 5-9-5V7zM3 7l9 5 9-5M12 12v10M7 4.8l9 5.1"/></symbol>
+    <symbol id="pause-icon" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol><symbol id="play-icon" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/></symbol>
+    <symbol id="snapshot-icon" viewBox="0 0 24 24"><path d="M4 6h4l2-3h4l2 3h4v14H4z"/><circle cx="12" cy="12.5" r="4"/></symbol>
+    <symbol id="cross-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 2v6m0 8v6M2 12h6m8 0h6"/></symbol>
+    <symbol id="full-icon" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol>
+  </defs></svg>
+  <header><div class="header-left"><div class="brand"><svg class="icon" aria-hidden="true"><use href="#cube"/></svg>MoonRobo</div><span class="divider"></span><span class="context"><strong>Noetix E1</strong> Live vision</span></div><div class="status" id="status" role="status" data-state="connecting"><span class="dot"></span><span id="status-text">Connecting</span></div></header>
+  <main>
+    <div class="intro"><div><h1>See through the robot.</h1><p class="description">Neck camera · Intel RealSense D455</p></div><div class="source"><svg class="icon" aria-hidden="true"><use href="#snapshot-icon"/></svg>RGB · 640 × 480</div></div>
+    <section class="viewer" id="viewer" aria-label="Robot camera viewer">
+      <div class="stage"><canvas id="video" width="640" height="480" role="img" aria-label="Live view from the robot's neck camera"></canvas><div class="waiting" id="waiting"><strong id="waiting-title">Connecting to the camera</strong><span id="waiting-detail">Waiting for a live frame from ELF.</span></div><div class="crosshair" id="crosshair" aria-hidden="true"></div><div class="paused-label" id="paused-label" hidden>PAUSED · saved view</div></div>
+      <div class="toolbar"><div class="controls"><button id="pause" class="primary"><svg class="icon" aria-hidden="true"><use id="pause-symbol" href="#pause-icon"/></svg><span id="pause-text">Pause</span></button><button id="snapshot"><svg class="icon" aria-hidden="true"><use href="#snapshot-icon"/></svg><span>Snapshot</span></button><button id="cross" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#cross-icon"/></svg><span>Crosshair</span></button><button id="fullscreen"><svg class="icon" aria-hidden="true"><use href="#full-icon"/></svg><span>Fullscreen</span></button></div><div class="metrics"><span><strong id="fps">—</strong> fps</span><span>Frame age <strong id="age">—</strong></span></div></div>
+    </section>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <footer><p class="hint">The camera shows viewing direction. Check neck, bracket and cable clearance directly while testing movement.</p><div class="connection">ELF 2 · 192.168.2.192<br>Local connection · video only</div></footer>
+  </main>
+  <script type="module">
+    const $ = id => document.getElementById(id);
+    const canvas = $('video'), context = canvas.getContext('2d', {alpha:false});
+    let paused = false, active = false, generation = 0, receivedAt = 0;
+    let controller = null, lastSequence = -1, lastStatusAt = 0;
+    // Fetch a continuous multipart stream and decode complete JPEG frames.
+    // A canvas preserves the displayed frame when paused and allows snapshots.
+    async function startStream() {
+      const token = ++generation;
+      controller?.abort(); controller = new AbortController();
+      try {
+        const response = await fetch('/stream.mjpg', {cache:'no-store', signal:controller.signal});
+        if (!response.ok || !response.body) throw new Error('Camera stream unavailable');
+        const reader = response.body.getReader();
+        let bytes = new Uint8Array(0);
+        while (token === generation && !paused) {
+          const {value, done} = await reader.read(); if(done) break;
+          const combined = new Uint8Array(bytes.length + value.length); combined.set(bytes); combined.set(value, bytes.length); bytes = combined;
+          let start = -1, end = -1, frame = null;
+          for(let i = 0; i < bytes.length - 1; i++) {
+            if(start < 0 && bytes[i] === 255 && bytes[i+1] === 216) start = i;
+            if(start >= 0 && bytes[i] === 255 && bytes[i+1] === 217) {end = i+2; frame = bytes.slice(start,end); start = -1; i++;}
+          }
+          if(frame) {
+            bytes = bytes.slice(end);
+            const bitmap = await createImageBitmap(new Blob([frame], {type:'image/jpeg'}));
+            if(token === generation && !paused) {context.drawImage(bitmap,0,0,640,480);receivedAt=performance.now();active=true;$('waiting').hidden=true;}
+            bitmap.close();
+          }
+          if(bytes.length > 2000000) throw new Error('Invalid stream frame');
+        }
+      } catch(error) {if(error.name !== 'AbortError') console.warn('Camera reconnecting:', error.message);}
+      if(token === generation && !paused) setTimeout(startStream,1000);
+    }
+    function connectionState(state, label) {$('status').dataset.state=state;$('status-text').textContent=label;}
+    async function health() {
+      try {
+        const response=await fetch('/status',{cache:'no-store',signal:AbortSignal.timeout(2000)});
+        if(!response.ok) throw new Error('Status unavailable');
+        const data=await response.json();
+        if(data.sequence !== lastSequence){lastSequence=data.sequence;lastStatusAt=performance.now();}
+        const fresh=data.live && performance.now()-lastStatusAt<2000;
+        $('fps').textContent=fresh ? data.fps : '0';$('age').textContent=data.frame_age_ms<0?'—':`${data.frame_age_ms} ms`;
+        if(paused) connectionState('paused','Paused');
+        else if(fresh && active && performance.now()-receivedAt<2000) connectionState('live','Live');
+        else {connectionState('connecting',active?'Reconnecting':'Connecting');$('waiting').hidden=false;$('waiting-title').textContent=active?'Video interrupted':'Connecting to the camera';$('waiting-detail').textContent='Waiting for a live frame from ELF.';}
+      } catch {if(!paused){connectionState('offline','Disconnected');$('waiting').hidden=false;$('waiting-title').textContent='Connection interrupted';$('waiting-detail').textContent='Reconnecting automatically. Check the ELF connection.';}$('fps').textContent='—';$('age').textContent='—';}
+      setTimeout(health,750);
+    }
+    $('pause').onclick=()=>{paused=!paused;$('paused-label').hidden=!paused;$('pause-text').textContent=paused?'Resume':'Pause';$('pause-symbol').setAttribute('href',paused?'#play-icon':'#pause-icon');if(paused){generation++;controller?.abort();connectionState('paused','Paused');}else startStream();};
+    $('cross').onclick=()=>{const enabled=$('cross').getAttribute('aria-pressed')!=='true';$('cross').setAttribute('aria-pressed',String(enabled));$('crosshair').classList.toggle('visible',enabled);};
+    $('snapshot').onclick=()=>{if(!active){$('notice').textContent='Wait for a camera frame before taking a snapshot.';return;}canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`e1-camera-${new Date().toISOString().replace(/[:.]/g,'-')}.jpg`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);$('notice').textContent='Snapshot saved.';},'image/jpeg',.94);};
+    $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('viewer').requestFullscreen();}catch{$('notice').textContent='Fullscreen is unavailable in this browser.';}};
+    window.addEventListener('pagehide',()=>{generation++;controller?.abort();});
+    startStream();health();
+  </script>
+</body>
+</html>

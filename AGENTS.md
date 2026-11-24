@@ -51,3 +51,21 @@ You can browse and install extra skills here:
   scientific computations), prefer assertion tests. You can use
   `moon coverage analyze > uncovered.log` to see which parts of your code are
   not covered by tests.
+
+## External E1 neck motors
+
+- Read [the neck control incident and runbook](docs/E1_NECK_CONTROL.md) before
+  changing or running the external STS3215 neck controller.
+- Use `src/neck_control` and `cmd/neck_control`. Do not use ad-hoc serial
+  position writes, the legacy XLeRobot startup path, or saved SRAM-block
+  restoration for this neck.
+- Treat every goal-position write as potentially energizing the servo, even
+  after torque-off. Raw position zero is not the saved neutral pose; speed
+  zero in position mode is maximum speed.
+- Preserve the checked startup order, fresh-feedback and rate bounds,
+  terminal release, durable fault/replay protection and write-before-send
+  audit records. No cleanup or reconnect path may replay a stored target.
+- Run the neck regression tests when modifying this path. Prefer read-only
+  hardware verification; physical movement must retain the user's authorized
+  scope and the existing MoonRobo execution gate. Do not request the same
+  authorization again when it is already present in the session.

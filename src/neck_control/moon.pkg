@@ -1,0 +1,13 @@
+import {
+  "vectie/moonrobo/src/core",
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/encoding/hex",
+  "moonbitlang/core/json",
+}
+
+supported_targets = "native"
+
+options(
+  "native-stub": [ "serial.c" ],
+)

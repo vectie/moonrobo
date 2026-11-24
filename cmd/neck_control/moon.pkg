@@ -1,0 +1,12 @@
+import {
+  "vectie/moonrobo/src/neck_control" @neck,
+  "vectie/moonrobo/src/core",
+  "moonbitlang/core/env",
+  "moonbitlang/core/string",
+  "moonbitlang/core/json",
+  "moonbitlang/x/fs",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native"

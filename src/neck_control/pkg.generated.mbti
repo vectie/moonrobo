@@ -1,0 +1,80 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/neck_control"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
+}
+
+// Values
+pub fn epoch_ms() -> Int64
+
+pub fn execute(Action, @core.RunReceipt?, String) -> Report raise
+
+pub fn profile() -> @core.RobotProfile
+
+pub fn simulate(Action) -> Simulation raise
+
+pub fn target(Action, Int, Int) -> Int raise NeckError
+
+pub fn validate_receipt(@core.RunReceipt, Action, Int64) -> Unit raise NeckError
+
+// Errors
+pub suberror NeckError {
+  Rejected(String)
+  Transport(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) enum Action {
+  Status
+  Hold
+  Jog(Direction, Int)
+  Center
+  Release
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum Direction {
+  Left
+  Up
+  Right
+  Down
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Feedback {
+  id : Int
+  captured_ms : Int64
+  mode : Int
+  torque : Int
+  acceleration : Int
+  goal : Int
+  goal_time : Int
+  speed_limit : Int
+  torque_limit : Int
+  position : Int
+  velocity : Int
+  load : Int
+  voltage_tenths : Int
+  temperature : Int
+  current_raw : Int
+  status : Int
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct Report {
+  action : Action
+  completed : Bool
+  holding : Bool
+  before : Array[Feedback]
+  after : Array[Feedback]
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct Simulation {
+  simulated : Bool
+  report : Report
+  writes : Array[Json]
+} derive(ToJson, @debug.Debug)
+
+// Type aliases
+
+// Traits
