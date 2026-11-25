@@ -41,6 +41,8 @@ pub(all) enum Action {
   Status
   Hold
   Jog(Direction, Int32)
+  Sweep(Int32)
+  ReturnToStart(Int32, Int32)
   Center
   Release
   Joystick(Int32)

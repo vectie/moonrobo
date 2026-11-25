@@ -1,6 +1,6 @@
 ///|
 test "thirty-degree profile binds exact wider envelope without moving neutral" {
-  assert_eq(profile().profile_version, 5)
+  assert_eq(profile().profile_version, 6)
   assert_eq(home(7), 1927)
   assert_eq(home(8), 2047)
   assert_eq(
@@ -18,7 +18,7 @@ test "thirty-degree profile binds exact wider envelope without moving neutral" {
 }
 
 ///|
-test "all four ten-degree simulations retain one-tick steps and rate limits" {
+test "all four ten-degree simulations retain two-tick steps and rate limits" {
   for
     (direction, motor, sign) in [
       (Left, 7, -1),
@@ -37,7 +37,7 @@ test "all four ten-degree simulations retain one-tick steps and rate limits" {
         let goal = p[1].to_int() + p[2].to_int() * 256
         assert_true(inside(id, goal))
         if last.get(id) is Some((previous, time)) {
-          assert_eq(goal - previous, sign)
+          assert_eq(goal - previous, 2 * sign)
           assert_eq(id, motor)
           assert_true(bus.write_times[i] - time >= 50L)
           steps += 1
@@ -45,7 +45,7 @@ test "all four ten-degree simulations retain one-tick steps and rate limits" {
         last[id] = (goal, bus.write_times[i])
       }
     }
-    assert_eq(steps, 114)
+    assert_eq(steps, 57)
     assert_eq(bus.events.last(), Some("completed-holding-no-cleanup-writes"))
     assert_eq(observe(bus, motor).goal, home(motor) + sign * 114)
   }

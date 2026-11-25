@@ -147,6 +147,11 @@ async fn main {
     stage + "/elf-thirty-degree-simulation.json",
     ten_degree_simulation,
   )
+  let sweep_simulation = run(
+    "ssh",
+    ssh + ["/home/elf/moonrobo-neck/neck-control.next simulate sweep 30"],
+  )
+  @fs.write_file(stage + "/elf-sweep-simulation.json", sweep_simulation)
   if stage_only {
     let hash = run(
       "ssh",

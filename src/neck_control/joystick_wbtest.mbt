@@ -53,9 +53,9 @@ test "deadzone calibrated endpoints and proportional rates" {
   for value in [-200, -1, 0, 1, 200] {
     assert_eq(stick_speed(value), 0)
   }
-  assert_eq(stick_speed(-1000), -20)
-  assert_eq(stick_speed(1000), 20)
-  assert_eq(stick_speed(600), 10)
+  assert_eq(stick_speed(-1000), -40)
+  assert_eq(stick_speed(1000), 40)
+  assert_eq(stick_speed(600), 20)
   expect_denied(() => calibrated_axis(0, 0, 0) |> ignore)
   expect_denied(() => calibrated_axis(32768, -32767, 32767) |> ignore)
 }
@@ -161,11 +161,11 @@ test "joystick all directions use one tick steps and release stops without recen
       .map(w => w.1[1].to_int() + (w.1[2].to_int() << 8))
     assert_eq(goals, [
       home(id),
-      home(id) + delta,
       home(id) + 2 * delta,
-      home(id) + 3 * delta,
       home(id) + 4 * delta,
-      home(id) + 5 * delta,
+      home(id) + 6 * delta,
+      home(id) + 8 * delta,
+      home(id) + 10 * delta,
     ])
     assert_eq(bus.registers[7][40], 1)
     assert_eq(bus.registers[8][40], 1)
@@ -187,7 +187,7 @@ test "diagonal motion stops at absolute bounds no catch-up or target replay" {
     assert_eq(f.goal, home(id) + 341)
     assert_true(inside(id, f.goal))
   }
-  assert_eq(bus.writes.length(), 692)
+  assert_eq(bus.writes.length(), 352)
   let last_goal : Map[Int32, Int32] = Map([])
   let last_time : Map[Int32, Int64] = Map([])
   for i in 0..<bus.writes.length() {
@@ -195,7 +195,7 @@ test "diagonal motion stops at absolute bounds no catch-up or target replay" {
     if params[0] == 42 {
       let goal = params[1].to_int() + (params[2].to_int() << 8)
       if last_goal.get(id) is Some(previous) {
-        assert_true((goal - previous).abs() <= 1)
+        assert_true((goal - previous).abs() <= 2)
         assert_true(bus.write_times[i] - last_time[id] >= 50L)
       }
       last_goal[id] = goal

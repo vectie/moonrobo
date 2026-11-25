@@ -34,7 +34,7 @@ async fn main {
   let version = field(approval_source, "neck_profile_version")
   let maximum_degrees = match version {
     "2" => 5
-    "5" => {
+    "5" | "6" => {
       for
         (key, expected) in [
           ("neck_travel_limit_degrees", "30"),
@@ -45,11 +45,23 @@ async fn main {
         ] {
         guard field(approval_source, key) == Json(expected) else {
           fail(
-            "Profile 5 authorization must explicitly bind " +
+            "Profile 5/6 authorization must explicitly bind " +
             key +
             "=" +
             expected,
           )
+        }
+      }
+      if version == Json("6") {
+        for
+          (key, expected) in [
+            ("maximum_step_ticks", "2"),
+            ("minimum_step_interval_ms", "50"),
+            ("maximum_target_slew_ticks_per_second", "40"),
+          ] {
+          guard field(approval_source, key) == Json(expected) else {
+            fail("Profile 6 authorization must explicitly bind " + key)
+          }
         }
       }
       30
@@ -72,6 +84,21 @@ async fn main {
   }
   let action = field(approval_source, "action")
   let plan_action = match action {
+    ["ReturnToStart", pan, tilt] if version == Json("6") => {
+      let pan : Int32 = @json.from_json(pan)
+      let tilt : Int32 = @json.from_json(tilt)
+      guard pan >= 1586 && pan <= 2268 && tilt >= 1706 && tilt <= 2388 else {
+        fail("Return pose outside commissioned envelope")
+      }
+      "return-start \{pan} \{tilt}"
+    }
+    ["Sweep", degrees] if version == Json("6") => {
+      let degrees : Int32 = @json.from_json(degrees)
+      guard degrees >= 1 && degrees <= maximum_degrees else {
+        fail("Sweep requires reviewed 1..30 degree range")
+      }
+      "sweep \{degrees}"
+    }
     [String(mode), seconds] if mode == "Joystick" || mode == "Buttons" => {
       let seconds : Int32 = @json.from_json(seconds)
       guard seconds >= 1 && seconds <= 300 else {
@@ -130,22 +157,35 @@ async fn main {
       "Installed plan differs from the operator-reviewed action or speed profile",
     )
   }
-  if version == Json("3") || version == Json("4") || version == Json("5") {
+  if version == Json("3") ||
+    version == Json("4") ||
+    version == Json("5") ||
+    version == Json("6") {
     guard field(parameters, "neck_travel_limit_degrees") ==
       field(approval_source, "neck_travel_limit_degrees") else {
       fail("Installed plan differs from the reviewed travel envelope")
     }
   }
-  if version == Json("4") || version == Json("5") {
+  if version == Json("4") || version == Json("5") || version == Json("6") {
     guard field(parameters, "raw_feedback_velocity_limit") ==
       field(approval_source, "raw_feedback_velocity_limit") else {
       fail("Installed plan differs from the reviewed velocity limit")
     }
   }
-  if version == Json("5") {
+  if version == Json("5") || version == Json("6") {
     for
       key in [
         "completion_policy", "target_accuracy_ticks", "tracking_error_limit_ticks",
+      ] {
+      guard field(parameters, key) == field(approval_source, key) else {
+        fail("Installed plan differs from reviewed " + key)
+      }
+    }
+  }
+  if version == Json("6") {
+    for
+      key in [
+        "maximum_step_ticks", "minimum_step_interval_ms", "maximum_target_slew_ticks_per_second",
       ] {
       guard field(parameters, key) == field(approval_source, key) else {
         fail("Installed plan differs from reviewed " + key)

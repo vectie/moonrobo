@@ -10,12 +10,34 @@ The one-off movement, recovery and disable helpers were archived as
 non-executable text and replaced with failing entry points, so old script
 paths cannot silently bypass the new controller.
 
-Current test profile is **v5**, after the operator requested 30° tests and
-confirmed “Checked—the 30° arc is clear”. It retains the approved raw feedback
+Current test profile is **v6**, after the operator requested faster movement
+and “true left top right down then starting pose”. The existing confirmation
+“Checked—the 30° arc is clear” covers its unchanged range. It retains raw feedback
 velocity limit **100**, motor speed command 50 and torque 300. Its fixed
 software bounds are pan 1586–2268 and tilt 1706–2388, around the unchanged
 saved centers. Each direct movement derives its step budget from validated
 endpoints; the former 120-step cap could not finish a 341-step, 30° target.
+
+V6 doubles the maximum target slew from 20 to 40 ticks/second by allowing
+at most two ticks per 50 ms. It does not raise the servo speed register,
+acceleration, torque, velocity guard or tracking/error limits. A final odd
+tick is clamped to the exact endpoint; delayed input cannot accumulate credit.
+Full analog input requests 40 ticks/s and a direction button requests 20.
+
+`Sweep(30)` is an explicitly authorized finite trajectory: center, left,
+center, up, center, right, center, down, center, captured starting pose.
+Each extreme is relative to the unchanged saved center, rather than a jog
+from the preceding extreme. The initial measured positions are captured at
+admission. All endpoints are validated before the first write; both axes
+are checked throughout every move and the short dwell. Only the final normal
+step returns to that captured pose. Any fault aborts the remaining trajectory,
+including the return, and leaves the durable marker; cleanup never replays it.
+
+After review of a new fault, the separate `ReturnToStart(pan, tilt)` action
+can perform only the explicitly requested bounded return under a new exact
+receipt. Its coordinates must match the captured pose recorded for that
+request; the CLI neither selects an old target automatically nor bypasses
+the fault marker. It uses the same startup, two-tick steps and all guards.
 
 `Report.target_reached` separates strict target accuracy from safe holding.
 The accuracy tolerance remains 11 encoder ticks and runtime tracking guard
@@ -90,7 +112,7 @@ with unsuffixed feedback keys; simply enabling that setting is insufficient.
 | Pan | ID 7; positive counts turn the camera right, verified by leftward scene shift in the later small live test |
 | Tilt | ID 8; positive counts turn the camera down, verified by upward scene shift in the later small live test |
 | Saved center | Pan 1927; tilt 2047 |
-| Current reviewed profile-v5 software bounds | Pan 1586–2268; tilt 1706–2388 (approximately ±30°) |
+| Current profile-v6 software bounds | Pan 1586–2268; tilt 1706–2388 (approximately ±30°) |
 | Historical profile-v3/v4 bounds | Pan 1813–2041; tilt 1933–2161 (approximately ±10°) |
 | Hardware EEPROM limits | Pan 933–3043; tilt 1040–3204 |
 | Raw homing-offset fingerprint | Pan 3948; tilt 1882 |
@@ -113,7 +135,7 @@ profile change and new clearance checks.
    prevent a privileged process or a second physical bus master.
 2. **Every goal is actuation.** Treat a goal write as potentially enabling
    torque. The only transport writes are the exact bounded speed, torque and
-   acceleration values, a measured-position latch, a one-tick step, explicit
+   acceleration values, a measured-position latch, a bounded step, explicit
    torque enable and explicit torque release. Bulk restoration, arbitrary
    registers, EEPROM writes and a raw zero target are unavailable.
 3. **Prepare before position.** Read and validate identity, calibration and
@@ -122,7 +144,7 @@ profile change and new clearance checks.
    3. Read back each stage. Only then latch the measured current position;
    verify the latch before explicit enable. An already energized motor with
    a distant old target is rejected, not automatically corrected.
-4. **Bound every step.** A new goal differs by at most one encoder tick from
+4. **Bound every step.** A new goal differs by at most two encoder ticks from
    the preceding goal, at intervals of at least 50 ms. Absolute bounds remain
    anchored to the commissioned center. Current profile, mode, torque, goal,
    tracking error and electrical/thermal feedback are checked throughout.
@@ -255,11 +277,11 @@ assigns the **left analog stick directly to neck pan and tilt**.
 | Disconnect, stale input, stalled loop or servo fault | End and latch the fault; no automatic resume |
 
 The stick has a 20% center deadzone. Outside it, requested target slew scales
-from 1 to 20 encoder ticks/second (about 1.76 degrees/second at full input).
+from 1 to 40 encoder ticks/second (about 3.52 degrees/second at full input).
 This bounds target changes, not instantaneous physical motor velocity. Each axis
-still advances at most one tick per 50 ms. Diagonal input is supported, with
+still advances at most two ticks per 50 ms. Diagonal input is supported, with
 both axes checked. Outward velocity stops at the existing fixed bounds:
-pan 1586–2268, tilt 1706–2388 in reviewed profile v5. It cannot shift the envelope. There is no gyro
+pan 1586–2268, tilt 1706–2388 in profile v6. It cannot shift the envelope. There is no gyro
 control, automatic centering, full-angle mode or queued destination.
 
 Startup with ZL held or the stick deflected cannot arm. After releasing ZL
@@ -846,6 +868,48 @@ and zero WRITEs. See the [v5 evidence](evidence/e1-neck-profile5-live-20261125.j
 Video, raw audit and before/during/after frames remain in the local artifact
 directory recorded there. This qualifies direct commanded movement; the
 earlier unarmed button window does not qualify live operator button control.
+
+### Faster four-extreme sweep: profile v6
+
+The operator corrected the preceding demonstration: v5's right/down jogs
+returned from left/up to the vicinity of neutral. They verified positive
+motion, but did not reach the right/down extremes. The operator requested
+faster movement and the order “true left top right down then starting pose”.
+V6 therefore adds an exact `Sweep(30)` action, keeps the ±30° absolute
+envelope and doubles only target slew. The measured initial pose was
+pan 1948 / tilt 2056.
+
+The fresh receipt admitted the complete finite sweep. All four extremes
+completed with strict accuracy and were confirmed in the live camera:
+
+| Extreme | Measured angle from saved center | Phase time |
+| --- | --- | --- |
+| Left | −29.44° | 11.72 s |
+| Up | −29.18° | 11.57 s |
+| Right | +29.53° | 11.51 s |
+| Down | +29.44° | 11.28 s |
+
+The earlier 30° legs took about 22 s. V6's actual elapsed time includes
+readback and settling, so “double target slew” is not a guarantee of exactly
+twice the physical speed. Maximum observed feedback velocity remained 100,
+minimum step interval 59 ms and maximum pre-send feedback age 20 ms.
+
+The sweep **did not complete the final return**. While leaving the down
+extreme, ID 8 reported 10.4 V in a checksum-validated packet, below the
+unchanged 10.5 V floor. The controller latched a fault after 1,234 audited
+writes and sent zero later actuator writes. It did not retry, recenter or
+release torque. A later read-only check held pan 1928 / tilt 2371 at 12.3 /
+12.2 V; that later reading does not invalidate the fault sample or establish
+the physical cause. The marker remains until a new operator inspection and
+review; the original request to return remains outstanding.
+
+The [sweep evidence](evidence/e1-neck-profile6-sweep-20261125.json) pins the
+actual trial binary and all eight completed waypoints. That trial used the
+55-test build. The subsequent explicit return-only implementation passes
+57 neck tests; 29 malformed or unauthorized preparation cases fail before
+SSH. Both Linux ASan transport fixtures and zero-WRITE deployment checks
+remain required for the final build. Videos and phase snapshots remain
+local in the evidence's artifact directory.
 
 To qualify a five-minute untouched-neutral recording, save stdout from
 `neck-control joystick-monitor 300`, then run

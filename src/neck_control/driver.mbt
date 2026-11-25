@@ -275,7 +275,7 @@ fn bounded_step_count(
   guard steps <= 682 else {
     raise Rejected("Movement exceeds bounded step budget")
   }
-  steps
+  (steps + maximum_step_ticks - 1) / maximum_step_ticks
 }
 
 ///|
@@ -331,7 +331,7 @@ fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
       after: before,
     }
   }
-  let targets = before.map(f => target(action, f.id, f.position))
+  let waypoints = movement_waypoints(action, before)
   // Validate both axes before configuring either; one bad axis denies the pair.
   for i in 0..<2 {
     guards[i].check_feedback(before[i], bus.now())
@@ -345,19 +345,64 @@ fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
   if action == Hold {
     // Hold the latest latched pose, not an earlier preflight reading.
     for i in 0..<2 {
-      targets[i] = guards[i].last_goal
+      waypoints[0].targets[i] = guards[i].last_goal
     }
   }
+  for waypoint in waypoints {
+    bus.event("waypoint-start", Json(waypoint))
+    move_waypoint(bus, guards, waypoint)
+    let feedback = guards.map(g => observe(bus, g.id))
+    for i in 0..<2 {
+      guards[i].check_feedback(feedback[i], bus.now())
+    }
+    bus.event("waypoint-completed", {
+      "label": Json(waypoint.label),
+      "targets": Json(waypoint.targets),
+      "feedback": Json(feedback),
+      "target_reached": Json(
+        feedback.all(f => within_settling_tolerance(f, f.goal)),
+      ),
+    })
+    if action is Sweep(_) {
+      // Explicit visible dwell with fresh checks; no queued catch-up or retry.
+      for _ in 0..<10 {
+        bus.wait(50)
+        check_active_axes(bus, guards)
+      }
+    }
+  }
+  let after = guards.map(g => observe(bus, g.id))
+  for i in 0..<2 {
+    guards[i].check_feedback(after[i], bus.now())
+  }
+  let report = {
+    action,
+    completed: true,
+    holding: true,
+    target_reached: Some(after.all(f => within_settling_tolerance(f, f.goal))),
+    before,
+    after,
+  }
+  bus.event("completed-holding-no-cleanup-writes", Json(report))
+  report
+}
+
+///|
+fn[B : Bus] move_waypoint(
+  bus : B,
+  guards : Array[Guard],
+  waypoint : Waypoint,
+) -> Unit raise {
   for i in 0..<2 {
     let g = guards[i]
-    let desired = targets[i]
+    let desired = waypoint.targets[i]
     let step_count = bounded_step_count(g.id, g.last_goal, desired)
     for _ in 0..<step_count {
       if g.last_goal == desired {
         break
       }
       bus.wait(50)
-      let next = g.last_goal + (if desired > g.last_goal { 1 } else { -1 })
+      let next = next_goal(g.last_goal, desired)
       check_active_axes(bus, guards)
       apply(bus, g, Step(next))
     }
@@ -379,21 +424,6 @@ fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
       raise Rejected("Target did not settle; fault latched")
     }
   }
-  let after = guards.map(g => observe(bus, g.id))
-  for i in 0..<2 {
-    guards[i].check_feedback(after[i], bus.now())
-  }
-  let report = {
-    action,
-    completed: true,
-    holding: true,
-    target_reached: Some(after.all(f => within_settling_tolerance(f, f.goal))),
-    before,
-    after,
-  }
-  bus.event("completed-holding-no-cleanup-writes", Json(report))
-  // No register restoration and no hidden torque-off on success or close.
-  report
 }
 
 ///|

@@ -1,5 +1,5 @@
 ///|
-test "all four thirty-degree commands finish 341 guarded steps" {
+test "all four thirty-degree commands finish 171 guarded steps with exact odd endpoint" {
   for
     (direction, motor, sign) in [
       (Left, 7, -1),
@@ -20,21 +20,21 @@ test "all four thirty-degree commands finish 341 guarded steps" {
         assert_true(inside(id, goal))
         if last.get(id) is Some((previous, time)) {
           assert_eq(id, motor)
-          assert_eq(goal - previous, sign)
+          assert_eq(goal - previous, sign * (if steps == 170 { 1 } else { 2 }))
           assert_true(bus.write_times[i] - time >= 50L)
           steps += 1
         }
         last[id] = (goal, bus.write_times[i])
       }
     }
-    assert_eq(steps, 341)
+    assert_eq(steps, 171)
     assert_eq(observe(bus, motor).position, home(motor) + sign * 341)
     assert_eq(
       bounded_step_count(motor, home(motor), home(motor) + sign * 341),
-      341,
+      171,
     )
   }
-  assert_eq(bounded_step_count(7, 1586, 2268), 682)
+  assert_eq(bounded_step_count(7, 1586, 2268), 341)
   expect_denied(() => bounded_step_count(7, 1585, 2268) |> ignore)
   expect_denied(() => bounded_step_count(8, 1706, 2389) |> ignore)
 }
@@ -47,7 +47,7 @@ test "safe static offset completes holding with explicit missed accuracy" {
     assert_true(report.completed && report.holding)
     assert_eq(report.target_reached, Some(bias <= 11))
     assert_eq(report.after[1].position - report.after[1].goal, bias)
-    assert_eq(bus.writes.length(), 351)
+    assert_eq(bus.writes.length(), 181)
   }
   let bus = SimBus::new(tracking_bias=17)
   expect_denied(() => run_action(bus, Jog(Up, 30)) |> ignore)

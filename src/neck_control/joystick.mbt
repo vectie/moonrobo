@@ -27,7 +27,7 @@ priv struct NativeStickSample {
 ///|
 // Nintendo full report byte 5, as used by the installed XLeRobot library.
 // Direction signs match our direct Jog API; physical direction still needs
-// qualification on the transferred mount. Repeated steps request 10 ticks/s.
+// qualification on the transferred mount. Repeated steps request 20 ticks/s.
 fn button_axes(mask : Int32) -> (Int32, Int32) raise NeckError {
   match mask {
     0 => (0, 0)
@@ -93,7 +93,7 @@ fn stick_speed(value : Int32) -> Int32 {
   if value.abs() <= 200 {
     return 0
   }
-  let speed = Int32::max(1, (value.abs() - 200) * 20 / 800)
+  let speed = Int32::max(1, (value.abs() - 200) * 40 / 800)
   if value < 0 {
     -speed
   } else {
@@ -415,12 +415,22 @@ fn[B : Bus] run_live_input(bus : B, action : Action) -> Report raise {
         for
           (i, speed) in [(0, stick_speed(sample.x)), (1, stick_speed(sample.y))] {
           let g = guards[i]
-          if speed != 0 &&
-            bus.now() - g.last_step_ms >= (1000 / speed.abs()).to_int64() {
-            let next = g.last_goal + (if speed > 0 { 1 } else { -1 })
+          let (step, interval) = live_step(speed)
+          if speed != 0 && bus.now() - g.last_step_ms >= interval {
+            let endpoint = if speed > 0 {
+              home(g.id) + 341
+            } else {
+              home(g.id) - 341
+            }
+            let next = g.last_goal +
+              (if speed > 0 {
+                Int32::min(step, endpoint - g.last_goal)
+              } else {
+                Int32::max(step, endpoint - g.last_goal)
+              })
             // Velocity input stops at the commissioned boundary. Never expand
             // the envelope, wrap, reset zero or queue a destination beyond it.
-            if inside(g.id, next) {
+            if inside(g.id, next) && next != g.last_goal {
               check_stick(sample, bus.now())
               check_active_axes(bus, guards)
               bus.event("joystick-step", {

@@ -130,7 +130,7 @@ fn armed_guard() -> Guard raise {
 
 ///|
 test "rate limiter rejects large jumps too fast steps and raw zero" {
-  for (goal, now) in [(0, 1100L), (1929, 1100L), (1928, 1010L), (1985, 1100L)] {
+  for (goal, now) in [(0, 1100L), (1930, 1100L), (1928, 1010L), (1985, 1100L)] {
     expect_denied(() => armed_guard().authorize(healthy(7), Step(goal), now))
   }
   let g = armed_guard()
@@ -177,7 +177,7 @@ test "invalid pair target and audit failure produce no writes" {
 }
 
 ///|
-test "all four directions are bounded one-tick motion with no success restore" {
+test "all four directions are bounded incremental motion with no success restore" {
   for direction in [Left, Up, Right, Down] {
     let bus = SimBus::new()
     let result = run_action(bus, Jog(direction, 2))

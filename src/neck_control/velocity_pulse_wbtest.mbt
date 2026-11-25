@@ -58,7 +58,7 @@ test "velocity approval is exact and cannot reuse old profile or limit" {
     1000L,
   )
   validate_receipt(receipt, action, 1001L)
-  for (version, limit) in [("3", "60"), ("4", "60"), ("4", "101")] {
+  for (version, limit) in [("3", "60"), ("4", "60"), ("4", "101"), ("5", "100")] {
     let wrong = parameters.copy()
     wrong["neck_profile_version"] = version
     wrong["raw_feedback_velocity_limit"] = limit

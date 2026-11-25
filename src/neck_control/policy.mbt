@@ -20,6 +20,8 @@ pub(all) enum Action {
   Status
   Hold
   Jog(Direction, Int32)
+  Sweep(Int32)
+  ReturnToStart(Int32, Int32)
   Center
   Release
   Joystick(Int32)
@@ -76,6 +78,9 @@ let tracking_error_limit : Int32 = 16
 
 ///|
 let target_accuracy_limit : Int32 = 11
+
+///|
+let maximum_step_ticks : Int32 = 2
 
 ///|
 priv struct Guard {
@@ -225,8 +230,10 @@ fn Guard::authorize(
         return
       }
       guard now - self.last_step_ms >= 50L &&
-        (target - self.last_goal).abs() <= 1 else {
-        self.reject("One encoder tick per 50 ms maximum; large jumps forbidden")
+        (target - self.last_goal).abs() <= maximum_step_ticks else {
+        self.reject(
+          "Two encoder ticks per 50 ms maximum; large jumps forbidden",
+        )
         return
       }
       self.last_goal = target
@@ -270,6 +277,9 @@ pub fn target(
       }
     }
     Center => home(id)
+    ReturnToStart(pan, tilt) => if id == 7 { pan } else { tilt }
+    Sweep(_) =>
+      raise Rejected("Sweep has explicit waypoints, not a single target")
     _ => start
   }
   guard inside(id, result) else {
@@ -285,8 +295,8 @@ pub fn profile() -> @core.RobotProfile {
   let base = @core.noetix_e1_profile("noetix-e1-neck", "elf2-neck-usb")
   {
     ..base,
-    label: "E1 external STS3215 neck thirty-degree test profile",
-    profile_version: 5,
+    label: "E1 external STS3215 neck two-tick thirty-degree profile",
+    profile_version: 6,
     bridge: {
       id: "elf2-neck-usb",
       kind: UnknownBridge("feetech-neck"),
@@ -352,19 +362,27 @@ pub fn intent_parameters(
   validate_action(action)
   {
     "action": Json(action).stringify(),
-    "neck_profile_version": "5",
+    "neck_profile_version": "6",
     "neck_travel_limit_degrees": "30",
     "raw_feedback_velocity_limit": "100",
     "servo_speed_limit": "50",
     "completion_policy": "stable-hold-with-accuracy",
     "target_accuracy_ticks": target_accuracy_limit.to_string(),
     "tracking_error_limit_ticks": tracking_error_limit.to_string(),
+    "maximum_step_ticks": maximum_step_ticks.to_string(),
+    "minimum_step_interval_ms": "50",
+    "maximum_target_slew_ticks_per_second": "40",
   }
 }
 
 ///|
 fn validate_action(action : Action) -> Unit raise NeckError {
-  if action is Jog(_, degrees) {
+  if action is ReturnToStart(pan, tilt) {
+    guard inside(7, pan) && inside(8, tilt) else {
+      raise Rejected("Return pose outside commissioned envelope")
+    }
+  }
+  if action is (Jog(_, degrees) | Sweep(degrees)) {
     guard degrees >= 1 && degrees <= 30 else {
       raise Rejected("Jog requires integer degrees from 1 to 30")
     }

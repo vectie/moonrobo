@@ -54,7 +54,7 @@ async fn main {
       (
         Json([Json("Jog"), Json("Right"), Json(1)]),
         true,
-        "6",
+        "7",
         "Unknown neck profile",
       ),
       (
@@ -123,9 +123,90 @@ async fn main {
       "tracking_error_limit_ticks": "16",
     }
     fields[key] = Json(wrong)
-    reject_before_ssh(Json(fields), "Profile 5 authorization")
+    reject_before_ssh(Json(fields), "Profile 5/6 authorization")
+  }
+  for
+    (action, authorized, key, wrong, expected) in [
+      (
+        Json([Json("Sweep"), Json(30)]),
+        true,
+        "maximum_step_ticks",
+        "3",
+        "Profile 6 authorization",
+      ),
+      (
+        Json([Json("Sweep"), Json(30)]),
+        true,
+        "minimum_step_interval_ms",
+        "25",
+        "Profile 6 authorization",
+      ),
+      (
+        Json([Json("Sweep"), Json(30)]),
+        true,
+        "maximum_target_slew_ticks_per_second",
+        "80",
+        "Profile 6 authorization",
+      ),
+      (Json([Json("Sweep"), Json(31)]), true, "", "", "Sweep requires"),
+      (
+        Json([Json("ReturnToStart"), Json(1585), Json(2056)]),
+        true,
+        "",
+        "",
+        "Return pose outside",
+      ),
+      (
+        Json([Json("ReturnToStart"), Json(1948), Json(2389)]),
+        true,
+        "",
+        "",
+        "Return pose outside",
+      ),
+      (
+        Json([Json("ReturnToStart"), Json(1948), Json(2056)]),
+        false,
+        "",
+        "",
+        "explicit authorization",
+      ),
+      (
+        Json([Json("ReturnToStart"), Json(1948), Json(2056)]),
+        true,
+        "neck_profile_version",
+        "5",
+        "Need an exact bounded",
+      ),
+      (Json([Json("Sweep"), Json(0)]), true, "", "", "Sweep requires"),
+      (Json([Json("Sweep"), Json(30)]), false, "", "", "explicit authorization"),
+      (
+        Json([Json("Sweep"), Json(30)]),
+        true,
+        "neck_profile_version",
+        "5",
+        "Need an exact bounded",
+      ),
+    ] {
+    let fields : Map[String, Json] = {
+      "operator_authorized": Json(authorized),
+      "action": action,
+      "neck_profile_version": "6",
+      "neck_travel_limit_degrees": "30",
+      "servo_speed_limit": "50",
+      "raw_feedback_velocity_limit": "100",
+      "completion_policy": "stable-hold-with-accuracy",
+      "target_accuracy_ticks": "11",
+      "tracking_error_limit_ticks": "16",
+      "maximum_step_ticks": "2",
+      "minimum_step_interval_ms": "50",
+      "maximum_target_slew_ticks_per_second": "40",
+    }
+    if key != "" {
+      fields[key] = Json(wrong)
+    }
+    reject_before_ssh(Json(fields), expected)
   }
   println(
-    "Eighteen bounded-action, version and authorization cases rejected before SSH",
+    "Twenty-nine bounded-action, version and authorization cases rejected before SSH",
   )
 }

@@ -1,0 +1,191 @@
+{
+  "date": "2026-11-25",
+  "profile_version": 6,
+  "action": [
+    "Sweep",
+    30
+  ],
+  "run_id": "1795618181358-17232216",
+  "intent_id": "neck-1795618162375",
+  "operator_speed_request": "and I want it faster",
+  "operator_sequence_request": "and i wanna true left top right down then starting pose.",
+  "existing_clearance": "Checked—the 30° arc is clear",
+  "physical_binary_sha256": "9b56e3aedf58f8d64feade672e3aadbf5ca689fe0a2f57ed1cf7c1d014294547",
+  "motor_speed_register": 50,
+  "torque_limit": 300,
+  "acceleration": 3,
+  "raw_velocity_guard": 100,
+  "max_target_step_ticks": 2,
+  "minimum_step_interval_ms": 50,
+  "maximum_target_slew_ticks_s": 40,
+  "native_neck_tests_passed": 55,
+  "trial_source_negative_cases_passed": 25,
+  "linux_serial_asan_failures": 0,
+  "linux_joystick_asan_failures": 0,
+  "deployment_read_packets": 4,
+  "deployment_write_packets": 0,
+  "audit_records": 15860,
+  "read_packets": 4047,
+  "write_before_send_records": 1234,
+  "step_packets": 1224,
+  "minimum_observed_step_interval_ms": "59",
+  "maximum_pre_send_feedback_age_ms": "20",
+  "maximum_observed_raw_velocity": 100,
+  "minimum_reported_voltage_tenths": 104,
+  "maximum_reported_temperature": 49,
+  "completed": false,
+  "fault": "Rejected(\"Electrical, temperature, load or velocity limit\")",
+  "final_report": false,
+  "captured_starting_positions": [
+    1948,
+    2056
+  ],
+  "final_measured_positions": [
+    1928,
+    2372
+  ],
+  "elapsed_ms": "87134",
+  "waypoints": [
+    {
+      "label": "center-before",
+      "targets": [
+        1927,
+        2047
+      ],
+      "measured_positions": [
+        1931,
+        2052
+      ],
+      "phase_duration_ms": "1403",
+      "pan_degrees_from_saved_center": 0.3515625,
+      "tilt_degrees_from_saved_center": 0.439453125,
+      "target_reached": true
+    },
+    {
+      "label": "left",
+      "targets": [
+        1586,
+        2047
+      ],
+      "measured_positions": [
+        1592,
+        2052
+      ],
+      "phase_duration_ms": "11716",
+      "pan_degrees_from_saved_center": -29.443359375,
+      "tilt_degrees_from_saved_center": 0.439453125,
+      "target_reached": true
+    },
+    {
+      "label": "center-after-left",
+      "targets": [
+        1927,
+        2047
+      ],
+      "measured_positions": [
+        1921,
+        2052
+      ],
+      "phase_duration_ms": "11223",
+      "pan_degrees_from_saved_center": -0.52734375,
+      "tilt_degrees_from_saved_center": 0.439453125,
+      "target_reached": true
+    },
+    {
+      "label": "up",
+      "targets": [
+        1927,
+        1706
+      ],
+      "measured_positions": [
+        1923,
+        1715
+      ],
+      "phase_duration_ms": "11571",
+      "pan_degrees_from_saved_center": -0.3515625,
+      "tilt_degrees_from_saved_center": -29.1796875,
+      "target_reached": true
+    },
+    {
+      "label": "center-after-up",
+      "targets": [
+        1927,
+        2047
+      ],
+      "measured_positions": [
+        1922,
+        2043
+      ],
+      "phase_duration_ms": "11207",
+      "pan_degrees_from_saved_center": -0.439453125,
+      "tilt_degrees_from_saved_center": -0.3515625,
+      "target_reached": true
+    },
+    {
+      "label": "right",
+      "targets": [
+        2268,
+        2047
+      ],
+      "measured_positions": [
+        2263,
+        2044
+      ],
+      "phase_duration_ms": "11511",
+      "pan_degrees_from_saved_center": 29.53125,
+      "tilt_degrees_from_saved_center": -0.263671875,
+      "target_reached": true
+    },
+    {
+      "label": "center-after-right",
+      "targets": [
+        1927,
+        2047
+      ],
+      "measured_positions": [
+        1932,
+        2050
+      ],
+      "phase_duration_ms": "11410",
+      "pan_degrees_from_saved_center": 0.439453125,
+      "tilt_degrees_from_saved_center": 0.263671875,
+      "target_reached": true
+    },
+    {
+      "label": "down",
+      "targets": [
+        1927,
+        2388
+      ],
+      "measured_positions": [
+        1928,
+        2382
+      ],
+      "phase_duration_ms": "11281",
+      "pan_degrees_from_saved_center": 0.087890625,
+      "tilt_degrees_from_saved_center": 29.443359375,
+      "target_reached": true
+    }
+  ],
+  "writes_after_terminal_event": 0,
+  "artifact_directory": "/Users/kq/moonsuite/inputs/e1-neck-live-tests-20261125",
+  "video": "live-sweep-30deg-v6.mp4",
+  "visible_camera_directions_confirmed": true,
+  "qualification": "Absolute direction extremes reference saved center; final target references freshly captured starting pose. Center crossings avoid combined extreme corners. Camera observation cannot inspect its own neck clearance.",
+  "return_only_preparation": {
+    "action": [
+      "ReturnToStart",
+      1948,
+      2056
+    ],
+    "physical_execution": false,
+    "operator_fault_review_pending": true,
+    "native_neck_tests_passed": 57,
+    "trial_source_negative_cases_passed": 29,
+    "installed_binary_sha256_line": "fe9474bc89610b8e448d99b5f5566709073d6688d50337e3c6700b28ada44c41  /home/elf/moonrobo-neck/neck-control",
+    "linux_serial_asan_failures": 0,
+    "linux_joystick_asan_failures": 0,
+    "deployment_read_packets": 4,
+    "deployment_write_packets": 0
+  }
+}

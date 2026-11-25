@@ -7,6 +7,12 @@ fn action_from_args(args : Array[String]) -> @neck.Action raise {
     "release" => Release
     "joystick" => Joystick(@string.parse_int(args.get(3).unwrap_or("120")))
     "buttons" => Buttons(@string.parse_int(args.get(3).unwrap_or("300")))
+    "sweep" => Sweep(@string.parse_int(args.get(3).unwrap_or("30")))
+    "return-start" =>
+      ReturnToStart(
+        @string.parse_int(args.get(3).unwrap()),
+        @string.parse_int(args.get(4).unwrap()),
+      )
     "left" | "up" | "right" | "down" => {
       let degrees = @string.parse_int(args.get(3).unwrap_or("1"))
       let direction = match name {
@@ -19,7 +25,7 @@ fn action_from_args(args : Array[String]) -> @neck.Action raise {
     }
     _ =>
       abort(
-        "Expected hold, center, release, left, up, right, down, joystick or buttons",
+        "Expected hold, center, release, left, up, right, down, sweep, joystick or buttons",
       )
   }
 }
@@ -104,7 +110,7 @@ fn run_cli() -> Unit raise {
     }
     _ =>
       abort(
-        "Usage: neck_control status|configuration [AUDIT] | preflight | joystick-monitor|buttons-monitor [SECONDS] | simulate|plan DIRECTION [1..30] | simulate|plan joystick|buttons [1..300 seconds] | execute RECEIPT AUDIT",
+        "Usage: neck_control status|configuration [AUDIT] | preflight | joystick-monitor|buttons-monitor [SECONDS] | simulate|plan DIRECTION|sweep [1..30] | simulate|plan joystick|buttons [1..300 seconds] | execute RECEIPT AUDIT",
       )
   }
 }

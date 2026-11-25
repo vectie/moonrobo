@@ -21,7 +21,7 @@ test "direction buttons ignore thumbstick calibration and keep enable and exit" 
   for (mask, x, y) in [(1, 0, 600), (2, 0, -600), (4, 600, 0), (8, -600, 0)] {
     let sample = map_input({ ..raw, buttons: mask, }, c, buttons=true)
     assert_eq((sample.x, sample.y), (x, y))
-    assert_eq(stick_speed(if x == 0 { y } else { x }).abs(), 10)
+    assert_eq(stick_speed(if x == 0 { y } else { x }).abs(), 20)
     assert_true(sample.deadman && sample.exit)
   }
   for invalid in [-1, 3, 5, 6, 9, 12, 15, 16] {
@@ -96,7 +96,7 @@ test "button release stops steps while all directions retain bounded slow target
         assert_true(inside(id, goal))
         if time >= 0L {
           assert_eq(goal - previous, sign)
-          assert_true(bus.write_times[i] - time >= 100L)
+          assert_true(bus.write_times[i] - time >= 50L)
         }
         previous = goal
         time = bus.write_times[i]
