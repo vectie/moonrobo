@@ -75,6 +75,14 @@ extern "c" fn joy_read(device : JoyDevice) -> Bytes = "moonrobo_joy_read"
 extern "c" fn joy_error() -> Bytes = "moonrobo_joy_error"
 
 ///|
+#borrow(device, packet)
+extern "c" fn joy_write_setup(device : JoyDevice, packet : Bytes) -> Int32 = "moonrobo_joy_write_setup"
+
+///|
+#borrow(device, packet)
+extern "c" fn joy_setup_reply(device : JoyDevice, packet : Bytes) -> Bytes = "moonrobo_joy_setup_reply"
+
+///|
 #borrow(tx)
 extern "c" fn serial_exchange_guarded(
   fd : Int32,

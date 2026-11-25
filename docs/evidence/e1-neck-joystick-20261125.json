@@ -11,17 +11,23 @@
     "input": "calibrated evdev axes and buttons plus fresh periodic hidraw heartbeat"
   },
   "validation": {
-    "moonbit_native_tests": { "passed": 27, "failed": 0 },
+    "moonbit_native_tests": { "passed": 28, "failed": 0 },
     "linux_serial_asan": { "failures": 0, "physical_device_opened": false },
     "linux_joystick_asan": { "failures": 0, "physical_device_opened": false },
     "native_elf_joystick_simulation": { "simulated": true, "duration_seconds": 2 },
-    "hardware_deployment_audit": { "cumulative_read_packets": 40, "write_packets": 0 },
+    "last_successful_hardware_deployment_audit": { "cumulative_read_packets": 44, "write_packets": 0 },
+    "latest_readonly_servo_check": "ID 7 identity read timed out with zero response bytes; operator confirms 12 V power is on",
     "physical_joystick_session_started": false,
     "physical_neck_motion_tested": false
   },
   "installed_binary": {
     "path": "/home/elf/moonrobo-neck/neck-control",
-    "sha256": "41b53b6f11af3599bc04df71a55125e8b3b9b2ee48146809f4ceab92e09a84cb"
+    "sha256": "7e4e928d310f5a69d4b84944e7552a30dee546791d50a77a1575e36e89c599f9"
+  },
+  "staged_candidate": {
+    "path": "/home/elf/moonrobo-neck/neck-control.next",
+    "sha256": "a044ac56959ff491afab730d4682f8e0c7409e3cbc4be6681b3b1a94ad2c20f5",
+    "status": "Simulations and both ASan transports passed; promotion held because fresh servo status is unavailable"
   },
   "observed_input": {
     "fresh_reports_received_after_manual_reconnect": true,
@@ -31,19 +37,26 @@
     "initial_sequence_x_range": [-1000, 0],
     "initial_sequence_y_range": [-1000, 0],
     "resting_x_was_outside_deadzone": true,
+    "operator_confirms_thumbstick_is_untouched_and_centered": true,
+    "post_setup_60_second_check": { "completed": true, "missing_report_errors": 0, "observed_x_range": [-287, -281] },
+    "subsequent_180_second_check": { "completed": true, "live_samples": 0, "status": "HID heartbeat timeout; Bluetooth stability remains unqualified" },
     "notes": "Input-only recording showed off-center X and no positive values during the requested direction sequence. The operator initially moved the whole Joy-Con, then tested its thumbstick. A one-direction held input check is still required. Do not treat software simulation as physical direction qualification."
   },
   "host_changes": {
     "bluetooth_enabled": true,
-    "joycond_temporarily_stopped_then_restored": true,
-    "joycond_currently_active": true,
-    "joycond_disabled_permanently": false,
+    "joycond_stop_requested": true,
+    "joycond_process_state": "Uninterruptible sleep in brightness_store/flush_work; stop could not complete",
+    "joycond_autostart_symlink_removed": true,
+    "scoped_input_acl_restored": "ELF user read access to the physical left Joy-Con input node",
+    "targeted_btusb_unbind": "1-1.1:1.0 reset requested and blocked in kernel; servo interface 1-1.3:1.0 was not reset",
     "udev_rule": "/etc/udev/rules.d/99-zz-moonrobo-neck-joycon.rules"
   },
   "limitations": [
     "BlueZ reported a connected link without HID reports; manual SYNC/reconnect restored streaming.",
     "Physical sessions stop and retain the fault marker on input loss. Only the input-only monitor may reopen input.",
     "No ready motion receipt was issued and no actuation was requested for this commissioning check.",
-    "Physical thumbstick direction/calibration qualification remains incomplete."
+    "Physical thumbstick direction/calibration qualification remains incomplete.",
+    "A longer stream check failed after the initial 60-second pass. Do not describe Bluetooth as fixed.",
+    "ELF restart has not been performed; operator approval is needed before resetting its robot USB connections."
   ]
 }

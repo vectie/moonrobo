@@ -10,6 +10,17 @@ fn stick(
 }
 
 ///|
+test "input setup requires matching positive acknowledgement" {
+  let good : Bytes = [0x21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x80, 0x40]
+  validate_stick_setup_reply(good, 0x40)
+  expect_denied(() => validate_stick_setup_reply(good, 3))
+  expect_denied(() => validate_stick_setup_reply(b"", 0x40))
+  let nack = good.to_array()
+  nack[13] = 0
+  expect_denied(() => validate_stick_setup_reply(Bytes::from_array(nack), 0x40))
+}
+
+///|
 test "held trigger or deflected stick at startup cannot arm" {
   let gate = StickGate::new()
   for

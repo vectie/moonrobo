@@ -10,7 +10,9 @@ import {
 ///|
 async fn run(program : String, args : Array[String]) -> String {
   let (code, out, err) = @process.collect_output(program, args)
-  guard code == 0 else { fail("\{program} failed: \{err.text()}") }
+  guard code == 0 else {
+    fail("\{program} exited \{code}: \{err.text()} \{out.text()}")
+  }
   out.text()
 }
 
@@ -20,6 +22,7 @@ async fn main {
   let socket = @env.args()
     .get(1)
     .unwrap_or("/tmp/moonrobo-elf2-neck-20261125.sock")
+  let stage_only = @env.args().get(2) == Some("--stage-only")
   let moon_root = @env.get_env_var("MOON_HOME").unwrap_or(
     @env.get_env_var("HOME").unwrap() + "/.moon",
   )
@@ -130,6 +133,18 @@ async fn main {
     ssh + ["/home/elf/moonrobo-neck/neck-control.next simulate joystick 2"],
   )
   @fs.write_file(stage + "/elf-joystick-simulation.json", joystick_simulation)
+  if stage_only {
+    let hash = run(
+      "ssh",
+      ssh + ["sha256sum /home/elf/moonrobo-neck/neck-control.next"],
+    )
+    @fs.write_file(stage + "/elf-candidate.sha256", hash)
+    println(hash)
+    println(
+      "Staged candidate and verified simulations plus ASan transports. No servo port opened; installed controller unchanged.",
+    )
+    return
+  }
   let status = run(
     "ssh",
     ssh + ["/home/elf/moonrobo-neck/neck-control.next status"],

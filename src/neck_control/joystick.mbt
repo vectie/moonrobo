@@ -138,7 +138,56 @@ fn open_stick() -> JoyDevice raise NeckError {
       "Cannot open paired left Joy-Con: check Bluetooth, input permissions and competing readers",
     )
   }
+  // Match the installed XLeRobot Joy-Con input initialization. The only HID
+  // outputs are sensor enable, full report mode and one steady player LED.
+  // These are controller input setup, never robot servo commands.
+  for (sequence, command, value) in [(0, 0x40, 1), (1, 3, 0x30), (2, 0x30, 1)] {
+    let packet : Bytes = [
+      1,
+      sequence.to_byte(),
+      0,
+      1,
+      0x40,
+      0x40,
+      0,
+      1,
+      0x40,
+      0x40,
+      command.to_byte(),
+      value.to_byte(),
+    ]
+    if command == 0x30 {
+      // A concurrent kernel LED request may consume its LED acknowledgement.
+      // This cosmetic operation is not evidence that input reporting works.
+      guard joy_write_setup(device, packet) == 0 else {
+        joy_close(device)
+        raise Transport("Joy-Con player LED setup failed")
+      }
+    } else {
+      let reply = joy_setup_reply(device, packet)
+      validate_stick_setup_reply(reply, command) catch {
+        err => {
+          joy_close(device)
+          raise err
+        }
+      }
+    }
+    sleep_ms(20)
+  }
   device
+}
+
+///|
+fn validate_stick_setup_reply(
+  reply : Bytes,
+  command : Int32,
+) -> Unit raise NeckError {
+  guard reply.length() >= 15 &&
+    reply[0] == 0x21 &&
+    (reply[13].to_int() & 0x80) != 0 &&
+    reply[14].to_int() == command else {
+    raise Transport("Joy-Con input setup acknowledgement missing or rejected")
+  }
 }
 
 ///|
@@ -153,7 +202,7 @@ pub fn monitor_joystick(seconds : Int32) -> Unit raise {
   let mut gate = StickGate::new()
   let mut last : (Int32, Int32, Bool, Bool)? = None
   let mut last_printed = 0L
-  let mut waiting = false
+  let mut waiting : String? = None
   while clock_ms() < end {
     let sample = try {
       if device is None {
@@ -164,15 +213,16 @@ pub fn monitor_joystick(seconds : Int32) -> Unit raise {
       sample
     } catch {
       err => {
-        if !waiting {
+        let message = "\{Repr(err)}"
+        if waiting != Some(message) {
           println(
             (
               {
                 "physical_execution": Json(false),
-                "waiting_for_input": Json("\{Repr(err)}"),
+                "waiting_for_input": Json(message),
               } : Json).stringify(),
           )
-          waiting = true
+          waiting = Some(message)
         }
         if device is Some(d) {
           joy_close(d)
@@ -184,7 +234,7 @@ pub fn monitor_joystick(seconds : Int32) -> Unit raise {
         continue
       }
     }
-    waiting = false
+    waiting = None
     let value = (sample.x / 50, sample.y / 50, sample.deadman, gate.active)
     if last != Some(value) || sample.exit || clock_ms() - last_printed >= 1000L {
       println(

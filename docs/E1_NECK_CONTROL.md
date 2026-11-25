@@ -249,8 +249,15 @@ The Linux input layer reads calibrated ABS_X/ABS_Y and ZL/Minus from the
 physical evdev device, verified by its vendor/product and Bluetooth MAC,
 excluding the separate IMU node. It also requires a newly received periodic
 full HID report, discarding any pre-existing backlog first. A connected flag
-or unchanged evdev state is not proof of a live controller. The reader uses
-read-only descriptors and sends no HID configuration/output reports.
+or unchanged evdev state is not proof of a live controller. The evdev
+descriptor is read-only. Like the installed XLeRobot Joy-Con library, input
+startup enables sensors and requests full `0x30` reports; it also selects one
+steady player LED. Those three HID setup packets are constructed in MoonBit
+and whitelisted again in C. Rumble changes, SPI writes and arbitrary HID
+outputs are forbidden. The input monitor never opens the robot servo port.
+Sensor and report-mode setup require a matching positive HID acknowledgement;
+a successful host write alone is insufficient. A controller that cannot
+acknowledge setup cannot be admitted as live input.
 Fresh input and motor feedback each have a 150 ms maximum age. Input age
 and feedback age bound dispatch even after audit persistence. The native
 serial boundary checks ZL, Minus and device presence again immediately
@@ -282,7 +289,7 @@ admission, not energized motors. Submit the plan through the existing
 evaluation/dry-run/approval workflow, then use `execute RECEIPT AUDIT` as
 above. There is no unrestricted joystick command that bypasses the receipt.
 The monitor can wait for a sleeping or disconnected controller and reopen
-its read-only descriptors. Every such reopen resets its input arming state.
+its input descriptors. Every such reopen resets its input arming state.
 This behavior is confined to the monitor: physical execution never reconnects
 or retries. The first live sample includes the kernel axis values and ranges
 for calibration diagnosis, and subsequent samples include a periodic
@@ -291,19 +298,30 @@ heartbeat even if the stick is unchanged.
 ELF setup: Bluetooth must be powered on and unblocked. The commissioned
 controllers are already paired/trusted. Wake the left one with L. If needed,
 hold the small SYNC button on the rail until its LEDs flash, then reconnect
-to the saved device. With the original `joycond` service running, hold
-**L + ZL together** to select the left Joy-Con as a single controller; the
-service also manages its player LEDs. This is distinct from Bluetooth pairing.
-See the [joycond usage instructions](https://github.com/DanielOgorchock/joycond#usage).
-The service was temporarily stopped while isolating input problems, then
-restored. It does not run the robot arm or wheel controller. The neck reader
-uses the physical controller's identity rather than a combined virtual pad.
+to the saved device. The original `joycond` service uses **L + ZL together**
+to select the left Joy-Con as a single controller, distinct from Bluetooth
+pairing; see its [usage instructions](https://github.com/DanielOgorchock/joycond#usage).
+However, the installed daemon masks the physical evdev device's ACL while
+waiting for selection, preventing the ELF user from opening it. Stop that
+daemon for the direct neck path, reload/trigger the scoped input rule below,
+and check the effective ACL before starting a monitor. The neck reader
+initializes its own report mode and LED and uses the physical controller's
+identity rather than a combined virtual pad. Do not launch the legacy robot
+controller alongside it.
+The original daemon was disabled for this direct neck input setup so it
+cannot mask the physical input ACL again at the next boot. Re-enable it
+explicitly if returning to its combined gamepad workflow.
 
 Install `config/99-zz-moonrobo-neck-joycon.rules` in `/etc/udev/rules.d/`,
 reload rules and trigger the left Joy-Con input device. This gives group
 `elf` access only to that controller, rather than adding the user to a group
 that can read every keyboard. Existing system HID permissions must also
-allow the ELF user to read that controller's hidraw node. Device numbers
+allow the ELF user to open that controller's hidraw node for input setup.
+If `getfacl` shows the ELF user's entry as `effective:---`, a `joycond` mask
+still blocks access even if the group is correct. A scoped
+`setfacl -m u:elf:r /dev/input/eventN` can restore input access after stopping
+the daemon; identify eventN by the controller's MAC, never a stale node number.
+Device numbers
 such as `event8` and `hidraw1` are not assumed by the controller.
 
 During commissioning on 2026-11-25, BlueZ twice reported a connected
@@ -312,7 +330,29 @@ timeouts and dropped IMU reports. A manual SYNC/reconnect restored reports.
 USB runtime autosuspend was checked and the Bluetooth adapter was already
 set to `on`/`active`; it was not changed as a speculative fix. Adapter power
 was cycled to clear a stale connection. The original `joycond` service was
-restored to test its documented L + ZL single-controller selection.
+restored to test its documented L + ZL single-controller selection. Comparing
+`/home/elf/lerobot/examples/joycon_test_read_CN.py` confirmed that the installed
+input library explicitly enables sensors and full HID reports, which the
+first neck reader omitted. It also exposed the daemon's masked input ACL.
+Both input setup gaps were corrected. The unchanged legacy test was run
+with a time limit and no robot/bus imports; its pose output drifted while
+printing. Because it repeatedly uses a cached `_input_report`, printed
+output alone is not a freshness guarantee. Independent raw HID reads
+confirmed changing full-report timers during the comparison.
+The daemon's stop also exposed a kernel-side LED work flush hang:
+`joycond` remained in uninterruptible sleep under `brightness_store` →
+`flush_work`, despite systemd's stop/kill request. This is recorded separately
+from a lost radio connection. No ELF reboot or USB servo reset was attempted.
+The targeted Bluetooth USB-interface unbind at `1-1.1:1.0` also blocked in the
+kernel. The servo adapter is on sibling interface `1-1.3:1.0`; it was not
+unbound or reset. Preserve that distinction when recovering the board.
+After correcting report setup and restoring the scoped input ACL, a
+60-second input-only check passed without a missing-report error. A later
+180-second check received no fresh samples, so connection stability is still
+unqualified. A later read-only servo identity check also timed out, despite
+the operator confirming motor power remains on. The newer ACK-checked
+candidate is staged, but was not promoted over the last verified installed
+binary while servo status is unavailable. No physical motion grant was issued.
 The input-only check detected ZL press/release and thumbstick changes, but
 the initial direction sequence produced only nonpositive axis values and
 an off-center resting X reading. Those observations do not verify all four
@@ -321,9 +361,14 @@ enable motion merely to hide this symptom. Verify the physical thumbstick
 and its calibration in the monitor first. No physical joystick session was
 started during these input checks.
 The [joystick qualification record](evidence/e1-neck-joystick-20261125.json)
-separates the 27 passing native regressions and two Linux ASan transport
+separates the 28 passing native regressions and two Linux ASan transport
 checks from the still-incomplete physical direction qualification. Deployment
 also ran the native ELF joystick simulation and read-only servo status.
+For independent software/transport qualification while hardware is unavailable,
+`moon run scripts/deploy_neck_control.mbtx SOCKET --stage-only` builds the
+candidate and runs simulations and both ASan harnesses without opening the
+servo port or changing the installed binary. Normal deployment still requires
+a successful read-only hardware status check before promotion.
 
 ## Regression evidence and sources
 

@@ -16,8 +16,8 @@
 #endif
 
 // OS I/O only. Calibration, neutral/deadman admission, speeds, goals and
-// fault policy live in MoonBit. Opening/closing this object never sends HID
-// output reports and never opens the servo port.
+// fault policy live in MoonBit. Only a whitelisted input-report/LED setup
+// can be sent to this Joy-Con. This file never opens the servo port.
 typedef struct { int input_fd; int hid_fd; } NeckJoy;
 static char joy_last_error[256];
 MOONBIT_FFI_EXPORT moonbit_bytes_t moonrobo_joy_error(void) {
@@ -107,7 +107,7 @@ MOONBIT_FFI_EXPORT NeckJoy *moonrobo_joy_open(void) {
     for (int i = 0; i < 64; ++i) {
       char path[64], uniq[128] = {0}; struct hidraw_devinfo id = {0};
       snprintf(path, sizeof(path), "/dev/hidraw%d", i);
-      int fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+      int fd = open(path, O_RDWR | O_NONBLOCK | O_CLOEXEC);
       if (fd < 0) continue;
       if (ioctl(fd, HIDIOCGRAWINFO, &id) == 0 && id.bustype == BUS_BLUETOOTH &&
           id.vendor == 0x057e && id.product == 0x2006 &&
@@ -121,6 +121,45 @@ MOONBIT_FFI_EXPORT NeckJoy *moonrobo_joy_open(void) {
 #endif
   if (!moonrobo_joy_valid(j)) joy_destroy(j);
   return j;
+}
+
+MOONBIT_FFI_EXPORT int32_t moonrobo_joy_write_setup(NeckJoy *j, moonbit_bytes_t packet) {
+#ifdef __linux__
+  // No raw HID command API: permit only sensor enable, full input report
+  // mode and one steady player LED. Never permit rumble or SPI writes.
+  static const unsigned char neutral_rumble[8]={0,1,0x40,0x40,0,1,0x40,0x40};
+  if (!moonrobo_joy_valid(j) || Moonbit_array_length(packet)!=12 ||
+      packet[0]!=1 || packet[1]>15 || memcmp(packet+2,neutral_rumble,8)!=0 ||
+      !((packet[10]==0x40 && packet[11]==1) ||
+        (packet[10]==3 && packet[11]==0x30) ||
+        (packet[10]==0x30 && packet[11]==1))) return -1;
+  struct pollfd p={j->hid_fd,POLLOUT,0};
+  if(poll(&p,1,100)<=0 || (p.revents&(POLLERR|POLLHUP|POLLNVAL))) return -1;
+  return write(j->hid_fd,packet,12)==12 ? 0 : -1;
+#else
+  (void)j;(void)packet;return -1;
+#endif
+}
+
+MOONBIT_FFI_EXPORT moonbit_bytes_t moonrobo_joy_setup_reply(NeckJoy *j, moonbit_bytes_t packet) {
+#ifdef __linux__
+  if (moonrobo_joy_write_setup(j,packet)<0) return moonbit_make_bytes(0,0);
+  int64_t deadline=joy_clock()+250;
+  while (joy_clock()<deadline) {
+    struct pollfd p={j->hid_fd,POLLIN,0};
+    int wait=(int)(deadline-joy_clock());
+    if(wait<=0 || poll(&p,1,wait)<=0 || (p.revents&(POLLERR|POLLHUP|POLLNVAL))) break;
+    unsigned char report[128];ssize_t n=read(j->hid_fd,report,sizeof(report));
+    if(n<0 && (errno==EINTR || errno==EAGAIN)) continue;
+    if(n<=0)break;
+    if(n>=15 && report[0]==0x21 && report[14]==packet[10]) {
+      moonbit_bytes_t reply=moonbit_make_bytes((int)n,0);memcpy(reply,report,(size_t)n);return reply;
+    }
+  }
+#else
+  (void)j;(void)packet;
+#endif
+  return moonbit_make_bytes(0,0);
 }
 
 MOONBIT_FFI_EXPORT moonbit_bytes_t moonrobo_joy_read(NeckJoy *j) {
