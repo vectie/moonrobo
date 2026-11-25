@@ -289,6 +289,8 @@ test "raw historical cleanup packet is rejected before audit or serial dispatch"
     run_id: "raw-write-test",
     sequence: 0,
     writes: 0,
+    joystick: None,
+    stick_required: false,
   }
   expect_denied(() => {
     serial.transfer(7, 3, [41, 0, 0, 0, 0, 0, 0, 0, 232, 3], 0, 1000L) |> ignore

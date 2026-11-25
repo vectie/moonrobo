@@ -9,5 +9,5 @@ import {
 supported_targets = "native"
 
 options(
-  "native-stub": [ "serial.c" ],
+  "native-stub": [ "serial.c", "joystick.c" ],
 )

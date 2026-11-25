@@ -36,8 +36,10 @@ async fn main {
       "main.c",
     ),
     (root + "/src/neck_control/serial.c", "serial.c"),
+    (root + "/src/neck_control/joystick.c", "joystick.c"),
     (root + "/.mooncakes/moonbitlang/x/fs/fs_native.c", "fs_native.c"),
     (root + "/tests/neck_serial_transport.c", "transport_test.c"),
+    (root + "/tests/neck_joystick_transport.c", "joystick_test.c"),
   ]
   for (source, name) in files {
     @fs.write_file(stage + "/" + name, @fs.read_file(source))
@@ -72,8 +74,8 @@ async fn main {
   |> ignore
   let base = "/home/elf/moonrobo-neck/neck-control-elf/"
   let sources = [
-    "main.c", "serial.c", "fs_native.c", "runtime.c", "env.c", "sync_io.c", "utf.c",
-    "backtrace.c",
+    "main.c", "serial.c", "joystick.c", "fs_native.c", "runtime.c", "env.c", "sync_io.c",
+    "utf.c", "backtrace.c",
   ]
   let cc = "gcc -O2 -DMOONBIT_TRIAL_DELETION=1 -I" +
     base +
@@ -96,12 +98,38 @@ async fn main {
   )
   @fs.write_file(stage + "/elf-transport-asan.json", transport)
   println(transport)
+  let joystick_sources = [
+    "joystick_test.c", "runtime.c", "env.c", "sync_io.c", "utf.c", "backtrace.c",
+  ]
+  run(
+    "ssh",
+    ssh +
+    [
+      "gcc -O1 -g -fsanitize=address -fno-omit-frame-pointer -I" +
+      base +
+      " " +
+      joystick_sources.map(s => base + s).join(" ") +
+      " -lm -o /home/elf/moonrobo-neck/joystick-test-asan",
+    ],
+  )
+  |> ignore
+  let joystick_test = run(
+    "ssh",
+    ssh + ["/home/elf/moonrobo-neck/joystick-test-asan"],
+  )
+  @fs.write_file(stage + "/elf-joystick-asan.json", joystick_test)
+  println(joystick_test)
   // Hardware stays read-only during deployment. Simulation never opens UART.
   let simulation = run(
     "ssh",
     ssh + ["/home/elf/moonrobo-neck/neck-control.next simulate left 2"],
   )
   @fs.write_file(stage + "/elf-simulation.json", simulation)
+  let joystick_simulation = run(
+    "ssh",
+    ssh + ["/home/elf/moonrobo-neck/neck-control.next simulate joystick 2"],
+  )
+  @fs.write_file(stage + "/elf-joystick-simulation.json", joystick_simulation)
   let status = run(
     "ssh",
     ssh + ["/home/elf/moonrobo-neck/neck-control.next status"],

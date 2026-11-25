@@ -13,6 +13,7 @@
 #include <unistd.h>
 #ifdef __linux__
 #include <termios.h>
+#include <linux/input.h>
 #endif
 
 static char last_error[256];
@@ -54,7 +55,18 @@ MOONBIT_FFI_EXPORT void moonrobo_neck_close(int32_t fd) {
   // Closing never writes goals, toggles torque, or restores a register block.
 }
 
-MOONBIT_FFI_EXPORT moonbit_bytes_t moonrobo_neck_exchange(int32_t fd, moonbit_bytes_t tx, int32_t expected, int64_t expires_at) {
+static int dispatch_input_ok(int fd) {
+#ifdef __linux__
+  if (fd < 0) return 1;
+  unsigned char keys[(KEY_MAX+8)/8] = {0};
+  return ioctl(fd, EVIOCGKEY(sizeof(keys)), keys) >= 0 &&
+    (keys[BTN_TL2/8] & (1u << (BTN_TL2%8))) &&
+    !(keys[BTN_SELECT/8] & (1u << (BTN_SELECT%8)));
+#else
+  return fd < 0;
+#endif
+}
+MOONBIT_FFI_EXPORT moonbit_bytes_t moonrobo_neck_exchange_guarded(int32_t fd, moonbit_bytes_t tx, int32_t expected, int64_t expires_at, int32_t input_fd) {
   unsigned char rx[256]; int used=0, sent=0, length=Moonbit_array_length(tx);
   last_error[0]=0;
   if(fd<0 || expected<6 || expected>256 || length<6 || length>256) {errno=EINVAL;set_error("invalid serial bounds");return moonbit_make_bytes(0,0);}
@@ -64,11 +76,13 @@ MOONBIT_FFI_EXPORT moonbit_bytes_t moonrobo_neck_exchange(int32_t fd, moonbit_by
   int64_t deadline=monotonic_ms()+100;
   while(sent<length) {
     if(expires_at>0 && monotonic_ms()>expires_at) break;
+    if(input_fd>=0 && (interrupted || !dispatch_input_ok(input_fd))) break;
     int wait=(int)(deadline-monotonic_ms()); if(wait<=0) break;
     struct pollfd p={fd,POLLOUT,0}; int n=poll(&p,1,wait);
     if(n<0&&errno==EINTR) continue;
     if(n<=0 || (p.revents&(POLLERR|POLLHUP|POLLNVAL))) break;
     if(expires_at>0 && monotonic_ms()>expires_at) break;
+    if(input_fd>=0 && (interrupted || !dispatch_input_ok(input_fd))) break;
     ssize_t wrote=write(fd,tx+sent,(size_t)(length-sent));
     if(wrote>0) sent+=(int)wrote; else if(errno!=EAGAIN&&errno!=EINTR) break;
   }
@@ -83,6 +97,10 @@ MOONBIT_FFI_EXPORT moonbit_bytes_t moonrobo_neck_exchange(int32_t fd, moonbit_by
   }
   if(used!=expected) {errno=ETIMEDOUT;set_error("serial response incomplete; no retry");}
   moonbit_bytes_t result=moonbit_make_bytes(used,0);memcpy(result,rx,(size_t)used);return result;
+}
+
+MOONBIT_FFI_EXPORT moonbit_bytes_t moonrobo_neck_exchange(int32_t fd, moonbit_bytes_t tx, int32_t expected, int64_t expires_at) {
+  return moonrobo_neck_exchange_guarded(fd, tx, expected, expires_at, -1);
 }
 
 static int append_all(int fd,const unsigned char *data,size_t length) {

@@ -12,6 +12,8 @@ pub fn epoch_ms() -> Int64
 
 pub fn execute(Action, @core.RunReceipt?, String) -> Report raise
 
+pub fn monitor_joystick(Int) -> Unit raise
+
 pub fn profile() -> @core.RobotProfile
 
 pub fn simulate(Action) -> Simulation raise
@@ -33,6 +35,7 @@ pub(all) enum Action {
   Jog(Direction, Int)
   Center
   Release
+  Joystick(Int)
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum Direction {

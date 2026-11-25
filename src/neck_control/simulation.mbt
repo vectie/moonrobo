@@ -2,12 +2,16 @@
 priv struct SimBus {
   registers : Map[Int32, FixedArray[Byte]]
   writes : Array[(Int32, Array[Byte])]
+  write_times : Array[Int64]
   events : Array[String]
   mut clock : Int64
   fail_audit : Bool
   audit_delay_ms : Int32
   fail_reply_after_write : Int32
   reset_inactive_after_write : Int32
+  samples : Array[StickSample]
+  mut stick_index : Int32
+  stick_delay_ms : Int32
 }
 
 ///|
@@ -16,6 +20,8 @@ fn SimBus::new(
   audit_delay_ms~ : Int32 = 0,
   fail_reply_after_write~ : Int32 = -1,
   reset_inactive_after_write~ : Int32 = -1,
+  samples~ : Array[StickSample] = [],
+  stick_delay_ms~ : Int32 = 0,
 ) -> SimBus {
   let registers = Map([])
   for
@@ -50,13 +56,39 @@ fn SimBus::new(
   {
     registers,
     writes: [],
+    write_times: [],
     events: [],
     clock: 1000L,
     fail_audit,
     audit_delay_ms,
     fail_reply_after_write,
     reset_inactive_after_write,
+    samples,
+    stick_index: 0,
+    stick_delay_ms,
   }
+}
+
+///|
+impl Bus for SimBus with fn stick(self) {
+  self.clock += self.stick_delay_ms.to_int64()
+  let sample = self.samples
+    .get(self.stick_index)
+    .unwrap_or({ captured_ms: -1L, x: 0, y: 0, deadman: false, exit: false, })
+  self.stick_index += 1
+  {
+    ..sample,
+    captured_ms: if sample.captured_ms == -1L {
+      self.clock
+    } else {
+      sample.captured_ms
+    },
+  }
+}
+
+///|
+impl Bus for SimBus with fn require_stick(_) {
+  ()
 }
 
 ///|
@@ -101,6 +133,7 @@ impl Bus for SimBus with fn transfer(
   } else {
     let address = params[0].to_int()
     self.writes.push((id, params.copy()))
+    self.write_times.push(self.clock)
     for i in 1..<params.length() {
       registers[address + i - 1] = params[i]
     }
@@ -131,7 +164,18 @@ pub(all) struct Simulation {
 
 ///|
 pub fn simulate(action : Action) -> Simulation raise {
-  let bus = SimBus::new()
+  let samples : Array[StickSample] = []
+  if action is Joystick(_) {
+    samples.push({ captured_ms: -1L, x: 0, y: 0, deadman: false, exit: false, })
+    samples.push({ captured_ms: -1L, x: 0, y: 0, deadman: true, exit: false, })
+    for (x, y) in [(-1000, 0), (0, -1000), (1000, 0), (0, 1000)] {
+      for _ in 0..<5 {
+        samples.push({ captured_ms: -1L, x, y, deadman: true, exit: false, })
+      }
+    }
+    samples.push({ captured_ms: -1L, x: 0, y: 0, deadman: false, exit: false, })
+  }
+  let bus = SimBus::new(samples~)
   let report = run_action(bus, action)
   {
     simulated: true,

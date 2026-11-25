@@ -69,3 +69,6 @@ You can browse and install extra skills here:
   hardware verification; physical movement must retain the user's authorized
   scope and the existing MoonRobo execution gate. Do not request the same
   authorization again when it is already present in the session.
+- Joystick sessions use the commissioned left Joy-Con, neutral-before-arm,
+  held ZL, fresh input and bounded one-tick steps. Only the input-only monitor
+  may reopen input automatically; a physical session must fault on input loss.

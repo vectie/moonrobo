@@ -19,6 +19,7 @@ pub(all) enum Action {
   Jog(Direction, Int32)
   Center
   Release
+  Joystick(Int32)
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -299,6 +300,7 @@ pub fn validate_receipt(
   action : Action,
   now_ms : Int64,
 ) -> Unit raise NeckError {
+  validate_action(action)
   guard @utf8.encode(receipt.intent.intent_id).length() > 0 &&
     @utf8.encode(receipt.intent.intent_id).length() <= 80 else {
     raise Rejected("Intent ID length is invalid for durable replay protection")
@@ -323,5 +325,14 @@ pub fn validate_receipt(
   guard receipt.intent.parameters.get("action") ==
     Some(Json(action).stringify()) else {
     raise Rejected("Receipt action does not match this exact request")
+  }
+}
+
+///|
+fn validate_action(action : Action) -> Unit raise NeckError {
+  if action is Joystick(seconds) {
+    guard seconds >= 1 && seconds <= 300 else {
+      raise Rejected("Joystick sessions must last 1..300 seconds")
+    }
   }
 }

@@ -15,6 +15,7 @@ extern int32_t moonrobo_neck_open(moonbit_bytes_t);
 extern void moonrobo_neck_close(int32_t);
 extern int64_t moonrobo_neck_clock(void);
 extern moonbit_bytes_t moonrobo_neck_exchange(int32_t,moonbit_bytes_t,int32_t,int64_t);
+extern moonbit_bytes_t moonrobo_neck_exchange_guarded(int32_t,moonbit_bytes_t,int32_t,int64_t,int32_t);
 static moonbit_bytes_t bytes(const void *p,int n) {moonbit_bytes_t b=moonbit_make_bytes(n,0);memcpy(b,p,n);return b;}
 static int failures;
 #define CHECK(condition,name) do {if(!(condition)){fprintf(stderr,"FAIL %s\n",name);failures++;}}while(0)
@@ -50,6 +51,9 @@ int main(void) {
   moonbit_bytes_t stale=moonrobo_neck_exchange(fd,tx,8,moonrobo_neck_clock()-1);
   CHECK(Moonbit_array_length(stale)==0,"stale dispatch rejected");moonbit_decref(stale);
   struct pollfd p={master,POLLIN,0};CHECK(poll(&p,1,30)==0,"stale dispatch sent zero bytes");
+  moonbit_bytes_t interlocked=moonrobo_neck_exchange_guarded(fd,tx,8,moonrobo_neck_clock()+150,master);
+  CHECK(Moonbit_array_length(interlocked)==0,"unavailable input interlock rejects dispatch");moonbit_decref(interlocked);
+  CHECK(poll(&p,1,30)==0,"input interlock failure sent zero bytes");
   moonbit_bytes_t invalid=moonrobo_neck_exchange(fd,tx,999,0);
   CHECK(Moonbit_array_length(invalid)==0,"invalid response bound rejected");moonbit_decref(invalid);
   moonrobo_neck_close(fd);

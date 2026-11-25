@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-25",
+  "robot": "noetix-e1-neck",
+  "host": "elf@192.168.2.192",
+  "implementation": "MoonBit neck state machine with Linux input and serial FFI",
+  "controller": {
+    "name": "Joy-Con (L)",
+    "bluetooth_address": "98:B6:E9:20:21:41",
+    "vendor_id": "057e",
+    "product_id": "2006",
+    "input": "calibrated evdev axes and buttons plus fresh periodic hidraw heartbeat"
+  },
+  "validation": {
+    "moonbit_native_tests": { "passed": 27, "failed": 0 },
+    "linux_serial_asan": { "failures": 0, "physical_device_opened": false },
+    "linux_joystick_asan": { "failures": 0, "physical_device_opened": false },
+    "native_elf_joystick_simulation": { "simulated": true, "duration_seconds": 2 },
+    "hardware_deployment_audit": { "cumulative_read_packets": 40, "write_packets": 0 },
+    "physical_joystick_session_started": false,
+    "physical_neck_motion_tested": false
+  },
+  "installed_binary": {
+    "path": "/home/elf/moonrobo-neck/neck-control",
+    "sha256": "41b53b6f11af3599bc04df71a55125e8b3b9b2ee48146809f4ceab92e09a84cb"
+  },
+  "observed_input": {
+    "fresh_reports_received_after_manual_reconnect": true,
+    "zl_press_and_release_received": true,
+    "thumbstick_changes_received": true,
+    "all_four_directions_verified": false,
+    "initial_sequence_x_range": [-1000, 0],
+    "initial_sequence_y_range": [-1000, 0],
+    "resting_x_was_outside_deadzone": true,
+    "notes": "Input-only recording showed off-center X and no positive values during the requested direction sequence. The operator initially moved the whole Joy-Con, then tested its thumbstick. A one-direction held input check is still required. Do not treat software simulation as physical direction qualification."
+  },
+  "host_changes": {
+    "bluetooth_enabled": true,
+    "joycond_temporarily_stopped_then_restored": true,
+    "joycond_currently_active": true,
+    "joycond_disabled_permanently": false,
+    "udev_rule": "/etc/udev/rules.d/99-zz-moonrobo-neck-joycon.rules"
+  },
+  "limitations": [
+    "BlueZ reported a connected link without HID reports; manual SYNC/reconnect restored streaming.",
+    "Physical sessions stop and retain the fault marker on input loss. Only the input-only monitor may reopen input.",
+    "No ready motion receipt was issued and no actuation was requested for this commissioning check.",
+    "Physical thumbstick direction/calibration qualification remains incomplete."
+  ]
+}

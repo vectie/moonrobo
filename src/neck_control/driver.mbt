@@ -4,6 +4,8 @@ priv trait Bus {
   fn now(Self) -> Int64
   fn wait(Self, Int32) -> Unit
   fn event(Self, String, Json) -> Unit raise
+  fn stick(Self) -> StickSample raise
+  fn require_stick(Self) -> Unit
 }
 
 ///|
@@ -13,6 +15,18 @@ priv struct Serial {
   run_id : String
   mut sequence : Int32
   mut writes : Int32
+  joystick : JoyDevice?
+  mut stick_required : Bool
+}
+
+///|
+impl Bus for Serial with fn stick(self) {
+  read_stick(self.joystick.unwrap())
+}
+
+///|
+impl Bus for Serial with fn require_stick(self) {
+  self.stick_required = true
 }
 
 ///|
@@ -71,6 +85,22 @@ impl Bus for Serial with fn transfer(
       raise Rejected("Raw write rejected by transport whitelist")
     }
   }
+  let input_expires = if instruction == 3 && self.stick_required {
+    let sample = read_stick(self.joystick.unwrap())
+    guard sample.deadman && !sample.exit else {
+      raise Rejected(
+        "Joystick released during dispatch; session stopped without a cleanup write",
+      )
+    }
+    sample.captured_ms + 150L
+  } else {
+    0L
+  }
+  let expires_at = if input_expires > 0L {
+    Int64::min(expires_at, input_expires)
+  } else {
+    expires_at
+  }
   let tx = request_packet(id, instruction, params)
   self.event("tx-before-send", {
     "id": Json(id),
@@ -86,7 +116,17 @@ impl Bus for Serial with fn transfer(
   guard expires_at == 0L || clock_ms() <= expires_at else {
     raise Rejected("Feedback expired while persisting command audit")
   }
-  let raw = serial_exchange(self.fd, tx, count + 6, expires_at)
+  let raw = if instruction == 3 && self.stick_required {
+    serial_exchange_guarded(
+      self.fd,
+      tx,
+      count + 6,
+      expires_at,
+      joy_event_fd(self.joystick.unwrap()),
+    )
+  } else {
+    serial_exchange(self.fd, tx, count + 6, expires_at)
+  }
   self.event("rx", {
     "id": Json(id),
     "packet_hex": Json(@hex.encode(raw)),
@@ -106,7 +146,12 @@ fn[B : Bus] observe(bus : B, id : Int32) -> Feedback raise {
 }
 
 ///|
-fn[B : Bus] apply(bus : B, guard_state : Guard, command : Write) -> Unit raise {
+fn[B : Bus] apply(
+  bus : B,
+  guard_state : Guard,
+  command : Write,
+  input_deadline~ : Int64 = 0L,
+) -> Unit raise {
   if interrupted() != 0 && command != ReleaseTorque {
     raise Rejected("Operator interrupt; no more position writes")
   }
@@ -124,6 +169,8 @@ fn[B : Bus] apply(bus : B, guard_state : Guard, command : Write) -> Unit raise {
     0,
     if command == ReleaseTorque {
       0L
+    } else if input_deadline > 0L {
+      Int64::min(f.captured_ms + 150L, input_deadline)
     } else {
       f.captured_ms + 150L
     },
@@ -152,6 +199,9 @@ pub(all) struct Report {
 ///|
 fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
   bus.event("request", Json(action))
+  if action is Joystick(seconds) {
+    return run_joystick(bus, seconds)
+  }
   if action == Release {
     // Emergency release must not depend on a successful identity/telemetry
     // read from an alarming motor. These are the last WRITE operations.
@@ -272,6 +322,8 @@ pub fn execute(
     run_id: "\{epoch_ms()}-\{clock_ms()}",
     sequence: 0,
     writes: 0,
+    joystick: None,
+    stick_required: false,
   }
   audit.event("request-received", Json(action))
   try {
@@ -296,6 +348,8 @@ pub fn execute(
     )
   }
   let device = "/dev/serial/by-id/usb-1a86_USB_Single_Serial_5AB0182917-if00"
+  let joystick = if action is Joystick(_) { Some(open_stick()) } else { None }
+  defer (if joystick is Some(stick) { joy_close(stick) })
   let fd = serial_open(@utf8.encode(device))
   guard fd >= 0 else {
     let reason = @utf8.decode_lossy(native_error())
@@ -309,6 +363,8 @@ pub fn execute(
     run_id: audit.run_id,
     sequence: audit.sequence,
     writes: 0,
+    joystick,
+    stick_required: false,
   }
   bus.event("opened-exclusive", {
     "device": Json(device),

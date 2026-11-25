@@ -203,12 +203,127 @@ intent/receipt, and start with a read-only observation. Keep consumed-intent
 journal files; they prevent replay. There is no automatic acknowledgement or
 automatic large-angle recovery command.
 
-The CLI actively monitors only while a command is running. After it exits,
+The CLI actively monitors only while a command or joystick session is running. After it exits,
 the servo holds its last bounded target using its own firmware. This is not a
 continuous hardware watchdog or a safety-rated emergency stop. Software
 cannot guarantee zero physical movement after power loss or torque release.
 Use a supported/balanced mount, suitable mechanical stops and a reachable
 power disconnect for physical testing.
+
+## Left Joy-Con neck control
+
+The paired left Joy-Con is `98:B6:E9:20:21:41` (Bluetooth, Nintendo
+`057e:2006`). The right Joy-Con is ignored. The neck input path never launches
+the old XLeRobot arm/wheel controller. In particular, that old example's
+startup `move_to_zero_position` is not used. Its joystick was assigned to
+arm translation and its left directional buttons to the head; the new path
+assigns the **left analog stick directly to neck pan and tilt**.
+
+| Input | Behavior |
+| --- | --- |
+| Center stick, release ZL | Make input eligible to arm |
+| Hold ZL while centered | Arm; first arming prepares and latches both measured poses |
+| Move stick while holding ZL | X right = pan right; Y down = tilt down |
+| Center stick or release ZL | Stop generating steps; hold the last target |
+| Minus | End the session, with no return-to-center or torque release |
+| Disconnect, stale input, stalled loop or servo fault | End and latch the fault; no automatic resume |
+
+The stick has a 20% center deadzone. Outside it, requested speed scales from
+1 to 20 encoder ticks/second (at most about 1.76 degrees/second). Each axis
+still advances at most one tick per 50 ms. Diagonal input is supported, with
+both axes checked. Outward velocity stops at the existing fixed bounds:
+pan 1870–1984, tilt 1990–2104. It cannot shift the envelope. There is no gyro
+control, automatic centering, full-angle mode or queued destination.
+
+Startup with ZL held or the stick deflected cannot arm. After releasing ZL
+with the stick deflected, center it with ZL released before pressing ZL again.
+Every session lasts at most 300 seconds and requires an exact
+`Joystick(seconds)` execution receipt through the same MoonRobo gate. A
+previous Jog or Hold receipt cannot authorize joystick control. The receipt
+must be fresh when opening the session; the explicitly approved duration
+bounds subsequent input. One-use intent journals and the persistent crash
+marker cover the whole session, including idle time. Reconnecting a Joy-Con
+does not restart a session or clear a marker.
+
+The Linux input layer reads calibrated ABS_X/ABS_Y and ZL/Minus from the
+physical evdev device, verified by its vendor/product and Bluetooth MAC,
+excluding the separate IMU node. It also requires a newly received periodic
+full HID report, discarding any pre-existing backlog first. A connected flag
+or unchanged evdev state is not proof of a live controller. The reader uses
+read-only descriptors and sends no HID configuration/output reports.
+Fresh input and motor feedback each have a 150 ms maximum age. Input age
+and feedback age bound dispatch even after audit persistence. The native
+serial boundary checks ZL, Minus and device presence again immediately
+before sending a guarded write. If release races a pending write, the
+operation may terminate with a fault instead of continuing the session;
+there is no retry, cleanup target or automatic re-arm.
+
+Releasing ZL stops **new** goals, not physical motion instantaneously. The
+servo may finish tracking its last small target. This is not a hardware
+emergency stop, and it deliberately keeps holding torque rather than
+dropping the camera.
+
+Read-only input check (never opens the servo adapter):
+
+```sh
+/home/elf/moonrobo-neck/neck-control joystick-monitor 30
+```
+
+Motion-free simulation and exact session planning:
+
+```sh
+moon run cmd/neck_control --target native -- simulate joystick 120
+moon run cmd/neck_control --target native -- plan joystick 120
+```
+
+Simulation demonstrates left/up/right/down input and trigger release using
+the same MoonBit loop. `armed_input` in the monitor refers only to input
+admission, not energized motors. Submit the plan through the existing
+evaluation/dry-run/approval workflow, then use `execute RECEIPT AUDIT` as
+above. There is no unrestricted joystick command that bypasses the receipt.
+The monitor can wait for a sleeping or disconnected controller and reopen
+its read-only descriptors. Every such reopen resets its input arming state.
+This behavior is confined to the monitor: physical execution never reconnects
+or retries. The first live sample includes the kernel axis values and ranges
+for calibration diagnosis, and subsequent samples include a periodic
+heartbeat even if the stick is unchanged.
+
+ELF setup: Bluetooth must be powered on and unblocked. The commissioned
+controllers are already paired/trusted. Wake the left one with L. If needed,
+hold the small SYNC button on the rail until its LEDs flash, then reconnect
+to the saved device. With the original `joycond` service running, hold
+**L + ZL together** to select the left Joy-Con as a single controller; the
+service also manages its player LEDs. This is distinct from Bluetooth pairing.
+See the [joycond usage instructions](https://github.com/DanielOgorchock/joycond#usage).
+The service was temporarily stopped while isolating input problems, then
+restored. It does not run the robot arm or wheel controller. The neck reader
+uses the physical controller's identity rather than a combined virtual pad.
+
+Install `config/99-zz-moonrobo-neck-joycon.rules` in `/etc/udev/rules.d/`,
+reload rules and trigger the left Joy-Con input device. This gives group
+`elf` access only to that controller, rather than adding the user to a group
+that can read every keyboard. Existing system HID permissions must also
+allow the ELF user to read that controller's hidraw node. Device numbers
+such as `event8` and `hidraw1` are not assumed by the controller.
+
+During commissioning on 2026-11-25, BlueZ twice reported a connected
+controller while no HID reports arrived; the kernel also logged LED request
+timeouts and dropped IMU reports. A manual SYNC/reconnect restored reports.
+USB runtime autosuspend was checked and the Bluetooth adapter was already
+set to `on`/`active`; it was not changed as a speculative fix. Adapter power
+was cycled to clear a stale connection. The original `joycond` service was
+restored to test its documented L + ZL single-controller selection.
+The input-only check detected ZL press/release and thumbstick changes, but
+the initial direction sequence produced only nonpositive axis values and
+an off-center resting X reading. Those observations do not verify all four
+directions. Do not widen the deadzone, learn a new neutral at startup, or
+enable motion merely to hide this symptom. Verify the physical thumbstick
+and its calibration in the monitor first. No physical joystick session was
+started during these input checks.
+The [joystick qualification record](evidence/e1-neck-joystick-20261125.json)
+separates the 27 passing native regressions and two Linux ASan transport
+checks from the still-incomplete physical direction qualification. Deployment
+also ran the native ELF joystick simulation and read-only servo status.
 
 ## Regression evidence and sources
 

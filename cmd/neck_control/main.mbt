@@ -5,6 +5,7 @@ fn action_from_args(args : Array[String]) -> @neck.Action raise {
     "hold" => Hold
     "center" => Center
     "release" => Release
+    "joystick" => Joystick(@string.parse_int(args.get(3).unwrap_or("120")))
     "left" | "up" | "right" | "down" => {
       let degrees = @string.parse_int(args.get(3).unwrap_or("1"))
       let direction = match name {
@@ -15,12 +16,13 @@ fn action_from_args(args : Array[String]) -> @neck.Action raise {
       }
       Jog(direction, degrees)
     }
-    _ => abort("Expected hold, center, release, left, up, right, or down")
+    _ =>
+      abort("Expected hold, center, release, left, up, right, down or joystick")
   }
 }
 
 ///|
-fn main raise {
+fn run_cli() -> Unit raise {
   let args = @env.args()
   let command = args.get(1).unwrap_or("status")
   match command {
@@ -30,6 +32,8 @@ fn main raise {
         .unwrap_or("/home/elf/moonrobo-neck/neck-audit.jsonl")
       println(Json(@neck.execute(Status, None, log)).stringify(indent=2))
     }
+    "joystick-monitor" =>
+      @neck.monitor_joystick(@string.parse_int(args.get(2).unwrap_or("30")))
     "simulate" =>
       println(Json(@neck.simulate(action_from_args(args))).stringify(indent=2))
     "plan" => {
@@ -71,7 +75,20 @@ fn main raise {
     }
     _ =>
       abort(
-        "Usage: neck_control status [AUDIT] | simulate|plan DIRECTION [1..5] | execute RECEIPT AUDIT",
+        "Usage: neck_control status [AUDIT] | joystick-monitor [SECONDS] | simulate|plan DIRECTION [1..5] | simulate|plan joystick [1..300 seconds] | execute RECEIPT AUDIT",
       )
   }
 }
+
+///|
+fn main {
+  run_cli() catch {
+    err => {
+      println("Neck controller stopped: \{Repr(err)}")
+      exit_process(1)
+    }
+  }
+}
+
+///|
+extern "c" fn exit_process(code : Int32) -> Unit = "exit"
