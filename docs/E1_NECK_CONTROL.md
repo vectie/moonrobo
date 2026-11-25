@@ -370,6 +370,28 @@ candidate and runs simulations and both ASan harnesses without opening the
 servo port or changing the installed binary. Normal deployment still requires
 a successful read-only hardware status check before promotion.
 
+### Recovery after the approved ELF restart
+
+The operator authorized restarting ELF on 2026-11-25. Filesystem sync
+completed, but `/sbin/reboot -f` also entered uninterruptible sleep. A
+privileged kernel emergency restart then recovered the board; this follows
+the kernel's [SysRq restart mechanism](https://docs.kernel.org/admin-guide/sysrq.html).
+The boot ID changed from `dc24ab1b-ae5f-4a3a-844f-c2900a0c2fa9` to
+`50d0df1e-349a-4215-88e7-5bbd035a7303`. The blocked daemon/reset processes
+were gone, `joycond` was disabled/inactive, and initial load fell from about
+11 to 0.08. Wi-Fi returned at the existing address without reconfiguration.
+
+Read-only servo checks recovered immediately: pan position/goal 1927/1927,
+tilt 2052/2047, both torque enabled, speed 20, acceleration 3 and torque limit
+300. No position, profile or torque writes were sent. The ACK-checked
+candidate was then deployed through the normal verification path; both ASan
+harnesses and native simulations passed, and its audit contained 49
+cumulative READ packets and zero WRITE packets. The installed binary SHA256
+is `a044ac56959ff491afab730d4682f8e0c7409e3cbc4be6681b3b1a94ad2c20f5`.
+The controller does not auto-start a physical session after reboot. A fresh
+Joy-Con connection/stream check is still required before calling Bluetooth
+reliable, and the previously confirmed neutral offset must be remeasured.
+
 ## Regression evidence and sources
 
 The [2026-11-25 qualification record](evidence/e1-neck-control-20261125.json)
