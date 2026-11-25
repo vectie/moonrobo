@@ -80,6 +80,7 @@ pub(all) struct Report {
   action : Action
   completed : Bool
   holding : Bool
+  target_reached : Bool?
   before : Array[Feedback]
   after : Array[Feedback]
 }

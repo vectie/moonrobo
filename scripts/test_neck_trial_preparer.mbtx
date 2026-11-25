@@ -54,13 +54,20 @@ async fn main {
       (
         Json([Json("Jog"), Json("Right"), Json(1)]),
         true,
-        "5",
+        "6",
         "Unknown neck profile",
       ),
       (
         Json([Json("Jog"), Json("Left"), Json(10)]),
         false,
         "4",
+        "explicit authorization",
+      ),
+      (Json([Json("Jog"), Json("Right"), Json(31)]), true, "5", "1..30"),
+      (
+        Json([Json("Jog"), Json("Right"), Json(30)]),
+        false,
+        "5",
         "explicit authorization",
       ),
     ] {
@@ -70,13 +77,18 @@ async fn main {
       "neck_profile_version": Json(version),
       "servo_speed_limit": "50",
       "neck_travel_limit_degrees": Json(
-        if version == "3" || version == "4" {
+        if version == "5" {
+          "30"
+        } else if version == "3" || version == "4" {
           "10"
         } else {
           "5"
         },
       ),
       "raw_feedback_velocity_limit": "100",
+      "completion_policy": "stable-hold-with-accuracy",
+      "target_accuracy_ticks": "11",
+      "tracking_error_limit_ticks": "16",
     }
     reject_before_ssh(j, expected)
   }
@@ -91,7 +103,29 @@ async fn main {
     },
     "velocity limit 100",
   )
+  for
+    (key, wrong) in [
+      ("neck_travel_limit_degrees", "10"),
+      ("raw_feedback_velocity_limit", "101"),
+      ("completion_policy", "ignore-accuracy"),
+      ("target_accuracy_ticks", "16"),
+      ("tracking_error_limit_ticks", "17"),
+    ] {
+    let fields : Map[String, Json] = {
+      "operator_authorized": true,
+      "action": ["Jog", "Left", 30],
+      "neck_profile_version": "5",
+      "neck_travel_limit_degrees": "30",
+      "servo_speed_limit": "50",
+      "raw_feedback_velocity_limit": "100",
+      "completion_policy": "stable-hold-with-accuracy",
+      "target_accuracy_ticks": "11",
+      "tracking_error_limit_ticks": "16",
+    }
+    fields[key] = Json(wrong)
+    reject_before_ssh(Json(fields), "Profile 5 authorization")
+  }
   println(
-    "Eleven bounded-action, version and authorization cases rejected before SSH",
+    "Eighteen bounded-action, version and authorization cases rejected before SSH",
   )
 }

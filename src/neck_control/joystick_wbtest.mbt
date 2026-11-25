@@ -176,18 +176,18 @@ test "joystick all directions use one tick steps and release stops without recen
 ///|
 test "diagonal motion stops at absolute bounds no catch-up or target replay" {
   let samples = [stick(), stick(deadman=true)]
-  for _ in 0..<200 {
+  for _ in 0..<400 {
     samples.push(stick(x=1000, y=1000, deadman=true))
   }
   samples.push(stick(exit=true))
   let bus = SimBus::new(samples~)
-  run_action(bus, Joystick(20)) |> ignore
+  run_action(bus, Joystick(40)) |> ignore
   for id in [7, 8] {
     let f = observe(bus, id)
-    assert_eq(f.goal, home(id) + 114)
+    assert_eq(f.goal, home(id) + 341)
     assert_true(inside(id, f.goal))
   }
-  assert_eq(bus.writes.length(), 238)
+  assert_eq(bus.writes.length(), 692)
   let last_goal : Map[Int32, Int32] = Map([])
   let last_time : Map[Int32, Int64] = Map([])
   for i in 0..<bus.writes.length() {

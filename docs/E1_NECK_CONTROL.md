@@ -10,12 +10,27 @@ The one-off movement, recovery and disable helpers were archived as
 non-executable text and replaced with failing entry points, so old script
 paths cannot silently bypass the new controller.
 
-Current deployment state: the operator explicitly approved **profile v4**, with
-±10° travel and raw feedback velocity limit **100**. ELF runs that reviewed
-profile, with motor speed command 50 and torque 300 unchanged. Live ten-degree
-targets visibly moved the camera in all four directions. Left/right/down
-completed; up moved about 9° but failed the unchanged direct settling tolerance.
-That distinction is retained in the evidence rather than called a full pass.
+Current test profile is **v5**, after the operator requested 30° tests and
+confirmed “Checked—the 30° arc is clear”. It retains the approved raw feedback
+velocity limit **100**, motor speed command 50 and torque 300. Its fixed
+software bounds are pan 1586–2268 and tilt 1706–2388, around the unchanged
+saved centers. Each direct movement derives its step budget from validated
+endpoints; the former 120-step cap could not finish a 341-step, 30° target.
+
+`Report.target_reached` separates strict target accuracy from safe holding.
+The accuracy tolerance remains 11 encoder ticks and runtime tracking guard
+remains 16. Direct commands still require three stationary in-tolerance
+samples, or after the full forty-poll settling window, five consecutive
+identical stationary positions within the tracking guard. The latter finishes
+holding with `target_reached: false` when accuracy is missed. Moving or
+oscillating residuals, stale feedback and all runtime guard failures still
+latch a fault. This reports a static load offset; it does not correct the
+motor's physical accuracy or tune its EEPROM/PID.
+
+Historical profile-v4 ten-degree targets visibly moved the camera in all
+four directions. Left/right/down completed; up moved about 9° but failed the
+then-required direct settling tolerance. That failed result is preserved in
+the profile-v4 evidence.
 
 The specific failure that occurred on 2026-11-25 is forbidden by the new API
 and regression tests. This is a bounded software guarantee, not a claim that
@@ -75,7 +90,8 @@ with unsuffixed feedback keys; simply enabling that setting is insufficient.
 | Pan | ID 7; positive counts turn the camera right, verified by leftward scene shift in the later small live test |
 | Tilt | ID 8; positive counts turn the camera down, verified by upward scene shift in the later small live test |
 | Saved center | Pan 1927; tilt 2047 |
-| Reviewed profile-v3/v4 software bounds | Pan 1813–2041; tilt 1933–2161 (approximately ±10°) |
+| Current reviewed profile-v5 software bounds | Pan 1586–2268; tilt 1706–2388 (approximately ±30°) |
+| Historical profile-v3/v4 bounds | Pan 1813–2041; tilt 1933–2161 (approximately ±10°) |
 | Hardware EEPROM limits | Pan 933–3043; tilt 1040–3204 |
 | Raw homing-offset fingerprint | Pan 3948; tilt 1882 |
 
@@ -243,7 +259,7 @@ from 1 to 20 encoder ticks/second (about 1.76 degrees/second at full input).
 This bounds target changes, not instantaneous physical motor velocity. Each axis
 still advances at most one tick per 50 ms. Diagonal input is supported, with
 both axes checked. Outward velocity stops at the existing fixed bounds:
-pan 1813–2041, tilt 1933–2161 in reviewed profile v3. It cannot shift the envelope. There is no gyro
+pan 1586–2268, tilt 1706–2388 in reviewed profile v5. It cannot shift the envelope. There is no gyro
 control, automatic centering, full-angle mode or queued destination.
 
 Startup with ZL held or the stick deflected cannot arm. After releasing ZL
@@ -782,8 +798,8 @@ trial. A preflight mismatch was corrected: Status had reused the 11-tick direct
 completion tolerance, although checked startup already permits a stable bounded
 old-goal error up to 16 ticks. Status now reuses the actual startup authorization
 check, without sending a command, and still requires velocity ≤3, the known
-holding profile and all electrical/thermal/freshness checks. Direct completion
-still requires error ≤11 and velocity ≤3. A regression accepts the observed
+holding profile and all electrical/thermal/freshness checks. At that revision,
+direct completion still required error ≤11 and velocity ≤3. A regression accepted the observed
 stable 12-tick preflight, rejects >16 and unhealthy feedback, and proves status
 sends no writes. This reports preparation eligibility without relabeling the
 failed up test as successful. Final validation passes 47 native neck tests,
@@ -791,12 +807,45 @@ both Linux ASan fixtures and four-READ/zero-WRITE deployment verification.
 
 After that operator review, the up-test fault was archived under its intent
 and a fresh exact `Buttons(300)` receipt opened the five-minute manual window.
-The [session-start record](evidence/e1-neck-profile4-buttons-20261125.json) is
-a timestamped start snapshot, not a final physical button qualification;
-inspect the canonical audit for the eventual result. The viewer remains at
-`http://127.0.0.1:4195/`. Release all direction buttons and ZL, hold ZL alone
-to arm, then hold one direction button for a visible turn. Short taps request
-fine increments. Minus ends the session; there is no automatic restart.
+The [session record](evidence/e1-neck-profile4-buttons-20261125.json) now includes
+the final audit result: the five-minute window expired without arming or
+sending a motor write. It completed cleanly with `holding: false`; it does
+not qualify physical button control. The viewer remains at
+`http://127.0.0.1:4195/`. Future button sessions still require released buttons
+and ZL before arming, and an exact fresh receipt. There is no automatic restart.
+
+### Reviewed thirty-degree tests: profile v5
+
+The operator requested 30° tests and confirmed the wider arc was clear. Profile
+v5 binds that travel envelope, the existing raw velocity limit 100, speed 50,
+and the explicit completion/accuracy policy in each receipt. Older-profile
+receipts cannot authorize it. All four physical tests used fresh exact-action
+receipts and the live D455 feed, in left/right/up/down order.
+
+| Direction | Actual encoder rotation | Final target error | Strict accuracy reached |
+| --- | --- | --- | --- |
+| Left | −29.18° | 9 ticks | Yes |
+| Right | +29.53° | 5 ticks | Yes |
+| Up | −29.18° | 9 ticks | Yes |
+| Down | +29.53° | 5 ticks | Yes |
+
+Each test sent 341 one-tick steps, with minimum observed spacing 59–60 ms.
+All finished holding without a fault or later cleanup writes. Camera frames
+showed the matching turns. Final measured pan/tilt were 1948/2056, against
+goals 1949/2061; this is near the starting view, not an exact recenter command.
+The audit's lowest reported supply sample was 10.5 V, exactly the existing
+lower limit, and the highest reported temperature was 52°C. These samples
+are retained; successful trials do not establish supply stability or qualify
+continuous operation throughout the enlarged workspace.
+
+Validation passes 51 native neck tests, including the public accuracy report,
+all four 341-step simulations, static offsets, oscillation and the unchanged
+tracking fault. Eighteen invalid trial-source cases fail before SSH. Both
+Linux ASan transport fixtures pass; deployment verification sent four READs
+and zero WRITEs. See the [v5 evidence](evidence/e1-neck-profile5-live-20261125.json).
+Video, raw audit and before/during/after frames remain in the local artifact
+directory recorded there. This qualifies direct commanded movement; the
+earlier unarmed button window does not qualify live operator button control.
 
 To qualify a five-minute untouched-neutral recording, save stdout from
 `neck-control joystick-monitor 300`, then run

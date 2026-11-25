@@ -141,10 +141,10 @@ async fn main {
   @fs.write_file(stage + "/elf-buttons-simulation.json", buttons_simulation)
   let ten_degree_simulation = run(
     "ssh",
-    ssh + ["/home/elf/moonrobo-neck/neck-control.next simulate right 10"],
+    ssh + ["/home/elf/moonrobo-neck/neck-control.next simulate right 30"],
   )
   @fs.write_file(
-    stage + "/elf-ten-degree-simulation.json",
+    stage + "/elf-thirty-degree-simulation.json",
     ten_degree_simulation,
   )
   if stage_only {

@@ -12,6 +12,7 @@ priv struct SimBus {
   samples : Array[StickSample]
   mut stick_index : Int32
   stick_delay_ms : Int32
+  tracking_bias : Int32
 }
 
 ///|
@@ -25,6 +26,7 @@ fn SimBus::new(
   reset_inactive_after_write~ : Int32 = -1,
   samples~ : Array[StickSample] = [],
   stick_delay_ms~ : Int32 = 0,
+  tracking_bias~ : Int32 = 0,
 ) -> SimBus {
   let registers = Map([])
   for
@@ -72,6 +74,7 @@ fn SimBus::new(
     samples,
     stick_index: 0,
     stick_delay_ms,
+    tracking_bias,
   }
 }
 
@@ -149,6 +152,15 @@ impl Bus for SimBus with fn transfer(
       registers[40] = 1
       registers[56] = registers[42]
       registers[57] = registers[43]
+      // Model the observed loaded-tilt residual only after its initial latch.
+      if id == 8 &&
+        self.tracking_bias != 0 &&
+        self.writes.filter(w => w.0 == id && w.1[0] == 42).length() > 1 {
+        let goal = params[1].to_int() + params[2].to_int() * 256
+        let measured = goal + self.tracking_bias
+        registers[56] = (measured & 255).to_byte()
+        registers[57] = (measured >> 8).to_byte()
+      }
     }
     if self.writes.length() == self.fail_reply_after_write {
       raise Transport("Simulated applied write with lost acknowledgement")

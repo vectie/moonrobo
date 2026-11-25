@@ -15,3 +15,20 @@ test "public direction button simulation is a distinct bounded action" {
   assert_true(simulated.report.holding)
   assert_true(simulated.writes.length() > 10)
 }
+
+///|
+test "public thirty-degree report distinguishes completion and accuracy" {
+  let result = @neck_control.simulate(
+    @neck_control.Jog(@neck_control.Right, 30),
+  )
+  assert_true(
+    result.simulated && result.report.completed && result.report.holding,
+  )
+  assert_eq(result.report.target_reached, Some(true))
+  assert_eq(
+    result.report.after[0].position - result.report.before[0].position,
+    341,
+  )
+  let release = @neck_control.simulate(@neck_control.Release)
+  assert_eq(release.report.target_reached, None)
+}

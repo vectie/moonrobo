@@ -1,18 +1,18 @@
 ///|
-test "ten-degree profile binds exact wider envelope without moving neutral" {
-  assert_eq(profile().profile_version, 4)
+test "thirty-degree profile binds exact wider envelope without moving neutral" {
+  assert_eq(profile().profile_version, 5)
   assert_eq(home(7), 1927)
   assert_eq(home(8), 2047)
   assert_eq(
     intent_parameters(Jog(Right, 10))["neck_travel_limit_degrees"],
-    "10",
+    "30",
   )
-  for (id, low, high) in [(7, 1813, 2041), (8, 1933, 2161)] {
+  for (id, low, high) in [(7, 1586, 2268), (8, 1706, 2388)] {
     assert_true(inside(id, low) && inside(id, high))
     assert_false(inside(id, low - 1) || inside(id, high + 1))
   }
-  expect_denied(() => target(Jog(Right, 10), 7, 1928) |> ignore)
-  for degrees in [-1, 0, 11, 90] {
+  expect_denied(() => target(Jog(Right, 30), 7, 1928) |> ignore)
+  for degrees in [-1, 0, 31, 90] {
     expect_denied(() => intent_parameters(Jog(Right, degrees)) |> ignore)
   }
 }

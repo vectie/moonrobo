@@ -1,14 +1,17 @@
 {
   "date": "2026-11-25",
   "profile_version": 4,
-  "action": ["Buttons", 300],
+  "action": [
+    "Buttons",
+    300
+  ],
   "intent_id": "neck-1795616455653",
   "run_id": "1795616471028-15521887",
   "request_epoch_ms": "1795616471028",
   "configured_duration_seconds": 300,
   "approximate_deadline_local": "2026-11-25 22:26:11 Asia/Shanghai",
   "observation_at_start": "Exclusive UART open and initial feedback received; live input admitted; waiting for released-button/ZL arming sequence",
-  "this_is_a_start_snapshot_not_a_final_result": true,
+  "this_is_a_start_snapshot_not_a_final_result": false,
   "canonical_remote_audit": "/home/elf/moonrobo-neck/neck-audit.jsonl",
   "profile_approval": "Approve 100—bracket and cables are clear",
   "latest_fault_review": "Checked—bracket and cables are clear",
@@ -25,5 +28,93 @@
   "minus_ends_session": true,
   "automatic_resume": false,
   "installed_binary_sha256": "8c1a11d77e3382de13e02cca419d3dc744edb1028aca1f4458a45020cf69f401",
-  "live_url": "http://127.0.0.1:4195/"
+  "live_url": "http://127.0.0.1:4195/",
+  "final_outcome": "Expired cleanly without arming; no physical button-motion qualification",
+  "audit_records": 24,
+  "read_packets": 8,
+  "write_packets": 0,
+  "final_report": {
+    "action": [
+      "Buttons",
+      300
+    ],
+    "completed": true,
+    "holding": false,
+    "before": [
+      {
+        "id": 7,
+        "captured_ms": "15522263",
+        "mode": 0,
+        "torque": 1,
+        "acceleration": 3,
+        "goal": 1943,
+        "goal_time": 0,
+        "speed_limit": 50,
+        "torque_limit": 300,
+        "position": 1943,
+        "velocity": 0,
+        "load": 0,
+        "voltage_tenths": 123,
+        "temperature": 32,
+        "current_raw": 0,
+        "status": 0
+      },
+      {
+        "id": 8,
+        "captured_ms": "15522265",
+        "mode": 0,
+        "torque": 1,
+        "acceleration": 3,
+        "goal": 2040,
+        "goal_time": 0,
+        "speed_limit": 50,
+        "torque_limit": 300,
+        "position": 2052,
+        "velocity": 0,
+        "load": 60,
+        "voltage_tenths": 122,
+        "temperature": 35,
+        "current_raw": 2,
+        "status": 0
+      }
+    ],
+    "after": [
+      {
+        "id": 7,
+        "captured_ms": "15822275",
+        "mode": 0,
+        "torque": 1,
+        "acceleration": 3,
+        "goal": 1943,
+        "goal_time": 0,
+        "speed_limit": 50,
+        "torque_limit": 300,
+        "position": 1943,
+        "velocity": 0,
+        "load": 0,
+        "voltage_tenths": 123,
+        "temperature": 32,
+        "current_raw": 0,
+        "status": 0
+      },
+      {
+        "id": 8,
+        "captured_ms": "15822282",
+        "mode": 0,
+        "torque": 1,
+        "acceleration": 3,
+        "goal": 2040,
+        "goal_time": 0,
+        "speed_limit": 50,
+        "torque_limit": 300,
+        "position": 2052,
+        "velocity": 0,
+        "load": 60,
+        "voltage_tenths": 122,
+        "temperature": 36,
+        "current_raw": 2,
+        "status": 0
+      }
+    ]
+  }
 }

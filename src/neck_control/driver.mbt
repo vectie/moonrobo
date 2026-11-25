@@ -196,6 +196,7 @@ pub(all) struct Report {
   action : Action
   completed : Bool
   holding : Bool
+  target_reached : Bool?
   before : Array[Feedback]
   after : Array[Feedback]
 }
@@ -223,7 +224,58 @@ fn holding_feedback(f : Feedback, now : Int64) -> Bool {
 
 ///|
 fn within_settling_tolerance(f : Feedback, desired : Int32) -> Bool {
-  (f.position - desired).abs() <= 11 && f.velocity.abs() <= 3
+  (f.position - desired).abs() <= target_accuracy_limit && f.velocity.abs() <= 3
+}
+
+///|
+priv struct Settling {
+  mut exact_samples : Int32
+  mut stable_samples : Int32
+  mut last_position : Int32?
+}
+
+///|
+fn Settling::new() -> Settling {
+  { exact_samples: 0, stable_samples: 0, last_position: None, }
+}
+
+///|
+// Called only after the fresh feedback passes the full runtime guard. A
+// stationary offset is an accuracy result, never permission to relax tracking.
+fn Settling::observe(self : Settling, f : Feedback, desired : Int32) -> Unit {
+  self.exact_samples = if within_settling_tolerance(f, desired) {
+    self.exact_samples + 1
+  } else {
+    0
+  }
+  let bounded_rest = f.velocity.abs() <= 3 &&
+    (f.position - desired).abs() <= tracking_error_limit
+  self.stable_samples = if bounded_rest {
+    if self.last_position == Some(f.position) {
+      self.stable_samples + 1
+    } else {
+      1
+    }
+  } else {
+    0
+  }
+  self.last_position = Some(f.position)
+}
+
+///|
+fn bounded_step_count(
+  id : Int32,
+  start : Int32,
+  desired : Int32,
+) -> Int32 raise NeckError {
+  guard inside(id, start) && inside(id, desired) else {
+    raise Rejected("Step budget endpoints outside reviewed envelope")
+  }
+  let steps = (desired - start).abs()
+  guard steps <= 682 else {
+    raise Rejected("Movement exceeds bounded step budget")
+  }
+  steps
 }
 
 ///|
@@ -250,7 +302,14 @@ fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
     guard after.all(f => f.torque == 0) else {
       raise Rejected("Torque-off readback mismatch")
     }
-    return { action, completed: true, holding: false, before: [], after, }
+    return {
+      action,
+      completed: true,
+      holding: false,
+      target_reached: None,
+      before: [],
+      after,
+    }
   }
   for id in [7, 8] {
     validate_identity(id, bus.transfer(id, 2, [0, 34], 34, 0L))
@@ -265,6 +324,9 @@ fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
       action,
       completed: true,
       holding: before.all(f => holding_feedback(f, bus.now())),
+      target_reached: Some(
+        before.all(f => within_settling_tolerance(f, f.goal)),
+      ),
       before,
       after: before,
     }
@@ -289,7 +351,8 @@ fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
   for i in 0..<2 {
     let g = guards[i]
     let desired = targets[i]
-    for _ in 0..<120 {
+    let step_count = bounded_step_count(g.id, g.last_goal, desired)
+    for _ in 0..<step_count {
       if g.last_goal == desired {
         break
       }
@@ -301,22 +364,18 @@ fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
     guard g.last_goal == desired else {
       raise Rejected("Bounded movement step count exceeded")
     }
-    let mut settled = 0
+    let settling = Settling::new()
     for _ in 0..<40 {
       bus.wait(50)
       let f = observe(bus, g.id)
       check_active_axes(bus, guards)
       g.check_feedback(f, bus.now())
-      if within_settling_tolerance(f, desired) {
-        settled += 1
-      } else {
-        settled = 0
-      }
-      if settled >= 3 {
+      settling.observe(f, desired)
+      if settling.exact_samples >= 3 {
         break
       }
     }
-    guard settled >= 3 else {
+    guard settling.exact_samples >= 3 || settling.stable_samples >= 5 else {
       raise Rejected("Target did not settle; fault latched")
     }
   }
@@ -324,7 +383,14 @@ fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
   for i in 0..<2 {
     guards[i].check_feedback(after[i], bus.now())
   }
-  let report = { action, completed: true, holding: true, before, after, }
+  let report = {
+    action,
+    completed: true,
+    holding: true,
+    target_reached: Some(after.all(f => within_settling_tolerance(f, f.goal))),
+    before,
+    after,
+  }
   bus.event("completed-holding-no-cleanup-writes", Json(report))
   // No register restoration and no hidden torque-off on success or close.
   report

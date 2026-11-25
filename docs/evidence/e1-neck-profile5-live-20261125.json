@@ -1,0 +1,176 @@
+{
+  "date": "2026-11-25",
+  "profile_version": 5,
+  "operator_request": "after you fix the bug, try 30 degree",
+  "operator_clearance": "Checked—the 30° arc is clear",
+  "existing_velocity_approval": "Approve 100—bracket and cables are clear",
+  "requested_target_degrees_per_test": 30,
+  "raw_feedback_velocity_limit": 100,
+  "motor_speed_setting": 50,
+  "torque_limit": 300,
+  "maximum_step_ticks": 1,
+  "minimum_step_interval_ms": 50,
+  "pan_bounds": [
+    1586,
+    2268
+  ],
+  "tilt_bounds": [
+    1706,
+    2388
+  ],
+  "physical_trial_binary_sha256": "f255972c6cc260d9b6f2d2be57a9adb2d15f2686dbcfd0117a7241697871e109",
+  "final_installed_binary_sha256_line": "f255972c6cc260d9b6f2d2be57a9adb2d15f2686dbcfd0117a7241697871e109  /home/elf/moonrobo-neck/neck-control",
+  "trials": [
+    {
+      "direction": "Left",
+      "run_id": "1795617394379-16445238",
+      "action": [
+        "Jog",
+        "Left",
+        30
+      ],
+      "audit_records": 4260,
+      "read_packets": 1069,
+      "write_before_send_records": 351,
+      "one_tick_step_packets": 341,
+      "minimum_observed_step_interval_ms": "60",
+      "maximum_observed_raw_velocity_abs": 100,
+      "minimum_voltage_tenths": 116,
+      "maximum_temperature": 52,
+      "axis_before_after": [
+        1944,
+        1612
+      ],
+      "actual_encoder_rotation_degrees": -29.1796875,
+      "final_goal": 1603,
+      "final_position_error_ticks": 9,
+      "completed": true,
+      "target_reached": true,
+      "fault": false,
+      "writes_after_terminal_event": 0,
+      "initial_latches_match_fresh_feedback": true,
+      "visible_camera_rotation_confirmed": true,
+      "frames": [
+        "live-before-left-30deg-v5.jpg",
+        "live-after-left-30deg-v5.jpg"
+      ],
+      "video": "live-left-30deg-v5.mp4"
+    },
+    {
+      "direction": "Right",
+      "run_id": "1795617457188-16508047",
+      "action": [
+        "Jog",
+        "Right",
+        30
+      ],
+      "audit_records": 4251,
+      "read_packets": 1066,
+      "write_before_send_records": 351,
+      "one_tick_step_packets": 341,
+      "minimum_observed_step_interval_ms": "59",
+      "maximum_observed_raw_velocity_abs": 100,
+      "minimum_voltage_tenths": 109,
+      "maximum_temperature": 50,
+      "axis_before_after": [
+        1612,
+        1948
+      ],
+      "actual_encoder_rotation_degrees": 29.53125,
+      "final_goal": 1953,
+      "final_position_error_ticks": 5,
+      "completed": true,
+      "target_reached": true,
+      "fault": false,
+      "writes_after_terminal_event": 0,
+      "initial_latches_match_fresh_feedback": true,
+      "visible_camera_rotation_confirmed": true,
+      "frames": [
+        "live-before-right-30deg-v5.jpg",
+        "live-after-right-30deg-v5.jpg"
+      ],
+      "video": "live-right-30deg-v5.mp4"
+    },
+    {
+      "direction": "Up",
+      "run_id": "1795617505833-16556692",
+      "action": [
+        "Jog",
+        "Up",
+        30
+      ],
+      "audit_records": 4260,
+      "read_packets": 1069,
+      "write_before_send_records": 351,
+      "one_tick_step_packets": 341,
+      "minimum_observed_step_interval_ms": "59",
+      "maximum_observed_raw_velocity_abs": 100,
+      "minimum_voltage_tenths": 116,
+      "maximum_temperature": 41,
+      "axis_before_after": [
+        2052,
+        1720
+      ],
+      "actual_encoder_rotation_degrees": -29.1796875,
+      "final_goal": 1711,
+      "final_position_error_ticks": 9,
+      "completed": true,
+      "target_reached": true,
+      "fault": false,
+      "writes_after_terminal_event": 0,
+      "initial_latches_match_fresh_feedback": true,
+      "visible_camera_rotation_confirmed": true,
+      "frames": [
+        "live-before-up-30deg-v5.jpg",
+        "live-after-up-30deg-v5.jpg"
+      ],
+      "video": "live-up-30deg-v5.mp4"
+    },
+    {
+      "direction": "Down",
+      "run_id": "1795617567632-16618491",
+      "action": [
+        "Jog",
+        "Down",
+        30
+      ],
+      "audit_records": 4251,
+      "read_packets": 1066,
+      "write_before_send_records": 351,
+      "one_tick_step_packets": 341,
+      "minimum_observed_step_interval_ms": "59",
+      "maximum_observed_raw_velocity_abs": 100,
+      "minimum_voltage_tenths": 105,
+      "maximum_temperature": 40,
+      "axis_before_after": [
+        1720,
+        2056
+      ],
+      "actual_encoder_rotation_degrees": 29.53125,
+      "final_goal": 2061,
+      "final_position_error_ticks": 5,
+      "completed": true,
+      "target_reached": true,
+      "fault": false,
+      "writes_after_terminal_event": 0,
+      "initial_latches_match_fresh_feedback": true,
+      "visible_camera_rotation_confirmed": true,
+      "frames": [
+        "live-before-down-30deg-v5.jpg",
+        "live-after-down-30deg-v5.jpg"
+      ],
+      "video": "live-down-30deg-v5.mp4"
+    }
+  ],
+  "native_neck_tests_passed": 51,
+  "linux_serial_asan_failures": 0,
+  "linux_joystick_asan_failures": 0,
+  "final_deployment_read_packets": 4,
+  "final_deployment_write_packets": 0,
+  "settling_tolerance_ticks_unchanged": 11,
+  "startup_tracking_limit_ticks_unchanged": 16,
+  "completion_policy": "stable-hold-with-accuracy",
+  "preflight_holding_uses_existing_startup_admission": true,
+  "artifact_directory": "/Users/kq/moonsuite/inputs/e1-neck-live-tests-20261125",
+  "qualification": "Results report commanded thirty-degree targets, actual encoder motion and strict target accuracy separately. Local video confirms direction; it cannot inspect its own neck clearance."
+}

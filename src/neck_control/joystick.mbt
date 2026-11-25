@@ -447,7 +447,18 @@ fn[B : Bus] run_live_input(bus : B, action : Action) -> Report raise {
       guards[i].check_feedback(after[i], bus.now())
     }
   }
-  let report = { action, completed: true, holding: prepared, before, after, }
+  let report = {
+    action,
+    completed: true,
+    holding: prepared,
+    target_reached: if prepared {
+      Some(after.all(f => within_settling_tolerance(f, f.goal)))
+    } else {
+      None
+    },
+    before,
+    after,
+  }
   bus.event("completed-holding-no-cleanup-writes", Json(report))
   report
 }

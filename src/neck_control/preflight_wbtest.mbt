@@ -15,7 +15,7 @@ test "holding preflight shares startup bound without loosening settling" {
       { ..f, torque: 0, },
       { ..f, goal_time: 1, },
       { ..f, speed_limit: 0, },
-      { ..f, goal: 2146, position: 2162, },
+      { ..f, goal: 2373, position: 2389, },
     ] {
     assert_false(holding_feedback(bad, 1000L))
   }

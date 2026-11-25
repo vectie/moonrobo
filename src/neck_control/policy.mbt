@@ -72,6 +72,12 @@ priv enum Phase {
 }
 
 ///|
+let tracking_error_limit : Int32 = 16
+
+///|
+let target_accuracy_limit : Int32 = 11
+
+///|
 priv struct Guard {
   id : Int32
   mut phase : Phase
@@ -91,8 +97,8 @@ fn home(id : Int32) -> Int32 raise NeckError {
 ///|
 fn inside(id : Int32, position : Int32) -> Bool {
   match id {
-    7 => position >= 1813 && position <= 2041
-    8 => position >= 1933 && position <= 2161
+    7 => position >= 1586 && position <= 2268
+    8 => position >= 1706 && position <= 2388
     _ => false
   }
 }
@@ -127,7 +133,9 @@ fn Guard::check_feedback(
     return
   }
   guard inside(self.id, f.position) else {
-    self.reject("Measured position outside reviewed ten-degree test envelope")
+    self.reject(
+      "Measured position outside reviewed thirty-degree test envelope",
+    )
     return
   }
   guard f.voltage_tenths >= 105 &&
@@ -140,7 +148,8 @@ fn Guard::check_feedback(
     return
   }
   if self.phase is (Armed | Latched) {
-    guard f.goal == self.last_goal && (f.goal - f.position).abs() <= 16 else {
+    guard f.goal == self.last_goal &&
+      (f.goal - f.position).abs() <= tracking_error_limit else {
       self.reject("Target changed externally or tracking error")
       return
     }
@@ -181,7 +190,10 @@ fn Guard::authorize(
         return
       }
       guard f.torque == 0 ||
-        (inside(self.id, f.goal) && (f.goal - f.position).abs() <= 16) else {
+        (
+          inside(self.id, f.goal) &&
+          (f.goal - f.position).abs() <= tracking_error_limit
+        ) else {
         self.reject("Already energized with unsafe old goal")
         return
       }
@@ -262,7 +274,7 @@ pub fn target(
   }
   guard inside(id, result) else {
     raise Rejected(
-      "Target outside reviewed ten-degree test envelope; no clipping or automatic re-zero",
+      "Target outside reviewed thirty-degree test envelope; no clipping or automatic re-zero",
     )
   }
   result
@@ -273,8 +285,8 @@ pub fn profile() -> @core.RobotProfile {
   let base = @core.noetix_e1_profile("noetix-e1-neck", "elf2-neck-usb")
   {
     ..base,
-    label: "E1 external STS3215 neck reviewed ten-degree profile",
-    profile_version: 4,
+    label: "E1 external STS3215 neck thirty-degree test profile",
+    profile_version: 5,
     bridge: {
       id: "elf2-neck-usb",
       kind: UnknownBridge("feetech-neck"),
@@ -282,8 +294,8 @@ pub fn profile() -> @core.RobotProfile {
     },
     platform: "elf2-rk3588-usb-sts3215",
     joints: [
-      @core.joint("neck.pan", 7, min_position=-10.0, max_position=10.0),
-      @core.joint("neck.tilt", 8, min_position=-10.0, max_position=10.0),
+      @core.joint("neck.pan", 7, min_position=-30.0, max_position=30.0),
+      @core.joint("neck.tilt", 8, min_position=-30.0, max_position=30.0),
     ],
     sensors: [@core.sensor("neck.camera", "rgb", "RealSense D455")],
     limits: { ..base.limits, telemetry_freshness_ms: 150, },
@@ -340,18 +352,21 @@ pub fn intent_parameters(
   validate_action(action)
   {
     "action": Json(action).stringify(),
-    "neck_profile_version": "4",
-    "neck_travel_limit_degrees": "10",
+    "neck_profile_version": "5",
+    "neck_travel_limit_degrees": "30",
     "raw_feedback_velocity_limit": "100",
     "servo_speed_limit": "50",
+    "completion_policy": "stable-hold-with-accuracy",
+    "target_accuracy_ticks": target_accuracy_limit.to_string(),
+    "tracking_error_limit_ticks": tracking_error_limit.to_string(),
   }
 }
 
 ///|
 fn validate_action(action : Action) -> Unit raise NeckError {
   if action is Jog(_, degrees) {
-    guard degrees >= 1 && degrees <= 10 else {
-      raise Rejected("Jog requires integer degrees from 1 to 10")
+    guard degrees >= 1 && degrees <= 30 else {
+      raise Rejected("Jog requires integer degrees from 1 to 30")
     }
   }
   if action is (Joystick(seconds) | Buttons(seconds)) {
