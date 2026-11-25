@@ -18,6 +18,7 @@
     "last_successful_hardware_deployment_audit": { "cumulative_read_packets": 69, "write_packets": 0 },
     "pre_reboot_readonly_servo_check": "ID 7 identity read timed out with zero response bytes; operator confirms 12 V power is on",
     "latest_readonly_servo_check": "Recovered after restart: pan 1927/1927, tilt 2052/2047 position/goal, both holding with bounded profile",
+    "post_uhid_qualification_audit": { "cumulative_read_packets": 81, "write_packets": 0, "servo_positions_and_targets_unchanged": true },
     "physical_joystick_session_started": false,
     "physical_neck_motion_tested": false
   },
@@ -45,6 +46,22 @@
     "post_reboot_full_circle_raw_y_range": [-1000, 1000],
     "initial_compatibility_check": { "duration_seconds": 300, "reader_timeout_ms": 100, "waiting_errors": 1, "link_remained_connected": true, "input_only_reopen_restored_reports": true },
     "compatibility_125ms_check": { "passed": false, "requested_duration_seconds": 300, "live_samples": 164, "live_span_ms": 167782, "input_opens": 1, "waiting_errors": 2, "calibrated_x_range": [-21, 15], "calibrated_y_range": [0, 0], "raw_hid_after_gap_bytes_in_2_seconds": 0, "bluez_still_reported_connected": true, "log_sha256": "45e1616391b5cff390d7c39be6ad1e12acfd66615b44d544bd8a6210587cbc33" },
+    "userspace_hid_300_second_check": {
+      "passed": true,
+      "physical_execution": false,
+      "samples": 292,
+      "input_opens": 1,
+      "waiting_errors": 0,
+      "observed_span_ms": 299303,
+      "maximum_logged_heartbeat_gap_ms": 1089,
+      "calibrated_x_range": [-24, 20],
+      "calibrated_y_range": [0, 0],
+      "hid_sysfs_path": "/sys/devices/virtual/misc/uhid/0005:057E:2006.0004",
+      "log": "e1-neck-joycon-uhid-20261125.jsonl",
+      "log_sha256": "b7e3a64579b020b080fc83225cdad1f0e9d54c525873ae7b8314a55af8d1a69d",
+      "qualifier": "scripts/qualify_neck_joystick_log.mbtx",
+      "note": "Logged heartbeat gap is approximately one second and is not per-report HID age. Each admitted sample still requires a fresh full report within the 125 ms poll budget and 150 ms freshness gate."
+    },
     "notes": "The initial requested sequence was inconclusive. After reboot the operator swept the small thumbstick around its full circle twice and released it; both signs on both axes were observed. Explicitly confirmed physical neutral was near raw-normalized X -225. Final input calibration is separate from servo neutral and absolute limits."
   },
   "host_changes": {
@@ -64,7 +81,7 @@
     "maximum_input_to_dispatch_age_ms": 150,
     "input_calibration": { "controller": "98:B6:E9:20:21:41", "operator_confirmed_neutral": true, "x_min": -1000, "x_center": -225, "x_max": 500, "y_min": -1000, "y_center": 0, "y_max": 1000, "loaded_once_per_open": true, "automatic_center_learning": false },
     "changes_isolate_radio_root_cause": false,
-    "next_transport_experiment": { "userspace_hid": true, "classic_bonded_only": true, "original_config_backup": "/etc/bluetooth/input.conf.before-moonrobo-20261125", "live_qualification": "pending controller wake; no passing claim" }
+    "userspace_hid_transport": { "userspace_hid": true, "classic_bonded_only": true, "original_config_backup": "/etc/bluetooth/input.conf.before-moonrobo-20261125", "live_qualification": "Passed one five-minute input-only neutral stream check after operator wake; see retained raw log", "long_term_reliability_proven": false }
   },
   "limitations": [
     "BlueZ reported a connected link without HID reports; manual SYNC/reconnect restored streaming.",

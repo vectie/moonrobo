@@ -454,13 +454,31 @@ still reported connected. The kernel logged repeated dropped IMU reports.
 Wi-Fi was on 5 GHz, and both servos still responded with unchanged targets.
 This is not a passing stability qualification and must not enable motion.
 
-The next isolated transport experiment uses BlueZ `UserspaceHID=true`
+The next isolated transport experiment used BlueZ `UserspaceHID=true`
 instead of the board's default kernel HIDP path; `/dev/uhid` is available.
 `config/moonrobo-joycon-input.conf` retains `ClassicBondedOnly=true`.
 The original input configuration is backed up at
-`/etc/bluetooth/input.conf.before-moonrobo-20261125`. This experimental
-transport setting requires its own fresh connection and live qualification;
-it is not yet evidence that the dropout has been fixed.
+`/etc/bluetooth/input.conf.before-moonrobo-20261125`.
+
+After the operator woke the controller again, its HID device appeared under
+`/sys/devices/virtual/misc/uhid/0005:057E:2006.0004`, confirming the transport
+change was active. The five-minute input-only check **passed**: 292 logged
+samples spanned 299,303 ms, with one input open, zero waiting errors and no
+monitor reconnect. Calibrated X stayed [-24, 20] and Y [0, 0], inside the
+unchanged neutral deadzone. The [retained raw log](evidence/e1-neck-joycon-uhid-20261125.jsonl)
+can be rechecked with the qualifier below. Use `stdbuf -oL` before the native
+monitor command when watching redirected output live, to avoid mistaking
+buffered stdout for current input state.
+
+Post-check read-only status still showed pan position/goal 1927/1927 and
+tilt 2052/2047, with the same bounded holding profile and no servo errors.
+The audit contained 81 cumulative READ packets and zero WRITE packets.
+The radio-settings service remained enabled/active and the connected HCI
+policy was RSWITCH. Keep userspace HID for this commissioned setup. This
+passing finite check improves the evidence over the failed HIDP run; it
+does not isolate every failure cause or establish indefinite Bluetooth
+reliability. Physical execution remains inactive until its existing exact
+motion receipt is supplied; this check did not start a motion session.
 
 To qualify a five-minute untouched-neutral recording, save stdout from
 `neck-control joystick-monitor 300`, then run
