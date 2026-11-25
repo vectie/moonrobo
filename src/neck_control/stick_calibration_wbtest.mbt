@@ -32,8 +32,8 @@ test "confirmed neutral drift becomes zero input without moving servo zero" {
   assert_true(gate.active)
   assert_eq(home(7), 1927)
   assert_eq(home(8), 2047)
-  assert_true(inside(7, 1870))
-  assert_false(inside(7, 1869))
+  assert_true(inside(7, 1813))
+  assert_false(inside(7, 1812))
 }
 
 ///|

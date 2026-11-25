@@ -1,31 +1,68 @@
+///|
 import {
   "moonbitlang/async@0.22.4",
   "moonbitlang/async@0.22.4/process",
   "moonbitlang/async@0.22.4/fs",
 }
 
+///|
 async fn main {
-  @fs.mkdir("_build/neck-control-elf", recursive=true)
-  for (action, authorized, expected) in [
-    (Json([Json("Joystick"), Json(301)]), true, "1..300"),
-    (Json([Json("Buttons"), Json(0)]), true, "1..300"),
-    (Json([Json("Jog"), Json("Right"), Json(6)]), true, "1..5"),
-    (Json([Json("Jog"), Json("Other"), Json(1)]), true, "Unknown neck direction"),
-    (Json([Json("Jog"), Json("Right"), Json(1)]), false, "explicit authorization"),
-    (Json([Json("Buttons"), Json(300)]), false, "explicit authorization"),
-  ] {
+  if !@fs.exists("_build/neck-control-elf") {
+    @fs.mkdir("_build/neck-control-elf", recursive=true)
+  }
+  for
+    (action, authorized, version, expected) in [
+      (Json([Json("Joystick"), Json(301)]), true, "2", "1..300"),
+      (Json([Json("Buttons"), Json(0)]), true, "2", "1..300"),
+      (Json([Json("Jog"), Json("Right"), Json(6)]), true, "2", "1..5"),
+      (
+        Json([Json("Jog"), Json("Other"), Json(1)]),
+        true,
+        "2",
+        "Unknown neck direction",
+      ),
+      (
+        Json([Json("Jog"), Json("Right"), Json(1)]),
+        false,
+        "2",
+        "explicit authorization",
+      ),
+      (Json([Json("Buttons"), Json(300)]), false, "2", "explicit authorization"),
+      (Json([Json("Jog"), Json("Right"), Json(11)]), true, "3", "1..10"),
+      (
+        Json([Json("Jog"), Json("Right"), Json(10)]),
+        false,
+        "3",
+        "explicit authorization",
+      ),
+      (
+        Json([Json("Jog"), Json("Right"), Json(1)]),
+        true,
+        "4",
+        "Unknown neck profile",
+      ),
+    ] {
     let path = "_build/neck-control-elf/invalid-trial-source.json"
-    let j : Json = {"operator_authorized": Json(authorized),
-      "action": action, "neck_profile_version": "2", "servo_speed_limit": "50"}
+    let j : Json = {
+      "operator_authorized": Json(authorized),
+      "action": action,
+      "neck_profile_version": Json(version),
+      "servo_speed_limit": "50",
+      "neck_travel_limit_degrees": Json(if version == "3" { "10" } else { "5" }),
+    }
     @fs.write_file(path, j.stringify())
     let (code, out, err) = @process.collect_output("moon", [
-      "run", "--target", "native", "scripts/prepare_neck_trial.mbtx",
-      "/tmp/no-ssh-connection-permitted-for-this-test", path,
+      "run", "--target", "native", "scripts/prepare_neck_trial.mbtx", "/tmp/no-ssh-connection-permitted-for-this-test",
+      path,
     ])
     let message = out.text() + err.text()
-    guard code != 0 && message.contains(expected) && !message.contains("ssh exited") else {
+    guard code != 0 &&
+      message.contains(expected) &&
+      !message.contains("ssh exited") else {
       fail("Expected rejection before SSH: " + message)
     }
   }
-  println("Six bounded-action and authorization cases rejected before SSH")
+  println(
+    "Nine bounded-action, version and authorization cases rejected before SSH",
+  )
 }

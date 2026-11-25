@@ -1,14 +1,16 @@
 ///|
 /// Calibrated stick values, -1000..1000; positive x is right, y is down.
+#derive(Debug, Eq, ToJson)
 priv struct StickSample {
   captured_ms : Int64
   x : Int32
   y : Int32
   deadman : Bool
   exit : Bool
-} derive(Debug, Eq, ToJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct NativeStickSample {
   captured_ms : Int64
   x : Int32
@@ -20,7 +22,7 @@ priv struct NativeStickSample {
   zl : Bool
   minus : Bool
   buttons : Int32
-} derive(FromJson)
+}
 
 ///|
 // Nintendo full report byte 5, as used by the installed XLeRobot library.

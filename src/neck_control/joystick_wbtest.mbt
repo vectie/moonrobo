@@ -184,10 +184,10 @@ test "diagonal motion stops at absolute bounds no catch-up or target replay" {
   run_action(bus, Joystick(20)) |> ignore
   for id in [7, 8] {
     let f = observe(bus, id)
-    assert_eq(f.goal, home(id) + 57)
+    assert_eq(f.goal, home(id) + 114)
     assert_true(inside(id, f.goal))
   }
-  assert_eq(bus.writes.length(), 124)
+  assert_eq(bus.writes.length(), 238)
   let last_goal : Map[Int32, Int32] = Map([])
   let last_time : Map[Int32, Int64] = Map([])
   for i in 0..<bus.writes.length() {

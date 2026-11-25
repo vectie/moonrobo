@@ -1,18 +1,21 @@
 ///|
+#derive(Debug)
 pub suberror NeckError {
   Rejected(String)
   Transport(String)
-} derive(Debug)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) enum Direction {
   Left
   Up
   Right
   Down
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) enum Action {
   Status
   Hold
@@ -21,9 +24,10 @@ pub(all) enum Action {
   Release
   Joystick(Int32)
   Buttons(Int32)
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson)
 pub(all) struct Feedback {
   id : Int32
   captured_ms : Int64
@@ -41,11 +45,12 @@ pub(all) struct Feedback {
   temperature : Int32
   current_raw : Int32
   status : Int32
-} derive(Debug, Eq, ToJson)
+}
 
 ///|
 // A register operation is internal. There is deliberately no bulk-restore,
 // arbitrary-address write, factory-reset, or EEPROM-write operation.
+#derive(Debug, Eq)
 priv enum Write {
   TorqueLimit
   SpeedLimit
@@ -54,16 +59,17 @@ priv enum Write {
   Enable
   Step(Int32)
   ReleaseTorque
-} derive(Debug, Eq)
+}
 
 ///|
+#derive(Debug, Eq)
 priv enum Phase {
   Observed
   Latched
   Armed
   Released
   Faulted
-} derive(Debug, Eq)
+}
 
 ///|
 priv struct Guard {
@@ -85,8 +91,8 @@ fn home(id : Int32) -> Int32 raise NeckError {
 ///|
 fn inside(id : Int32, position : Int32) -> Bool {
   match id {
-    7 => position >= 1870 && position <= 1984
-    8 => position >= 1990 && position <= 2104
+    7 => position >= 1813 && position <= 2041
+    8 => position >= 1933 && position <= 2161
     _ => false
   }
 }
@@ -121,7 +127,7 @@ fn Guard::check_feedback(
     return
   }
   guard inside(self.id, f.position) else {
-    self.reject("Measured position outside commissioned five-degree envelope")
+    self.reject("Measured position outside reviewed ten-degree test envelope")
     return
   }
   guard f.voltage_tenths >= 105 &&
@@ -238,14 +244,12 @@ pub fn target(
   id : Int32,
   start : Int32,
 ) -> Int32 raise NeckError {
+  validate_action(action)
   guard inside(id, start) else {
     raise Rejected("Starting pose outside commissioned envelope")
   }
   let result = match action {
     Jog(direction, degrees) => {
-      guard degrees >= 1 && degrees <= 5 else {
-        raise Rejected("Jog requires integer degrees from 1 to 5")
-      }
       let ticks = (degrees * 4096 + 180) / 360
       match (direction, id) {
         (Left, 7) | (Up, 8) => start - ticks
@@ -258,7 +262,7 @@ pub fn target(
   }
   guard inside(id, result) else {
     raise Rejected(
-      "Target outside commissioned five-degree envelope; no clipping or automatic re-zero",
+      "Target outside reviewed ten-degree test envelope; no clipping or automatic re-zero",
     )
   }
   result
@@ -269,8 +273,8 @@ pub fn profile() -> @core.RobotProfile {
   let base = @core.noetix_e1_profile("noetix-e1-neck", "elf2-neck-usb")
   {
     ..base,
-    label: "E1 external STS3215 neck conservative trial",
-    profile_version: 2,
+    label: "E1 external STS3215 neck ten-degree test",
+    profile_version: 3,
     bridge: {
       id: "elf2-neck-usb",
       kind: UnknownBridge("feetech-neck"),
@@ -278,8 +282,8 @@ pub fn profile() -> @core.RobotProfile {
     },
     platform: "elf2-rk3588-usb-sts3215",
     joints: [
-      @core.joint("neck.pan", 7, min_position=-5.0, max_position=5.0),
-      @core.joint("neck.tilt", 8, min_position=-5.0, max_position=5.0),
+      @core.joint("neck.pan", 7, min_position=-10.0, max_position=10.0),
+      @core.joint("neck.tilt", 8, min_position=-10.0, max_position=10.0),
     ],
     sensors: [@core.sensor("neck.camera", "rgb", "RealSense D455")],
     limits: { ..base.limits, telemetry_freshness_ms: 150, },
@@ -336,13 +340,19 @@ pub fn intent_parameters(
   validate_action(action)
   {
     "action": Json(action).stringify(),
-    "neck_profile_version": "2",
+    "neck_profile_version": "3",
+    "neck_travel_limit_degrees": "10",
     "servo_speed_limit": "50",
   }
 }
 
 ///|
 fn validate_action(action : Action) -> Unit raise NeckError {
+  if action is Jog(_, degrees) {
+    guard degrees >= 1 && degrees <= 10 else {
+      raise Rejected("Jog requires integer degrees from 1 to 10")
+    }
+  }
   if action is (Joystick(seconds) | Buttons(seconds)) {
     guard seconds >= 1 && seconds <= 300 else {
       raise Rejected("Live input sessions must last 1..300 seconds")

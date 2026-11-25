@@ -1,4 +1,5 @@
 ///|
+#derive(Debug, ToJson, FromJson)
 priv struct StickCalibration {
   controller : String
   operator_confirmed_neutral : Bool
@@ -8,7 +9,7 @@ priv struct StickCalibration {
   y_min : Int32
   y_center : Int32
   y_max : Int32
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 priv struct Joystick {

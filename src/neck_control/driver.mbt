@@ -20,6 +20,9 @@ priv struct Serial {
 }
 
 ///|
+extend Serial with Bus::{event, transfer}
+
+///|
 impl Bus for Serial with fn stick(self) {
   read_stick(self.joystick.unwrap())
 }
@@ -188,13 +191,14 @@ fn[B : Bus] check_active_axes(bus : B, guards : Array[Guard]) -> Unit raise {
 }
 
 ///|
+#derive(Debug, ToJson)
 pub(all) struct Report {
   action : Action
   completed : Bool
   holding : Bool
   before : Array[Feedback]
   after : Array[Feedback]
-} derive(Debug, ToJson)
+}
 
 ///|
 fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {

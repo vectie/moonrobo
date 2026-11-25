@@ -15,6 +15,9 @@ priv struct SimBus {
 }
 
 ///|
+extend SimBus with Bus::{event}
+
+///|
 fn SimBus::new(
   fail_audit~ : Bool = false,
   audit_delay_ms~ : Int32 = 0,
@@ -159,11 +162,12 @@ impl Bus for SimBus with fn transfer(
 }
 
 ///|
+#derive(Debug, ToJson)
 pub(all) struct Simulation {
   simulated : Bool
   report : Report
   writes : Array[Json]
-} derive(Debug, ToJson)
+}
 
 ///|
 pub fn simulate(action : Action) -> Simulation raise {

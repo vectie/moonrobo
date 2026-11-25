@@ -68,12 +68,14 @@ with unsuffixed feedback keys; simply enabling that setting is insufficient.
 | Pan | ID 7; positive counts turn the camera right, verified by leftward scene shift in the later small live test |
 | Tilt | ID 8; positive counts turn the camera down, verified by upward scene shift in the later small live test |
 | Saved center | Pan 1927; tilt 2047 |
-| Software bounds | Pan 1870–1984; tilt 1990–2104 |
+| Reviewed profile-v3 software bounds | Pan 1813–2041; tilt 1933–2161 (approximately ±10°) |
 | Hardware EEPROM limits | Pan 933–3043; tilt 1040–3204 |
 | Raw homing-offset fingerprint | Pan 3948; tilt 1882 |
 
-The software bounds are a conservative approximately five-degree commissioning
-envelope around the saved center, not the full mechanical limits. A jog is
+The original profile-v2 commissioning bounds were pan 1870–1984 and tilt
+1990–2104 (approximately ±5°). After the operator requested ten-degree tests
+and checked the wider arc, profile v3 uses the approximately ten-degree test
+envelope above around the same saved centers, not the full mechanical limits. A jog is
 relative to the freshly measured pose and is denied if its destination would
 leave that absolute envelope. Repeated jogs cannot move the envelope. There
 is no automatic re-zero, clipping, wraparound or expanded recovery range.
@@ -92,7 +94,7 @@ profile change and new clearance checks.
    torque enable and explicit torque release. Bulk restoration, arbitrary
    registers, EEPROM writes and a raw zero target are unavailable.
 3. **Prepare before position.** Read and validate identity, calibration and
-   both current poses. For profile v2, verify factory speed parameters and
+   both current poses. Verify factory speed parameters and
    configure torque limit 300, speed 50 and acceleration
    3. Read back each stage. Only then latch the measured current position;
    verify the latch before explicit enable. An already energized motor with
@@ -153,7 +155,7 @@ labelled simulated. They exercise the same command state machine, including
 a simulated servo that re-energizes on a position write:
 
 ```sh
-moon run cmd/neck_control --target native -- simulate left 2
+moon run cmd/neck_control --target native -- simulate left 10
 moon run cmd/neck_control --target native -- plan center
 ```
 
@@ -234,7 +236,7 @@ from 1 to 20 encoder ticks/second (about 1.76 degrees/second at full input).
 This bounds target changes, not instantaneous physical motor velocity. Each axis
 still advances at most one tick per 50 ms. Diagonal input is supported, with
 both axes checked. Outward velocity stops at the existing fixed bounds:
-pan 1870–1984, tilt 1990–2104. It cannot shift the envelope. There is no gyro
+pan 1813–2041, tilt 1933–2161 in reviewed profile v3. It cannot shift the envelope. There is no gyro
 control, automatic centering, full-angle mode or queued destination.
 
 Startup with ZL held or the stick deflected cannot arm. After releasing ZL
@@ -538,17 +540,18 @@ The actuator CLI's read-only `preflight` command wraps a normal checked
 `Status` result with source epoch timestamps taken before and after UART
 observation. `scripts/prepare_neck_trial.mbtx SOCKET APPROVAL_SOURCE`
 prepares the exact `Joystick(1..300)`, `Buttons(1..300)` or
-`Jog(direction, 1..5 degrees)` trial through the existing
+`Jog(direction, 1..10 degrees)` trial through the existing
 MoonRobo host API's dry-run, approval and evaluate endpoints. It never invokes
 physical execution. The required local JSON source records the actual current
 operator request, `operator_authorized: true`, an exact action such as
-`["Buttons", 300]` or `["Jog", "Right", 1]`,
-`neck_profile_version: "2"` and `servo_speed_limit: "50"`;
+`["Buttons", 300]` or `["Jog", "Right", 10]`,
+`neck_profile_version: "3"`, `neck_travel_limit_degrees: "10"` and
+`servo_speed_limit: "50"`;
 do not create that record without the operator's authorization.
 The helper rejects invalid modes, directions, durations and degrees before
 SSH, and compares the installed plan's full action as well as profile/speed
 against that source. It cannot create a broader grant than the recorded action.
-`moon run scripts/test_neck_trial_preparer.mbtx` checks six invalid-bound,
+`moon run scripts/test_neck_trial_preparer.mbtx` checks nine invalid-bound,
 unknown-direction and missing-authorization cases without an SSH connection.
 
 The helper saves the actual completed MoonBit simulation, narrow robot
@@ -696,6 +699,33 @@ workspace. The footage stays in a local artifact directory recorded in the
 evidence JSON, outside Git. A twelve-second tilt clip is retained there.
 Synthetic Buttons and Joystick simulations also passed all four directions
 without opening a physical device; those are separate from the live tests.
+
+### Reviewed ten-degree range: profile v3
+
+The operator requested all further physical tests at ten degrees and confirmed
+that the camera bracket and cables were clear over that arc in every direction.
+Profile v3 allows integer Jog targets 1–10°, with fixed bounds pan 1813–2041
+and tilt 1933–2161. Saved centers, factory fingerprint, one-tick/50 ms limit,
+speed 50, torque 300, acceleration 3 and raw velocity guard 60 remain unchanged.
+Old profile-v2 receipts are rejected; v3 receipts explicitly bind ten-degree travel.
+A relative ten-degree request still fails if its destination leaves those fixed
+bounds. It is never clipped or re-centered automatically.
+
+44 native neck tests pass, including all four ten-degree simulations, 114
+one-tick steps per ten-degree target, unchanged step timing, exact travel/profile
+receipts and continued rejection of raw velocity 100. Both Linux ASan fixtures
+and the dedicated four-READ/zero-WRITE deployment check pass. Explicit private
+trait method promotions keep the controller compatible with the current compiler;
+generated interface spelling changed without changing the integer widths.
+
+The first actual `Jog(Right, 10)` request was admitted through a fresh v3 receipt
+but stopped after 17 target steps: pan position 1939, goal 1944, raw velocity 100,
+12.3 V and no servo error. Zero writes followed the fault. Later read-only status
+held pan position/goal 1941/1944 and tilt 2046/2046. The larger destination did
+not remove the velocity stop. The full ten-degree motion did **not** complete;
+other ten-degree directions were not run after the new fault. The marker remains
+latched pending review. The live stream remains available for observation.
+See the [profile-v3 evidence](evidence/e1-neck-ten-degree-20261125.json).
 
 To qualify a five-minute untouched-neutral recording, save stdout from
 `neck-control joystick-monitor 300`, then run

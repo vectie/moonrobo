@@ -14,76 +14,82 @@ pub fn execute(Action, @core.RunReceipt?, String) -> Report raise
 
 pub fn intent_parameters(Action) -> Map[String, String] raise NeckError
 
-pub fn monitor_buttons(Int) -> Unit raise
+pub fn monitor_buttons(Int32) -> Unit raise
 
-pub fn monitor_joystick(Int) -> Unit raise
+pub fn monitor_joystick(Int32) -> Unit raise
 
 pub fn profile() -> @core.RobotProfile
 
-pub fn read_configuration(String) -> Json raise
+pub fn read_configuration(String) -> @json.Json raise
 
 pub fn simulate(Action) -> Simulation raise
 
-pub fn target(Action, Int, Int) -> Int raise NeckError
+pub fn target(Action, Int32, Int32) -> Int32 raise NeckError
 
 pub fn validate_receipt(@core.RunReceipt, Action, Int64) -> Unit raise NeckError
 
 // Errors
+#derive(@debug.Debug)
 pub suberror NeckError {
   Rejected(String)
   Transport(String)
-} derive(@debug.Debug)
+}
 
 // Types and methods
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum Action {
   Status
   Hold
-  Jog(Direction, Int)
+  Jog(Direction, Int32)
   Center
   Release
-  Joystick(Int)
-  Buttons(Int)
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+  Joystick(Int32)
+  Buttons(Int32)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum Direction {
   Left
   Up
   Right
   Down
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.ToJson)
 pub(all) struct Feedback {
-  id : Int
+  id : Int32
   captured_ms : Int64
-  mode : Int
-  torque : Int
-  acceleration : Int
-  goal : Int
-  goal_time : Int
-  speed_limit : Int
-  torque_limit : Int
-  position : Int
-  velocity : Int
-  load : Int
-  voltage_tenths : Int
-  temperature : Int
-  current_raw : Int
-  status : Int
-} derive(Eq, ToJson, @debug.Debug)
+  mode : Int32
+  torque : Int32
+  acceleration : Int32
+  goal : Int32
+  goal_time : Int32
+  speed_limit : Int32
+  torque_limit : Int32
+  position : Int32
+  velocity : Int32
+  load : Int32
+  voltage_tenths : Int32
+  temperature : Int32
+  current_raw : Int32
+  status : Int32
+}
 
+#derive(@debug.Debug, @json.ToJson)
 pub(all) struct Report {
   action : Action
   completed : Bool
   holding : Bool
   before : Array[Feedback]
   after : Array[Feedback]
-} derive(ToJson, @debug.Debug)
+}
 
+#derive(@debug.Debug, @json.ToJson)
 pub(all) struct Simulation {
   simulated : Bool
   report : Report
-  writes : Array[Json]
-} derive(ToJson, @debug.Debug)
+  writes : Array[@json.Json]
+}
 
 // Type aliases
 

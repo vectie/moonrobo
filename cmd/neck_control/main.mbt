@@ -104,7 +104,7 @@ fn run_cli() -> Unit raise {
     }
     _ =>
       abort(
-        "Usage: neck_control status|configuration [AUDIT] | preflight | joystick-monitor|buttons-monitor [SECONDS] | simulate|plan DIRECTION [1..5] | simulate|plan joystick|buttons [1..300 seconds] | execute RECEIPT AUDIT",
+        "Usage: neck_control status|configuration [AUDIT] | preflight | joystick-monitor|buttons-monitor [SECONDS] | simulate|plan DIRECTION [1..10] | simulate|plan joystick|buttons [1..300 seconds] | execute RECEIPT AUDIT",
       )
   }
 }
