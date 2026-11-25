@@ -789,6 +789,15 @@ sends no writes. This reports preparation eligibility without relabeling the
 failed up test as successful. Final validation passes 47 native neck tests,
 both Linux ASan fixtures and four-READ/zero-WRITE deployment verification.
 
+After that operator review, the up-test fault was archived under its intent
+and a fresh exact `Buttons(300)` receipt opened the five-minute manual window.
+The [session-start record](evidence/e1-neck-profile4-buttons-20261125.json) is
+a timestamped start snapshot, not a final physical button qualification;
+inspect the canonical audit for the eventual result. The viewer remains at
+`http://127.0.0.1:4195/`. Release all direction buttons and ZL, hold ZL alone
+to arm, then hold one direction button for a visible turn. Short taps request
+fine increments. Minus ends the session; there is no automatic restart.
+
 To qualify a five-minute untouched-neutral recording, save stdout from
 `neck-control joystick-monitor 300`, then run
 `moon run scripts/qualify_neck_joystick_log.mbtx PATH_TO_LOG`.
