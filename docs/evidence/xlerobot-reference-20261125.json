@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-25",
+  "board": "elf@192.168.2.192",
+  "study": "../XLEROBOT_REFERENCE_STUDY.md",
+  "legacy_entrypoint_executed": false,
+  "actuator_writes_during_source_study": 0,
+  "source_revisions": {
+    "lerobot": "d57d1aa1970eec7b102a9527262ede4a3dd7a726",
+    "xlerobot_mirror": "6670d7db14adca0fab167bb569f160d7ba4672ec",
+    "joycon_robotics_base_with_local_modifications": "f1b8d2f3ce1a0d0b472f150ca8d6b359f619f66f"
+  },
+  "sha256": {
+    "/home/elf/lerobot/examples/7_xlerobot_teleop_joycon.py": "64cc4754b14e50f257bd0c5da78b37bd26feabef2f905b9b9bd7d59e40f55239",
+    "/home/elf/lerobot/examples/7_xlerobot_2wheels_teleop_joycon_smooth.py": "89863075f33a3a11be989bb8b50788ba5b585094080a62821800856842bedaa2",
+    "/home/elf/lerobot/src/lerobot/robots/xlerobot/xlerobot.py": "e608dc0c3b84c48fd944244c9c508fb9b05e1defa5331dddcab23a98d24bfccb",
+    "/home/elf/lerobot/src/lerobot/robots/xlerobot/config_xlerobot.py": "28adeb26c4ee35a4bae669a0d1961615174c71c66d89f7621e6272eb7dc7c00a",
+    "/home/elf/lerobot/src/lerobot/motors/feetech/feetech.py": "be118abf22f8d21c568ed75c60c6d050b3a2216ba0d82b5e7109c961c257bce7",
+    "/home/elf/lerobot/src/lerobot/motors/motors_bus.py": "27bab5732e4688266fe09da3e0f800a80199f460d31006e89368a22466382462",
+    "/home/elf/lerobot/src/lerobot/motors/feetech/tables.py": "b0239fefbbe9786a48d60a74a226612eb8dfb24130cf58930c9ba52848c2a555",
+    "/home/elf/.cache/huggingface/lerobot/calibration/robots/xlerobot/my_xlerobot.json": "0e5e9ddad8ef2438614b3dd91c1ff4e7c697db0ac01a04456055ff15e56588d4",
+    "/home/elf/joycon-robotics/joyconrobotics/joycon.py": "6862647bd4e4f427aad5653b99adf0542cf5ca8d4871580296e07b1b4e0d4ec2",
+    "/home/elf/joycon-robotics/joyconrobotics/joyconrobotics.py": "0a104c7bdfb86551cff0189bf058c96f7e17b29d8f6b2ac7a6b886c5b6bb06be",
+    "/home/elf/miniconda3/envs/lerobot/lib/python3.10/site-packages/scservo_sdk/protocol_packet_handler.py": "9932c85b9e2ac671a7e33f39e8e80b05d6592280d9f2bcebd85103845e36e655",
+    "/home/elf/miniconda3/envs/lerobot/lib/python3.10/site-packages/scservo_sdk/group_sync_write.py": "70d2a9e2157692932dd6e25515e53d600da9ca87ffab656c4660fb0de4d03476"
+  },
+  "default_head_units": "RANGE_M100_100; use_degrees=false",
+  "head_step_normalized_units_per_iteration": 2,
+  "declared_fps": 30,
+  "direct_main_loop_rate_limiter_present": false,
+  "actual_direct_main_loop_hz_measured": null,
+  "head_calibration": [
+    { "id": 7, "drive_mode": 0, "homing_offset": -1900, "range_min": 933, "range_max": 3043, "normalized_zero_raw": 1988, "two_unit_delta_before_integer_conversion": 21.1 },
+    { "id": 8, "drive_mode": 0, "homing_offset": 1882, "range_min": 1040, "range_max": 3204, "normalized_zero_raw": 2122, "two_unit_delta_before_integer_conversion": 21.64 }
+  ],
+  "head_input": "Left D-pad; ZL controls gripper; analog and IMU serve arms",
+  "head_hardware_pid": { "p": 16, "i": 0, "d": 43 },
+  "software_head_kp": 1,
+  "head_goal_write": { "instruction": 131, "address": 42, "bytes_per_motor": 2, "broadcast": true, "individual_servo_ack": false },
+  "head_raw_velocity_guard_present_in_old_loop": false,
+  "startup_zero_goals_outside_e1_commissioned_bounds": true,
+  "configure_calls_bus2_twice_and_omits_bus1_generic_configuration": true,
+  "outer_disconnect_method_misspelled": "disconnnect",
+  "historical_operator_entrypoint_proven": false,
+  "current_fault_marker_present": true,
+  "current_fault_marker": "/home/elf/moonrobo-neck/inflight-or-fault",
+  "physical_direction_mapping_qualified": false,
+  "source_study_establishes_physical_success": false
+}

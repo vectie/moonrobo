@@ -65,8 +65,8 @@ with unsuffixed feedback keys; simply enabling that setting is insufficient.
 | USB adapter | QinHeng `1a86:55d3`, serial `5AB0182917` |
 | Stable Linux port | `/dev/serial/by-id/usb-1a86_USB_Single_Serial_5AB0182917-if00` |
 | UART format | 1000000 baud, 8N1, no flow control |
-| Pan | ID 7; positive encoder motion looks right |
-| Tilt | ID 8; positive encoder motion looks down |
+| Pan | ID 7; initial camera-based observation labeled positive motion “right”; scene versus shaft direction remains unresolved |
+| Tilt | ID 8; initial camera-based observation labeled positive motion “down”; scene versus shaft direction remains unresolved |
 | Saved center | Pan 1927; tilt 2047 |
 | Software bounds | Pan 1870–1984; tilt 1990–2104 |
 | Hardware EEPROM limits | Pan 933–3043; tilt 1040–3204 |
@@ -529,8 +529,11 @@ The installed working reference was inspected without starting it:
 `/home/elf/lerobot/examples/7_xlerobot_teleop_joycon.py`, its smooth two-wheel
 variant, `/home/elf/lerobot/src/lerobot/robots/xlerobot/xlerobot.py`, the Feetech
 driver and `/home/elf/.cache/huggingface/lerobot/calibration/robots/xlerobot/my_xlerobot.json`.
-The source assigns the left D-pad to the head, with 2-degree target increments
-at a nominal 30 Hz; analog input serves the arms and ZL the left gripper. The
+The source assigns the left D-pad to the head, with increments of 2 normalized
+units (about 21–22 encoder ticks with the installed calibration), not exactly
+2 degrees. `use_degrees` defaults to false. The direct example declares `FPS=30`
+but does not apply a loop rate limiter, so its actual frequency is unmeasured.
+Analog input serves the arms and ZL the left gripper. The
 executable head assignments are up -> ID 8 positive, down -> ID 8 negative,
 left -> ID 7 positive and right -> ID 7 negative. Some adjacent comments
 contradict those assignments. Current physical directions still need visible
@@ -547,8 +550,9 @@ explains the phase-dependent units and minimum physical speed increment.
 With this measured factor and minimum, 50 is the minimum usable fine speed
 setting, approximately 4.4 degrees/second. The former setting 20 was below
 that minimum; a numeric target-slew limit was incorrectly presented as a
-physical speed guarantee. Minimum-speed behavior plausibly explains the poor
-response, but a successful corrected-profile movement test is still required.
+physical speed guarantee. The setting was unsuitable, but is not established as
+the sole explanation: corrected-profile tests below also failed visible
+qualification and one stopped on feedback velocity +100.
 
 Profile v2 uses servo speed 50 while retaining one-tick steps at intervals
 of at least 50 ms, fixed pan/tilt bounds, torque 300, acceleration 3 and the
@@ -565,9 +569,10 @@ The first stopped on ZL release during a pending write, with no later writes.
 The operator then confirmed bracket/cable clearance and its marker was archived.
 The second stopped on tilt feedback velocity -100, exceeding the unchanged 60
 guard. Subsequent readback held pan position/goal 1898/1893 and tilt 2048/2038.
-The second fault remains latched; no automatic restart or return-to-center
-was requested. A corrected-profile trial requires a new operator review and
-fresh exact receipt, and must still stop if velocity -100 recurs.
+The operator subsequently reviewed clearance and explicitly approved profile 2
+with speed 50 and the unchanged velocity guard 60. The second marker was archived
+under its intent directory before the new trial. Neither trial returned to a
+stored center or performed cleanup position writes.
 
 Deployment now copies only its explicit source/header bundle and verifies a
 dedicated new READ-only audit, leaving historical motion audits intact. A full
@@ -575,11 +580,32 @@ ELF root filesystem interrupted linking before promotion; the installed binary
 was preserved. A redundant agent-created decoded trace was moved to `/tmp`,
 and downloaded apt installer cache was cleaned to restore working space.
 The [physical-trial evidence](evidence/e1-neck-physical-trials-20261125.json)
-records both stops, the factory capture and the prepared profile-v2 build.
+records all four trials, the factory capture and the profile-v2 build.
 That build passes 37 native regressions, both Linux ASan harnesses and a
-dedicated four-READ/zero-WRITE deployment check. It is installed read-only with
-the velocity fault still latched. No profile-v2 physical trial has started;
-its operator review is pending. ELF root free space recovered to about 794 MB.
+dedicated four-READ/zero-WRITE deployment check. ELF root free space recovered
+to about 794 MB.
+
+Two profile-v2 trials then ran under the operator's approval. The first ended
+cleanly holding after about 24 seconds, consistent with a Minus exit. Pan encoder
+feedback changed from 1898 to 1908; the operator reported no visible movement.
+A later five-second hold prompt was mistakenly issued after that session had
+already ended and cannot qualify physical motion.
+
+The second profile-v2 trial stopped after about 15 seconds when pan velocity
+reported +100 with position/goal 1920/1924. Raw reply bytes `64 00` confirm the
+decoded velocity. The preceding pan sample was 1918 at capture time 10214192;
+the fault sample was 1920 at 10214254. That two-tick change over 62 ms is a
+sampled average, not proof that the instantaneous velocity report is harmless.
+No later write was recorded. The operator again saw a stationary bracket.
+The latest fault remains latched at `/home/elf/moonrobo-neck/inflight-or-fault`,
+with no new physical session active. No velocity threshold was raised.
+
+The [full installed XLeRobot study](XLEROBOT_REFERENCE_STUDY.md) traces the input,
+unit conversion, bus packets, inherited configuration, startup/reset, shutdown,
+Bluetooth reader and related arm/base/camera paths. It corrects the earlier
+degree/30 Hz assumptions and records source hashes. The old normalized zero
+maps to raw 1988/2122, outside our current E1 bounds, and must not be replayed.
+Old source behavior is a reference, not physical qualification of this transfer.
 
 To qualify a five-minute untouched-neutral recording, save stdout from
 `neck-control joystick-monitor 300`, then run
