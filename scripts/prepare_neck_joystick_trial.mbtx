@@ -1,0 +1,169 @@
+///|
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+fn field(j : Json, key : String) -> Json raise {
+  guard j is Object(fields) && fields.get(key) is Some(value) else {
+    fail("Missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn run(program : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(program, args)
+  guard code == 0 else {
+    fail("\{program} exited \{code}: \{out.text()} \{err.text()}")
+  }
+  out.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  let socket = args.get(1).unwrap()
+  // A required file records the actual operator request. This helper only
+  // prepares a gate receipt; it never invokes the physical execute command.
+  let approval_source = @json.parse(@fs.read_file(args.get(2).unwrap()).text())
+  guard field(approval_source, "operator_authorized") == Json(true) &&
+    field(approval_source, "action") == Json([Json("Joystick"), Json(120)]) else {
+    fail("Need explicit authorization for this exact bounded trial")
+  }
+  let ssh = ["-S", socket, "-o", "BatchMode=yes", "elf@192.168.2.192"]
+  let base = @env.current_dir().unwrap() + "/_build/neck-control-elf"
+  let plan_text = run(
+    "ssh",
+    ssh + ["/home/elf/moonrobo-neck/neck-control plan joystick 120"],
+  )
+  let plan = @json.parse(plan_text)
+  guard field(field(plan, "simulation"), "simulated") == Json(true) &&
+    field(field(field(plan, "simulation"), "report"), "completed") == Json(true) else {
+    fail("Exact-action MoonBit simulation did not complete")
+  }
+  let intent = field(plan, "intent")
+  let intent_id : String = @json.from_json(field(intent, "intent_id"))
+  let root = base + "/trials/" + intent_id
+  @fs.mkdir(root, recursive=true)
+  @fs.write_file(root + "/plan.json", plan_text)
+  @fs.write_file(
+    root + "/robot.json",
+    field(plan, "profile").stringify(indent=2),
+  )
+  @fs.write_file(
+    root + "/operator-source.json",
+    approval_source.stringify(indent=2),
+  )
+  let api = @env.current_dir().unwrap() +
+    "/_build/native/debug/build/vectie/moonrobo/cmd/main/main.exe"
+  let dry_id = "dry-" + intent_id
+  let mut approval_id = ""
+  let mut ready : Json = Json(false)
+  for stage in ["dry-run", "approve", "evaluate"] {
+    // Evaluate the timestamped source snapshot at its recorded observation
+    // time, not at an invented cross-host clock offset. The resulting receipt
+    // has the existing 60-second expiry. The actuator independently reads and
+    // enforces fresh <=150 ms feedback on ELF before every physical write.
+    let transport_start = @env.now().reinterpret_as_int64()
+    let status_text = run(
+      "ssh",
+      ssh + ["/home/elf/moonrobo-neck/neck-control preflight"],
+    )
+    let preflight = @json.parse(status_text)
+    let status = field(preflight, "report")
+    guard field(status, "completed") == Json(true) &&
+      field(status, "holding") == Json(true) else {
+      fail("Read-only servo preflight failed")
+    }
+    @fs.write_file(root + "/status-" + stage + ".json", status_text)
+    let started : Int64 = @json.from_json(field(preflight, "started_epoch_ms"))
+    let now : Int64 = @json.from_json(field(preflight, "finished_epoch_ms"))
+    let elapsed = now - started
+    guard elapsed >= 0L && elapsed <= 150L else {
+      fail(
+        "Servo preflight took \{elapsed} ms, exceeding the existing freshness gate; no grant",
+      )
+    }
+    @fs.write_file(
+      root + "/snapshot-time-" + stage + ".json",
+      (
+        {
+          "evaluated_at_source_epoch_ms": Json(now),
+          "source_feedback_age_upper_bound_ms": Json(elapsed),
+          "transport_round_trip_ms": Json(
+            @env.now().reinterpret_as_int64() - transport_start,
+          ),
+          "dispatch_fresh_feedback_required_on_elf": true,
+        } : Json).stringify(indent=2),
+    )
+    let body : Json = {
+      "intent_id": Json(intent_id),
+      "robot_id": "noetix-e1-neck",
+      "capability": "control.low.neck",
+      "parameters": field(intent, "parameters"),
+      "requester": field(intent, "requested_by"),
+      "receipt_id": Json(stage + "-" + intent_id),
+      "now_ms": Json(now),
+      "approval_id": Json(if stage == "evaluate" { approval_id } else { "" }),
+      "dry_run_receipt_id": Json(dry_id),
+      "developer_gate": true,
+      "telemetry_age_ms": Json(elapsed.to_int()),
+    }
+    let response_text = run(api, [
+      "api-route",
+      root,
+      "POST",
+      "/api/intents/" + stage,
+      body.stringify(),
+    ])
+    @fs.write_file(root + "/" + stage + "-response.json", response_text)
+    let response = @json.parse(response_text)
+    guard field(response, "persisted") == Json(true) else {
+      fail("Gate did not persist " + stage)
+    }
+    let result = field(response, "result")
+    if stage == "approve" {
+      // The API generates its approval ID from intent and timestamp unless
+      // an explicit ID was provided. Use the ID it actually persisted.
+      let approval = field(response, "approval")
+      guard field(approval, "intent") == intent else {
+        fail("Approval intent differs from exact simulated action")
+      }
+      approval_id = @json.from_json(field(approval, "approval_id"))
+      @fs.write_file(root + "/approval.json", approval.stringify(indent=2))
+    }
+    if stage == "evaluate" {
+      ready = field(result, "receipt")
+      guard field(ready, "status") == Json("ReadyForExecution") &&
+        field(field(ready, "verdict"), "decision") == Json("Allow") else {
+        fail("MoonRobo gate denied this trial: " + response_text)
+      }
+    }
+  }
+  let receipt = root + "/ready.json"
+  @fs.write_file(receipt, ready.stringify(indent=2))
+  run("scp", [
+    "-o",
+    "ControlPath=" + socket,
+    "-r",
+    root,
+    "elf@192.168.2.192:/home/elf/moonrobo-neck/",
+  ])
+  |> ignore
+  println(
+    (
+      {
+        "physical_execution": false,
+        "trial": Json(root),
+        "remote_receipt": Json(
+          "/home/elf/moonrobo-neck/" + intent_id + "/ready.json",
+        ),
+        "action": field(ready, "intent"),
+      } : Json).stringify(indent=2),
+  )
+}

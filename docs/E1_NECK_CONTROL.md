@@ -404,8 +404,14 @@ The operator had explicitly confirmed the untouched physical center. Its
 measured X remained near -225 rather than zero. This is an input offset,
 not a reason to change any servo neutral or widen its travel envelope.
 
-`config/e1-neck-left-joycon.json` records this controller's confirmed
-calibration: X minimum/center/maximum -1000/-225/500 and Y -1000/0/1000.
+The initial confirmed calibration used X minimum/center/maximum
+-1000/-225/500 and Y -1000/0/1000. After another reconnect, the kernel and raw
+HID reports instead settled at normalized X 0. The old offset would interpret
+this as 31% right. The operator explicitly confirmed the small thumbstick was
+untouched and physically centered again; `config/e1-neck-left-joycon.json`
+now records X -1000/0/500. This was an explicit calibration correction,
+not automatic startup learning. Its regression also checks that servo neutral
+values remain unchanged.
 Deployment installs it at `/home/elf/moonrobo-neck/joycon-calibration.json`.
 MoonBit maps each half-axis separately around that fixed center and saturates
 input travel. It validates controller identity, explicit neutral confirmation,
@@ -479,6 +485,35 @@ passing finite check improves the evidence over the failed HIDP run; it
 does not isolate every failure cause or establish indefinite Bluetooth
 reliability. Physical execution remains inactive until its existing exact
 motion receipt is supplied; this check did not start a motion session.
+
+Later, input setup failed again after an idle period, and another fresh
+connection stopped providing reports while trial preparation was in progress.
+Independent raw HID reads returned no bytes. The passing five-minute run must
+not be described as a permanent Bluetooth fix. A physical trial still requires
+fresh input admission and terminates on any report loss, without reconnect.
+
+### Preparing an explicitly authorized joystick trial
+
+The actuator CLI's read-only `preflight` command wraps a normal checked
+`Status` result with source epoch timestamps taken before and after UART
+observation. `scripts/prepare_neck_joystick_trial.mbtx SOCKET APPROVAL_SOURCE`
+prepares one exact two-minute `Joystick(120)` trial through the existing
+MoonRobo host API's dry-run, approval and evaluate endpoints. It never invokes
+physical execution. The required local JSON source records the actual current
+operator request, `operator_authorized: true`, and `action: ["Joystick", 120]`;
+do not create that record without the operator's authorization.
+
+The helper saves the actual completed MoonBit simulation, narrow robot
+profile, operator source, checked servo observations, API responses, durable
+dry-run/approval records and ready receipt together under
+`_build/neck-control-elf/trials/INTENT_ID/`, then copies that review bundle to
+ELF. Evaluation uses the timestamped source observation at its recorded time,
+with its conservative source age bounded by the whole UART observation.
+SSH round-trip duration is recorded separately rather than represented as
+fresh servo feedback. The existing 60-second ready-receipt expiry and on-board
+150 ms feedback/input guards at every physical write remain unchanged.
+This tool does not relax the gate, expand the motion envelope, or auto-clear
+fault markers. Only the existing `execute` command consumes the one-use intent.
 
 To qualify a five-minute untouched-neutral recording, save stdout from
 `neck-control joystick-monitor 300`, then run

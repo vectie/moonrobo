@@ -47,6 +47,20 @@ test "measured travel preserves both signs and saturates only input" {
 }
 
 ///|
+test "explicitly confirmed reconnected neutral must not retain the old offset" {
+  let old = measured_stick_calibration()
+  let current = { ..old, x_center: 0, }
+  validate_stick_calibration(current)
+  assert_eq(correct_stick_axis(0, old.x_min, old.x_center, old.x_max), 310)
+  assert_eq(
+    correct_stick_axis(0, current.x_min, current.x_center, current.x_max),
+    0,
+  )
+  assert_eq(home(7), 1927)
+  assert_eq(home(8), 2047)
+}
+
+///|
 test "wrong device unconfirmed center and invalid travel cannot authorize calibration" {
   let c = measured_stick_calibration()
   for

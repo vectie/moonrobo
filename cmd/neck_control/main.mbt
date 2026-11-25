@@ -32,6 +32,24 @@ fn run_cli() -> Unit raise {
         .unwrap_or("/home/elf/moonrobo-neck/neck-audit.jsonl")
       println(Json(@neck.execute(Status, None, log)).stringify(indent=2))
     }
+    "preflight" => {
+      // Timestamp before any UART requests. A remote gate can conservatively
+      // age this read-only observation without counting SSH process startup.
+      let started_epoch_ms = @neck.epoch_ms()
+      let report = @neck.execute(
+        Status,
+        None,
+        "/home/elf/moonrobo-neck/neck-audit.jsonl",
+      )
+      println(
+        (
+          {
+            "started_epoch_ms": Json(started_epoch_ms),
+            "finished_epoch_ms": Json(@neck.epoch_ms()),
+            "report": Json(report),
+          } : Json).stringify(indent=2),
+      )
+    }
     "joystick-monitor" =>
       @neck.monitor_joystick(@string.parse_int(args.get(2).unwrap_or("30")))
     "simulate" =>
@@ -75,7 +93,7 @@ fn run_cli() -> Unit raise {
     }
     _ =>
       abort(
-        "Usage: neck_control status [AUDIT] | joystick-monitor [SECONDS] | simulate|plan DIRECTION [1..5] | simulate|plan joystick [1..300 seconds] | execute RECEIPT AUDIT",
+        "Usage: neck_control status [AUDIT] | preflight | joystick-monitor [SECONDS] | simulate|plan DIRECTION [1..5] | simulate|plan joystick [1..300 seconds] | execute RECEIPT AUDIT",
       )
   }
 }
