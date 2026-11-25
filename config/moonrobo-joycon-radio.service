@@ -1,6 +1,7 @@
 [Unit]
 Description=ELF Joy-Con Bluetooth compatibility settings
 Wants=bluetooth.service
+PartOf=bluetooth.service
 Requires=sys-subsystem-bluetooth-devices-hci0.device
 After=bluetooth.service sys-subsystem-bluetooth-devices-hci0.device
 

@@ -426,7 +426,8 @@ The Linux hostname, Wi-Fi and robot address are unchanged.
 `config/moonrobo-joycon-radio.service` is installed and enabled on ELF as a
 oneshot service. It checks the commissioned Intel AX200 USB vendor/product,
 then applies the alias and default link policy after Bluetooth starts. It
-does not start a joystick session or touch a servo. `joycond` remains disabled
+also follows explicit Bluetooth-service restarts, which reset HCI policy.
+It does not start a joystick session or touch a servo. `joycond` remains disabled
 so it cannot mask input ACLs or enter its earlier LED-work hang again.
 
 An initial compatibility check hit one 100 ms reader timeout while the
