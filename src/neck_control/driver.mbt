@@ -15,7 +15,7 @@ priv struct Serial {
   run_id : String
   mut sequence : Int32
   mut writes : Int32
-  joystick : JoyDevice?
+  joystick : Joystick?
   mut stick_required : Bool
 }
 
@@ -122,7 +122,7 @@ impl Bus for Serial with fn transfer(
       tx,
       count + 6,
       expires_at,
-      joy_event_fd(self.joystick.unwrap()),
+      joy_event_fd(self.joystick.unwrap().device),
     )
   } else {
     serial_exchange(self.fd, tx, count + 6, expires_at)
@@ -348,8 +348,12 @@ pub fn execute(
     )
   }
   let device = "/dev/serial/by-id/usb-1a86_USB_Single_Serial_5AB0182917-if00"
-  let joystick = if action is Joystick(_) { Some(open_stick()) } else { None }
-  defer (if joystick is Some(stick) { joy_close(stick) })
+  let joystick = if action is Joystick(_) {
+    Some(open_stick(calibration_required=true))
+  } else {
+    None
+  }
+  defer (if joystick is Some(stick) { joy_close(stick.device) })
   let fd = serial_open(@utf8.encode(device))
   guard fd >= 0 else {
     let reason = @utf8.decode_lossy(native_error())

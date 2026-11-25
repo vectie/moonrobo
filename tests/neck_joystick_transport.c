@@ -10,8 +10,8 @@ static int sample(int reader, int writer, int malformed) {
   pid_t child=fork();
   if(child==0) {
     unsigned char report[49]={0x30};
-    if(malformed)report[0]=0x21;
-    usleep(10000);
+    if(malformed==1)report[0]=0x21;
+    usleep(malformed==2?105000:10000);
     if(write(writer,report,sizeof(report))!=(ssize_t)sizeof(report))_exit(2);
     _exit(0);
   }
@@ -28,6 +28,7 @@ int main(void) {
   CHECK(write(pair[1],old,sizeof(old))==(ssize_t)sizeof(old),"queued old HID report");
   CHECK(joy_fresh_report(pair[0],&captured)<0,"queued stale report alone cannot count as heartbeat");
   CHECK(sample(pair[0],pair[1],0)==0,"fresh full HID report accepted");
+  CHECK(sample(pair[0],pair[1],2)==0,"bounded scheduling jitter remains inside 150 ms input freshness");
   CHECK(sample(pair[0],pair[1],1)<0,"non-streaming report rejected");
   close(pair[1]);
   CHECK(joy_fresh_report(pair[0],&captured)<0,"disconnection stops input");
@@ -39,7 +40,7 @@ int main(void) {
   moonrobo_joy_close(j);moonrobo_joy_close(j);moonbit_decref(j);
   int setup_pair[2];
   if(socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_NONBLOCK,0,setup_pair)<0)return 2;
-  NeckJoy setup={dup(setup_pair[0]),setup_pair[0]};
+  NeckJoy setup={dup(setup_pair[0]),setup_pair[0],0};
   unsigned char packet[12]={1,0,0,1,0x40,0x40,0,1,0x40,0x40,0x40,1};
   const unsigned char commands[3][2]={{0x40,1},{3,0x30},{0x30,1}};
   for(int i=0;i<3;i++) {
@@ -47,7 +48,9 @@ int main(void) {
     moonbit_bytes_t request=moonbit_make_bytes(12,0);memcpy(request,packet,12);
     CHECK(moonrobo_joy_write_setup(&setup,request)==0,"input setup command accepted");
     unsigned char received[12];CHECK(read(setup_pair[1],received,12)==12 && memcmp(received,packet,12)==0,"setup packet preserved");
+    CHECK(moonrobo_joy_write_setup(&setup,request)<0,"too-fast HID output rejected");
     moonbit_decref(request);
+    usleep(55000);
   }
   // Explicitly forbid SPI writes, arbitrary report modes and changed rumble.
   for(int i=0;i<3;i++) {
@@ -59,6 +62,7 @@ int main(void) {
   packet[2]=0;packet[10]=0x40;packet[11]=1;
   moonbit_bytes_t setup_request=moonbit_make_bytes(12,0);memcpy(setup_request,packet,12);
   for(int match=0;match<2;match++) {
+    usleep(55000);
     pid_t child=fork();
     if(child==0) {
       struct pollfd ready={setup_pair[1],POLLIN,0};

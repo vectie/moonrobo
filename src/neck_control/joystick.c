@@ -18,7 +18,7 @@
 // OS I/O only. Calibration, neutral/deadman admission, speeds, goals and
 // fault policy live in MoonBit. Only a whitelisted input-report/LED setup
 // can be sent to this Joy-Con. This file never opens the servo port.
-typedef struct { int input_fd; int hid_fd; } NeckJoy;
+typedef struct { int input_fd; int hid_fd; int64_t last_setup_ms; } NeckJoy;
 static char joy_last_error[256];
 MOONBIT_FFI_EXPORT moonbit_bytes_t moonrobo_joy_error(void) {
   int n=(int)strlen(joy_last_error);moonbit_bytes_t b=moonbit_make_bytes(n,0);memcpy(b,joy_last_error,(size_t)n);return b;
@@ -28,6 +28,7 @@ static void joy_destroy(void *p) {
   if (j->input_fd >= 0) close(j->input_fd);
   if (j->hid_fd >= 0) close(j->hid_fd);
   j->input_fd = j->hid_fd = -1;
+  j->last_setup_ms = 0;
 }
 MOONBIT_FFI_EXPORT void moonrobo_joy_close(NeckJoy *j) { joy_destroy(j); }
 MOONBIT_FFI_EXPORT int32_t moonrobo_joy_valid(NeckJoy *j) { return j->input_fd >= 0 && j->hid_fd >= 0; }
@@ -48,7 +49,7 @@ static int joy_keys(int fd, int *zl, int *minus) {
 
 // A newly opened or paused reader must discard backlog first. Then require
 // an actual fresh periodic full HID report; unchanged stick values alone
-// are not a Bluetooth heartbeat. Never wait longer than 100 ms; MoonBit also
+// are not a Bluetooth heartbeat. Never wait longer than 125 ms; MoonBit also
 // enforces the stricter combined 150 ms sample-to-dispatch deadline.
 static int joy_fresh_report(int fd, int64_t *captured) {
   unsigned char report[128];
@@ -61,7 +62,7 @@ static int joy_fresh_report(int fd, int64_t *captured) {
     return -1;
   }
   *captured = joy_clock();
-  int64_t deadline = *captured + 100;
+  int64_t deadline = *captured + 125;
   for (;;) {
     int wait = (int)(deadline - joy_clock());
     if (wait <= 0) return -1;
@@ -81,6 +82,7 @@ static int joy_fresh_report(int fd, int64_t *captured) {
 MOONBIT_FFI_EXPORT NeckJoy *moonrobo_joy_open(void) {
   NeckJoy *j = (NeckJoy *)moonbit_make_external_object(joy_destroy, sizeof(NeckJoy));
   j->input_fd = j->hid_fd = -1;
+  j->last_setup_ms = 0;
 #ifdef __linux__
   const char *expected = "98:b6:e9:20:21:41";
   for (int i = 0; i < 128; ++i) {
@@ -135,6 +137,9 @@ MOONBIT_FFI_EXPORT int32_t moonrobo_joy_write_setup(NeckJoy *j, moonbit_bytes_t 
         (packet[10]==0x30 && packet[11]==1))) return -1;
   struct pollfd p={j->hid_fd,POLLOUT,0};
   if(poll(&p,1,100)<=0 || (p.revents&(POLLERR|POLLHUP|POLLNVAL))) return -1;
+  int64_t now=joy_clock();
+  if(j->last_setup_ms && now-j->last_setup_ms<50) return -1;
+  j->last_setup_ms=now;
   return write(j->hid_fd,packet,12)==12 ? 0 : -1;
 #else
   (void)j;(void)packet;return -1;

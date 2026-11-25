@@ -11,11 +11,11 @@
     "input": "calibrated evdev axes and buttons plus fresh periodic hidraw heartbeat"
   },
   "validation": {
-    "moonbit_native_tests": { "passed": 28, "failed": 0 },
+    "moonbit_native_tests": { "passed": 31, "failed": 0 },
     "linux_serial_asan": { "failures": 0, "physical_device_opened": false },
     "linux_joystick_asan": { "failures": 0, "physical_device_opened": false },
     "native_elf_joystick_simulation": { "simulated": true, "duration_seconds": 2 },
-    "last_successful_hardware_deployment_audit": { "cumulative_read_packets": 49, "write_packets": 0 },
+    "last_successful_hardware_deployment_audit": { "cumulative_read_packets": 69, "write_packets": 0 },
     "pre_reboot_readonly_servo_check": "ID 7 identity read timed out with zero response bytes; operator confirms 12 V power is on",
     "latest_readonly_servo_check": "Recovered after restart: pan 1927/1927, tilt 2052/2047 position/goal, both holding with bounded profile",
     "physical_joystick_session_started": false,
@@ -23,25 +23,29 @@
   },
   "installed_binary": {
     "path": "/home/elf/moonrobo-neck/neck-control",
-    "sha256": "a044ac56959ff491afab730d4682f8e0c7409e3cbc4be6681b3b1a94ad2c20f5"
+    "sha256": "fc4737530b4113b102eaf47c594c7e7acb63535ed6720213f7f643720b14cb97"
   },
   "staged_candidate": {
     "path": "/home/elf/moonrobo-neck/neck-control.next",
-    "sha256": "a044ac56959ff491afab730d4682f8e0c7409e3cbc4be6681b3b1a94ad2c20f5",
-    "status": "Promoted after the approved reboot restored servo feedback and normal deployment verification passed"
+    "sha256": "fc4737530b4113b102eaf47c594c7e7acb63535ed6720213f7f643720b14cb97",
+    "status": "Promoted after ASan transports, native simulations and read-only hardware status passed; input calibration installed"
   },
   "observed_input": {
     "fresh_reports_received_after_manual_reconnect": true,
     "zl_press_and_release_received": true,
     "thumbstick_changes_received": true,
-    "all_four_directions_verified": false,
+    "all_four_directions_verified": true,
     "initial_sequence_x_range": [-1000, 0],
     "initial_sequence_y_range": [-1000, 0],
     "resting_x_was_outside_deadzone": true,
     "operator_confirms_thumbstick_is_untouched_and_centered": true,
     "post_setup_60_second_check": { "completed": true, "missing_report_errors": 0, "observed_x_range": [-287, -281] },
     "subsequent_180_second_check": { "completed": true, "live_samples": 0, "status": "HID heartbeat timeout; Bluetooth stability remains unqualified" },
-    "notes": "Input-only recording showed off-center X and no positive values during the requested direction sequence. The operator initially moved the whole Joy-Con, then tested its thumbstick. A one-direction held input check is still required. Do not treat software simulation as physical direction qualification."
+    "post_reboot_full_circle_raw_x_range": [-1000, 480],
+    "post_reboot_full_circle_raw_y_range": [-1000, 1000],
+    "initial_compatibility_check": { "duration_seconds": 300, "reader_timeout_ms": 100, "waiting_errors": 1, "link_remained_connected": true, "input_only_reopen_restored_reports": true },
+    "compatibility_125ms_check": { "passed": false, "requested_duration_seconds": 300, "live_samples": 164, "live_span_ms": 167782, "input_opens": 1, "waiting_errors": 2, "calibrated_x_range": [-21, 15], "calibrated_y_range": [0, 0], "raw_hid_after_gap_bytes_in_2_seconds": 0, "bluez_still_reported_connected": true, "log_sha256": "45e1616391b5cff390d7c39be6ad1e12acfd66615b44d544bd8a6210587cbc33" },
+    "notes": "The initial requested sequence was inconclusive. After reboot the operator swept the small thumbstick around its full circle twice and released it; both signs on both axes were observed. Explicitly confirmed physical neutral was near raw-normalized X -225. Final input calibration is separate from servo neutral and absolute limits."
   },
   "host_changes": {
     "bluetooth_enabled": true,
@@ -51,15 +55,24 @@
     "joycond_autostart_symlink_removed": true,
     "scoped_input_acl_restored": "ELF user read access to the physical left Joy-Con input node",
     "targeted_btusb_unbind": "Pre-reboot 1-1.1:1.0 reset blocked; pending operation cleared by board restart",
-    "udev_rule": "/etc/udev/rules.d/99-zz-moonrobo-neck-joycon.rules"
+    "udev_rule": "/etc/udev/rules.d/99-zz-moonrobo-neck-joycon.rules",
+    "bluetooth_alias": "Nintendo-ELF-Neck",
+    "default_and_connected_hci_link_policy": "RSWITCH (without SNIFF)",
+    "radio_settings_service": { "name": "moonrobo-joycon-radio.service", "enabled": true, "active": true, "starts_actuation": false },
+    "hid_setup_minimum_spacing_ms": 50,
+    "fresh_report_poll_budget_ms": 125,
+    "maximum_input_to_dispatch_age_ms": 150,
+    "input_calibration": { "controller": "98:B6:E9:20:21:41", "operator_confirmed_neutral": true, "x_min": -1000, "x_center": -225, "x_max": 500, "y_min": -1000, "y_center": 0, "y_max": 1000, "loaded_once_per_open": true, "automatic_center_learning": false },
+    "changes_isolate_radio_root_cause": false,
+    "next_transport_experiment": { "userspace_hid": true, "classic_bonded_only": true, "original_config_backup": "/etc/bluetooth/input.conf.before-moonrobo-20261125", "live_qualification": "pending controller wake; no passing claim" }
   },
   "limitations": [
     "BlueZ reported a connected link without HID reports; manual SYNC/reconnect restored streaming.",
     "Physical sessions stop and retain the fault marker on input loss. Only the input-only monitor may reopen input.",
     "No ready motion receipt was issued and no actuation was requested for this commissioning check.",
-    "Physical thumbstick direction/calibration qualification remains incomplete.",
-    "A longer stream check failed after the initial 60-second pass. Do not describe Bluetooth as fixed.",
-    "Post-restart Bluetooth stream qualification and neutral recalibration are pending a live controller."
+    "Observed stick directions and input calibration do not establish collision-free physical neck motion.",
+    "Earlier stream checks failed; compatibility settings were changed together, so the radio failure root cause is not isolated.",
+    "A finite input-only qualification cannot guarantee future Bluetooth reliability."
   ],
   "approved_restart": {
     "method": "Completed filesystem sync, then kernel emergency restart after ordinary forced reboot blocked",

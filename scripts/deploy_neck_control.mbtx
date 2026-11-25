@@ -173,6 +173,25 @@ async fn main {
   guard reads >= 4 else { fail("Missing physical UART read audit") }
   @fs.write_file(stage + "/elf-hardware-audit.jsonl", audit)
   println("Verified hardware audit: \{reads} READ packets, zero WRITE packets.")
+  // The fixed, operator-confirmed input calibration travels with this build.
+  // Physical sessions reject a missing/malformed calibration before UART open.
+  run("scp", [
+    "-o",
+    "ControlPath=" + socket,
+    "-o",
+    "BatchMode=yes",
+    root + "/config/e1-neck-left-joycon.json",
+    "elf@192.168.2.192:/home/elf/moonrobo-neck/joycon-calibration.json.next",
+  ])
+  |> ignore
+  run(
+    "ssh",
+    ssh +
+    [
+      "mv /home/elf/moonrobo-neck/joycon-calibration.json.next /home/elf/moonrobo-neck/joycon-calibration.json",
+    ],
+  )
+  |> ignore
   run(
     "ssh",
     ssh +

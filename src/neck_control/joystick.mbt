@@ -101,10 +101,10 @@ fn calibrated_axis(
 
 ///|
 fn read_stick(
-  device : JoyDevice,
+  device : Joystick,
   diagnostic~ : Bool = false,
 ) -> StickSample raise {
-  let raw = joy_read(device)
+  let raw = joy_read(device.device)
   guard raw.length() > 0 else {
     raise Transport(
       "Joy-Con input lost or stalled; no automatic reconnect: \{@utf8.decode_lossy(joy_error())}",
@@ -114,15 +114,38 @@ fn read_stick(
   if diagnostic {
     println(
       (
-        { "physical_execution": Json(false), "kernel_sample": kernel_sample } :
-        Json).stringify(),
+        {
+          "physical_execution": Json(false),
+          "kernel_sample": kernel_sample,
+          "calibration": Json(device.calibration),
+        } : Json).stringify(),
     )
   }
   let f : NativeStickSample = @json.from_json(kernel_sample)
+  let c = device.calibration
+  guard !c.operator_confirmed_neutral ||
+    (
+      f.min_x == -32767 &&
+      f.max_x == 32767 &&
+      f.min_y == -32767 &&
+      f.max_y == 32767
+    ) else {
+    raise Rejected("Kernel axis ranges changed since calibration")
+  }
   let sample : StickSample = {
     captured_ms: f.captured_ms,
-    x: calibrated_axis(f.x, f.min_x, f.max_x),
-    y: calibrated_axis(f.y, f.min_y, f.max_y),
+    x: correct_stick_axis(
+      calibrated_axis(f.x, f.min_x, f.max_x),
+      c.x_min,
+      c.x_center,
+      c.x_max,
+    ),
+    y: correct_stick_axis(
+      calibrated_axis(f.y, f.min_y, f.max_y),
+      c.y_min,
+      c.y_center,
+      c.y_max,
+    ),
     deadman: f.zl,
     exit: f.minus,
   }
@@ -131,7 +154,8 @@ fn read_stick(
 }
 
 ///|
-fn open_stick() -> JoyDevice raise NeckError {
+fn open_stick(calibration_required~ : Bool = false) -> Joystick raise {
+  let calibration = load_stick_calibration(calibration_required)
   let device = joy_open()
   guard joy_valid(device) != 0 else {
     raise Transport(
@@ -172,9 +196,11 @@ fn open_stick() -> JoyDevice raise NeckError {
         }
       }
     }
-    sleep_ms(20)
+    // SDL and hid-nintendo both warn that closely spaced output packets can
+    // disconnect a Bluetooth controller. Input setup is before UART open.
+    sleep_ms(50)
   }
-  device
+  { device, calibration, }
 }
 
 ///|
@@ -196,8 +222,8 @@ fn validate_stick_setup_reply(
 /// input after a connection failure. Physical sessions always fault instead.
 pub fn monitor_joystick(seconds : Int32) -> Unit raise {
   validate_action(Joystick(seconds))
-  let mut device : JoyDevice? = None
-  defer (if device is Some(d) { joy_close(d) })
+  let mut device : Joystick? = None
+  defer (if device is Some(d) { joy_close(d.device) })
   let end = clock_ms() + seconds.to_int64() * 1000L
   let mut gate = StickGate::new()
   let mut last : (Int32, Int32, Bool, Bool)? = None
@@ -225,7 +251,7 @@ pub fn monitor_joystick(seconds : Int32) -> Unit raise {
           waiting = Some(message)
         }
         if device is Some(d) {
-          joy_close(d)
+          joy_close(d.device)
         }
         device = None
         gate = StickGate::new()

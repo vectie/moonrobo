@@ -258,6 +258,9 @@ outputs are forbidden. The input monitor never opens the robot servo port.
 Sensor and report-mode setup require a matching positive HID acknowledgement;
 a successful host write alone is insufficient. A controller that cannot
 acknowledge setup cannot be admitted as live input.
+Setup outputs are separated by at least 50 ms, enforced in both MoonBit and
+the native whitelist. The native input reader waits at most 125 ms for a
+new full report, with the sample timestamp taken before waiting.
 Fresh input and motor feedback each have a 150 ms maximum age. Input age
 and feedback age bound dispatch even after audit persistence. The native
 serial boundary checks ZL, Minus and device presence again immediately
@@ -342,16 +345,17 @@ confirmed changing full-report timers during the comparison.
 The daemon's stop also exposed a kernel-side LED work flush hang:
 `joycond` remained in uninterruptible sleep under `brightness_store` →
 `flush_work`, despite systemd's stop/kill request. This is recorded separately
-from a lost radio connection. No ELF reboot or USB servo reset was attempted.
+from a lost radio connection. At that stage no ELF reboot or USB servo reset
+had been attempted; the subsequently approved restart is recorded below.
 The targeted Bluetooth USB-interface unbind at `1-1.1:1.0` also blocked in the
 kernel. The servo adapter is on sibling interface `1-1.3:1.0`; it was not
 unbound or reset. Preserve that distinction when recovering the board.
 After correcting report setup and restoring the scoped input ACL, a
 60-second input-only check passed without a missing-report error. A later
-180-second check received no fresh samples, so connection stability is still
-unqualified. A later read-only servo identity check also timed out, despite
+180-second check received no fresh samples, leaving connection stability
+unqualified at that stage. A later read-only servo identity check also timed out, despite
 the operator confirming motor power remains on. The newer ACK-checked
-candidate is staged, but was not promoted over the last verified installed
+candidate was staged, but was not promoted over the last verified installed
 binary while servo status is unavailable. No physical motion grant was issued.
 The input-only check detected ZL press/release and thumbstick changes, but
 the initial direction sequence produced only nonpositive axis values and
@@ -361,8 +365,8 @@ enable motion merely to hide this symptom. Verify the physical thumbstick
 and its calibration in the monitor first. No physical joystick session was
 started during these input checks.
 The [joystick qualification record](evidence/e1-neck-joystick-20261125.json)
-separates the 28 passing native regressions and two Linux ASan transport
-checks from the still-incomplete physical direction qualification. Deployment
+separates software regressions and two Linux ASan transport checks from
+physical input and actuation qualification. Deployment
 also ran the native ELF joystick simulation and read-only servo status.
 For independent software/transport qualification while hardware is unavailable,
 `moon run scripts/deploy_neck_control.mbtx SOCKET --stage-only` builds the
@@ -387,10 +391,84 @@ tilt 2052/2047, both torque enabled, speed 20, acceleration 3 and torque limit
 candidate was then deployed through the normal verification path; both ASan
 harnesses and native simulations passed, and its audit contained 49
 cumulative READ packets and zero WRITE packets. The installed binary SHA256
-is `a044ac56959ff491afab730d4682f8e0c7409e3cbc4be6681b3b1a94ad2c20f5`.
+was `a044ac56959ff491afab730d4682f8e0c7409e3cbc4be6681b3b1a94ad2c20f5`.
 The controller does not auto-start a physical session after reboot. A fresh
-Joy-Con connection/stream check is still required before calling Bluetooth
-reliable, and the previously confirmed neutral offset must be remeasured.
+Joy-Con connection/stream check and neutral measurement followed this recovery.
+
+### Explicit stick calibration and Bluetooth compatibility
+
+After the restart the operator swept the small thumbstick around its full
+travel twice and released it. Factory-normalized input reached X
+[-1000, 480] and Y [-1000, 1000], establishing both signs on both axes.
+The operator had explicitly confirmed the untouched physical center. Its
+measured X remained near -225 rather than zero. This is an input offset,
+not a reason to change any servo neutral or widen its travel envelope.
+
+`config/e1-neck-left-joycon.json` records this controller's confirmed
+calibration: X minimum/center/maximum -1000/-225/500 and Y -1000/0/1000.
+Deployment installs it at `/home/elf/moonrobo-neck/joycon-calibration.json`.
+MoonBit maps each half-axis separately around that fixed center and saturates
+input travel. It validates controller identity, explicit neutral confirmation,
+ordered bounds, minimum half-span and unchanged kernel ranges. Physical
+execution rejects missing or invalid calibration before opening UART. The
+monitor may use an explicitly unconfirmed factory mapping when the file is
+absent. Calibration is loaded once per input open; it is never learned from
+an arbitrary startup pose. Servo goals, neutral values and limits are unchanged.
+
+The host's Bluetooth alias is now `Nintendo-ELF-Neck` and HCI link policy
+is `RSWITCH` without SNIFF. These are compatibility workarounds, not an
+isolated root-cause finding: alias, link policy and output pacing changed
+together. See the [firsthand Joy-Con investigation](https://blog.fyralabs.com/your-joy-cons-are-vibrating-themselves-to-death/),
+[BlueZ link-policy interface](https://github.com/bluez/bluez/wiki/hcitool), and
+[SDL's Bluetooth output timing warning](https://github.com/libsdl-org/SDL/blob/main/src/joystick/hidapi/SDL_hidapi_switch.c).
+The Linux hostname, Wi-Fi and robot address are unchanged.
+
+`config/moonrobo-joycon-radio.service` is installed and enabled on ELF as a
+oneshot service. It checks the commissioned Intel AX200 USB vendor/product,
+then applies the alias and default link policy after Bluetooth starts. It
+does not start a joystick session or touch a servo. `joycond` remains disabled
+so it cannot mask input ACLs or enter its earlier LED-work hang again.
+
+An initial compatibility check hit one 100 ms reader timeout while the
+Bluetooth link stayed connected; fresh reports resumed after the input-only
+monitor reopened. This was not evidence of a radio disconnect. The reader
+budget was subsequently changed to 125 ms, covered by a delayed-report
+transport regression. The 150 ms input-to-dispatch deadline, terminal physical
+session faults and prohibition on automatic actuation reconnect remain intact.
+
+The final deployment passes 31 native MoonBit tests and both Linux ASan
+transport harnesses, including input calibration rejection and paced HID
+output checks. Read-only deployment verification contains 69 cumulative READ
+packets and zero WRITE packets. Current binary SHA256:
+`fc4737530b4113b102eaf47c594c7e7acb63535ed6720213f7f643720b14cb97`.
+The qualification record below distinguishes the final live-stream result
+from these software checks. No physical joystick session or new neck motion
+was requested during recovery.
+
+The five-minute 125 ms-budget check **failed**: 164 logged live samples
+spanned 167,782 ms, then the reader lost its heartbeat and could not obtain
+setup acknowledgements. Calibrated neutral stayed X [-21, 15], Y [0, 0].
+An independent two-second raw HID read returned zero bytes even though BlueZ
+still reported connected. The kernel logged repeated dropped IMU reports.
+Wi-Fi was on 5 GHz, and both servos still responded with unchanged targets.
+This is not a passing stability qualification and must not enable motion.
+
+The next isolated transport experiment uses BlueZ `UserspaceHID=true`
+instead of the board's default kernel HIDP path; `/dev/uhid` is available.
+`config/moonrobo-joycon-input.conf` retains `ClassicBondedOnly=true`.
+The original input configuration is backed up at
+`/etc/bluetooth/input.conf.before-moonrobo-20261125`. This experimental
+transport setting requires its own fresh connection and live qualification;
+it is not yet evidence that the dropout has been fixed.
+
+To qualify a five-minute untouched-neutral recording, save stdout from
+`neck-control joystick-monitor 300`, then run
+`moon run scripts/qualify_neck_joystick_log.mbtx PATH_TO_LOG`.
+The qualifier requires one input open, no waiting errors, at least 280 logged
+samples spanning 295 seconds, and both calibrated axes inside the existing
+20% neutral deadzone. Logged heartbeat intervals are approximately one second;
+they are not the per-report HID age. This is an input-only qualification,
+separate from motion authorization and physical clearance validation.
 
 ## Regression evidence and sources
 
