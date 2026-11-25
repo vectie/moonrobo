@@ -64,18 +64,19 @@ async fn main {
     )
   }
   let ssh = ["-S", socket, "-o", "BatchMode=yes", "elf@192.168.2.192"]
-  run("ssh", ssh + ["mkdir -p /home/elf/moonrobo-neck"]) |> ignore
-  run("scp", [
-    "-r",
-    "-o",
-    "ControlPath=" + socket,
-    "-o",
-    "BatchMode=yes",
-    stage,
-    "elf@192.168.2.192:/home/elf/moonrobo-neck/",
-  ])
-  |> ignore
   let base = "/home/elf/moonrobo-neck/neck-control-elf/"
+  run("ssh", ssh + ["mkdir -p " + base]) |> ignore
+  run(
+    "scp",
+    ["-o", "ControlPath=" + socket, "-o", "BatchMode=yes"] +
+    [
+      "main.c", "serial.c", "joystick.c", "fs_native.c", "transport_test.c", "joystick_test.c",
+      "runtime.c", "env.c", "sync_io.c", "utf.c", "backtrace.c", "moonbit.h", "moonbit_runtime.h",
+      "moonbit_simd.h", "moonbit-fundamental.h", "backtrace.h",
+    ].map(name => stage + "/" + name) +
+    ["elf@192.168.2.192:" + base],
+  )
+  |> ignore
   let sources = [
     "main.c", "serial.c", "joystick.c", "fs_native.c", "runtime.c", "env.c", "sync_io.c",
     "utf.c", "backtrace.c",
@@ -145,13 +146,19 @@ async fn main {
     )
     return
   }
+  // A dedicated new audit isolates this deployment's READ-only verification
+  // from legitimate earlier actuation in the permanent neck audit.
+  let deployment_audit = "/home/elf/moonrobo-neck/deployment-" +
+    @env.now().to_string() +
+    ".jsonl"
   let status = run(
     "ssh",
-    ssh + ["/home/elf/moonrobo-neck/neck-control.next status"],
+    ssh +
+    ["/home/elf/moonrobo-neck/neck-control.next status " + deployment_audit],
   )
   @fs.write_file(stage + "/elf-status.json", status)
   println(status)
-  let audit = run("ssh", ssh + ["cat /home/elf/moonrobo-neck/neck-audit.jsonl"])
+  let audit = run("ssh", ssh + ["cat " + deployment_audit])
   let mut reads = 0
   for line in audit.split("\n") {
     if line.trim().is_empty() {

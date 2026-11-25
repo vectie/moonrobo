@@ -27,7 +27,7 @@ commands, not merely configuration:
 | Acceleration 41 | 5 | 0 |
 | Goal position 42 | Near the saved starting pose 1927 | 0 |
 | Goal time 44 | 0 | 0 |
-| Goal speed 46 | 35 ticks per second | 0 |
+| Goal speed 46 | 35 (raw setting) | 0 |
 | Torque limit 48 | 300 of 1000 | 1000 of 1000 |
 
 In position mode, speed zero means maximum speed, not a stop command. Raw
@@ -92,7 +92,8 @@ profile change and new clearance checks.
    torque enable and explicit torque release. Bulk restoration, arbitrary
    registers, EEPROM writes and a raw zero target are unavailable.
 3. **Prepare before position.** Read and validate identity, calibration and
-   both current poses. Configure torque limit 300, speed 20 and acceleration
+   both current poses. For profile v2, verify factory speed parameters and
+   configure torque limit 300, speed 50 and acceleration
    3. Read back each stage. Only then latch the measured current position;
    verify the latch before explicit enable. An already energized motor with
    a distant old target is rejected, not automatically corrected.
@@ -228,8 +229,9 @@ assigns the **left analog stick directly to neck pan and tilt**.
 | Minus | End the session, with no return-to-center or torque release |
 | Disconnect, stale input, stalled loop or servo fault | End and latch the fault; no automatic resume |
 
-The stick has a 20% center deadzone. Outside it, requested speed scales from
-1 to 20 encoder ticks/second (at most about 1.76 degrees/second). Each axis
+The stick has a 20% center deadzone. Outside it, requested target slew scales
+from 1 to 20 encoder ticks/second (about 1.76 degrees/second at full input).
+This bounds target changes, not instantaneous physical motor velocity. Each axis
 still advances at most one tick per 50 ms. Diagonal input is supported, with
 both axes checked. Outward velocity stops at the existing fixed bounds:
 pan 1870–1984, tilt 1990–2104. It cannot shift the envelope. There is no gyro
@@ -409,9 +411,14 @@ The initial confirmed calibration used X minimum/center/maximum
 HID reports instead settled at normalized X 0. The old offset would interpret
 this as 31% right. The operator explicitly confirmed the small thumbstick was
 untouched and physically centered again; `config/e1-neck-left-joycon.json`
-now records X -1000/0/500. This was an explicit calibration correction,
-not automatic startup learning. Its regression also checks that servo neutral
-values remain unchanged.
+temporarily recorded X -1000/0/500. A later reconnect again reported the
+original cluster near -225. During the first physical trial, a transition to
+raw-normalized zero caused small unintended rightward target steps under that
+old offset. The current fixed center is -100: both explicitly observed resting
+clusters [-250,-210] and [0,20] fit inside its unchanged 20% deadzone. The raw
+neutral band moves from [-380,-80] to [-280,20], retaining the same 300-unit
+width. This is an explicit calibration correction, not startup learning or a
+wider deadzone. Regressions check both clusters and unchanged servo neutrals.
 Deployment installs it at `/home/elf/moonrobo-neck/joycon-calibration.json`.
 MoonBit maps each half-axis separately around that fixed center and saturates
 input travel. It validates controller identity, explicit neutral confirmation,
@@ -443,10 +450,10 @@ budget was subsequently changed to 125 ms, covered by a delayed-report
 transport regression. The 150 ms input-to-dispatch deadline, terminal physical
 session faults and prohibition on automatic actuation reconnect remain intact.
 
-The final deployment passes 31 native MoonBit tests and both Linux ASan
+The Bluetooth-qualification deployment passed 31 native MoonBit tests and both Linux ASan
 transport harnesses, including input calibration rejection and paced HID
 output checks. Read-only deployment verification contains 69 cumulative READ
-packets and zero WRITE packets. Current binary SHA256:
+packets and zero WRITE packets. Its binary SHA256 was:
 `fc4737530b4113b102eaf47c594c7e7acb63535ed6720213f7f643720b14cb97`.
 The qualification record below distinguishes the final live-stream result
 from these software checks. No physical joystick session or new neck motion
@@ -500,7 +507,8 @@ observation. `scripts/prepare_neck_joystick_trial.mbtx SOCKET APPROVAL_SOURCE`
 prepares one exact two-minute `Joystick(120)` trial through the existing
 MoonRobo host API's dry-run, approval and evaluate endpoints. It never invokes
 physical execution. The required local JSON source records the actual current
-operator request, `operator_authorized: true`, and `action: ["Joystick", 120]`;
+operator request, `operator_authorized: true`, `action: ["Joystick", 120]`,
+`neck_profile_version: "2"` and `servo_speed_limit: "50"`;
 do not create that record without the operator's authorization.
 
 The helper saves the actual completed MoonBit simulation, narrow robot
@@ -514,6 +522,64 @@ fresh servo feedback. The existing 60-second ready-receipt expiry and on-board
 150 ms feedback/input guards at every physical write remain unchanged.
 This tool does not relax the gate, expand the motion envelope, or auto-clear
 fault markers. Only the existing `execute` command consumes the one-use intent.
+
+### XLeRobot comparison and minimum-speed correction
+
+The installed working reference was inspected without starting it:
+`/home/elf/lerobot/examples/7_xlerobot_teleop_joycon.py`, its smooth two-wheel
+variant, `/home/elf/lerobot/src/lerobot/robots/xlerobot/xlerobot.py`, the Feetech
+driver and `/home/elf/.cache/huggingface/lerobot/calibration/robots/xlerobot/my_xlerobot.json`.
+The source assigns the left D-pad to the head, with 2-degree target increments
+at a nominal 30 Hz; analog input serves the arms and ZL the left gripper. The
+executable head assignments are up -> ID 8 positive, down -> ID 8 negative,
+left -> ID 7 positive and right -> ID 7 negative. Some adjacent comments
+contradict those assignments. Current physical directions still need visible
+qualification on the transferred assembly; do not infer them from comments.
+
+The old driver sets head P/D/I to 16/43/0, matching actual readback. Its
+head action path writes goal positions without imposing the new speed value
+20. Its startup zeroing, unrestricted deltas and torque cleanup are not reused.
+
+The [read-only factory capture](evidence/e1-neck-factory-20261125.json) shows
+both motors have phase 12 and factory bytes 80–86 `[1,20,50,1,65,50,1]`.
+FEETECH's [STS memory-table reference](https://ftservo.github.io/ftservo-wiki/reference/parameter/memory-sts/)
+explains the phase-dependent units and minimum physical speed increment.
+With this measured factor and minimum, 50 is the minimum usable fine speed
+setting, approximately 4.4 degrees/second. The former setting 20 was below
+that minimum; a numeric target-slew limit was incorrectly presented as a
+physical speed guarantee. Minimum-speed behavior plausibly explains the poor
+response, but a successful corrected-profile movement test is still required.
+
+Profile v2 uses servo speed 50 while retaining one-tick steps at intervals
+of at least 50 ms, fixed pan/tilt bounds, torque 300, acceleration 3 and the
+raw feedback velocity fault threshold of 60. A new factory fingerprint check
+precedes every non-release motion operation. Ready receipts must now match
+the exact action, profile version and speed value; old profile approvals
+cannot be reused. Read-only status recognizes the known legacy 20 and new 50
+holding profiles so inspection itself does not alter a motor. The `configuration`
+command reads fixed identity/factory/feedback registers only and is available
+while a motion fault is latched.
+
+Two profile-v1 physical trials did not pass visible-movement qualification.
+The first stopped on ZL release during a pending write, with no later writes.
+The operator then confirmed bracket/cable clearance and its marker was archived.
+The second stopped on tilt feedback velocity -100, exceeding the unchanged 60
+guard. Subsequent readback held pan position/goal 1898/1893 and tilt 2048/2038.
+The second fault remains latched; no automatic restart or return-to-center
+was requested. A corrected-profile trial requires a new operator review and
+fresh exact receipt, and must still stop if velocity -100 recurs.
+
+Deployment now copies only its explicit source/header bundle and verifies a
+dedicated new READ-only audit, leaving historical motion audits intact. A full
+ELF root filesystem interrupted linking before promotion; the installed binary
+was preserved. A redundant agent-created decoded trace was moved to `/tmp`,
+and downloaded apt installer cache was cleaned to restore working space.
+The [physical-trial evidence](evidence/e1-neck-physical-trials-20261125.json)
+records both stops, the factory capture and the prepared profile-v2 build.
+That build passes 37 native regressions, both Linux ASan harnesses and a
+dedicated four-READ/zero-WRITE deployment check. It is installed read-only with
+the velocity fault still latched. No profile-v2 physical trial has started;
+its operator review is pending. ELF root free space recovered to about 794 MB.
 
 To qualify a five-minute untouched-neutral recording, save stdout from
 `neck-control joystick-monitor 300`, then run

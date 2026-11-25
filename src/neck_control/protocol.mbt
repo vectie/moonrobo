@@ -108,3 +108,14 @@ fn validate_identity(id : Int32, bytes : Bytes) -> Unit raise NeckError {
     raise Rejected("Calibration fingerprint changed; explicit review required")
   }
 }
+
+///|
+fn validate_factory_speed(bytes : Bytes) -> Unit raise NeckError {
+  // Commissioned firmware 3.10: DTs 20 ms, fine speed factor 50,
+  // minimum speed one coarse unit. A limit below 50 is sub-minimum.
+  guard bytes == b"\x01\x14\x32\x01\x41\x32\x01" else {
+    raise Rejected(
+      "Factory speed fingerprint changed; explicit review required",
+    )
+  }
+}

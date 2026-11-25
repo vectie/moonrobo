@@ -286,6 +286,7 @@ fn[B : Bus] run_joystick(bus : B, seconds : Int32) -> Report raise {
   validate_action(Joystick(seconds))
   for id in [7, 8] {
     validate_identity(id, bus.transfer(id, 2, [0, 34], 34, 0L))
+    validate_factory_speed(bus.transfer(id, 2, [80, 7], 7, 0L))
   }
   let guards = [Guard::new(7), Guard::new(8)]
   let before = guards.map(g => observe(bus, g.id))

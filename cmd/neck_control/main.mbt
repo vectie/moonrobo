@@ -26,6 +26,12 @@ fn run_cli() -> Unit raise {
   let args = @env.args()
   let command = args.get(1).unwrap_or("status")
   match command {
+    "configuration" =>
+      println(
+        @neck.read_configuration(
+          args.get(2).unwrap_or("/home/elf/moonrobo-neck/neck-audit.jsonl"),
+        ).stringify(indent=2),
+      )
     "status" => {
       let log = args
         .get(2)
@@ -63,7 +69,7 @@ fn run_cli() -> Unit raise {
         p.id,
         "control.low.neck",
         @core.operator_requester("neck-cli"),
-        parameters={ "action": Json(action).stringify() },
+        parameters=@neck.intent_parameters(action),
       )
       println(
         (
@@ -93,7 +99,7 @@ fn run_cli() -> Unit raise {
     }
     _ =>
       abort(
-        "Usage: neck_control status [AUDIT] | preflight | joystick-monitor [SECONDS] | simulate|plan DIRECTION [1..5] | simulate|plan joystick [1..300 seconds] | execute RECEIPT AUDIT",
+        "Usage: neck_control status|configuration [AUDIT] | preflight | joystick-monitor [SECONDS] | simulate|plan DIRECTION [1..5] | simulate|plan joystick [1..300 seconds] | execute RECEIPT AUDIT",
       )
   }
 }

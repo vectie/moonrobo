@@ -40,6 +40,9 @@ fn SimBus::new(
     bytes[33] = 0
     bytes[62] = 123
     bytes[63] = 30
+    for i, value in [1, 20, 50, 1, 65, 50, 1] {
+      bytes[80 + i] = value.to_byte()
+    }
     for
       (address, value) in [
         (9, minimum),

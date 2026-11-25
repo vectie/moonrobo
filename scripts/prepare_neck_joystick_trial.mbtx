@@ -32,8 +32,12 @@ async fn main {
   // prepares a gate receipt; it never invokes the physical execute command.
   let approval_source = @json.parse(@fs.read_file(args.get(2).unwrap()).text())
   guard field(approval_source, "operator_authorized") == Json(true) &&
+    field(approval_source, "neck_profile_version") == Json("2") &&
+    field(approval_source, "servo_speed_limit") == Json("50") &&
     field(approval_source, "action") == Json([Json("Joystick"), Json(120)]) else {
-    fail("Need explicit authorization for this exact bounded trial")
+    fail(
+      "Need explicit authorization for this exact bounded trial and speed profile",
+    )
   }
   let ssh = ["-S", socket, "-o", "BatchMode=yes", "elf@192.168.2.192"]
   let base = @env.current_dir().unwrap() + "/_build/neck-control-elf"
@@ -47,6 +51,13 @@ async fn main {
     fail("Exact-action MoonBit simulation did not complete")
   }
   let intent = field(plan, "intent")
+  let parameters = field(intent, "parameters")
+  guard field(parameters, "neck_profile_version") ==
+    field(approval_source, "neck_profile_version") &&
+    field(parameters, "servo_speed_limit") ==
+    field(approval_source, "servo_speed_limit") else {
+    fail("Installed plan differs from the operator-reviewed speed profile")
+  }
   let intent_id : String = @json.from_json(field(intent, "intent_id"))
   let root = base + "/trials/" + intent_id
   @fs.mkdir(root, recursive=true)

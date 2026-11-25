@@ -76,7 +76,7 @@ impl Bus for Serial with fn transfer(
   if instruction == 3 {
     let permitted = match params {
       [40, 0] => true
-      [40, 1] | [41, 3] | [46, 20, 0] | [48, 44, 1] => expires_at > 0L
+      [40, 1] | [41, 3] | [46, 50, 0] | [48, 44, 1] => expires_at > 0L
       [42, low, high] =>
         expires_at > 0L && inside(id, low.to_int() + (high.to_int() << 8))
       _ => false
@@ -224,6 +224,9 @@ fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
   }
   for id in [7, 8] {
     validate_identity(id, bus.transfer(id, 2, [0, 34], 34, 0L))
+    if action != Status {
+      validate_factory_speed(bus.transfer(id, 2, [80, 7], 7, 0L))
+    }
   }
   let guards = [Guard::new(7), Guard::new(8)]
   let before = guards.map(g => observe(bus, g.id))
@@ -237,7 +240,7 @@ fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
         f.status == 0 &&
         inside(f.id, f.goal) &&
         (f.goal - f.position).abs() <= 11 &&
-        f.speed_limit == 20 &&
+        (f.speed_limit == 20 || f.speed_limit == 50) &&
         f.torque_limit == 300 &&
         f.acceleration == 3 &&
         bus.now() - f.captured_ms <= 150L

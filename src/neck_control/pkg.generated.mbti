@@ -12,9 +12,13 @@ pub fn epoch_ms() -> Int64
 
 pub fn execute(Action, @core.RunReceipt?, String) -> Report raise
 
+pub fn intent_parameters(Action) -> Map[String, String] raise NeckError
+
 pub fn monitor_joystick(Int) -> Unit raise
 
 pub fn profile() -> @core.RobotProfile
+
+pub fn read_configuration(String) -> Json raise
 
 pub fn simulate(Action) -> Simulation raise
 

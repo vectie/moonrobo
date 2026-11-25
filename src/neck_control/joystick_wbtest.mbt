@@ -83,7 +83,7 @@ test "joystick receipt authorizes exactly one bounded duration" {
     p.id,
     "control.low.neck",
     @core.operator_requester("neck-regression"),
-    parameters={ "action": Json(Joystick(120)).stringify() },
+    parameters=intent_parameters(Joystick(120)),
   )
   let verdict = @core.evaluate_intent(
     {

@@ -137,7 +137,7 @@ fn Guard::check_feedback(
       self.reject("Target changed externally or tracking error")
       return
     }
-    guard f.speed_limit == 20 &&
+    guard f.speed_limit == 50 &&
       f.torque_limit == 300 &&
       f.acceleration == 3 &&
       f.goal_time == 0 else {
@@ -181,7 +181,7 @@ fn Guard::authorize(
     }
     LatchPresent => {
       guard self.phase == Observed &&
-        f.speed_limit == 20 &&
+        f.speed_limit == 50 &&
         f.torque_limit == 300 &&
         f.acceleration == 3 &&
         f.goal_time == 0 else {
@@ -221,7 +221,7 @@ fn Guard::authorize(
 fn write_parameters(command : Write, f : Feedback) -> Array[Byte] {
   match command {
     TorqueLimit => [48, 44, 1]
-    SpeedLimit => [46, 20, 0]
+    SpeedLimit => [46, 50, 0]
     Acceleration => [41, 3]
     LatchPresent =>
       [42, (f.position & 255).to_byte(), (f.position >> 8).to_byte()]
@@ -269,6 +269,7 @@ pub fn profile() -> @core.RobotProfile {
   {
     ..base,
     label: "E1 external STS3215 neck conservative trial",
+    profile_version: 2,
     bridge: {
       id: "elf2-neck-usb",
       kind: UnknownBridge("feetech-neck"),
@@ -322,9 +323,20 @@ pub fn validate_receipt(
     now_ms - receipt.started_at_ms <= 60_000L else {
     raise Rejected("Execution receipt expired or from the future")
   }
-  guard receipt.intent.parameters.get("action") ==
-    Some(Json(action).stringify()) else {
-    raise Rejected("Receipt action does not match this exact request")
+  guard receipt.intent.parameters == intent_parameters(action) else {
+    raise Rejected("Receipt does not match the exact action and neck profile")
+  }
+}
+
+///|
+pub fn intent_parameters(
+  action : Action,
+) -> Map[String, String] raise NeckError {
+  validate_action(action)
+  {
+    "action": Json(action).stringify(),
+    "neck_profile_version": "2",
+    "servo_speed_limit": "50",
   }
 }
 

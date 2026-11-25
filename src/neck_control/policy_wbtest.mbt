@@ -12,7 +12,7 @@ fn healthy(id : Int32, now~ : Int64 = 1000L) -> Feedback {
       2047
     },
     goal_time: 0,
-    speed_limit: 20,
+    speed_limit: 50,
     torque_limit: 300,
     position: if id == 7 {
       1927
@@ -68,7 +68,7 @@ test "power-on stale goal zero is replaced only after bounded profile readback" 
     let commands = bus.writes.filter(w => w.0 == id).map(w => w.1)
     assert_eq(commands.length(), 5)
     assert_eq(commands[0], [48, 44, 1])
-    assert_eq(commands[1], [46, 20, 0])
+    assert_eq(commands[1], [46, 50, 0])
     assert_eq(commands[2], [41, 3])
     assert_eq(commands[3][0], 42)
     assert_eq(
@@ -220,6 +220,23 @@ test "slow audit persistence cannot dispatch expired authorized writes" {
 }
 
 ///|
+test "changed factory speed scale rejects motion before any write" {
+  let bus = SimBus::new()
+  bus.registers[8][82] = 25
+  expect_denied(() => run_action(bus, Hold) |> ignore)
+  assert_eq(bus.writes.length(), 0)
+}
+
+///|
+test "hardware minimum speed does not loosen feedback velocity guard" {
+  let guard_state = Guard::new(7)
+  guard_state.check_feedback({ ..healthy(7), velocity: 60, }, 1000L)
+  expect_denied(() => {
+    guard_state.check_feedback({ ..healthy(7), velocity: 100, }, 1000L)
+  })
+}
+
+///|
 test "existing MoonRobo gate and exact fresh execution receipt are required" {
   let action = Jog(Left, 2)
   let p = profile()
@@ -228,7 +245,7 @@ test "existing MoonRobo gate and exact fresh execution receipt are required" {
     p.id,
     "control.low.neck",
     @core.operator_requester("neck-regression"),
-    parameters={ "action": Json(action).stringify() },
+    parameters=intent_parameters(action),
   )
   let context : @core.SafetyContext = {
     profile: p,
@@ -247,6 +264,21 @@ test "existing MoonRobo gate and exact fresh execution receipt are required" {
     1000L,
   )
   validate_receipt(receipt, action, 1001L)
+  let legacy = { ..intent, parameters: { "action": Json(action).stringify() }, }
+  expect_denied(() => {
+    validate_receipt({ ..receipt, intent: legacy, }, action, 1001L)
+  })
+  let wrong_speed = {
+    ..intent,
+    parameters: {
+      "action": Json(action).stringify(),
+      "neck_profile_version": "2",
+      "servo_speed_limit": "20",
+    },
+  }
+  expect_denied(() => {
+    validate_receipt({ ..receipt, intent: wrong_speed, }, action, 1001L)
+  })
   expect_denied(() => validate_receipt(receipt, Jog(Right, 2), 1001L))
   expect_denied(() => validate_receipt(receipt, action, 61001L))
   expect_denied(() => validate_receipt(receipt, action, 999L))
@@ -275,7 +307,7 @@ test "lost acknowledgement stops without retry cleanup goal restore or torque re
   assert_eq(bus.writes.last().unwrap().1[0], 42)
   assert_eq(bus.registers[7][40], 1)
   assert_eq(bus.registers[8][40], 1)
-  assert_eq(bus.registers[7][46], 20)
+  assert_eq(bus.registers[7][46], 50)
   assert_eq(bus.registers[7][47], 0)
   assert_eq(bus.registers[7][48], 44)
   assert_eq(bus.registers[7][49], 1)

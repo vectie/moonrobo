@@ -61,6 +61,24 @@ test "explicitly confirmed reconnected neutral must not retain the old offset" {
 }
 
 ///|
+test "both explicitly observed neutral clusters fit the unchanged deadzone" {
+  let c = { ..measured_stick_calibration(), x_center: -100, }
+  validate_stick_calibration(c)
+  // Raw neutral band [-280,20] is still 300 wide, the same width as
+  // [-380,-80] for the old center. Only the measured band placement changes.
+  for raw in [-250, -225, -210, 0, 20] {
+    let value = correct_stick_axis(raw, c.x_min, c.x_center, c.x_max)
+    assert_eq(stick_speed(value), 0)
+  }
+  assert_true(
+    stick_speed(correct_stick_axis(-350, c.x_min, c.x_center, c.x_max)) < 0,
+  )
+  assert_true(
+    stick_speed(correct_stick_axis(100, c.x_min, c.x_center, c.x_max)) > 0,
+  )
+}
+
+///|
 test "wrong device unconfirmed center and invalid travel cannot authorize calibration" {
   let c = measured_stick_calibration()
   for
