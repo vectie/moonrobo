@@ -1,0 +1,170 @@
+{
+  "date": "2026-11-25",
+  "profile_version": 4,
+  "operator_approval": "Approve 100—bracket and cables are clear",
+  "requested_target_degrees_per_test": 10,
+  "raw_feedback_velocity_limit": 100,
+  "motor_speed_setting": 50,
+  "torque_limit": 300,
+  "maximum_step_ticks": 1,
+  "minimum_step_interval_ms": 50,
+  "pan_bounds": [
+    1813,
+    2041
+  ],
+  "tilt_bounds": [
+    1933,
+    2161
+  ],
+  "physical_trial_binary_sha256": "feef24e7a56a7bc1b5ef7c88f83540eaf099370376d81955a53a0e2e2d5bc2c3",
+  "final_installed_binary_sha256_line": "8c1a11d77e3382de13e02cca419d3dc744edb1028aca1f4458a45020cf69f401  /home/elf/moonrobo-neck/neck-control",
+  "trials": [
+    {
+      "direction": "Left",
+      "run_id": "1795615311718-14362576",
+      "action": [
+        "Jog",
+        "Left",
+        10
+      ],
+      "audit_records": 1536,
+      "read_packets": 388,
+      "write_before_send_records": 124,
+      "one_tick_step_packets": 114,
+      "minimum_observed_step_interval_ms": "60",
+      "maximum_observed_raw_velocity_abs": 100,
+      "minimum_voltage_tenths": 120,
+      "maximum_temperature": 38,
+      "axis_before_after": [
+        1941,
+        1833
+      ],
+      "actual_encoder_rotation_degrees": -9.4921875,
+      "final_goal": 1827,
+      "final_position_error_ticks": 6,
+      "completed": true,
+      "fault": false,
+      "writes_after_terminal_event": 0,
+      "initial_latches_match_fresh_feedback": true,
+      "visible_camera_rotation_confirmed": true,
+      "frames": [
+        "live-before-left-10deg-v4.jpg",
+        "live-after-left-10deg-v4.jpg"
+      ],
+      "video": "live-left-10deg-v4.mp4"
+    },
+    {
+      "direction": "Right",
+      "run_id": "1795615386164-14437022",
+      "action": [
+        "Jog",
+        "Right",
+        10
+      ],
+      "audit_records": 1527,
+      "read_packets": 385,
+      "write_before_send_records": 124,
+      "one_tick_step_packets": 114,
+      "minimum_observed_step_interval_ms": "63",
+      "maximum_observed_raw_velocity_abs": 100,
+      "minimum_voltage_tenths": 115,
+      "maximum_temperature": 51,
+      "axis_before_after": [
+        1833,
+        1943
+      ],
+      "actual_encoder_rotation_degrees": 9.66796875,
+      "final_goal": 1947,
+      "final_position_error_ticks": 4,
+      "completed": true,
+      "fault": false,
+      "writes_after_terminal_event": 0,
+      "initial_latches_match_fresh_feedback": true,
+      "visible_camera_rotation_confirmed": true,
+      "frames": [
+        "live-before-right-10deg-v4.jpg",
+        "live-after-right-10deg-v4.jpg"
+      ],
+      "video": "live-right-10deg-v4.mp4"
+    },
+    {
+      "direction": "Down",
+      "run_id": "1795615427494-14478352",
+      "action": [
+        "Jog",
+        "Down",
+        10
+      ],
+      "audit_records": 1527,
+      "read_packets": 385,
+      "write_before_send_records": 124,
+      "one_tick_step_packets": 114,
+      "minimum_observed_step_interval_ms": "63",
+      "maximum_observed_raw_velocity_abs": 100,
+      "minimum_voltage_tenths": 122,
+      "maximum_temperature": 34,
+      "axis_before_after": [
+        2046,
+        2154
+      ],
+      "actual_encoder_rotation_degrees": 9.4921875,
+      "final_goal": 2160,
+      "final_position_error_ticks": 6,
+      "completed": true,
+      "fault": false,
+      "writes_after_terminal_event": 0,
+      "initial_latches_match_fresh_feedback": true,
+      "visible_camera_rotation_confirmed": true,
+      "frames": [
+        "live-before-down-10deg-v4.jpg",
+        "live-after-down-10deg-v4.jpg"
+      ],
+      "video": "live-down-10deg-v4.mp4"
+    },
+    {
+      "direction": "Up",
+      "run_id": "1795615512413-14563272",
+      "action": [
+        "Jog",
+        "Up",
+        10
+      ],
+      "audit_records": 1854,
+      "read_packets": 494,
+      "write_before_send_records": 124,
+      "one_tick_step_packets": 114,
+      "minimum_observed_step_interval_ms": "63",
+      "maximum_observed_raw_velocity_abs": 100,
+      "minimum_voltage_tenths": 117,
+      "maximum_temperature": 34,
+      "axis_before_after": [
+        2154,
+        2052
+      ],
+      "actual_encoder_rotation_degrees": -8.96484375,
+      "final_goal": 2040,
+      "final_position_error_ticks": 12,
+      "completed": false,
+      "fault": "Rejected(\"Target did not settle; fault latched\")",
+      "writes_after_terminal_event": 0,
+      "initial_latches_match_fresh_feedback": true,
+      "visible_camera_rotation_confirmed": true,
+      "frames": [
+        "live-before-up-10deg-v4.jpg",
+        "live-after-up-10deg-v4.jpg"
+      ],
+      "video": "live-up-10deg-v4.mp4"
+    }
+  ],
+  "native_neck_tests_passed": 47,
+  "linux_serial_asan_failures": 0,
+  "linux_joystick_asan_failures": 0,
+  "final_deployment_read_packets": 4,
+  "final_deployment_write_packets": 0,
+  "up_settling_fault_review": "Checked—bracket and cables are clear",
+  "settling_tolerance_ticks_unchanged": 11,
+  "startup_tracking_limit_ticks_unchanged": 16,
+  "preflight_holding_uses_existing_startup_admission": true,
+  "artifact_directory": "/Users/kq/moonsuite/inputs/e1-neck-live-tests-20261125",
+  "qualification": "All four camera directions visibly moved. Left/right/down completed; up moved but failed the unchanged 11-tick settling tolerance with 12 ticks error."
+}

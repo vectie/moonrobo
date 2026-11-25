@@ -1,6 +1,6 @@
 ///|
 test "ten-degree profile binds exact wider envelope without moving neutral" {
-  assert_eq(profile().profile_version, 3)
+  assert_eq(profile().profile_version, 4)
   assert_eq(home(7), 1927)
   assert_eq(home(8), 2047)
   assert_eq(
@@ -89,9 +89,10 @@ test "old range receipt cannot authorize new ten-degree profile" {
       },
       {
         "action": Json(action).stringify(),
-        "neck_profile_version": "3",
+        "neck_profile_version": "4",
         "servo_speed_limit": "50",
         "neck_travel_limit_degrees": "5",
+        "raw_feedback_velocity_limit": "100",
       },
     ] {
     expect_denied(() => {
@@ -103,6 +104,6 @@ test "old range receipt cannot authorize new ten-degree profile" {
     })
   }
   let g = Guard::new(8)
-  expect_denied(() => g.check_feedback({ ..healthy(8), velocity: 100, }, 1000L))
+  expect_denied(() => g.check_feedback({ ..healthy(8), velocity: 101, }, 1000L))
   assert_eq(g.phase, Faulted)
 }

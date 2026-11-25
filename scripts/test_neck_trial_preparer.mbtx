@@ -6,6 +6,22 @@ import {
 }
 
 ///|
+async fn reject_before_ssh(j : Json, expected : String) -> Unit {
+  let path = "_build/neck-control-elf/invalid-trial-source.json"
+  @fs.write_file(path, j.stringify())
+  let (code, out, err) = @process.collect_output("moon", [
+    "run", "--target", "native", "scripts/prepare_neck_trial.mbtx", "/tmp/no-ssh-connection-permitted-for-this-test",
+    path,
+  ])
+  let message = out.text() + err.text()
+  guard code != 0 &&
+    message.contains(expected) &&
+    !message.contains("ssh exited") else {
+    fail("Expected rejection before SSH: " + message)
+  }
+}
+
+///|
 async fn main {
   if !@fs.exists("_build/neck-control-elf") {
     @fs.mkdir("_build/neck-control-elf", recursive=true)
@@ -38,31 +54,44 @@ async fn main {
       (
         Json([Json("Jog"), Json("Right"), Json(1)]),
         true,
-        "4",
+        "5",
         "Unknown neck profile",
       ),
+      (
+        Json([Json("Jog"), Json("Left"), Json(10)]),
+        false,
+        "4",
+        "explicit authorization",
+      ),
     ] {
-    let path = "_build/neck-control-elf/invalid-trial-source.json"
     let j : Json = {
       "operator_authorized": Json(authorized),
       "action": action,
       "neck_profile_version": Json(version),
       "servo_speed_limit": "50",
-      "neck_travel_limit_degrees": Json(if version == "3" { "10" } else { "5" }),
+      "neck_travel_limit_degrees": Json(
+        if version == "3" || version == "4" {
+          "10"
+        } else {
+          "5"
+        },
+      ),
+      "raw_feedback_velocity_limit": "100",
     }
-    @fs.write_file(path, j.stringify())
-    let (code, out, err) = @process.collect_output("moon", [
-      "run", "--target", "native", "scripts/prepare_neck_trial.mbtx", "/tmp/no-ssh-connection-permitted-for-this-test",
-      path,
-    ])
-    let message = out.text() + err.text()
-    guard code != 0 &&
-      message.contains(expected) &&
-      !message.contains("ssh exited") else {
-      fail("Expected rejection before SSH: " + message)
-    }
+    reject_before_ssh(j, expected)
   }
+  reject_before_ssh(
+    {
+      "operator_authorized": true,
+      "action": ["Jog", "Left", 10],
+      "neck_profile_version": "4",
+      "neck_travel_limit_degrees": "10",
+      "servo_speed_limit": "50",
+      "raw_feedback_velocity_limit": "60",
+    },
+    "velocity limit 100",
+  )
   println(
-    "Nine bounded-action, version and authorization cases rejected before SSH",
+    "Eleven bounded-action, version and authorization cases rejected before SSH",
   )
 }

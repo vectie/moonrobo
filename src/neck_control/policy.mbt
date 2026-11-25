@@ -135,7 +135,7 @@ fn Guard::check_feedback(
     f.temperature < 55 &&
     f.load.abs() < 250 &&
     f.current_raw.abs() < 200 &&
-    f.velocity.abs() <= 60 else {
+    f.velocity.abs() <= 100 else {
     self.reject("Electrical, temperature, load or velocity limit")
     return
   }
@@ -273,8 +273,8 @@ pub fn profile() -> @core.RobotProfile {
   let base = @core.noetix_e1_profile("noetix-e1-neck", "elf2-neck-usb")
   {
     ..base,
-    label: "E1 external STS3215 neck ten-degree test",
-    profile_version: 3,
+    label: "E1 external STS3215 neck reviewed ten-degree profile",
+    profile_version: 4,
     bridge: {
       id: "elf2-neck-usb",
       kind: UnknownBridge("feetech-neck"),
@@ -340,8 +340,9 @@ pub fn intent_parameters(
   validate_action(action)
   {
     "action": Json(action).stringify(),
-    "neck_profile_version": "3",
+    "neck_profile_version": "4",
     "neck_travel_limit_degrees": "10",
+    "raw_feedback_velocity_limit": "100",
     "servo_speed_limit": "50",
   }
 }

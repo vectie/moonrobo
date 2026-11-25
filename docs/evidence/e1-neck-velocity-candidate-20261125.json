@@ -1,0 +1,73 @@
+{
+  "date": "2026-11-25",
+  "status": "Explicitly approved and activated; subsequent live trials and preflight fix recorded separately",
+  "operator_authorized": true,
+  "operator_approval": "Approve 100—bracket and cables are clear",
+  "physical_execution_started": true,
+  "live_results": "e1-neck-profile4-live-20261125.json",
+  "installed": {
+    "profile_version": 4,
+    "raw_feedback_velocity_limit": 100,
+    "binary": "/home/elf/moonrobo-neck/neck-control",
+    "sha256": "8c1a11d77e3382de13e02cca419d3dc744edb1028aca1f4458a45020cf69f401"
+  },
+  "previous_installed": {
+    "profile_version": 3, "raw_feedback_velocity_limit": 60,
+    "sha256": "233f2dfd3da3abff5561a72cf2aa10f8adf5378718510ec2970696d6ecfeb939"
+  },
+  "candidate": {
+    "profile_version": 4,
+    "raw_feedback_velocity_limit": 100,
+    "historical_staging_binary": "/home/elf/moonrobo-neck/neck-control.next",
+    "sha256": "feef24e7a56a7bc1b5ef7c88f83540eaf099370376d81955a53a0e2e2d5bc2c3",
+    "approximate_reported_velocity_limit_degrees_s": 8.8,
+    "proposed_first_action": ["Jog", "Left", 10],
+    "ready_execution_receipt_minted_after_operator_approval": true
+  },
+  "unchanged_limits": {
+    "motor_goal_speed_register": 50,
+    "approximate_goal_speed_setting_degrees_s": 4.4,
+    "target_slew_limit_ticks_s": 20,
+    "maximum_goal_step_ticks": 1,
+    "minimum_goal_step_interval_ms": 50,
+    "torque_limit": 300,
+    "acceleration": 3,
+    "pan_bounds": [1813, 2041],
+    "tilt_bounds": [1933, 2161],
+    "feedback_freshness_ms": 150,
+    "input_freshness_ms": 150,
+    "durable_fault_and_replay_protection": true,
+    "automatic_resume": false
+  },
+  "validation": {
+    "native_neck_tests_before_activation": 46,
+    "native_neck_tests_after_preflight_fix": 47,
+    "ten_degree_simulated_directions": ["Left", "Up", "Right", "Down"],
+    "raw_velocity_accepted": [-100, 0, 60, 100],
+    "raw_velocity_rejected": [-200, -101, 101, 200],
+    "preparer_rejections_before_ssh": 11,
+    "linux_serial_asan_failures": 0,
+    "linux_joystick_asan_failures": 0,
+    "physical_uart_opened_during_staging": false,
+    "actuator_writes_during_staging": 0,
+    "installed_controller_unchanged_during_staging": true
+  },
+  "reviewed_profile3_fault": {
+    "run_id": "1795614581193-13632051",
+    "marker": "/home/elf/moonrobo-neck/inflight-or-fault",
+    "retained": false,
+    "archived_marker": "/home/elf/moonrobo-neck/neck-1795614567166/operator-reviewed-fault-marker",
+    "clearance_review_after_this_fault_received": true
+  },
+  "local_review_artifacts": {
+    "proposal": "/Users/kq/Workspace/moonrobo/_build/neck-control-elf/proposed-velocity-trial.json",
+    "plan": "/Users/kq/Workspace/moonrobo/_build/neck-control-elf/proposed-velocity-plan.json",
+    "live_url": "http://127.0.0.1:4195/",
+    "video_directory": "/Users/kq/moonsuite/inputs/e1-neck-live-tests-20261125"
+  },
+  "limitations": [
+    "Known raw velocity pulses are observed facts; allowing them is an explicitly approved test-policy change, not proof that every pulse is harmless.",
+    "Software tests alone do not qualify physical movement; actual live results are recorded separately.",
+    "The up test visibly moved but failed its unchanged direct settling criterion; this is recorded as a failed completion, not a passing four-direction accuracy test."
+  ]
+}

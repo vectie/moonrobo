@@ -10,6 +10,13 @@ The one-off movement, recovery and disable helpers were archived as
 non-executable text and replaced with failing entry points, so old script
 paths cannot silently bypass the new controller.
 
+Current deployment state: the operator explicitly approved **profile v4**, with
+±10° travel and raw feedback velocity limit **100**. ELF runs that reviewed
+profile, with motor speed command 50 and torque 300 unchanged. Live ten-degree
+targets visibly moved the camera in all four directions. Left/right/down
+completed; up moved about 9° but failed the unchanged direct settling tolerance.
+That distinction is retained in the evidence rather than called a full pass.
+
 The specific failure that occurred on 2026-11-25 is forbidden by the new API
 and regression tests. This is a bounded software guarantee, not a claim that
 hardware can never move unexpectedly. Power loss, physical slip, firmware
@@ -68,7 +75,7 @@ with unsuffixed feedback keys; simply enabling that setting is insufficient.
 | Pan | ID 7; positive counts turn the camera right, verified by leftward scene shift in the later small live test |
 | Tilt | ID 8; positive counts turn the camera down, verified by upward scene shift in the later small live test |
 | Saved center | Pan 1927; tilt 2047 |
-| Reviewed profile-v3 software bounds | Pan 1813–2041; tilt 1933–2161 (approximately ±10°) |
+| Reviewed profile-v3/v4 software bounds | Pan 1813–2041; tilt 1933–2161 (approximately ±10°) |
 | Hardware EEPROM limits | Pan 933–3043; tilt 1040–3204 |
 | Raw homing-offset fingerprint | Pan 3948; tilt 1882 |
 
@@ -545,13 +552,13 @@ MoonRobo host API's dry-run, approval and evaluate endpoints. It never invokes
 physical execution. The required local JSON source records the actual current
 operator request, `operator_authorized: true`, an exact action such as
 `["Buttons", 300]` or `["Jog", "Right", 10]`,
-`neck_profile_version: "3"`, `neck_travel_limit_degrees: "10"` and
-`servo_speed_limit: "50"`;
+`neck_profile_version: "4"`, `neck_travel_limit_degrees: "10"`,
+`raw_feedback_velocity_limit: "100"` and `servo_speed_limit: "50"`;
 do not create that record without the operator's authorization.
 The helper rejects invalid modes, directions, durations and degrees before
 SSH, and compares the installed plan's full action as well as profile/speed
 against that source. It cannot create a broader grant than the recorded action.
-`moon run scripts/test_neck_trial_preparer.mbtx` checks nine invalid-bound,
+`moon run scripts/test_neck_trial_preparer.mbtx` checks eleven invalid-bound,
 unknown-direction and missing-authorization cases without an SSH connection.
 
 The helper saves the actual completed MoonBit simulation, narrow robot
@@ -723,9 +730,64 @@ but stopped after 17 target steps: pan position 1939, goal 1944, raw velocity 10
 12.3 V and no servo error. Zero writes followed the fault. Later read-only status
 held pan position/goal 1941/1944 and tilt 2046/2046. The larger destination did
 not remove the velocity stop. The full ten-degree motion did **not** complete;
-other ten-degree directions were not run after the new fault. The marker remains
-latched pending review. The live stream remains available for observation.
+other ten-degree directions were not run under v3 after the new fault. Its
+marker remained latched until the operator approved v4 and reviewed clearance;
+it was then archived under its intent. The live stream remains available.
 See the [profile-v3 evidence](evidence/e1-neck-ten-degree-20261125.json).
+
+### Approved velocity-pulse trial: profile v4
+
+The actual raw replies show velocity ±100 during small bounded motion, including
+the direct ten-degree request that stopped long before its destination. This
+isolates an observed stop condition; it does not establish that every such pulse
+is harmless or that the whole mechanical workspace is qualified.
+
+The operator approved raising only the raw feedback fault threshold from 60 to
+100 with the reply “Approve 100—bracket and cables are clear.” The motor speed command remains 50, torque limit 300, acceleration 3,
+one-tick/50 ms target steps, the reviewed ±10° envelope, all electrical/thermal
+guards, fresh feedback/input and terminal fault/replay protection remain intact.
+With the measured phase/factory units, raw feedback 100 is approximately 8.8°/s;
+profile v4 therefore permits a higher reported transient than v3, even though
+it does not increase the commanded speed. This is a material physical-policy
+change approved explicitly, not a unit-decoding correction.
+See [FEETECH's STS memory table](https://ftservo.github.io/ftservo-wiki/reference/parameter/memory-sts/).
+
+The initial candidate passed 46 native tests, all four ten-degree simulations and both
+Linux ASan transports. Tests accept ±100, reject ±101/±200, preserve a terminal
+fault after healthy feedback and reject old profile/velocity receipts. The
+preparation helper checks eleven invalid/missing-authorization cases before SSH.
+Profile-v4 receipts must explicitly bind `raw_feedback_velocity_limit: "100"`
+as well as exact action, profile, speed and travel. The original draft proposal
+retains `operator_authorized: false` as historical evidence; later actual approval
+sources and fresh receipts record the operator's decision separately.
+
+Candidate staging opened no physical UART. After approval, its exact verified
+binary was promoted, the reviewed v3 fault archived, and each physical test
+received a fresh exact-action receipt. The
+[review record](evidence/e1-neck-velocity-candidate-20261125.json) pins installed
+and trial hashes and the approved change.
+
+The [live profile-v4 audit](evidence/e1-neck-profile4-live-20261125.json) records
+114 one-tick target steps in each direction, minimum observed step intervals
+60–63 ms, maximum observed raw velocity 100 and zero writes after terminal
+events. Actual encoder rotations were left −9.49°, right +9.67°, down +9.49°
+and up −8.96°. The live frames showed the matching camera rotations.
+Left/right/down completed holding. Up held at 2052 against goal 2040, a 12-tick
+error, so the direct command correctly failed its unchanged 11-tick completion
+tolerance. A physical ten-degree target is not a promise of exact ten-degree
+tracking under this loaded, low-gain setup.
+
+The operator then reviewed the bracket/cables again before a direction-button
+trial. A preflight mismatch was corrected: Status had reused the 11-tick direct
+completion tolerance, although checked startup already permits a stable bounded
+old-goal error up to 16 ticks. Status now reuses the actual startup authorization
+check, without sending a command, and still requires velocity ≤3, the known
+holding profile and all electrical/thermal/freshness checks. Direct completion
+still requires error ≤11 and velocity ≤3. A regression accepts the observed
+stable 12-tick preflight, rejects >16 and unhealthy feedback, and proves status
+sends no writes. This reports preparation eligibility without relabeling the
+failed up test as successful. Final validation passes 47 native neck tests,
+both Linux ASan fixtures and four-READ/zero-WRITE deployment verification.
 
 To qualify a five-minute untouched-neutral recording, save stdout from
 `neck-control joystick-monitor 300`, then run

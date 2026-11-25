@@ -34,9 +34,17 @@ async fn main {
   let version = field(approval_source, "neck_profile_version")
   let maximum_degrees = match version {
     "2" => 5
-    "3" => {
+    "3" | "4" => {
       guard field(approval_source, "neck_travel_limit_degrees") == Json("10") else {
-        fail("Profile 3 authorization must explicitly bind ten-degree travel")
+        fail("Wide-range authorization must explicitly bind ten-degree travel")
+      }
+      if version == Json("4") {
+        guard field(approval_source, "raw_feedback_velocity_limit") ==
+          Json("100") else {
+          fail(
+            "Profile 4 needs explicit authorization of raw velocity limit 100",
+          )
+        }
       }
       10
     }
@@ -102,10 +110,16 @@ async fn main {
       "Installed plan differs from the operator-reviewed action or speed profile",
     )
   }
-  if version == Json("3") {
+  if version == Json("3") || version == Json("4") {
     guard field(parameters, "neck_travel_limit_degrees") ==
       field(approval_source, "neck_travel_limit_degrees") else {
       fail("Installed plan differs from the reviewed travel envelope")
+    }
+  }
+  if version == Json("4") {
+    guard field(parameters, "raw_feedback_velocity_limit") ==
+      field(approval_source, "raw_feedback_velocity_limit") else {
+      fail("Installed plan differs from the reviewed velocity limit")
     }
   }
   let intent_id : String = @json.from_json(field(intent, "intent_id"))

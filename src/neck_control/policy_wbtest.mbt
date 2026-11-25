@@ -228,11 +228,11 @@ test "changed factory speed scale rejects motion before any write" {
 }
 
 ///|
-test "hardware minimum speed does not loosen feedback velocity guard" {
+test "feedback pulse candidate has an explicit hard velocity cap" {
   let guard_state = Guard::new(7)
-  guard_state.check_feedback({ ..healthy(7), velocity: 60, }, 1000L)
+  guard_state.check_feedback({ ..healthy(7), velocity: 100, }, 1000L)
   expect_denied(() => {
-    guard_state.check_feedback({ ..healthy(7), velocity: 100, }, 1000L)
+    guard_state.check_feedback({ ..healthy(7), velocity: 101, }, 1000L)
   })
 }
 

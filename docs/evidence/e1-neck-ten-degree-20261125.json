@@ -3,6 +3,7 @@
   "operator_request": "maybe 1 degree is the problem, do all testings in 10 degree",
   "operator_clearance": "Checked—the 10° arc is clear in every direction",
   "profile_version": 3,
+  "later_reviewed_profile_and_trials": "e1-neck-profile4-live-20261125.json",
   "travel_limit_degrees": 10,
   "pan_bounds": [1813, 2041],
   "tilt_bounds": [1933, 2161],
@@ -48,7 +49,9 @@
     "writes_after_fault": 0,
     "subsequent_pan_position_goal": [1941, 1944],
     "subsequent_tilt_position_goal": [2046, 2046],
-    "fault_marker_retained": "/home/elf/moonrobo-neck/inflight-or-fault",
+    "fault_marker_retained_at_end_of_profile3_tests": true,
+    "subsequent_operator_approval": "Approve 100—bracket and cables are clear",
+    "archived_marker": "/home/elf/moonrobo-neck/neck-1795614567166/operator-reviewed-fault-marker",
     "other_ten_degree_directions_executed": false
   },
   "camera": {

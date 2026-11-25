@@ -201,6 +201,32 @@ pub(all) struct Report {
 }
 
 ///|
+// A stable bounded hold can be eligible for checked startup even if the last
+// target missed the stricter direct-command completion tolerance. Reuse the
+// startup admission check without sending any hardware command.
+fn holding_feedback(f : Feedback, now : Int64) -> Bool {
+  guard f.torque == 1 &&
+    f.velocity.abs() <= 3 &&
+    (f.speed_limit == 20 || f.speed_limit == 50) &&
+    f.torque_limit == 300 &&
+    f.acceleration == 3 &&
+    f.goal_time == 0 else {
+    return false
+  }
+  try {
+    Guard::new(f.id).authorize(f, TorqueLimit, now)
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+fn within_settling_tolerance(f : Feedback, desired : Int32) -> Bool {
+  (f.position - desired).abs() <= 11 && f.velocity.abs() <= 3
+}
+
+///|
 fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
   bus.event("request", Json(action))
   if action is (Joystick(_) | Buttons(_)) {
@@ -238,17 +264,7 @@ fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
     return {
       action,
       completed: true,
-      holding: before.all(f => {
-        f.torque == 1 &&
-        f.velocity.abs() <= 3 &&
-        f.status == 0 &&
-        inside(f.id, f.goal) &&
-        (f.goal - f.position).abs() <= 11 &&
-        (f.speed_limit == 20 || f.speed_limit == 50) &&
-        f.torque_limit == 300 &&
-        f.acceleration == 3 &&
-        bus.now() - f.captured_ms <= 150L
-      }),
+      holding: before.all(f => holding_feedback(f, bus.now())),
       before,
       after: before,
     }
@@ -291,7 +307,7 @@ fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
       let f = observe(bus, g.id)
       check_active_axes(bus, guards)
       g.check_feedback(f, bus.now())
-      if (f.position - desired).abs() <= 11 && f.velocity.abs() <= 3 {
+      if within_settling_tolerance(f, desired) {
         settled += 1
       } else {
         settled = 0
