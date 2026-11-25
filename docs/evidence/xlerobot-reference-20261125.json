@@ -41,7 +41,8 @@
   "configure_calls_bus2_twice_and_omits_bus1_generic_configuration": true,
   "outer_disconnect_method_misspelled": "disconnnect",
   "historical_operator_entrypoint_proven": false,
-  "current_fault_marker_present": true,
+  "fault_marker_present_at_source_study_completion": true,
+  "later_trials_and_reviews": "e1-neck-followup-20261125.json",
   "current_fault_marker": "/home/elf/moonrobo-neck/inflight-or-fault",
   "physical_direction_mapping_qualified": false,
   "source_study_establishes_physical_success": false

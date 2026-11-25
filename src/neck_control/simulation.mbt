@@ -168,10 +168,11 @@ pub(all) struct Simulation {
 ///|
 pub fn simulate(action : Action) -> Simulation raise {
   let samples : Array[StickSample] = []
-  if action is Joystick(_) {
+  if action is (Joystick(_) | Buttons(_)) {
     samples.push({ captured_ms: -1L, x: 0, y: 0, deadman: false, exit: false, })
     samples.push({ captured_ms: -1L, x: 0, y: 0, deadman: true, exit: false, })
-    for (x, y) in [(-1000, 0), (0, -1000), (1000, 0), (0, 1000)] {
+    let v = if action is Buttons(_) { 600 } else { 1000 }
+    for (x, y) in [(-v, 0), (0, -v), (v, 0), (0, v)] {
       for _ in 0..<5 {
         samples.push({ captured_ms: -1L, x, y, deadman: true, exit: false, })
       }

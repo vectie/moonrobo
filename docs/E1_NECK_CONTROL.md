@@ -65,8 +65,8 @@ with unsuffixed feedback keys; simply enabling that setting is insufficient.
 | USB adapter | QinHeng `1a86:55d3`, serial `5AB0182917` |
 | Stable Linux port | `/dev/serial/by-id/usb-1a86_USB_Single_Serial_5AB0182917-if00` |
 | UART format | 1000000 baud, 8N1, no flow control |
-| Pan | ID 7; initial camera-based observation labeled positive motion “right”; scene versus shaft direction remains unresolved |
-| Tilt | ID 8; initial camera-based observation labeled positive motion “down”; scene versus shaft direction remains unresolved |
+| Pan | ID 7; positive counts turn the camera right, verified by leftward scene shift in the later small live test |
+| Tilt | ID 8; positive counts turn the camera down, verified by upward scene shift in the later small live test |
 | Saved center | Pan 1927; tilt 2047 |
 | Software bounds | Pan 1870–1984; tilt 1990–2104 |
 | Hardware EEPROM limits | Pan 933–3043; tilt 1040–3204 |
@@ -224,7 +224,7 @@ assigns the **left analog stick directly to neck pan and tilt**.
 | --- | --- |
 | Center stick, release ZL | Make input eligible to arm |
 | Hold ZL while centered | Arm; first arming prepares and latches both measured poses |
-| Move stick while holding ZL | X right = pan right; Y down = tilt down |
+| Move stick while holding ZL | X right increases ID 7; Y down increases ID 8; those camera directions were observed in later small live tests |
 | Center stick or release ZL | Stop generating steps; hold the last target |
 | Minus | End the session, with no return-to-center or torque release |
 | Disconnect, stale input, stalled loop or servo fault | End and latch the fault; no automatic resume |
@@ -499,17 +499,57 @@ Independent raw HID reads returned no bytes. The passing five-minute run must
 not be described as a permanent Bluetooth fix. A physical trial still requires
 fresh input admission and terminates on any report loss, without reconnect.
 
-### Preparing an explicitly authorized joystick trial
+### Direction-button mode
+
+`Buttons(seconds)` is a separate exact action, with sessions bounded to
+1–300 seconds. `plan buttons 300` and `simulate buttons 3` select it;
+`buttons-monitor 60` reads input only and never opens UART. A Joystick receipt
+cannot authorize Buttons, nor can either authorize a direct Jog.
+
+This mode uses the four small direction buttons on the LEFT Joy-Con, ignores
+the thumbstick and does not need analog-neutral calibration. Button bits come
+from byte 5 of a newly received full HID report, matching the installed input
+library's bit layout. It retains controller MAC identity, full-report freshness,
+ZL at dispatch, Minus exit, audit persistence and the same motor guards.
+
+Release every direction button and ZL first. Hold ZL with no direction pressed
+to arm, then hold one direction button to request slow steps (10 target ticks/s,
+at most one tick per 100 ms). Release the direction to stop requesting steps;
+Minus ends the session. Pressing multiple direction buttons faults rather than
+choosing an arbitrary direction. Do not hold a direction while arming.
+
+Left/right request decreasing/increasing ID 7; up/down request
+decreasing/increasing ID 8. These match direct Jog signs. They differ from
+the old XLeRobot D-pad signs. Later small live tests confirmed the current
+camera directions; they do not qualify a wider workspace. Thumbstick movement cannot
+change button-mode targets or prevent neutral admission.
+
+41 native neck tests pass, including button bit mapping, analog exclusion,
+exact action/duration receipts, release, stale input and bounded slower steps.
+Both Linux ASan transport fixtures pass; synthetic HID tests verify that only
+the low four bits of fresh report byte 5 are exposed. Deployment verifies
+four UART READ packets and zero WRITE packets. A three-second ELF button
+monitor obtained fresh neutral reports with zero mapped X/Y despite the
+off-center analog reading. These checks do not qualify physical button motion.
+
+### Preparing an explicitly authorized trial
 
 The actuator CLI's read-only `preflight` command wraps a normal checked
 `Status` result with source epoch timestamps taken before and after UART
-observation. `scripts/prepare_neck_joystick_trial.mbtx SOCKET APPROVAL_SOURCE`
-prepares one exact two-minute `Joystick(120)` trial through the existing
+observation. `scripts/prepare_neck_trial.mbtx SOCKET APPROVAL_SOURCE`
+prepares the exact `Joystick(1..300)`, `Buttons(1..300)` or
+`Jog(direction, 1..5 degrees)` trial through the existing
 MoonRobo host API's dry-run, approval and evaluate endpoints. It never invokes
 physical execution. The required local JSON source records the actual current
-operator request, `operator_authorized: true`, `action: ["Joystick", 120]`,
+operator request, `operator_authorized: true`, an exact action such as
+`["Buttons", 300]` or `["Jog", "Right", 1]`,
 `neck_profile_version: "2"` and `servo_speed_limit: "50"`;
 do not create that record without the operator's authorization.
+The helper rejects invalid modes, directions, durations and degrees before
+SSH, and compares the installed plan's full action as well as profile/speed
+against that source. It cannot create a broader grant than the recorded action.
+`moon run scripts/test_neck_trial_preparer.mbtx` checks six invalid-bound,
+unknown-direction and missing-authorization cases without an SSH connection.
 
 The helper saves the actual completed MoonBit simulation, narrow robot
 profile, operator source, checked servo observations, API responses, durable
@@ -597,8 +637,8 @@ decoded velocity. The preceding pan sample was 1918 at capture time 10214192;
 the fault sample was 1920 at 10214254. That two-tick change over 62 ms is a
 sampled average, not proof that the instantaneous velocity report is harmless.
 No later write was recorded. The operator again saw a stationary bracket.
-The latest fault remains latched at `/home/elf/moonrobo-neck/inflight-or-fault`,
-with no new physical session active. No velocity threshold was raised.
+That fault remained latched at the end of source study. Later review and
+tests below supersede that historical status. No velocity threshold was raised.
 
 The [full installed XLeRobot study](XLEROBOT_REFERENCE_STUDY.md) traces the input,
 unit conversion, bus packets, inherited configuration, startup/reset, shutdown,
@@ -606,6 +646,56 @@ Bluetooth reader and related arm/base/camera paths. It corrects the earlier
 degree/30 Hz assumptions and records source hashes. The old normalized zero
 maps to raw 1988/2122, outside our current E1 bounds, and must not be replayed.
 Old source behavior is a reference, not physical qualification of this transfer.
+
+### Follow-up: unarmed session, power fault and direct motor test
+
+The operator reviewed clearance before the next trial. Its two-minute window
+expired without an arming event: eight READ packets, zero WRITE packets and
+unchanged motor positions. `completed: true, holding: false` describes a clean
+unarmed session exit, not successful physical movement.
+
+At the operator's request the next receipt authorized five minutes. This run
+did arm, received RIGHT and later mixed-axis input, and sent 58 one-tick steps.
+The operator reported no visible bracket motion. Pan encoder feedback ranged
+1919–1929 and tilt 2044–2048. After about 40 seconds it stopped on tilt voltage
+10.4 V, below the existing 10.5 V guard; velocity was zero at that sample.
+No later write was recorded. Ten subsequent read-only samples were 12.2–12.3 V;
+finite samples cannot exclude a supply transient.
+
+The operator then explicitly checked the 12 V connections and bracket/cable
+clearance. That fault marker and review were archived under its intent, with
+no erased audit or replayed receipt. A fresh exact direct `Jog(Right, 1)` receipt
+then ran without opening Joy-Con input. It completed holding with pan measured
+1919→1926 (about 0.62°), final goal 1930, tilt unchanged at 2044, and normal
+12.2–12.3 V feedback. Eleven one-tick target steps were recorded. Encoder change
+and a clean exit do not independently qualify visible bracket motion. A second
+direct `Jog(Up, 1)` completed holding with tilt 2044→2040 (about 0.35°), final
+goal 2033, normal voltage and no fault. Both axes have therefore responded by
+encoder feedback to direct commands; visible motion remains an operator check.
+
+The [follow-up evidence](evidence/e1-neck-followup-20261125.json) retains these
+outcomes and the button-mode deployment checks. Direct motor qualification
+preceded a five-minute physical D-pad session. It completed without a fault.
+Brief right/left/up presses generated ten one-tick steps with small partly
+cancelling targets, and neither encoder changed during that session. The
+operator saw no bracket motion. Passing input transport and command dispatch
+must not be described as a visible button-motion qualification.
+
+The operator then requested live-video testing. The loopback D455 stream was
+reopened at 15 fps. Before/after frames confirmed scene shifts in all four
+directions during direct two-degree targets: right pan measured 1927→1944,
+up tilt 2040→2028, left pan 1944→1927, and down tilt 2028→2043 at its last
+feedback. Right/left/up completed holding. Down visibly moved, then stopped
+on raw velocity +100, with normal 12.2 V feedback. Its fault marker was retained
+at the end of the profile-v2 tests, with zero later writes. This reproduces
+the velocity stop without any joystick input; one-degree amplitude is not
+the sole explanation for the stops. No fault threshold or torque limit was raised.
+
+These observations qualify small camera rotations, not the full bracket/cable
+workspace. The footage stays in a local artifact directory recorded in the
+evidence JSON, outside Git. A twelve-second tilt clip is retained there.
+Synthetic Buttons and Joystick simulations also passed all four directions
+without opening a physical device; those are separate from the live tests.
 
 To qualify a five-minute untouched-neutral recording, save stdout from
 `neck-control joystick-monitor 300`, then run

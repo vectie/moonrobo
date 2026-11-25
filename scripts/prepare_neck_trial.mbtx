@@ -31,10 +31,34 @@ async fn main {
   // A required file records the actual operator request. This helper only
   // prepares a gate receipt; it never invokes the physical execute command.
   let approval_source = @json.parse(@fs.read_file(args.get(2).unwrap()).text())
+  let action = field(approval_source, "action")
+  let plan_action = match action {
+    [String(mode), seconds] if mode == "Joystick" || mode == "Buttons" => {
+      let seconds : Int = @json.from_json(seconds)
+      guard seconds >= 1 && seconds <= 300 else {
+        fail("Joystick duration must be within the existing 1..300 second limit")
+      }
+      "\{if mode == "Buttons" { "buttons" } else { "joystick" }} \{seconds}"
+    }
+    ["Jog", String(direction), degrees] => {
+      let degrees : Int = @json.from_json(degrees)
+      guard degrees >= 1 && degrees <= 5 else {
+        fail("Jog must be within the existing 1..5 degree limit")
+      }
+      let name = match direction {
+        "Left" => "left"
+        "Up" => "up"
+        "Right" => "right"
+        "Down" => "down"
+        _ => fail("Unknown neck direction")
+      }
+      "\{name} \{degrees}"
+    }
+    _ => fail("Need an exact bounded Joystick, Buttons or Jog authorization")
+  }
   guard field(approval_source, "operator_authorized") == Json(true) &&
     field(approval_source, "neck_profile_version") == Json("2") &&
-    field(approval_source, "servo_speed_limit") == Json("50") &&
-    field(approval_source, "action") == Json([Json("Joystick"), Json(120)]) else {
+    field(approval_source, "servo_speed_limit") == Json("50") else {
     fail(
       "Need explicit authorization for this exact bounded trial and speed profile",
     )
@@ -43,7 +67,7 @@ async fn main {
   let base = @env.current_dir().unwrap() + "/_build/neck-control-elf"
   let plan_text = run(
     "ssh",
-    ssh + ["/home/elf/moonrobo-neck/neck-control plan joystick 120"],
+    ssh + ["/home/elf/moonrobo-neck/neck-control plan " + plan_action],
   )
   let plan = @json.parse(plan_text)
   guard field(field(plan, "simulation"), "simulated") == Json(true) &&
@@ -52,11 +76,13 @@ async fn main {
   }
   let intent = field(plan, "intent")
   let parameters = field(intent, "parameters")
-  guard field(parameters, "neck_profile_version") ==
+  let planned_action_text : String = @json.from_json(field(parameters, "action"))
+  guard @json.parse(planned_action_text) == action &&
+    field(parameters, "neck_profile_version") ==
     field(approval_source, "neck_profile_version") &&
     field(parameters, "servo_speed_limit") ==
     field(approval_source, "servo_speed_limit") else {
-    fail("Installed plan differs from the operator-reviewed speed profile")
+    fail("Installed plan differs from the operator-reviewed action or speed profile")
   }
   let intent_id : String = @json.from_json(field(intent, "intent_id"))
   let root = base + "/trials/" + intent_id

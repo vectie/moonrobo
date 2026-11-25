@@ -14,6 +14,8 @@ pub fn execute(Action, @core.RunReceipt?, String) -> Report raise
 
 pub fn intent_parameters(Action) -> Map[String, String] raise NeckError
 
+pub fn monitor_buttons(Int) -> Unit raise
+
 pub fn monitor_joystick(Int) -> Unit raise
 
 pub fn profile() -> @core.RobotProfile
@@ -40,6 +42,7 @@ pub(all) enum Action {
   Center
   Release
   Joystick(Int)
+  Buttons(Int)
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum Direction {

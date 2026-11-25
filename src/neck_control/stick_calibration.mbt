@@ -14,6 +14,7 @@ priv struct StickCalibration {
 priv struct Joystick {
   device : JoyDevice
   calibration : StickCalibration
+  buttons : Bool
 }
 
 ///|

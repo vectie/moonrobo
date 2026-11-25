@@ -19,7 +19,23 @@ priv struct NativeStickSample {
   max_y : Int32
   zl : Bool
   minus : Bool
+  buttons : Int32
 } derive(FromJson)
+
+///|
+// Nintendo full report byte 5, as used by the installed XLeRobot library.
+// Direction signs match our direct Jog API; physical direction still needs
+// qualification on the transferred mount. Repeated steps request 10 ticks/s.
+fn button_axes(mask : Int32) -> (Int32, Int32) raise NeckError {
+  match mask {
+    0 => (0, 0)
+    1 => (0, 600) // down
+    2 => (0, -600) // up
+    4 => (600, 0) // right
+    8 => (-600, 0) // left
+    _ => raise Rejected("Use one direction button at a time")
+  }
+}
 
 ///|
 priv struct StickGate {
@@ -117,12 +133,40 @@ fn read_stick(
         {
           "physical_execution": Json(false),
           "kernel_sample": kernel_sample,
+          "input_mode": Json(
+            if device.buttons {
+              "buttons"
+            } else {
+              "thumbstick"
+            },
+          ),
           "calibration": Json(device.calibration),
         } : Json).stringify(),
     )
   }
   let f : NativeStickSample = @json.from_json(kernel_sample)
-  let c = device.calibration
+  let sample = map_input(f, device.calibration, buttons=device.buttons)
+  check_stick(sample, clock_ms())
+  sample
+}
+
+///|
+fn map_input(
+  f : NativeStickSample,
+  c : StickCalibration,
+  buttons~ : Bool,
+) -> StickSample raise NeckError {
+  if buttons {
+    let (x, y) = button_axes(f.buttons)
+    let sample : StickSample = {
+      captured_ms: f.captured_ms,
+      x,
+      y,
+      deadman: f.zl,
+      exit: f.minus,
+    }
+    return sample
+  }
   guard !c.operator_confirmed_neutral ||
     (
       f.min_x == -32767 &&
@@ -132,7 +176,7 @@ fn read_stick(
     ) else {
     raise Rejected("Kernel axis ranges changed since calibration")
   }
-  let sample : StickSample = {
+  {
     captured_ms: f.captured_ms,
     x: correct_stick_axis(
       calibrated_axis(f.x, f.min_x, f.max_x),
@@ -149,13 +193,18 @@ fn read_stick(
     deadman: f.zl,
     exit: f.minus,
   }
-  check_stick(sample, clock_ms())
-  sample
 }
 
 ///|
-fn open_stick(calibration_required~ : Bool = false) -> Joystick raise {
-  let calibration = load_stick_calibration(calibration_required)
+fn open_stick(
+  calibration_required~ : Bool = false,
+  buttons~ : Bool = false,
+) -> Joystick raise {
+  let calibration = if buttons {
+    factory_stick_calibration()
+  } else {
+    load_stick_calibration(calibration_required)
+  }
   let device = joy_open()
   guard joy_valid(device) != 0 else {
     raise Transport(
@@ -200,7 +249,7 @@ fn open_stick(calibration_required~ : Bool = false) -> Joystick raise {
     // disconnect a Bluetooth controller. Input setup is before UART open.
     sleep_ms(50)
   }
-  { device, calibration, }
+  { device, calibration, buttons, }
 }
 
 ///|
@@ -221,7 +270,18 @@ fn validate_stick_setup_reply(
 /// Minus ends the monitor early. Only this read-only monitor may wait/reopen
 /// input after a connection failure. Physical sessions always fault instead.
 pub fn monitor_joystick(seconds : Int32) -> Unit raise {
-  validate_action(Joystick(seconds))
+  monitor_live_input(seconds, buttons=false)
+}
+
+///|
+/// Reads the four LEFT Joy-Con direction buttons only; never opens UART.
+pub fn monitor_buttons(seconds : Int32) -> Unit raise {
+  monitor_live_input(seconds, buttons=true)
+}
+
+///|
+fn monitor_live_input(seconds : Int32, buttons~ : Bool) -> Unit raise {
+  validate_action(if buttons { Buttons(seconds) } else { Joystick(seconds) })
   let mut device : Joystick? = None
   defer (if device is Some(d) { joy_close(d.device) })
   let end = clock_ms() + seconds.to_int64() * 1000L
@@ -232,7 +292,7 @@ pub fn monitor_joystick(seconds : Int32) -> Unit raise {
   while clock_ms() < end {
     let sample = try {
       if device is None {
-        device = Some(open_stick())
+        device = Some(open_stick(buttons~))
       }
       let sample = read_stick(device.unwrap(), diagnostic=last is None)
       gate.update(sample, clock_ms())
@@ -282,8 +342,12 @@ pub fn monitor_joystick(seconds : Int32) -> Unit raise {
 }
 
 ///|
-fn[B : Bus] run_joystick(bus : B, seconds : Int32) -> Report raise {
-  validate_action(Joystick(seconds))
+fn[B : Bus] run_live_input(bus : B, action : Action) -> Report raise {
+  validate_action(action)
+  let seconds = match action {
+    Joystick(seconds) | Buttons(seconds) => seconds
+    _ => raise Rejected("Expected a live input session")
+  }
   for id in [7, 8] {
     validate_identity(id, bus.transfer(id, 2, [0, 34], 34, 0L))
     validate_factory_speed(bus.transfer(id, 2, [80, 7], 7, 0L))
@@ -381,13 +445,7 @@ fn[B : Bus] run_joystick(bus : B, seconds : Int32) -> Report raise {
       guards[i].check_feedback(after[i], bus.now())
     }
   }
-  let report = {
-    action: Joystick(seconds),
-    completed: true,
-    holding: prepared,
-    before,
-    after,
-  }
+  let report = { action, completed: true, holding: prepared, before, after, }
   bus.event("completed-holding-no-cleanup-writes", Json(report))
   report
 }

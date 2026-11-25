@@ -6,9 +6,11 @@ equivalent** to the current MoonBit neck controller. The important differences a
 input selection, target size, timing, startup pose, inherited servo settings and
 fault policy. This study made no actuator writes and did not run a legacy entrypoint.
 
-The current neck session is stopped. Visible motion and physical direction remain
-unqualified. The latest velocity fault is retained; nothing here authorizes clearing
-it, increasing a limit or replaying the old startup sequence.
+At completion of this source study the neck session was stopped, visible motion
+and physical direction remained unqualified, and its latest velocity fault was
+retained. Subsequent operator reviews and trials are recorded separately in the
+[follow-up evidence](evidence/e1-neck-followup-20261125.json). This study alone
+does not authorize clearing a fault, increasing a limit or replaying old startup.
 
 ## Source identity and scope
 

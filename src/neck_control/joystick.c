@@ -51,7 +51,7 @@ static int joy_keys(int fd, int *zl, int *minus) {
 // an actual fresh periodic full HID report; unchanged stick values alone
 // are not a Bluetooth heartbeat. Never wait longer than 125 ms; MoonBit also
 // enforces the stricter combined 150 ms sample-to-dispatch deadline.
-static int joy_fresh_report(int fd, int64_t *captured) {
+static int joy_fresh_report(int fd, int64_t *captured, unsigned char *buttons) {
   unsigned char report[128];
   int drained = 0;
   for (;;) {
@@ -72,7 +72,10 @@ static int joy_fresh_report(int fd, int64_t *captured) {
     if (n <= 0 || (p.revents & (POLLHUP | POLLERR | POLLNVAL))) {snprintf(joy_last_error,sizeof(joy_last_error),"HID heartbeat poll: result=%d events=%d errno=%d",n,p.revents,errno);return -1;}
     ssize_t got = read(fd, report, sizeof(report));
     if (got < 0 && (errno == EAGAIN || errno == EINTR)) continue;
-    if (got >= 49 && report[0] == 0x30) return 0;
+    if (got >= 49 && report[0] == 0x30) {
+      if (buttons) *buttons = report[5] & 15;
+      return 0;
+    }
     if (got > 0) snprintf(joy_last_error,sizeof(joy_last_error),"Unexpected HID report: id=%02x bytes=%ld",report[0],(long)got);
     if (got <= 0) return -1;
   }
@@ -171,17 +174,18 @@ MOONBIT_FFI_EXPORT moonbit_bytes_t moonrobo_joy_read(NeckJoy *j) {
 #ifdef __linux__
   joy_last_error[0]=0;
   int64_t captured;
+  unsigned char buttons = 0;
   struct input_absinfo x, y;
   int zl, minus;
-  if (!moonrobo_joy_valid(j) || joy_fresh_report(j->hid_fd, &captured) < 0 ||
+  if (!moonrobo_joy_valid(j) || joy_fresh_report(j->hid_fd, &captured, &buttons) < 0 ||
       ioctl(j->input_fd, EVIOCGABS(ABS_X), &x) < 0 ||
       ioctl(j->input_fd, EVIOCGABS(ABS_Y), &y) < 0 || joy_keys(j->input_fd, &zl, &minus) < 0)
     {if(!joy_last_error[0])snprintf(joy_last_error,sizeof(joy_last_error),"Joystick state read failed: errno=%d",errno);return moonbit_make_bytes(0, 0);}
   char json[512];
   int n = snprintf(json, sizeof(json),
-    "{\"captured_ms\":\"%lld\",\"x\":%d,\"y\":%d,\"min_x\":%d,\"max_x\":%d,\"min_y\":%d,\"max_y\":%d,\"zl\":%s,\"minus\":%s}",
+    "{\"captured_ms\":\"%lld\",\"x\":%d,\"y\":%d,\"min_x\":%d,\"max_x\":%d,\"min_y\":%d,\"max_y\":%d,\"zl\":%s,\"minus\":%s,\"buttons\":%u}",
     (long long)captured, x.value, y.value, x.minimum, x.maximum, y.minimum, y.maximum,
-    zl ? "true" : "false", minus ? "true" : "false");
+    zl ? "true" : "false", minus ? "true" : "false", (unsigned)buttons);
   if (n < 0 || n >= (int)sizeof(json)) return moonbit_make_bytes(0, 0);
   moonbit_bytes_t result = moonbit_make_bytes(n, 0); memcpy(result, json, (size_t)n); return result;
 #else

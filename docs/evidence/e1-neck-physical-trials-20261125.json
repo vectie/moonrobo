@@ -6,6 +6,7 @@
   "visible_movement_qualification_passed": false,
   "current_physical_session_active": false,
   "canonical_remote_audit": "/home/elf/moonrobo-neck/neck-audit.jsonl",
+  "later_trials_and_current_status": "e1-neck-followup-20261125.json",
   "first_trial": {
     "intent_id": "neck-1795609311336",
     "run_id": "1795609339677-8390535",
@@ -142,8 +143,9 @@
     "last_velocity_raw": 100,
     "writes_after_fault": 0,
     "operator_report": "No, bracket stays still",
-    "operator_review_after_this_fault_received": false,
-    "fault_marker_retained": "/home/elf/moonrobo-neck/inflight-or-fault",
+    "operator_review_after_this_fault_received": true,
+    "operator_review": "Yes—bracket and cables are clear",
+    "fault_marker_archived": "/home/elf/moonrobo-neck/neck-1795611122860/operator-reviewed-fault-marker",
     "later_read_only_position_goal": { "pan": [1922, 1924], "tilt": [2048, 2045] },
     "later_read_only_velocity": [0, 0]
   },

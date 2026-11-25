@@ -20,6 +20,7 @@ pub(all) enum Action {
   Center
   Release
   Joystick(Int32)
+  Buttons(Int32)
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -342,9 +343,9 @@ pub fn intent_parameters(
 
 ///|
 fn validate_action(action : Action) -> Unit raise NeckError {
-  if action is Joystick(seconds) {
+  if action is (Joystick(seconds) | Buttons(seconds)) {
     guard seconds >= 1 && seconds <= 300 else {
-      raise Rejected("Joystick sessions must last 1..300 seconds")
+      raise Rejected("Live input sessions must last 1..300 seconds")
     }
   }
 }

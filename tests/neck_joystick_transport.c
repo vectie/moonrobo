@@ -9,14 +9,16 @@ static int failures;
 static int sample(int reader, int writer, int malformed) {
   pid_t child=fork();
   if(child==0) {
-    unsigned char report[49]={0x30};
+    unsigned char report[49]={0x30};report[5]=0xa8;
     if(malformed==1)report[0]=0x21;
     usleep(malformed==2?105000:10000);
     if(write(writer,report,sizeof(report))!=(ssize_t)sizeof(report))_exit(2);
     _exit(0);
   }
   int64_t captured=0;
-  int status=joy_fresh_report(reader,&captured);
+  unsigned char buttons=0;
+  int status=joy_fresh_report(reader,&captured,&buttons);
+  if(status==0)CHECK(buttons==8,"direction bits come from fresh report byte 5 only");
   int child_status=0;waitpid(child,&child_status,0);
   CHECK(WIFEXITED(child_status)&&WEXITSTATUS(child_status)==0,"synthetic HID producer exited");
   return status;
@@ -26,12 +28,12 @@ int main(void) {
   if(socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_NONBLOCK,0,pair)<0)return 2;
   unsigned char old[49]={0x30};int64_t captured;
   CHECK(write(pair[1],old,sizeof(old))==(ssize_t)sizeof(old),"queued old HID report");
-  CHECK(joy_fresh_report(pair[0],&captured)<0,"queued stale report alone cannot count as heartbeat");
+  CHECK(joy_fresh_report(pair[0],&captured,NULL)<0,"queued stale report alone cannot count as heartbeat");
   CHECK(sample(pair[0],pair[1],0)==0,"fresh full HID report accepted");
   CHECK(sample(pair[0],pair[1],2)==0,"bounded scheduling jitter remains inside 150 ms input freshness");
   CHECK(sample(pair[0],pair[1],1)<0,"non-streaming report rejected");
   close(pair[1]);
-  CHECK(joy_fresh_report(pair[0],&captured)<0,"disconnection stops input");
+  CHECK(joy_fresh_report(pair[0],&captured,NULL)<0,"disconnection stops input");
   close(pair[0]);
   NeckJoy *j=(NeckJoy *)moonbit_make_external_object(joy_destroy,sizeof(NeckJoy));
   j->input_fd=j->hid_fd=-1;

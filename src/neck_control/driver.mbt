@@ -199,8 +199,8 @@ pub(all) struct Report {
 ///|
 fn[B : Bus] run_action(bus : B, action : Action) -> Report raise {
   bus.event("request", Json(action))
-  if action is Joystick(seconds) {
-    return run_joystick(bus, seconds)
+  if action is (Joystick(_) | Buttons(_)) {
+    return run_live_input(bus, action)
   }
   if action == Release {
     // Emergency release must not depend on a successful identity/telemetry
@@ -351,10 +351,10 @@ pub fn execute(
     )
   }
   let device = "/dev/serial/by-id/usb-1a86_USB_Single_Serial_5AB0182917-if00"
-  let joystick = if action is Joystick(_) {
-    Some(open_stick(calibration_required=true))
-  } else {
-    None
+  let joystick = match action {
+    Joystick(_) => Some(open_stick(calibration_required=true))
+    Buttons(_) => Some(open_stick(buttons=true))
+    _ => None
   }
   defer (if joystick is Some(stick) { joy_close(stick.device) })
   let fd = serial_open(@utf8.encode(device))
